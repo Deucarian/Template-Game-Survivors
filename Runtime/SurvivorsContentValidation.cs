@@ -1,0 +1,312 @@
+using System;
+using System.Collections.Generic;
+using Deucarian.RunUpgrades;
+using UnityEngine;
+
+namespace Deucarian.TemplateGameSurvivors
+{
+    public sealed class SurvivorsContentValidationResult
+    {
+        private readonly List<string> _errors = new List<string>();
+
+        public bool Succeeded => _errors.Count == 0;
+        public IReadOnlyList<string> Errors => _errors;
+
+        internal void AddError(string error)
+        {
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                _errors.Add(error);
+            }
+        }
+    }
+
+    public static class SurvivorsContentValidator
+    {
+        public static SurvivorsContentValidationResult ValidateRuntimeContent(
+            IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons,
+            RunUpgradeCatalog upgrades,
+            IReadOnlyList<RunUpgradeTargetId> knownUpgradeTargets)
+        {
+            var result = new SurvivorsContentValidationResult();
+            ValidateWeaponDefinitions(weapons, result);
+            ValidateUpgradeCatalog(upgrades, knownUpgradeTargets, result);
+            return result;
+        }
+
+        public static SurvivorsContentValidationResult ValidateSampleJson(string weaponJson, string upgradeJson)
+        {
+            var result = new SurvivorsContentValidationResult();
+            WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
+            UpgradeLibraryJson upgradeLibrary = ParseJson<UpgradeLibraryJson>(upgradeJson, "upgrade library", result);
+            ValidateWeaponLibrary(weaponLibrary, result);
+            ValidateUpgradeLibrary(upgradeLibrary, result);
+            return result;
+        }
+
+        private static void ValidateWeaponDefinitions(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons, SurvivorsContentValidationResult result)
+        {
+            if (weapons == null || weapons.Count == 0)
+            {
+                result.AddError("At least one Survivors weapon definition is required.");
+                return;
+            }
+
+            var weaponIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < weapons.Count; i++)
+            {
+                SurvivorsWeaponArchetypeDefinition weapon = weapons[i];
+                if (weapon == null)
+                {
+                    result.AddError($"Weapon definition at index {i} is null.");
+                    continue;
+                }
+
+                if (!weaponIds.Add(weapon.Id))
+                {
+                    result.AddError($"Duplicate weapon id: {weapon.Id}");
+                }
+
+                if (!Enum.IsDefined(typeof(SurvivorsWeaponArchetype), weapon.Archetype))
+                {
+                    result.AddError($"Weapon {weapon.Id} uses unsupported archetype {weapon.Archetype}.");
+                }
+
+                if (weapon.Archetype == SurvivorsWeaponArchetype.Projectile)
+                {
+                    if (weapon.ProjectileSpeed <= 0f)
+                    {
+                        result.AddError($"Projectile weapon {weapon.Id} requires projectile speed above zero.");
+                    }
+
+                    if (weapon.ProjectileLifetimeSeconds <= 0f)
+                    {
+                        result.AddError($"Projectile weapon {weapon.Id} requires projectile lifetime above zero.");
+                    }
+                }
+
+                if (weapon.Archetype == SurvivorsWeaponArchetype.Hitscan)
+                {
+                    if (weapon.HitscanCount <= 0)
+                    {
+                        result.AddError($"Hitscan weapon {weapon.Id} requires hitscan count above zero.");
+                    }
+
+                    if (weapon.HitscanWidth <= 0f)
+                    {
+                        result.AddError($"Hitscan weapon {weapon.Id} requires beam width above zero.");
+                    }
+                }
+            }
+        }
+
+        private static void ValidateUpgradeCatalog(
+            RunUpgradeCatalog upgrades,
+            IReadOnlyList<RunUpgradeTargetId> knownUpgradeTargets,
+            SurvivorsContentValidationResult result)
+        {
+            if (upgrades == null || upgrades.Definitions.Count == 0)
+            {
+                result.AddError("At least one run upgrade definition is required.");
+                return;
+            }
+
+            var knownTargets = new HashSet<string>(StringComparer.Ordinal);
+            if (knownUpgradeTargets != null)
+            {
+                for (int i = 0; i < knownUpgradeTargets.Count; i++)
+                {
+                    knownTargets.Add(knownUpgradeTargets[i].Value);
+                }
+            }
+
+            var upgradeIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < upgrades.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition upgrade = upgrades.Definitions[i];
+                if (upgrade == null)
+                {
+                    result.AddError($"Upgrade definition at index {i} is null.");
+                    continue;
+                }
+
+                if (!upgradeIds.Add(upgrade.Id.Value))
+                {
+                    result.AddError($"Duplicate upgrade id: {upgrade.Id.Value}");
+                }
+
+                for (int effectIndex = 0; effectIndex < upgrade.Effects.Count; effectIndex++)
+                {
+                    RunUpgradeEffectDescriptor effect = upgrade.Effects[effectIndex];
+                    if (!knownTargets.Contains(effect.TargetId.Value))
+                    {
+                        result.AddError($"Upgrade {upgrade.Id.Value} targets unknown content id: {effect.TargetId.Value}");
+                    }
+                }
+            }
+        }
+
+        private static void ValidateWeaponLibrary(WeaponLibraryJson library, SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            var projectileIds = new HashSet<string>(StringComparer.Ordinal);
+            if (library.projectiles != null)
+            {
+                for (int i = 0; i < library.projectiles.Length; i++)
+                {
+                    ProjectileRecordJson projectile = library.projectiles[i];
+                    if (projectile == null || string.IsNullOrWhiteSpace(projectile.id))
+                    {
+                        result.AddError($"Projectile record at index {i} is missing an id.");
+                        continue;
+                    }
+
+                    if (!projectileIds.Add(projectile.id))
+                    {
+                        result.AddError($"Duplicate projectile id: {projectile.id}");
+                    }
+                }
+            }
+
+            var weaponIds = new HashSet<string>(StringComparer.Ordinal);
+            if (library.weapons == null || library.weapons.Length == 0)
+            {
+                result.AddError("Sample weapon library must contain at least one weapon.");
+                return;
+            }
+
+            for (int i = 0; i < library.weapons.Length; i++)
+            {
+                WeaponRecordJson weapon = library.weapons[i];
+                if (weapon == null || string.IsNullOrWhiteSpace(weapon.id))
+                {
+                    result.AddError($"Weapon record at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!weaponIds.Add(weapon.id))
+                {
+                    result.AddError($"Duplicate weapon id: {weapon.id}");
+                }
+
+                if (!Enum.TryParse(weapon.fireMode, ignoreCase: true, out SurvivorsWeaponArchetype archetype) ||
+                    !Enum.IsDefined(typeof(SurvivorsWeaponArchetype), archetype))
+                {
+                    result.AddError($"Weapon {weapon.id} references unknown archetype: {weapon.fireMode}");
+                    continue;
+                }
+
+                if (archetype == SurvivorsWeaponArchetype.Projectile && !projectileIds.Contains(weapon.projectileId))
+                {
+                    result.AddError($"Weapon {weapon.id} references missing projectile id: {weapon.projectileId}");
+                }
+            }
+        }
+
+        private static void ValidateUpgradeLibrary(UpgradeLibraryJson library, SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            if (library.upgrades == null || library.upgrades.Length == 0)
+            {
+                result.AddError("Sample upgrade library must contain at least one upgrade.");
+                return;
+            }
+
+            var knownTargets = new HashSet<string>(StringComparer.Ordinal);
+            IReadOnlyList<RunUpgradeTargetId> targetIds = BasicSurvivorsGame.CreateKnownUpgradeTargets();
+            for (int i = 0; i < targetIds.Count; i++)
+            {
+                knownTargets.Add(targetIds[i].Value);
+            }
+
+            var upgradeIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < library.upgrades.Length; i++)
+            {
+                UpgradeRecordJson upgrade = library.upgrades[i];
+                if (upgrade == null || string.IsNullOrWhiteSpace(upgrade.id))
+                {
+                    result.AddError($"Upgrade record at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!upgradeIds.Add(upgrade.id))
+                {
+                    result.AddError($"Duplicate upgrade id: {upgrade.id}");
+                }
+
+                if (string.IsNullOrWhiteSpace(upgrade.effect))
+                {
+                    result.AddError($"Upgrade {upgrade.id} is missing an effect id.");
+                }
+
+                if (!knownTargets.Contains(upgrade.target))
+                {
+                    result.AddError($"Upgrade {upgrade.id} references unknown target: {upgrade.target}");
+                }
+            }
+        }
+
+        private static T ParseJson<T>(string json, string label, SurvivorsContentValidationResult result)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                result.AddError($"Sample {label} JSON is empty.");
+                return default;
+            }
+
+            try
+            {
+                return JsonUtility.FromJson<T>(json);
+            }
+            catch (ArgumentException exception)
+            {
+                result.AddError($"Sample {label} JSON could not be parsed: {exception.Message}");
+                return default;
+            }
+        }
+
+        [Serializable]
+        private sealed class WeaponLibraryJson
+        {
+            public WeaponRecordJson[] weapons;
+            public ProjectileRecordJson[] projectiles;
+        }
+
+        [Serializable]
+        private sealed class WeaponRecordJson
+        {
+            public string id;
+            public string fireMode;
+            public string projectileId;
+        }
+
+        [Serializable]
+        private sealed class ProjectileRecordJson
+        {
+            public string id;
+        }
+
+        [Serializable]
+        private sealed class UpgradeLibraryJson
+        {
+            public UpgradeRecordJson[] upgrades;
+        }
+
+        [Serializable]
+        private sealed class UpgradeRecordJson
+        {
+            public string id;
+            public string rarity;
+            public string effect;
+            public string target;
+        }
+    }
+}

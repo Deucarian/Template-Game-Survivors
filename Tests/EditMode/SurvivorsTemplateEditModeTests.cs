@@ -1,7 +1,10 @@
+using System;
+using System.IO;
 using Deucarian.Projectiles;
 using Deucarian.RunUpgrades;
 using Deucarian.WeaponSystems;
 using NUnit.Framework;
+using UnityEditor.PackageManager;
 using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors.Tests
@@ -20,13 +23,54 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(WeaponFireMode.Projectile, weapon.FireMode);
             Assert.AreEqual(BasicSurvivorsGame.ArcaneBoltProjectileId, projectile.Id);
             Assert.AreEqual(BasicSurvivorsGame.ProjectileSpawnableId, projectile.SpawnableId);
-            Assert.That(upgrades.Definitions.Count, Is.GreaterThanOrEqualTo(8));
-            Assert.That(archetypes.Count, Is.EqualTo(4));
+            Assert.That(upgrades.Definitions.Count, Is.GreaterThanOrEqualTo(13));
+            Assert.That(archetypes.Count, Is.EqualTo(5));
             Assert.That(archetypes[0].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Projectile));
             Assert.That(archetypes[1].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Orbit));
             Assert.That(archetypes[2].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Melee));
             Assert.That(archetypes[3].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Burst));
+            Assert.That(archetypes[4].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Hitscan));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
+        }
+
+        [Test]
+        public void RuntimeContentValidationPassesForDefaultCatalogs()
+        {
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateRuntimeContent(
+                BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(),
+                BasicSurvivorsGame.CreateRunUpgradeCatalog(),
+                BasicSurvivorsGame.CreateKnownUpgradeTargets());
+
+            Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
+        }
+
+        [Test]
+        public void SampleContentJsonLoadsAndValidates()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson);
+
+            Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
+        }
+
+        [Test]
+        public void InvalidSampleContentReportsDuplicateAndMissingReferences()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.dup\",\"fireMode\":\"Projectile\",\"projectileId\":\"projectile.missing\"},{\"id\":\"weapon.dup\",\"fireMode\":\"NoSuchArchetype\"}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.dup\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"target.missing\"},{\"id\":\"upgrade.dup\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.player\"}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("Duplicate weapon id", errors);
+            StringAssert.Contains("references missing projectile id", errors);
+            StringAssert.Contains("unknown archetype", errors);
+            StringAssert.Contains("Duplicate upgrade id", errors);
+            StringAssert.Contains("unknown target", errors);
         }
 
         [Test]
@@ -113,6 +157,11 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 float previousMove = controller.PlayerMoveSpeed;
                 float previousCooldown = controller.WeaponCooldownSeconds;
                 float previousMaxHealth = controller.MaxHealth;
+                int previousProjectilePierce = controller.ProjectilePierceBonus;
+                int previousProjectileChain = controller.ProjectileChainBonus;
+                int previousProjectileFork = controller.ProjectileForkBonus;
+                int previousProjectileReturn = controller.ProjectileReturnBonus;
+                int previousHitscanPierce = controller.HitscanPierceBonus;
 
                 Assert.IsTrue(controller.SelectUpgrade(0));
 
@@ -122,7 +171,12 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     controller.PlayerMoveSpeed > previousMove ||
                     controller.WeaponCooldownSeconds < previousCooldown ||
                     controller.MaxHealth > previousMaxHealth ||
-                    controller.PickupRangeBonus > 0f;
+                    controller.PickupRangeBonus > 0f ||
+                    controller.ProjectilePierceBonus > previousProjectilePierce ||
+                    controller.ProjectileChainBonus > previousProjectileChain ||
+                    controller.ProjectileForkBonus > previousProjectileFork ||
+                    controller.ProjectileReturnBonus > previousProjectileReturn ||
+                    controller.HitscanPierceBonus > previousHitscanPierce;
                 Assert.IsTrue(changed);
             }
             finally
@@ -147,6 +201,25 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Assert.That(baseline, Is.GreaterThanOrEqualTo(1));
                 Assert.That(controller.OrbitBladeBonus, Is.GreaterThanOrEqualTo(1));
                 Assert.That(controller.ActiveOrbitBladeCount, Is.GreaterThan(baseline));
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void ProjectileModifierUpgradeAppliesLocalBonus()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            try
+            {
+                Assert.AreEqual(0, controller.ProjectilePierceBonus);
+
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.piercing-bolts"));
+
+                Assert.That(controller.ProjectilePierceBonus, Is.GreaterThanOrEqualTo(1));
+                Assert.AreEqual(1, controller.SelectedUpgradeCount);
             }
             finally
             {
@@ -182,6 +255,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             return controller;
         }
 
+        private static string GetSampleRoot()
+        {
+            var packageInfo = PackageInfo.FindForAssembly(typeof(BasicSurvivorsGame).Assembly);
+            Assert.IsNotNull(packageInfo);
+            string sampleRoot = Path.Combine(packageInfo.resolvedPath, "Samples~", "BasicSurvivorsGame");
+            Assert.IsTrue(Directory.Exists(sampleRoot), "Sample root missing: " + sampleRoot);
+            return sampleRoot;
+        }
+
         private static void Step(SurvivorsTemplateController controller, int frames, float deltaTime)
         {
             for (int i = 0; i < frames; i++)
@@ -194,7 +276,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         {
             if (controller != null)
             {
-                Object.DestroyImmediate(controller.gameObject);
+                UnityEngine.Object.DestroyImmediate(controller.gameObject);
             }
         }
     }

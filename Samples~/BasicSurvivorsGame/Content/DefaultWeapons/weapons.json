@@ -5,7 +5,11 @@
       "fireMode": "Projectile",
       "projectileId": "projectile.survivors.arcane-bolt",
       "cooldownSeconds": 0.62,
-      "range": 14
+      "range": 14,
+      "pierceCount": 0,
+      "chainCount": 0,
+      "forkCount": 0,
+      "returnCount": 0
     },
     {
       "id": "weapon.survivors.orbit-ward",
@@ -33,6 +37,17 @@
       "radius": 3.15,
       "burstCount": 1,
       "repeatIntervalSeconds": 0.18
+    },
+    {
+      "id": "weapon.survivors.star-beam",
+      "fireMode": "Hitscan",
+      "cooldownSeconds": 1.35,
+      "damage": 6.5,
+      "range": 9.5,
+      "hitscanCount": 1,
+      "beamWidth": 0.24,
+      "visualDurationSeconds": 0.08,
+      "pierces": false
     }
   ],
   "projectiles": [

@@ -61,6 +61,12 @@ namespace Deucarian.TemplateGameSurvivors
         public int MeleeHitCount { get; private set; }
         public int BurstPulseCount { get; private set; }
         public int BurstHitCount { get; private set; }
+        public int HitscanFireCount { get; private set; }
+        public int HitscanHitCount { get; private set; }
+        public int ProjectilePierceHitCount { get; private set; }
+        public int ProjectileChainHitCount { get; private set; }
+        public int ProjectileForkSpawnCount { get; private set; }
+        public int ProjectileReturnStartCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -72,6 +78,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int OrbitBladeBonus { get; private set; }
         public int MeleeTargetBonus { get; private set; }
         public int BurstCountBonus { get; private set; }
+        public int ProjectilePierceBonus { get; private set; }
+        public int ProjectileChainBonus { get; private set; }
+        public int ProjectileForkBonus { get; private set; }
+        public int ProjectileReturnBonus { get; private set; }
+        public int HitscanPierceBonus { get; private set; }
         public int ActiveEnemyCount => _enemies.Count;
         public int ActivePickupCount => _pickups.Count;
         public int ActiveProjectileCount => _projectiles.Count;
@@ -198,6 +209,12 @@ namespace Deucarian.TemplateGameSurvivors
             MeleeHitCount = 0;
             BurstPulseCount = 0;
             BurstHitCount = 0;
+            HitscanFireCount = 0;
+            HitscanHitCount = 0;
+            ProjectilePierceHitCount = 0;
+            ProjectileChainHitCount = 0;
+            ProjectileForkSpawnCount = 0;
+            ProjectileReturnStartCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -209,6 +226,11 @@ namespace Deucarian.TemplateGameSurvivors
             OrbitBladeBonus = 0;
             MeleeTargetBonus = 0;
             BurstCountBonus = 0;
+            ProjectilePierceBonus = 0;
+            ProjectileChainBonus = 0;
+            ProjectileForkBonus = 0;
+            ProjectileReturnBonus = 0;
+            HitscanPierceBonus = 0;
             _enemySpawnTimer = 0f;
             _playerInvulnerabilityTimer = 0f;
             _spawnSequence = 0;
@@ -501,13 +523,38 @@ namespace Deucarian.TemplateGameSurvivors
 
         internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction)
         {
+            if (definition == null)
+            {
+                return false;
+            }
+
+            return LaunchProjectileFrom(
+                definition,
+                PlayerPosition + Vector3.up * 0.4f,
+                direction,
+                definition.ProjectileChainCount + ProjectileChainBonus,
+                definition.ProjectilePierceCount + ProjectilePierceBonus,
+                definition.ProjectileForkCount + ProjectileForkBonus,
+                definition.ProjectileReturnCount + ProjectileReturnBonus,
+                null);
+        }
+
+        internal bool LaunchProjectileFrom(
+            SurvivorsWeaponArchetypeDefinition definition,
+            Vector3 origin,
+            Vector3 direction,
+            int remainingChains,
+            int remainingPierces,
+            int remainingForks,
+            int remainingReturns,
+            HashSet<int> ignoredEnemyIds)
+        {
             if (definition == null || _spawnService == null)
             {
                 return false;
             }
 
             Vector3 resolvedDirection = direction.sqrMagnitude <= 0.001f ? Vector3.forward : direction.normalized;
-            Vector3 origin = PlayerPosition + Vector3.up * 0.4f;
             long sequence = ++_spawnSequence;
             _poseResolver.RegisterExplicitPose(sequence, origin + resolvedDirection * 0.55f);
             SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
@@ -521,7 +568,19 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SurvivorsProjectileActor projectile = result.Instance.GetComponent<SurvivorsProjectileActor>();
-            projectile.Initialize(this, resolvedDirection, definition.ProjectileSpeed, ResolveWeaponDamage(definition), definition.ProjectileRadius, definition.ProjectileLifetimeSeconds);
+            projectile.Initialize(
+                this,
+                definition,
+                resolvedDirection,
+                definition.ProjectileSpeed,
+                ResolveWeaponDamage(definition),
+                definition.ProjectileRadius,
+                definition.ProjectileLifetimeSeconds,
+                remainingChains,
+                remainingPierces,
+                remainingForks,
+                remainingReturns,
+                ignoredEnemyIds);
             _projectiles.Add(projectile);
             ProjectileLaunchCount++;
             return true;
@@ -574,6 +633,36 @@ namespace Deucarian.TemplateGameSurvivors
         internal void RecordBurstHit()
         {
             BurstHitCount++;
+        }
+
+        internal void RecordHitscanFire()
+        {
+            HitscanFireCount++;
+        }
+
+        internal void RecordHitscanHit()
+        {
+            HitscanHitCount++;
+        }
+
+        internal void RecordProjectilePierceHit()
+        {
+            ProjectilePierceHitCount++;
+        }
+
+        internal void RecordProjectileChainHit()
+        {
+            ProjectileChainHitCount++;
+        }
+
+        internal void RecordProjectileForkSpawn()
+        {
+            ProjectileForkSpawnCount++;
+        }
+
+        internal void RecordProjectileReturnStart()
+        {
+            ProjectileReturnStartCount++;
         }
 
         private void EnsureRunStartedForTest()
@@ -881,6 +970,26 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     BurstCountBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
                 }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectilePierceEffect))
+                {
+                    ProjectilePierceBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileChainEffect))
+                {
+                    ProjectileChainBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileForkEffect))
+                {
+                    ProjectileForkBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileReturnEffect))
+                {
+                    ProjectileReturnBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.HitscanPierceEffect))
+                {
+                    HitscanPierceBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
             }
         }
 
@@ -1068,24 +1177,59 @@ namespace Deucarian.TemplateGameSurvivors
 
     public sealed class SurvivorsProjectileActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
     {
+        private readonly HashSet<int> _hitEnemyIds = new HashSet<int>();
+        private readonly List<SurvivorsEnemyActor> _forkTargets = new List<SurvivorsEnemyActor>();
         private SurvivorsTemplateController _controller;
+        private SurvivorsWeaponArchetypeDefinition _definition;
         private Vector3 _direction;
         private float _speed;
         private float _damage;
         private float _radius;
         private float _lifetime;
+        private int _remainingChains;
+        private int _remainingPierces;
+        private int _remainingForks;
+        private int _remainingReturns;
+        private bool _returningToPlayer;
 
         public SpawnInstanceId InstanceId { get; private set; }
         public bool IsActive { get; private set; }
 
-        public void Initialize(SurvivorsTemplateController controller, Vector3 direction, float speed, float damage, float radius, float lifetime)
+        public void Initialize(
+            SurvivorsTemplateController controller,
+            SurvivorsWeaponArchetypeDefinition definition,
+            Vector3 direction,
+            float speed,
+            float damage,
+            float radius,
+            float lifetime,
+            int remainingChains,
+            int remainingPierces,
+            int remainingForks,
+            int remainingReturns,
+            HashSet<int> ignoredEnemyIds = null)
         {
             _controller = controller;
+            _definition = definition;
             _direction = direction.sqrMagnitude <= 0.001f ? Vector3.forward : direction.normalized;
             _speed = Mathf.Max(0f, speed);
             _damage = Mathf.Max(0f, damage);
             _radius = Mathf.Max(0.05f, radius);
             _lifetime = Mathf.Max(0.05f, lifetime);
+            _remainingChains = Mathf.Max(0, remainingChains);
+            _remainingPierces = Mathf.Max(0, remainingPierces);
+            _remainingForks = Mathf.Max(0, remainingForks);
+            _remainingReturns = Mathf.Max(0, remainingReturns);
+            _returningToPlayer = false;
+            _hitEnemyIds.Clear();
+            if (ignoredEnemyIds != null)
+            {
+                foreach (int ignoredId in ignoredEnemyIds)
+                {
+                    _hitEnemyIds.Add(ignoredId);
+                }
+            }
+
             IsActive = true;
             transform.localScale = Vector3.one * (_radius * 2f);
         }
@@ -1100,9 +1244,28 @@ namespace Deucarian.TemplateGameSurvivors
             _lifetime -= deltaTime;
             if (_lifetime <= 0f)
             {
-                IsActive = false;
-                _controller.ReleaseProjectile(this, DespawnReason.OutOfBounds);
+                if (!TryStartReturnToPlayer())
+                {
+                    Release(DespawnReason.OutOfBounds);
+                }
+
                 return;
+            }
+
+            if (_returningToPlayer)
+            {
+                Vector3 toPlayer = _controller.PlayerPosition + Vector3.up * 0.4f - transform.position;
+                toPlayer.y = 0f;
+                if (toPlayer.sqrMagnitude <= 0.18f)
+                {
+                    Release(DespawnReason.Completed);
+                    return;
+                }
+
+                if (toPlayer.sqrMagnitude > 0.001f)
+                {
+                    _direction = toPlayer.normalized;
+                }
             }
 
             transform.position += _direction * (_speed * deltaTime);
@@ -1115,14 +1278,191 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
+                int enemyId = enemy.GetInstanceID();
+                if (_hitEnemyIds.Contains(enemyId))
+                {
+                    continue;
+                }
+
                 float hitRange = _radius + enemy.Radius;
                 if ((enemy.transform.position - transform.position).sqrMagnitude <= hitRange * hitRange)
                 {
-                    enemy.ApplyDamage(_damage, "combatant.survivors.player");
-                    IsActive = false;
-                    _controller.ReleaseProjectile(this, DespawnReason.Completed);
+                    _hitEnemyIds.Add(enemyId);
+                    enemy.ApplyDamage(_damage, _definition == null ? "combatant.survivors.player" : _definition.Id);
+                    SpawnForkProjectiles(enemy);
+                    if (_remainingPierces > 0)
+                    {
+                        _remainingPierces--;
+                        _controller.RecordProjectilePierceHit();
+                        transform.position += _direction * Mathf.Max(0.08f, hitRange);
+                        return;
+                    }
+
+                    if (_remainingChains > 0 && TryRetargetFrom(enemy))
+                    {
+                        _remainingChains--;
+                        _controller.RecordProjectileChainHit();
+                        return;
+                    }
+
+                    if (!TryStartReturnToPlayer())
+                    {
+                        Release(DespawnReason.Completed);
+                    }
+
                     return;
                 }
+            }
+        }
+
+        private void SpawnForkProjectiles(SurvivorsEnemyActor lastHitEnemy)
+        {
+            if (_controller == null || _definition == null || _remainingForks <= 0)
+            {
+                return;
+            }
+
+            _forkTargets.Clear();
+            IReadOnlyList<SurvivorsEnemyActor> enemies = _controller.ActiveEnemies;
+            Vector3 origin = transform.position;
+            const float forkSearchRange = 5f;
+            float forkSearchRangeSquared = forkSearchRange * forkSearchRange;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = enemies[i];
+                if (enemy == null || !enemy.IsAlive || _hitEnemyIds.Contains(enemy.GetInstanceID()))
+                {
+                    continue;
+                }
+
+                Vector3 offset = enemy.transform.position - origin;
+                offset.y = 0f;
+                if (offset.sqrMagnitude <= forkSearchRangeSquared)
+                {
+                    _forkTargets.Add(enemy);
+                }
+            }
+
+            _forkTargets.Sort((left, right) =>
+            {
+                float leftDistance = (left.transform.position - origin).sqrMagnitude;
+                float rightDistance = (right.transform.position - origin).sqrMagnitude;
+                return leftDistance.CompareTo(rightDistance);
+            });
+
+            int forkCount = Mathf.Min(_remainingForks, Mathf.Max(1, _forkTargets.Count));
+            _remainingForks = Mathf.Max(0, _remainingForks - 1);
+            for (int i = 0; i < forkCount; i++)
+            {
+                Vector3 forkDirection;
+                if (i < _forkTargets.Count && _forkTargets[i] != null)
+                {
+                    forkDirection = _forkTargets[i].transform.position - origin;
+                    forkDirection.y = 0f;
+                }
+                else
+                {
+                    float angle = (-18f + i * 36f) * Mathf.Deg2Rad;
+                    forkDirection = Quaternion.Euler(0f, angle * Mathf.Rad2Deg, 0f) * _direction;
+                }
+
+                if (forkDirection.sqrMagnitude <= 0.001f)
+                {
+                    forkDirection = _direction;
+                }
+
+                if (_controller.LaunchProjectileFrom(
+                    _definition,
+                    origin,
+                    forkDirection.normalized,
+                    _remainingChains,
+                    _remainingPierces,
+                    _remainingForks,
+                    _remainingReturns,
+                    _hitEnemyIds))
+                {
+                    _controller.RecordProjectileForkSpawn();
+                }
+            }
+
+            _forkTargets.Clear();
+        }
+
+        private bool TryRetargetFrom(SurvivorsEnemyActor lastHitEnemy)
+        {
+            if (_controller == null)
+            {
+                return false;
+            }
+
+            SurvivorsEnemyActor best = null;
+            float bestDistance = 5f * 5f;
+            IReadOnlyList<SurvivorsEnemyActor> enemies = _controller.ActiveEnemies;
+            Vector3 origin = lastHitEnemy == null ? transform.position : lastHitEnemy.transform.position;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = enemies[i];
+                if (enemy == null || !enemy.IsAlive || _hitEnemyIds.Contains(enemy.GetInstanceID()))
+                {
+                    continue;
+                }
+
+                Vector3 offset = enemy.transform.position - origin;
+                offset.y = 0f;
+                float distance = offset.sqrMagnitude;
+                if (distance <= bestDistance)
+                {
+                    bestDistance = distance;
+                    best = enemy;
+                }
+            }
+
+            if (best == null)
+            {
+                return false;
+            }
+
+            Vector3 direction = best.transform.position - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.001f)
+            {
+                return false;
+            }
+
+            _direction = direction.normalized;
+            _lifetime = Mathf.Max(_lifetime, 0.7f);
+            return true;
+        }
+
+        private bool TryStartReturnToPlayer()
+        {
+            if (_returningToPlayer || _controller == null || _remainingReturns <= 0)
+            {
+                return false;
+            }
+
+            Vector3 direction = _controller.PlayerPosition + Vector3.up * 0.4f - transform.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.001f)
+            {
+                return false;
+            }
+
+            _remainingReturns--;
+            _returningToPlayer = true;
+            _direction = direction.normalized;
+            _speed *= 1.2f;
+            _lifetime = Mathf.Max(_lifetime, 1.25f);
+            _controller.RecordProjectileReturnStart();
+            return true;
+        }
+
+        private void Release(DespawnReason reason)
+        {
+            IsActive = false;
+            if (_controller != null)
+            {
+                _controller.ReleaseProjectile(this, reason);
             }
         }
 
@@ -1134,12 +1474,23 @@ namespace Deucarian.TemplateGameSurvivors
         public void OnWorldDespawned(DespawnReason reason)
         {
             _controller = null;
+            _definition = null;
+            _hitEnemyIds.Clear();
+            _forkTargets.Clear();
             IsActive = false;
         }
 
         public void ResetForWorldSpawn()
         {
             _controller = null;
+            _definition = null;
+            _hitEnemyIds.Clear();
+            _forkTargets.Clear();
+            _remainingChains = 0;
+            _remainingPierces = 0;
+            _remainingForks = 0;
+            _remainingReturns = 0;
+            _returningToPlayer = false;
             IsActive = false;
             InstanceId = default;
         }

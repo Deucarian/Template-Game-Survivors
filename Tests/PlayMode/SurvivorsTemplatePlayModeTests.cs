@@ -123,12 +123,116 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Object.Destroy(controller.gameObject);
         }
 
+        [UnityTest]
+        public IEnumerator HitscanWeaponCanDamageAndKillEnemy()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Hitscan));
+            yield return null;
+
+            Assert.That(controller.HitscanFireCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.HitscanHitCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator PiercingProjectileCanHitMultipleEnemies()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.piercing-bolts"));
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 1f);
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.75f, 0f, 0f), 1f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            yield return SimulateFrames(controller, 90);
+
+            Assert.That(controller.ProjectilePierceBonus, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ProjectilePierceHitCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(2));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ChainedProjectileCanRetargetNearbyEnemy()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.chain-bolts"));
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.4f, 0f, 0f), 30f);
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.4f, 0f, 1.15f), 30f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            yield return SimulateFrames(controller, 120);
+
+            Assert.That(controller.ProjectileChainBonus, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ProjectileChainHitCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ForkedProjectileCanSpawnSecondaryProjectile()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.forked-bolts"));
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 1f);
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 1.2f), 1f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            yield return SimulateFrames(controller, 120);
+
+            Assert.That(controller.ProjectileForkBonus, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ProjectileForkSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(2));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ReturningProjectileCanBoomerangAfterHit()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.returning-bolts"));
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 1f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            yield return SimulateFrames(controller, 90);
+
+            Assert.That(controller.ProjectileReturnBonus, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ProjectileReturnStartCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
         private static SurvivorsTemplateController CreateController()
         {
             var root = new GameObject("Survivors Template PlayMode Test");
             SurvivorsTemplateController controller = root.AddComponent<SurvivorsTemplateController>();
             controller.StartRun();
             return controller;
+        }
+
+        private static IEnumerator SimulateFrames(SurvivorsTemplateController controller, int frames)
+        {
+            for (int i = 0; i < frames; i++)
+            {
+                controller.Simulate(1f / 60f);
+                yield return null;
+            }
         }
     }
 }

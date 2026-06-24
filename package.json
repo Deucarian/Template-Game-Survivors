@@ -29,7 +29,7 @@
   "samples": [
     {
       "displayName": "Basic Survivors Game",
-      "description": "A first playable Survivors-style slice with top-down movement, radial enemy spawning, auto projectiles, XP gems, magnet recall, level-up choices, and restart flow.",
+      "description": "A first playable Survivors-style slice with top-down movement, radial enemy spawning, projectile/orbit/melee/burst/hitscan weapons, XP gems, level-up choices, and restart flow.",
       "path": "Samples~/BasicSurvivorsGame"
     }
   ]

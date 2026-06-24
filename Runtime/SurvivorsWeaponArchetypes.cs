@@ -26,6 +26,10 @@ namespace Deucarian.TemplateGameSurvivors
             float projectileSpeed = 0f,
             float projectileRadius = 0f,
             float projectileLifetimeSeconds = 0f,
+            int projectilePierceCount = 0,
+            int projectileChainCount = 0,
+            int projectileForkCount = 0,
+            int projectileReturnCount = 0,
             int orbitCount = 1,
             float orbitRadius = 0f,
             float orbitDegreesPerSecond = 0f,
@@ -35,7 +39,11 @@ namespace Deucarian.TemplateGameSurvivors
             float meleeVisualDurationSeconds = 0.16f,
             int burstCount = 1,
             float burstRepeatIntervalSeconds = 0.18f,
-            float burstVisualDurationSeconds = 0.22f)
+            float burstVisualDurationSeconds = 0.22f,
+            int hitscanCount = 1,
+            float hitscanWidth = 0.18f,
+            float hitscanVisualDurationSeconds = 0.08f,
+            bool hitscanPierces = false)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -52,6 +60,10 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileSpeed = Mathf.Max(0f, projectileSpeed);
             ProjectileRadius = Mathf.Max(0.01f, projectileRadius);
             ProjectileLifetimeSeconds = Mathf.Max(0.05f, projectileLifetimeSeconds);
+            ProjectilePierceCount = Mathf.Max(0, projectilePierceCount);
+            ProjectileChainCount = Mathf.Max(0, projectileChainCount);
+            ProjectileForkCount = Mathf.Max(0, projectileForkCount);
+            ProjectileReturnCount = Mathf.Max(0, projectileReturnCount);
             OrbitCount = Mathf.Max(1, orbitCount);
             OrbitRadius = Mathf.Max(0.1f, orbitRadius);
             OrbitDegreesPerSecond = Mathf.Max(0f, orbitDegreesPerSecond);
@@ -62,6 +74,10 @@ namespace Deucarian.TemplateGameSurvivors
             BurstCount = Mathf.Max(1, burstCount);
             BurstRepeatIntervalSeconds = Mathf.Max(0.05f, burstRepeatIntervalSeconds);
             BurstVisualDurationSeconds = Mathf.Max(0.05f, burstVisualDurationSeconds);
+            HitscanCount = Mathf.Max(1, hitscanCount);
+            HitscanWidth = Mathf.Max(0.03f, hitscanWidth);
+            HitscanVisualDurationSeconds = Mathf.Max(0.03f, hitscanVisualDurationSeconds);
+            HitscanPierces = hitscanPierces;
         }
 
         public string Id { get; }
@@ -74,6 +90,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float ProjectileSpeed { get; }
         public float ProjectileRadius { get; }
         public float ProjectileLifetimeSeconds { get; }
+        public int ProjectilePierceCount { get; }
+        public int ProjectileChainCount { get; }
+        public int ProjectileForkCount { get; }
+        public int ProjectileReturnCount { get; }
         public int OrbitCount { get; }
         public float OrbitRadius { get; }
         public float OrbitDegreesPerSecond { get; }
@@ -84,6 +104,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int BurstCount { get; }
         public float BurstRepeatIntervalSeconds { get; }
         public float BurstVisualDurationSeconds { get; }
+        public int HitscanCount { get; }
+        public float HitscanWidth { get; }
+        public float HitscanVisualDurationSeconds { get; }
+        public bool HitscanPierces { get; }
     }
 
     public sealed class SurvivorsWeaponLoadoutRuntime
@@ -176,6 +200,8 @@ namespace Deucarian.TemplateGameSurvivors
                     return new SurvivorsMeleeWeaponRuntime(controller, definition);
                 case SurvivorsWeaponArchetype.Burst:
                     return new SurvivorsBurstWeaponRuntime(controller, definition);
+                case SurvivorsWeaponArchetype.Hitscan:
+                    return new SurvivorsHitscanWeaponRuntime(controller, definition);
                 default:
                     return new SurvivorsDisabledWeaponRuntime(controller, definition);
             }
@@ -264,6 +290,208 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return Controller.LaunchProjectile(Definition, direction.normalized);
+        }
+    }
+
+    internal sealed class SurvivorsHitscanWeaponRuntime : SurvivorsWeaponRuntimeBase
+    {
+        private readonly List<SurvivorsEnemyActor> _targets = new List<SurvivorsEnemyActor>();
+        private readonly List<SurvivorsEnemyActor> _beamHits = new List<SurvivorsEnemyActor>();
+        private float _cooldownRemaining = 0.2f;
+
+        public SurvivorsHitscanWeaponRuntime(SurvivorsTemplateController controller, SurvivorsWeaponArchetypeDefinition definition)
+            : base(controller, definition)
+        {
+        }
+
+        public override void Tick(float deltaTime)
+        {
+            _cooldownRemaining -= deltaTime;
+            if (_cooldownRemaining > 0f)
+            {
+                return;
+            }
+
+            if (TryFire())
+            {
+                _cooldownRemaining = Controller.ResolveWeaponCooldownSeconds(Definition);
+            }
+        }
+
+        public override bool FireForTest()
+        {
+            _cooldownRemaining = 0f;
+            return TryFire();
+        }
+
+        private bool TryFire()
+        {
+            Vector3 origin = Controller.PlayerPosition + Vector3.up * 0.45f;
+            CollectNearestTargets(origin, Definition.Range, Mathf.Max(1, Definition.HitscanCount + Controller.ProjectileChainBonus + Controller.ProjectileForkBonus));
+            if (_targets.Count == 0)
+            {
+                return false;
+            }
+
+            bool dealtDamage = false;
+            for (int i = 0; i < _targets.Count; i++)
+            {
+                SurvivorsEnemyActor target = _targets[i];
+                if (target == null || !target.IsAlive)
+                {
+                    continue;
+                }
+
+                Vector3 targetPoint = target.transform.position + Vector3.up * 0.45f;
+                if (Definition.HitscanPierces || Controller.HitscanPierceBonus > 0 || Controller.ProjectilePierceBonus > 0)
+                {
+                    int maxHits = Mathf.Max(1, 1 + Controller.HitscanPierceBonus + Controller.ProjectilePierceBonus);
+                    CollectPierceHits(origin, targetPoint, Definition.HitscanWidth, maxHits);
+                    for (int hitIndex = 0; hitIndex < _beamHits.Count; hitIndex++)
+                    {
+                        dealtDamage |= ApplyDamage(_beamHits[hitIndex]);
+                    }
+                }
+                else
+                {
+                    dealtDamage |= ApplyDamage(target);
+                }
+
+                CreateBeamVisual(origin, targetPoint);
+            }
+
+            _targets.Clear();
+            if (dealtDamage)
+            {
+                Controller.RecordHitscanFire();
+            }
+
+            return dealtDamage;
+        }
+
+        private void CollectNearestTargets(Vector3 origin, float range, int count)
+        {
+            _targets.Clear();
+            IReadOnlyList<SurvivorsEnemyActor> enemies = Controller.ActiveEnemies;
+            float rangeSquared = range * range;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                Vector3 offset = enemy.transform.position - origin;
+                offset.y = 0f;
+                if (offset.sqrMagnitude <= rangeSquared)
+                {
+                    _targets.Add(enemy);
+                }
+            }
+
+            _targets.Sort(CompareDistanceToPlayer);
+            while (_targets.Count > count)
+            {
+                _targets.RemoveAt(_targets.Count - 1);
+            }
+        }
+
+        private void CollectPierceHits(Vector3 origin, Vector3 targetPosition, float beamWidth, int maxHits)
+        {
+            _beamHits.Clear();
+            Vector3 flattenedOrigin = origin;
+            flattenedOrigin.y = 0f;
+            Vector3 flattenedTarget = targetPosition;
+            flattenedTarget.y = 0f;
+            Vector3 path = flattenedTarget - flattenedOrigin;
+            float length = path.magnitude;
+            if (length <= 0.001f)
+            {
+                return;
+            }
+
+            Vector3 direction = path / length;
+            IReadOnlyList<SurvivorsEnemyActor> enemies = Controller.ActiveEnemies;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                Vector3 enemyPosition = enemy.transform.position;
+                enemyPosition.y = 0f;
+                Vector3 offset = enemyPosition - flattenedOrigin;
+                float projection = Vector3.Dot(offset, direction);
+                if (projection < -enemy.Radius || projection > length + enemy.Radius)
+                {
+                    continue;
+                }
+
+                Vector3 closest = flattenedOrigin + direction * Mathf.Clamp(projection, 0f, length);
+                float hitRadius = beamWidth + enemy.Radius;
+                if ((enemyPosition - closest).sqrMagnitude <= hitRadius * hitRadius)
+                {
+                    _beamHits.Add(enemy);
+                }
+            }
+
+            _beamHits.Sort((left, right) =>
+            {
+                float leftDistance = (left.transform.position - flattenedOrigin).sqrMagnitude;
+                float rightDistance = (right.transform.position - flattenedOrigin).sqrMagnitude;
+                return leftDistance.CompareTo(rightDistance);
+            });
+
+            while (_beamHits.Count > maxHits)
+            {
+                _beamHits.RemoveAt(_beamHits.Count - 1);
+            }
+        }
+
+        private bool ApplyDamage(SurvivorsEnemyActor enemy)
+        {
+            if (enemy == null || !enemy.IsAlive)
+            {
+                return false;
+            }
+
+            if (enemy.ApplyDamage(Controller.ResolveWeaponDamage(Definition), Definition.Id) == null)
+            {
+                return false;
+            }
+
+            Controller.RecordHitscanHit();
+            return true;
+        }
+
+        private void CreateBeamVisual(Vector3 origin, Vector3 endpoint)
+        {
+            Vector3 beam = endpoint - origin;
+            if (beam.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            float length = Mathf.Max(0.05f, beam.magnitude);
+            GameObject beamObject = SurvivorsVisualUtility.CreatePrimitiveVisual(
+                Definition.DisplayName + " Beam",
+                PrimitiveType.Cube,
+                Definition.Tint,
+                Controller.RuntimeWorldRoot);
+            beamObject.transform.position = origin + beam * 0.5f;
+            beamObject.transform.rotation = Quaternion.LookRotation(beam.normalized, Vector3.up);
+            SurvivorsTimedVisual visual = beamObject.AddComponent<SurvivorsTimedVisual>();
+            visual.Initialize(new Vector3(Definition.HitscanWidth, Definition.HitscanWidth, length), Definition.HitscanVisualDurationSeconds, Definition.Tint);
+        }
+
+        private int CompareDistanceToPlayer(SurvivorsEnemyActor left, SurvivorsEnemyActor right)
+        {
+            float leftDistance = (left.transform.position - Controller.PlayerPosition).sqrMagnitude;
+            float rightDistance = (right.transform.position - Controller.PlayerPosition).sqrMagnitude;
+            return leftDistance.CompareTo(rightDistance);
         }
     }
 

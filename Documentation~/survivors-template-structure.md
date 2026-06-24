@@ -20,10 +20,19 @@
 `Runtime/SurvivorsWeaponArchetypes.cs` contains the local Survivors weapon-kit runtimes:
 
 - projectile auto-fire adapter
+- hitscan beam adapter
 - orbit blade contact runtime
 - melee slash arc runtime
 - burst nova sequence runtime
+- local projectile modifier behavior for pierce, chain, fork/split, and return/boomerang
 - short-lived primitive visuals for sample-only feedback
+
+`Runtime/SurvivorsContentValidation.cs` contains package-local validation for authored sample libraries and runtime catalogs:
+
+- unique weapon and upgrade IDs
+- valid weapon archetype names
+- valid projectile references from projectile weapons
+- valid run-upgrade target references
 
 This is reusable Survivors template-kit code, not concrete product content.
 
@@ -42,5 +51,5 @@ These files are examples for product-owned content flipping. They are not intend
 
 ## Tests
 
-- `Tests/EditMode` covers descriptors, archetype config, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, and magnet recall.
-- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, and a run upgrade affecting a new archetype.
+- `Tests/EditMode` covers descriptors, archetype config, content validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, and magnet recall.
+- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, and a run upgrade affecting a new archetype.

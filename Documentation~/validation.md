@@ -17,3 +17,17 @@ Phase 2M adds validation for:
 - melee weapon damage/death
 - burst weapon damage/death
 - run upgrade affecting a new weapon archetype
+
+Phase 2N adds validation for:
+
+- runtime catalog content validation
+- sample JSON load and validation for weapons/projectiles/upgrades
+- clear validation failures for duplicate weapon IDs, duplicate upgrade IDs, invalid archetypes, missing projectile references, and invalid upgrade targets
+- hitscan/beam damage and enemy death
+- projectile pierce behavior
+- projectile chain retarget behavior
+- projectile fork/split spawn behavior
+- projectile return/boomerang behavior
+- run upgrade affecting a new projectile modifier
+
+No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2N validation.

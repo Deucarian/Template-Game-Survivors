@@ -11,13 +11,18 @@
 
 ## Local Survivors Kit Code
 
-The following intentionally stay local in Phase 2L:
+The following intentionally stay local in Phase 2N:
 
 - top-down player movement
 - camera follow
 - radial spawn position rules
 - nearest-enemy auto-targeting
 - projectile steering and collision checks
+- hitscan/beam targeting and primitive beam visuals
+- projectile pierce counters
+- projectile chain target selection
+- projectile fork/split spawn rules
+- projectile return/boomerang movement
 - orbit blade motion and contact cadence
 - melee arc overlap rules
 - burst nova sequencing and pulse visuals
@@ -25,15 +30,19 @@ The following intentionally stay local in Phase 2L:
 - magnet recall
 - level-up overlay
 - concrete upgrade effect application
+- authored Survivors sample-library validation
 
 ## Package Expansion Candidates Later
 
 Do not extract these yet. Revisit only after parity gaps repeat across real templates or products:
 
 - generalized horde escalation
-- pooled projectile impact adapters
+- pooled projectile impact adapters and impact VFX hooks
 - richer Survivors weapon archetype descriptors
-- beam/hitscan adapters after projectile/orbit/melee/burst parity is stable
+- beam/hitscan adapters only after another game proves the same shape
+- projectile modifier descriptors for pierce, chain, fork, and return only after repeated reuse
 - XP/drop lifecycle abstractions
-- content validation for authored Survivors libraries
+- content validation for authored libraries if multiple templates need the same rules
 - diagnostics for spawn pressure, pool stats, and draft state
+
+No shared package extraction happened in Phase 2N.

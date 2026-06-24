@@ -47,6 +47,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float ProjectileSpeed = 11.5f;
         public float ProjectileRadius = 0.22f;
         public float ProjectileLifetimeSeconds = 2.4f;
+        public int ProjectilePierceCount = 0;
+        public int ProjectileChainCount = 0;
+        public int ProjectileForkCount = 0;
+        public int ProjectileReturnCount = 0;
         public float OrbitDamage = 2.5f;
         public int OrbitBladeCount = 1;
         public float OrbitRadius = 2.1f;
@@ -65,6 +69,13 @@ namespace Deucarian.TemplateGameSurvivors
         public int BurstCount = 1;
         public float BurstRepeatIntervalSeconds = 0.18f;
         public float BurstVisualDurationSeconds = 0.22f;
+        public float HitscanDamage = 6.5f;
+        public float HitscanCooldownSeconds = 1.35f;
+        public float HitscanRange = 9.5f;
+        public int HitscanCount = 1;
+        public float HitscanWidth = 0.24f;
+        public float HitscanVisualDurationSeconds = 0.08f;
+        public bool HitscanPierces = false;
         public float PickupAttractRange = 3.25f;
         public float PickupAttractionSpeed = 7.8f;
         public float PickupCollectRadius = 0.72f;
@@ -92,6 +103,7 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly AttackDefinitionId ArcaneBoltAttackId = new AttackDefinitionId("attack.survivors.arcane-bolt");
         public static readonly ProjectileDefinitionId ArcaneBoltProjectileId = new ProjectileDefinitionId("projectile.survivors.arcane-bolt");
         public static readonly WeaponDefinitionId ArcaneWandWeaponId = new WeaponDefinitionId("weapon.survivors.arcane-wand");
+        public static readonly WeaponDefinitionId StarBeamWeaponId = new WeaponDefinitionId("weapon.survivors.star-beam");
         public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
@@ -100,11 +112,17 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly RunUpgradeEffectId OrbitBladeEffect = new RunUpgradeEffectId("survivors.orbit.blade_count");
         public static readonly RunUpgradeEffectId MeleeTargetEffect = new RunUpgradeEffectId("survivors.melee.target_count");
         public static readonly RunUpgradeEffectId BurstCountEffect = new RunUpgradeEffectId("survivors.burst.count");
+        public static readonly RunUpgradeEffectId ProjectilePierceEffect = new RunUpgradeEffectId("survivors.projectile.pierce_count");
+        public static readonly RunUpgradeEffectId ProjectileChainEffect = new RunUpgradeEffectId("survivors.projectile.chain_count");
+        public static readonly RunUpgradeEffectId ProjectileForkEffect = new RunUpgradeEffectId("survivors.projectile.fork_count");
+        public static readonly RunUpgradeEffectId ProjectileReturnEffect = new RunUpgradeEffectId("survivors.projectile.return_count");
+        public static readonly RunUpgradeEffectId HitscanPierceEffect = new RunUpgradeEffectId("survivors.hitscan.pierce");
         public static readonly RunUpgradeTargetId PlayerTarget = new RunUpgradeTargetId("survivors.player");
         public static readonly RunUpgradeTargetId WeaponTarget = new RunUpgradeTargetId("survivors.weapon.arcane-wand");
         public static readonly RunUpgradeTargetId OrbitWeaponTarget = new RunUpgradeTargetId("survivors.weapon.orbit-ward");
         public static readonly RunUpgradeTargetId MeleeWeaponTarget = new RunUpgradeTargetId("survivors.weapon.moon-slash");
         public static readonly RunUpgradeTargetId BurstWeaponTarget = new RunUpgradeTargetId("survivors.weapon.star-nova");
+        public static readonly RunUpgradeTargetId HitscanWeaponTarget = new RunUpgradeTargetId("survivors.weapon.star-beam");
         public static readonly RunUpgradeTargetId PickupTarget = new RunUpgradeTargetId("survivors.pickups");
 
         public static SurvivorsTemplateTuning CreateDefaultTuning()
@@ -159,7 +177,11 @@ namespace Deucarian.TemplateGameSurvivors
                     new Color(0.78f, 0.42f, 1f),
                     projectileSpeed: resolved.ProjectileSpeed,
                     projectileRadius: resolved.ProjectileRadius,
-                    projectileLifetimeSeconds: resolved.ProjectileLifetimeSeconds),
+                    projectileLifetimeSeconds: resolved.ProjectileLifetimeSeconds,
+                    projectilePierceCount: resolved.ProjectilePierceCount,
+                    projectileChainCount: resolved.ProjectileChainCount,
+                    projectileForkCount: resolved.ProjectileForkCount,
+                    projectileReturnCount: resolved.ProjectileReturnCount),
                 new SurvivorsWeaponArchetypeDefinition(
                     "weapon.survivors.orbit-ward",
                     "Orbit Ward",
@@ -193,7 +215,19 @@ namespace Deucarian.TemplateGameSurvivors
                     new Color(1f, 0.42f, 0.72f),
                     burstCount: resolved.BurstCount,
                     burstRepeatIntervalSeconds: resolved.BurstRepeatIntervalSeconds,
-                    burstVisualDurationSeconds: resolved.BurstVisualDurationSeconds)
+                    burstVisualDurationSeconds: resolved.BurstVisualDurationSeconds),
+                new SurvivorsWeaponArchetypeDefinition(
+                    StarBeamWeaponId.Value,
+                    "Star Beam",
+                    SurvivorsWeaponArchetype.Hitscan,
+                    resolved.HitscanCooldownSeconds,
+                    resolved.HitscanDamage,
+                    resolved.HitscanRange,
+                    new Color(0.3f, 0.88f, 1f),
+                    hitscanCount: resolved.HitscanCount,
+                    hitscanWidth: resolved.HitscanWidth,
+                    hitscanVisualDurationSeconds: resolved.HitscanVisualDurationSeconds,
+                    hitscanPierces: resolved.HitscanPierces)
             };
         }
 
@@ -237,8 +271,27 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.iron-blood", RunUpgradeRarity.Rare, 28, 4, MaxHealthEffect, PlayerTarget, 8.0d),
                 Upgrade("upgrade.survivors.orbiting-focus", RunUpgradeRarity.Uncommon, 38, 4, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
                 Upgrade("upgrade.survivors.crescent-chain", RunUpgradeRarity.Uncommon, 34, 4, MeleeTargetEffect, MeleeWeaponTarget, 1.0d),
-                Upgrade("upgrade.survivors.nova-echo", RunUpgradeRarity.Rare, 24, 3, BurstCountEffect, BurstWeaponTarget, 1.0d)
+                Upgrade("upgrade.survivors.nova-echo", RunUpgradeRarity.Rare, 24, 3, BurstCountEffect, BurstWeaponTarget, 1.0d),
+                Upgrade("upgrade.survivors.piercing-bolts", RunUpgradeRarity.Uncommon, 36, 4, ProjectilePierceEffect, WeaponTarget, 1.0d),
+                Upgrade("upgrade.survivors.chain-bolts", RunUpgradeRarity.Rare, 26, 3, ProjectileChainEffect, WeaponTarget, 1.0d),
+                Upgrade("upgrade.survivors.forked-bolts", RunUpgradeRarity.Rare, 24, 3, ProjectileForkEffect, WeaponTarget, 1.0d),
+                Upgrade("upgrade.survivors.returning-bolts", RunUpgradeRarity.Rare, 22, 2, ProjectileReturnEffect, WeaponTarget, 1.0d),
+                Upgrade("upgrade.survivors.prismatic-beam", RunUpgradeRarity.Uncommon, 30, 3, HitscanPierceEffect, HitscanWeaponTarget, 1.0d)
             });
+        }
+
+        public static IReadOnlyList<RunUpgradeTargetId> CreateKnownUpgradeTargets()
+        {
+            return new[]
+            {
+                PlayerTarget,
+                WeaponTarget,
+                OrbitWeaponTarget,
+                MeleeWeaponTarget,
+                BurstWeaponTarget,
+                HitscanWeaponTarget,
+                PickupTarget
+            };
         }
 
         public static string GetUpgradeDisplayName(RunUpgradeId id)
@@ -252,6 +305,11 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.orbiting-focus") return "Orbiting Focus";
             if (value == "upgrade.survivors.crescent-chain") return "Crescent Chain";
             if (value == "upgrade.survivors.nova-echo") return "Nova Echo";
+            if (value == "upgrade.survivors.piercing-bolts") return "Piercing Bolts";
+            if (value == "upgrade.survivors.chain-bolts") return "Chain Bolts";
+            if (value == "upgrade.survivors.forked-bolts") return "Forked Bolts";
+            if (value == "upgrade.survivors.returning-bolts") return "Returning Bolts";
+            if (value == "upgrade.survivors.prismatic-beam") return "Prismatic Beam";
             return value;
         }
 

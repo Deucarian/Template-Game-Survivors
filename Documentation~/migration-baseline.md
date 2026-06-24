@@ -47,3 +47,19 @@ The second slice adds local template-kit implementations for:
 - run-upgrade hooks for orbit blade count, melee target count, and burst count
 
 These stay local to the Survivors template. No shared package extraction is performed in this phase.
+
+## Phase 2N Hitscan And Modifier Slice
+
+The reference clone's hitscan runtime fires short-lived nearest-target beams. It can pierce along a beam line when the skill snapshot or global projectile pierce stats enable it. Its projectile runtime tracks already-hit enemies and supports local counters for pierce, chain retargeting, fork/split projectiles, and return/boomerang movement. Grenade, trap, and mine payloads also exist in the reference, but they are larger payload systems and are documented only for this phase.
+
+The 2N template slice adds local template-kit implementations for:
+
+- hitscan/beam weapon behavior
+- projectile pierce counters
+- projectile chain retargeting to nearby unhit enemies
+- projectile fork/split spawns toward nearby unhit enemies
+- projectile return/boomerang movement after hit or expiry
+- run-upgrade hooks for the new projectile modifiers and beam piercing
+- authored content validation for sample weapon and upgrade libraries
+
+These systems remain local to the Survivors template. No shared package extraction, publishing, or package registry work is performed in this phase.
