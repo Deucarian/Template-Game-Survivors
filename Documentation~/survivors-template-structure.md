@@ -27,11 +27,19 @@
 - local projectile modifier behavior for pierce, chain, fork/split, and return/boomerang
 - short-lived primitive visuals for sample-only feedback
 
+`Runtime/SurvivorsPayloadWeapons.cs` contains the local Survivors payload-kit runtimes:
+
+- arcing grenade payloads with fuse timing
+- placed trap and mine payloads with arming, lifetime, and proximity trigger logic
+- area explosion overlap and primitive explosion visuals
+- simple local hazard zones with tick damage
+
 `Runtime/SurvivorsContentValidation.cs` contains package-local validation for authored sample libraries and runtime catalogs:
 
 - unique weapon and upgrade IDs
 - valid weapon archetype names
 - valid projectile references from projectile weapons
+- valid payload timing/radius values
 - valid run-upgrade target references
 
 This is reusable Survivors template-kit code, not concrete product content.
@@ -51,5 +59,5 @@ These files are examples for product-owned content flipping. They are not intend
 
 ## Tests
 
-- `Tests/EditMode` covers descriptors, archetype config, content validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, and magnet recall.
-- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, and a run upgrade affecting a new archetype.
+- `Tests/EditMode` covers descriptors, archetype config, content validation, payload config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
+- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, and run upgrades affecting new archetypes/modifiers.

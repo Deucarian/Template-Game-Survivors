@@ -23,13 +23,16 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(WeaponFireMode.Projectile, weapon.FireMode);
             Assert.AreEqual(BasicSurvivorsGame.ArcaneBoltProjectileId, projectile.Id);
             Assert.AreEqual(BasicSurvivorsGame.ProjectileSpawnableId, projectile.SpawnableId);
-            Assert.That(upgrades.Definitions.Count, Is.GreaterThanOrEqualTo(13));
-            Assert.That(archetypes.Count, Is.EqualTo(5));
+            Assert.That(upgrades.Definitions.Count, Is.GreaterThanOrEqualTo(16));
+            Assert.That(archetypes.Count, Is.EqualTo(8));
             Assert.That(archetypes[0].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Projectile));
             Assert.That(archetypes[1].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Orbit));
             Assert.That(archetypes[2].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Melee));
             Assert.That(archetypes[3].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Burst));
             Assert.That(archetypes[4].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Hitscan));
+            Assert.That(archetypes[5].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Grenade));
+            Assert.That(archetypes[6].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Trap));
+            Assert.That(archetypes[7].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Mine));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
 
@@ -71,6 +74,27 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("unknown archetype", errors);
             StringAssert.Contains("Duplicate upgrade id", errors);
             StringAssert.Contains("unknown target", errors);
+        }
+
+        [Test]
+        public void InvalidPayloadSampleContentReportsPayloadErrors()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.payload.bad\",\"fireMode\":\"Grenade\",\"payloadCount\":0,\"payloadTravelSpeed\":0,\"payloadArmingSeconds\":0,\"payloadLifetimeSeconds\":0,\"payloadTriggerRadius\":0,\"payloadExplosionRadius\":0,\"payloadLeavesHazard\":true,\"payloadHazardDurationSeconds\":0,\"payloadHazardTickIntervalSeconds\":0,\"payloadHazardDamageRatio\":-1}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.payloads\"}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("payload count", errors);
+            StringAssert.Contains("payload travel speed", errors);
+            StringAssert.Contains("payload arming time", errors);
+            StringAssert.Contains("payload lifetime", errors);
+            StringAssert.Contains("payload trigger radius", errors);
+            StringAssert.Contains("payload explosion radius", errors);
+            StringAssert.Contains("hazard duration", errors);
+            StringAssert.Contains("hazard tick interval", errors);
+            StringAssert.Contains("negative hazard damage ratio", errors);
         }
 
         [Test]
@@ -162,6 +186,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 int previousProjectileFork = controller.ProjectileForkBonus;
                 int previousProjectileReturn = controller.ProjectileReturnBonus;
                 int previousHitscanPierce = controller.HitscanPierceBonus;
+                int previousPayloadCount = controller.PayloadCountBonus;
+                float previousPayloadRadius = controller.PayloadExplosionRadiusBonus;
+                float previousPayloadTriggerRadius = controller.PayloadTriggerRadiusBonus;
 
                 Assert.IsTrue(controller.SelectUpgrade(0));
 
@@ -176,7 +203,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     controller.ProjectileChainBonus > previousProjectileChain ||
                     controller.ProjectileForkBonus > previousProjectileFork ||
                     controller.ProjectileReturnBonus > previousProjectileReturn ||
-                    controller.HitscanPierceBonus > previousHitscanPierce;
+                    controller.HitscanPierceBonus > previousHitscanPierce ||
+                    controller.PayloadCountBonus > previousPayloadCount ||
+                    controller.PayloadExplosionRadiusBonus > previousPayloadRadius ||
+                    controller.PayloadTriggerRadiusBonus > previousPayloadTriggerRadius;
                 Assert.IsTrue(changed);
             }
             finally
@@ -219,6 +249,25 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.piercing-bolts"));
 
                 Assert.That(controller.ProjectilePierceBonus, Is.GreaterThanOrEqualTo(1));
+                Assert.AreEqual(1, controller.SelectedUpgradeCount);
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void PayloadUpgradeAppliesLocalBonus()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            try
+            {
+                Assert.AreEqual(0f, controller.PayloadExplosionRadiusBonus);
+
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.bigger-booms"));
+
+                Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(0f));
                 Assert.AreEqual(1, controller.SelectedUpgradeCount);
             }
             finally

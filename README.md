@@ -8,8 +8,9 @@ First playable Survivors-style template package. This phase ports the core Vampi
 - Radial enemy spawning around the player.
 - Enemy chase and contact damage.
 - Auto-fired projectile weapon targeting the nearest enemy.
-- Local projectile, orbit, melee slash, burst nova, and hitscan/beam weapon archetypes.
+- Local projectile, orbit, melee slash, burst nova, hitscan/beam, grenade, trap, and mine weapon archetypes.
 - Local projectile modifiers for pierce, chain, fork/split, and return/boomerang behavior.
+- Local payload behavior for arcing grenades, placed traps/mines, delayed arming, proximity triggers, area explosions, and simple hazard ticks.
 - Enemy death, XP gem drops, pickup attraction, and magnet recall.
 - Three-choice level-up draft powered by `com.deucarian.run-upgrades`.
 - Upgrade application through local Survivors kit adapters.
@@ -26,6 +27,6 @@ This template uses existing Deucarian packages where their fit is already concre
 - `Run Upgrades` for draft and run-upgrade selection state.
 - `Encounters` for authored spawn-flow descriptors.
 
-The following remain local Survivors kit code for now: player movement, camera feel, radial spawn pose rules, XP magnet behavior, level-up HUD, concrete projectile behavior, hitscan targeting/beam visuals, projectile modifier rules, orbit motion, melee arc overlap, and burst nova timing.
+The following remain local Survivors kit code for now: player movement, camera feel, radial spawn pose rules, XP magnet behavior, level-up HUD, concrete projectile behavior, hitscan targeting/beam visuals, projectile modifier rules, payload placement/detonation/hazard rules, orbit motion, melee arc overlap, and burst nova timing.
 
 No shared package extraction or package publishing happens in this phase.

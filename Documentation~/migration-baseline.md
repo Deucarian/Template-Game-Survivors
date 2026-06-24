@@ -63,3 +63,19 @@ The 2N template slice adds local template-kit implementations for:
 - authored content validation for sample weapon and upgrade libraries
 
 These systems remain local to the Survivors template. No shared package extraction, publishing, or package registry work is performed in this phase.
+
+## Phase 2O Payload And Placed Weapon Slice
+
+The reference clone's grenade runtime throws arcing payloads toward a nearby target, waits for travel and fuse timing, then applies area damage. The full reference also supports bounce, clusters, chain-reaction bursts, and optional ground hazards. Its placed payload runtime deploys traps and mines around a target or the player, arms them after a delay, triggers on enemy proximity, respects lifetime expiry, and lets mines auto-detonate when they expire.
+
+The 2O template slice adds local template-kit implementations for:
+
+- grenade-style thrown payloads
+- trap-style placed payloads with arming, lifetime, and proximity trigger
+- mine-style placed payloads that can auto-detonate on expiry
+- area explosion overlap and primitive pulse visuals
+- simple local hazard zones with tick damage
+- run-upgrade hooks for extra payloads, explosion radius, and trigger radius
+- payload content validation for timing and radius fields
+
+The richer reference behavior for grenade bounce, cluster payloads, payload chain reactions, slip hazards, and damage augment propagation is deliberately not ported yet. These systems remain local to the Survivors template. No shared package extraction, publishing, or package registry work is performed in this phase.

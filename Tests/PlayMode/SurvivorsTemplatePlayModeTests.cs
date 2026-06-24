@@ -218,6 +218,62 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Object.Destroy(controller.gameObject);
         }
 
+        [UnityTest]
+        public IEnumerator GrenadePayloadCanDetonateDamageAndKillEnemy()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 100f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));
+            yield return SimulateFrames(controller, 80);
+
+            Assert.That(controller.PayloadThrowCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadExplosionHitCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator TrapPayloadCanArmTriggerAndKillEnemy()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.1f, 0f, 0f), 30f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Trap));
+            yield return SimulateFrames(controller, 80);
+
+            Assert.That(controller.PayloadPlacedCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadExplosionHitCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator PayloadUpgradeCanAffectPayloadBehavior()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.bigger-booms"));
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 100f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));
+            yield return SimulateFrames(controller, 80);
+
+            Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(0f));
+            Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadExplosionHitCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
         private static SurvivorsTemplateController CreateController()
         {
             var root = new GameObject("Survivors Template PlayMode Test");
@@ -228,9 +284,14 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
         private static IEnumerator SimulateFrames(SurvivorsTemplateController controller, int frames)
         {
+            return SimulateFrames(controller, frames, default);
+        }
+
+        private static IEnumerator SimulateFrames(SurvivorsTemplateController controller, int frames, Vector2 movement)
+        {
             for (int i = 0; i < frames; i++)
             {
-                controller.Simulate(1f / 60f);
+                controller.Simulate(1f / 60f, movement);
                 yield return null;
             }
         }

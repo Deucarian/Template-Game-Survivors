@@ -12,6 +12,9 @@
     { "id": "upgrade.survivors.chain-bolts", "rarity": "Rare", "effect": "survivors.projectile.chain_count", "target": "survivors.weapon.arcane-wand" },
     { "id": "upgrade.survivors.forked-bolts", "rarity": "Rare", "effect": "survivors.projectile.fork_count", "target": "survivors.weapon.arcane-wand" },
     { "id": "upgrade.survivors.returning-bolts", "rarity": "Rare", "effect": "survivors.projectile.return_count", "target": "survivors.weapon.arcane-wand" },
-    { "id": "upgrade.survivors.prismatic-beam", "rarity": "Uncommon", "effect": "survivors.hitscan.pierce", "target": "survivors.weapon.star-beam" }
+    { "id": "upgrade.survivors.prismatic-beam", "rarity": "Uncommon", "effect": "survivors.hitscan.pierce", "target": "survivors.weapon.star-beam" },
+    { "id": "upgrade.survivors.extra-payload", "rarity": "Rare", "effect": "survivors.payload.count", "target": "survivors.weapon.payloads" },
+    { "id": "upgrade.survivors.bigger-booms", "rarity": "Uncommon", "effect": "survivors.payload.radius", "target": "survivors.weapon.payloads" },
+    { "id": "upgrade.survivors.wider-triggers", "rarity": "Uncommon", "effect": "survivors.payload.trigger_radius", "target": "survivors.weapon.payloads" }
   ]
 }

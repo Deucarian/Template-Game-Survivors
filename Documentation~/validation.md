@@ -31,3 +31,14 @@ Phase 2N adds validation for:
 - run upgrade affecting a new projectile modifier
 
 No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2N validation.
+
+Phase 2O adds validation for:
+
+- payload runtime descriptor coverage
+- payload sample JSON timing and radius validation
+- clear validation failures for invalid payload count, travel speed, arming time, lifetime, trigger radius, explosion radius, hazard duration, hazard tick interval, and negative hazard damage ratio
+- grenade payload detonation, area damage, and enemy death
+- placed trap arming/proximity trigger, area damage, and enemy death
+- run upgrade affecting payload behavior
+
+No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2O validation.

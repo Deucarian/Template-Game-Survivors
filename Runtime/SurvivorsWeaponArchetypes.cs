@@ -10,7 +10,10 @@ namespace Deucarian.TemplateGameSurvivors
         Orbit = 1,
         Melee = 2,
         Burst = 3,
-        Hitscan = 4
+        Hitscan = 4,
+        Grenade = 5,
+        Trap = 6,
+        Mine = 7
     }
 
     public sealed class SurvivorsWeaponArchetypeDefinition
@@ -43,7 +46,19 @@ namespace Deucarian.TemplateGameSurvivors
             int hitscanCount = 1,
             float hitscanWidth = 0.18f,
             float hitscanVisualDurationSeconds = 0.08f,
-            bool hitscanPierces = false)
+            bool hitscanPierces = false,
+            int payloadCount = 1,
+            float payloadTravelSpeed = 9f,
+            float payloadArmingSeconds = 0.7f,
+            float payloadLifetimeSeconds = 4f,
+            float payloadTriggerRadius = 1.35f,
+            float payloadExplosionRadius = 2.4f,
+            float payloadPlacementRadius = 1.8f,
+            bool payloadAutoDetonateAtExpiry = false,
+            bool payloadLeavesHazard = false,
+            float payloadHazardDurationSeconds = 0f,
+            float payloadHazardTickIntervalSeconds = 0.45f,
+            float payloadHazardDamageRatio = 0f)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -78,6 +93,18 @@ namespace Deucarian.TemplateGameSurvivors
             HitscanWidth = Mathf.Max(0.03f, hitscanWidth);
             HitscanVisualDurationSeconds = Mathf.Max(0.03f, hitscanVisualDurationSeconds);
             HitscanPierces = hitscanPierces;
+            PayloadCount = Mathf.Max(1, payloadCount);
+            PayloadTravelSpeed = Mathf.Max(0.05f, payloadTravelSpeed);
+            PayloadArmingSeconds = Mathf.Max(0.05f, payloadArmingSeconds);
+            PayloadLifetimeSeconds = Mathf.Max(0.1f, payloadLifetimeSeconds);
+            PayloadTriggerRadius = Mathf.Max(0.1f, payloadTriggerRadius);
+            PayloadExplosionRadius = Mathf.Max(0.1f, payloadExplosionRadius);
+            PayloadPlacementRadius = Mathf.Max(0.1f, payloadPlacementRadius);
+            PayloadAutoDetonateAtExpiry = payloadAutoDetonateAtExpiry;
+            PayloadLeavesHazard = payloadLeavesHazard;
+            PayloadHazardDurationSeconds = Mathf.Max(0f, payloadHazardDurationSeconds);
+            PayloadHazardTickIntervalSeconds = Mathf.Max(0.05f, payloadHazardTickIntervalSeconds);
+            PayloadHazardDamageRatio = Mathf.Max(0f, payloadHazardDamageRatio);
         }
 
         public string Id { get; }
@@ -108,6 +135,21 @@ namespace Deucarian.TemplateGameSurvivors
         public float HitscanWidth { get; }
         public float HitscanVisualDurationSeconds { get; }
         public bool HitscanPierces { get; }
+        public int PayloadCount { get; }
+        public float PayloadTravelSpeed { get; }
+        public float PayloadArmingSeconds { get; }
+        public float PayloadLifetimeSeconds { get; }
+        public float PayloadTriggerRadius { get; }
+        public float PayloadExplosionRadius { get; }
+        public float PayloadPlacementRadius { get; }
+        public bool PayloadAutoDetonateAtExpiry { get; }
+        public bool PayloadLeavesHazard { get; }
+        public float PayloadHazardDurationSeconds { get; }
+        public float PayloadHazardTickIntervalSeconds { get; }
+        public float PayloadHazardDamageRatio { get; }
+        public bool IsPayload => Archetype == SurvivorsWeaponArchetype.Grenade ||
+            Archetype == SurvivorsWeaponArchetype.Trap ||
+            Archetype == SurvivorsWeaponArchetype.Mine;
     }
 
     public sealed class SurvivorsWeaponLoadoutRuntime
@@ -202,6 +244,11 @@ namespace Deucarian.TemplateGameSurvivors
                     return new SurvivorsBurstWeaponRuntime(controller, definition);
                 case SurvivorsWeaponArchetype.Hitscan:
                     return new SurvivorsHitscanWeaponRuntime(controller, definition);
+                case SurvivorsWeaponArchetype.Grenade:
+                    return new SurvivorsGrenadeWeaponRuntime(controller, definition);
+                case SurvivorsWeaponArchetype.Trap:
+                case SurvivorsWeaponArchetype.Mine:
+                    return new SurvivorsPlacedPayloadWeaponRuntime(controller, definition);
                 default:
                     return new SurvivorsDisabledWeaponRuntime(controller, definition);
             }

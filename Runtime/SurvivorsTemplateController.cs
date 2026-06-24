@@ -67,6 +67,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int ProjectileChainHitCount { get; private set; }
         public int ProjectileForkSpawnCount { get; private set; }
         public int ProjectileReturnStartCount { get; private set; }
+        public int PayloadThrowCount { get; private set; }
+        public int PayloadPlacedCount { get; private set; }
+        public int PayloadDetonationCount { get; private set; }
+        public int PayloadExplosionHitCount { get; private set; }
+        public int PayloadHazardTickCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -83,6 +88,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int ProjectileForkBonus { get; private set; }
         public int ProjectileReturnBonus { get; private set; }
         public int HitscanPierceBonus { get; private set; }
+        public int PayloadCountBonus { get; private set; }
+        public float PayloadExplosionRadiusBonus { get; private set; }
+        public float PayloadTriggerRadiusBonus { get; private set; }
         public int ActiveEnemyCount => _enemies.Count;
         public int ActivePickupCount => _pickups.Count;
         public int ActiveProjectileCount => _projectiles.Count;
@@ -215,6 +223,11 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileChainHitCount = 0;
             ProjectileForkSpawnCount = 0;
             ProjectileReturnStartCount = 0;
+            PayloadThrowCount = 0;
+            PayloadPlacedCount = 0;
+            PayloadDetonationCount = 0;
+            PayloadExplosionHitCount = 0;
+            PayloadHazardTickCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -231,6 +244,9 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileForkBonus = 0;
             ProjectileReturnBonus = 0;
             HitscanPierceBonus = 0;
+            PayloadCountBonus = 0;
+            PayloadExplosionRadiusBonus = 0f;
+            PayloadTriggerRadiusBonus = 0f;
             _enemySpawnTimer = 0f;
             _playerInvulnerabilityTimer = 0f;
             _spawnSequence = 0;
@@ -665,6 +681,31 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileReturnStartCount++;
         }
 
+        internal void RecordPayloadThrow()
+        {
+            PayloadThrowCount++;
+        }
+
+        internal void RecordPayloadPlaced()
+        {
+            PayloadPlacedCount++;
+        }
+
+        internal void RecordPayloadDetonation()
+        {
+            PayloadDetonationCount++;
+        }
+
+        internal void RecordPayloadExplosionHit()
+        {
+            PayloadExplosionHitCount++;
+        }
+
+        internal void RecordPayloadHazardTick()
+        {
+            PayloadHazardTickCount++;
+        }
+
         private void EnsureRunStartedForTest()
         {
             if (!_runStarted)
@@ -989,6 +1030,18 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.HitscanPierceEffect))
                 {
                     HitscanPierceBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadCountEffect))
+                {
+                    PayloadCountBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadRadiusEffect))
+                {
+                    PayloadExplosionRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadTriggerRadiusEffect))
+                {
+                    PayloadTriggerRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
                 }
             }
         }

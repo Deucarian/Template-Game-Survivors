@@ -97,6 +97,11 @@ namespace Deucarian.TemplateGameSurvivors
                         result.AddError($"Hitscan weapon {weapon.Id} requires beam width above zero.");
                     }
                 }
+
+                if (weapon.IsPayload)
+                {
+                    ValidatePayloadRuntimeWeapon(weapon.Id, weapon.PayloadCount, weapon.PayloadTravelSpeed, weapon.PayloadArmingSeconds, weapon.PayloadLifetimeSeconds, weapon.PayloadTriggerRadius, weapon.PayloadExplosionRadius, weapon.PayloadLeavesHazard, weapon.PayloadHazardDurationSeconds, weapon.PayloadHazardTickIntervalSeconds, weapon.PayloadHazardDamageRatio, result);
+                }
             }
         }
 
@@ -204,6 +209,93 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError($"Weapon {weapon.id} references missing projectile id: {weapon.projectileId}");
                 }
+
+                if (IsPayloadArchetype(archetype))
+                {
+                    ValidatePayloadRuntimeWeapon(
+                        weapon.id,
+                        weapon.payloadCount,
+                        weapon.payloadTravelSpeed,
+                        weapon.payloadArmingSeconds,
+                        weapon.payloadLifetimeSeconds,
+                        weapon.payloadTriggerRadius,
+                        weapon.payloadExplosionRadius,
+                        weapon.payloadLeavesHazard,
+                        weapon.payloadHazardDurationSeconds,
+                        weapon.payloadHazardTickIntervalSeconds,
+                        weapon.payloadHazardDamageRatio,
+                        result);
+                }
+            }
+        }
+
+        private static bool IsPayloadArchetype(SurvivorsWeaponArchetype archetype)
+        {
+            return archetype == SurvivorsWeaponArchetype.Grenade ||
+                archetype == SurvivorsWeaponArchetype.Trap ||
+                archetype == SurvivorsWeaponArchetype.Mine;
+        }
+
+        private static void ValidatePayloadRuntimeWeapon(
+            string weaponId,
+            int payloadCount,
+            float payloadTravelSpeed,
+            float payloadArmingSeconds,
+            float payloadLifetimeSeconds,
+            float payloadTriggerRadius,
+            float payloadExplosionRadius,
+            bool payloadLeavesHazard,
+            float payloadHazardDurationSeconds,
+            float payloadHazardTickIntervalSeconds,
+            float payloadHazardDamageRatio,
+            SurvivorsContentValidationResult result)
+        {
+            if (payloadCount < 1)
+            {
+                result.AddError($"Payload weapon {weaponId} requires payload count at least one.");
+            }
+
+            if (payloadTravelSpeed <= 0f)
+            {
+                result.AddError($"Payload weapon {weaponId} requires payload travel speed above zero.");
+            }
+
+            if (payloadArmingSeconds <= 0f)
+            {
+                result.AddError($"Payload weapon {weaponId} requires payload arming time above zero.");
+            }
+
+            if (payloadLifetimeSeconds <= 0f)
+            {
+                result.AddError($"Payload weapon {weaponId} requires payload lifetime above zero.");
+            }
+
+            if (payloadTriggerRadius <= 0f)
+            {
+                result.AddError($"Payload weapon {weaponId} requires payload trigger radius above zero.");
+            }
+
+            if (payloadExplosionRadius <= 0f)
+            {
+                result.AddError($"Payload weapon {weaponId} requires payload explosion radius above zero.");
+            }
+
+            if (payloadLeavesHazard)
+            {
+                if (payloadHazardDurationSeconds <= 0f)
+                {
+                    result.AddError($"Payload weapon {weaponId} requires hazard duration above zero.");
+                }
+
+                if (payloadHazardTickIntervalSeconds <= 0f)
+                {
+                    result.AddError($"Payload weapon {weaponId} requires hazard tick interval above zero.");
+                }
+
+                if (payloadHazardDamageRatio < 0f)
+                {
+                    result.AddError($"Payload weapon {weaponId} cannot use negative hazard damage ratio.");
+                }
             }
         }
 
@@ -286,6 +378,16 @@ namespace Deucarian.TemplateGameSurvivors
             public string id;
             public string fireMode;
             public string projectileId;
+            public int payloadCount;
+            public float payloadTravelSpeed;
+            public float payloadArmingSeconds;
+            public float payloadLifetimeSeconds;
+            public float payloadTriggerRadius;
+            public float payloadExplosionRadius;
+            public bool payloadLeavesHazard;
+            public float payloadHazardDurationSeconds;
+            public float payloadHazardTickIntervalSeconds;
+            public float payloadHazardDamageRatio;
         }
 
         [Serializable]

@@ -76,6 +76,25 @@ namespace Deucarian.TemplateGameSurvivors
         public float HitscanWidth = 0.24f;
         public float HitscanVisualDurationSeconds = 0.08f;
         public bool HitscanPierces = false;
+        public float GrenadeDamage = 8.5f;
+        public float GrenadeCooldownSeconds = 2.4f;
+        public float GrenadeRange = 8.5f;
+        public int GrenadePayloadCount = 1;
+        public float GrenadePayloadTravelSpeed = 9f;
+        public float GrenadePayloadArmingSeconds = 0.7f;
+        public float GrenadePayloadExplosionRadius = 2.35f;
+        public float PlacedPayloadDamage = 6.8f;
+        public float TrapCooldownSeconds = 2.75f;
+        public float MineCooldownSeconds = 3.15f;
+        public float PlacedPayloadRange = 7f;
+        public int PlacedPayloadCount = 1;
+        public float PlacedPayloadArmingSeconds = 0.7f;
+        public float PlacedPayloadLifetimeSeconds = 4f;
+        public float PlacedPayloadTriggerRadius = 1.35f;
+        public float PlacedPayloadExplosionRadius = 2.15f;
+        public float PayloadHazardDurationSeconds = 1.6f;
+        public float PayloadHazardTickIntervalSeconds = 0.45f;
+        public float PayloadHazardDamageRatio = 0.18f;
         public float PickupAttractRange = 3.25f;
         public float PickupAttractionSpeed = 7.8f;
         public float PickupCollectRadius = 0.72f;
@@ -104,6 +123,9 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly ProjectileDefinitionId ArcaneBoltProjectileId = new ProjectileDefinitionId("projectile.survivors.arcane-bolt");
         public static readonly WeaponDefinitionId ArcaneWandWeaponId = new WeaponDefinitionId("weapon.survivors.arcane-wand");
         public static readonly WeaponDefinitionId StarBeamWeaponId = new WeaponDefinitionId("weapon.survivors.star-beam");
+        public static readonly WeaponDefinitionId GravityGrenadeWeaponId = new WeaponDefinitionId("weapon.survivors.gravity-grenade");
+        public static readonly WeaponDefinitionId RuneTrapWeaponId = new WeaponDefinitionId("weapon.survivors.rune-trap");
+        public static readonly WeaponDefinitionId AetherMineWeaponId = new WeaponDefinitionId("weapon.survivors.aether-mine");
         public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
@@ -117,12 +139,19 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly RunUpgradeEffectId ProjectileForkEffect = new RunUpgradeEffectId("survivors.projectile.fork_count");
         public static readonly RunUpgradeEffectId ProjectileReturnEffect = new RunUpgradeEffectId("survivors.projectile.return_count");
         public static readonly RunUpgradeEffectId HitscanPierceEffect = new RunUpgradeEffectId("survivors.hitscan.pierce");
+        public static readonly RunUpgradeEffectId PayloadCountEffect = new RunUpgradeEffectId("survivors.payload.count");
+        public static readonly RunUpgradeEffectId PayloadRadiusEffect = new RunUpgradeEffectId("survivors.payload.radius");
+        public static readonly RunUpgradeEffectId PayloadTriggerRadiusEffect = new RunUpgradeEffectId("survivors.payload.trigger_radius");
         public static readonly RunUpgradeTargetId PlayerTarget = new RunUpgradeTargetId("survivors.player");
         public static readonly RunUpgradeTargetId WeaponTarget = new RunUpgradeTargetId("survivors.weapon.arcane-wand");
         public static readonly RunUpgradeTargetId OrbitWeaponTarget = new RunUpgradeTargetId("survivors.weapon.orbit-ward");
         public static readonly RunUpgradeTargetId MeleeWeaponTarget = new RunUpgradeTargetId("survivors.weapon.moon-slash");
         public static readonly RunUpgradeTargetId BurstWeaponTarget = new RunUpgradeTargetId("survivors.weapon.star-nova");
         public static readonly RunUpgradeTargetId HitscanWeaponTarget = new RunUpgradeTargetId("survivors.weapon.star-beam");
+        public static readonly RunUpgradeTargetId GrenadeWeaponTarget = new RunUpgradeTargetId("survivors.weapon.gravity-grenade");
+        public static readonly RunUpgradeTargetId TrapWeaponTarget = new RunUpgradeTargetId("survivors.weapon.rune-trap");
+        public static readonly RunUpgradeTargetId MineWeaponTarget = new RunUpgradeTargetId("survivors.weapon.aether-mine");
+        public static readonly RunUpgradeTargetId PayloadWeaponTarget = new RunUpgradeTargetId("survivors.weapon.payloads");
         public static readonly RunUpgradeTargetId PickupTarget = new RunUpgradeTargetId("survivors.pickups");
 
         public static SurvivorsTemplateTuning CreateDefaultTuning()
@@ -227,7 +256,60 @@ namespace Deucarian.TemplateGameSurvivors
                     hitscanCount: resolved.HitscanCount,
                     hitscanWidth: resolved.HitscanWidth,
                     hitscanVisualDurationSeconds: resolved.HitscanVisualDurationSeconds,
-                    hitscanPierces: resolved.HitscanPierces)
+                    hitscanPierces: resolved.HitscanPierces),
+                new SurvivorsWeaponArchetypeDefinition(
+                    GravityGrenadeWeaponId.Value,
+                    "Gravity Grenade",
+                    SurvivorsWeaponArchetype.Grenade,
+                    resolved.GrenadeCooldownSeconds,
+                    resolved.GrenadeDamage,
+                    resolved.GrenadeRange,
+                    new Color(0.62f, 0.94f, 0.42f),
+                    payloadCount: resolved.GrenadePayloadCount,
+                    payloadTravelSpeed: resolved.GrenadePayloadTravelSpeed,
+                    payloadArmingSeconds: resolved.GrenadePayloadArmingSeconds,
+                    payloadLifetimeSeconds: resolved.PlacedPayloadLifetimeSeconds,
+                    payloadTriggerRadius: resolved.PlacedPayloadTriggerRadius,
+                    payloadExplosionRadius: resolved.GrenadePayloadExplosionRadius,
+                    payloadLeavesHazard: true,
+                    payloadHazardDurationSeconds: resolved.PayloadHazardDurationSeconds,
+                    payloadHazardTickIntervalSeconds: resolved.PayloadHazardTickIntervalSeconds,
+                    payloadHazardDamageRatio: resolved.PayloadHazardDamageRatio),
+                new SurvivorsWeaponArchetypeDefinition(
+                    RuneTrapWeaponId.Value,
+                    "Rune Trap",
+                    SurvivorsWeaponArchetype.Trap,
+                    resolved.TrapCooldownSeconds,
+                    resolved.PlacedPayloadDamage,
+                    resolved.PlacedPayloadRange,
+                    new Color(1f, 0.8f, 0.28f),
+                    payloadCount: resolved.PlacedPayloadCount,
+                    payloadArmingSeconds: resolved.PlacedPayloadArmingSeconds,
+                    payloadLifetimeSeconds: resolved.PlacedPayloadLifetimeSeconds,
+                    payloadTriggerRadius: resolved.PlacedPayloadTriggerRadius,
+                    payloadExplosionRadius: resolved.PlacedPayloadExplosionRadius,
+                    payloadPlacementRadius: 1.25f,
+                    payloadAutoDetonateAtExpiry: false,
+                    payloadLeavesHazard: true,
+                    payloadHazardDurationSeconds: resolved.PayloadHazardDurationSeconds,
+                    payloadHazardTickIntervalSeconds: resolved.PayloadHazardTickIntervalSeconds,
+                    payloadHazardDamageRatio: resolved.PayloadHazardDamageRatio),
+                new SurvivorsWeaponArchetypeDefinition(
+                    AetherMineWeaponId.Value,
+                    "Aether Mine",
+                    SurvivorsWeaponArchetype.Mine,
+                    resolved.MineCooldownSeconds,
+                    resolved.PlacedPayloadDamage,
+                    resolved.PlacedPayloadRange,
+                    new Color(0.95f, 0.48f, 0.92f),
+                    payloadCount: resolved.PlacedPayloadCount,
+                    payloadArmingSeconds: resolved.PlacedPayloadArmingSeconds,
+                    payloadLifetimeSeconds: resolved.PlacedPayloadLifetimeSeconds,
+                    payloadTriggerRadius: resolved.PlacedPayloadTriggerRadius,
+                    payloadExplosionRadius: resolved.PlacedPayloadExplosionRadius,
+                    payloadPlacementRadius: 1.8f,
+                    payloadAutoDetonateAtExpiry: true,
+                    payloadLeavesHazard: false)
             };
         }
 
@@ -276,7 +358,10 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.chain-bolts", RunUpgradeRarity.Rare, 26, 3, ProjectileChainEffect, WeaponTarget, 1.0d),
                 Upgrade("upgrade.survivors.forked-bolts", RunUpgradeRarity.Rare, 24, 3, ProjectileForkEffect, WeaponTarget, 1.0d),
                 Upgrade("upgrade.survivors.returning-bolts", RunUpgradeRarity.Rare, 22, 2, ProjectileReturnEffect, WeaponTarget, 1.0d),
-                Upgrade("upgrade.survivors.prismatic-beam", RunUpgradeRarity.Uncommon, 30, 3, HitscanPierceEffect, HitscanWeaponTarget, 1.0d)
+                Upgrade("upgrade.survivors.prismatic-beam", RunUpgradeRarity.Uncommon, 30, 3, HitscanPierceEffect, HitscanWeaponTarget, 1.0d),
+                Upgrade("upgrade.survivors.extra-payload", RunUpgradeRarity.Rare, 22, 2, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
+                Upgrade("upgrade.survivors.bigger-booms", RunUpgradeRarity.Uncommon, 32, 4, PayloadRadiusEffect, PayloadWeaponTarget, 0.45d),
+                Upgrade("upgrade.survivors.wider-triggers", RunUpgradeRarity.Uncommon, 28, 4, PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.35d)
             });
         }
 
@@ -290,6 +375,10 @@ namespace Deucarian.TemplateGameSurvivors
                 MeleeWeaponTarget,
                 BurstWeaponTarget,
                 HitscanWeaponTarget,
+                GrenadeWeaponTarget,
+                TrapWeaponTarget,
+                MineWeaponTarget,
+                PayloadWeaponTarget,
                 PickupTarget
             };
         }
@@ -310,6 +399,9 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.forked-bolts") return "Forked Bolts";
             if (value == "upgrade.survivors.returning-bolts") return "Returning Bolts";
             if (value == "upgrade.survivors.prismatic-beam") return "Prismatic Beam";
+            if (value == "upgrade.survivors.extra-payload") return "Extra Payload";
+            if (value == "upgrade.survivors.bigger-booms") return "Bigger Booms";
+            if (value == "upgrade.survivors.wider-triggers") return "Wider Triggers";
             return value;
         }
 
