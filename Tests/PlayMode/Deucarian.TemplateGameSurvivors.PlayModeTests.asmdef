@@ -1,0 +1,22 @@
+{
+  "name": "Deucarian.TemplateGameSurvivors.PlayModeTests",
+  "rootNamespace": "Deucarian.TemplateGameSurvivors.PlayModeTests",
+  "references": [
+    "Deucarian.TemplateGameSurvivors",
+    "Deucarian.RunUpgrades"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false
+}

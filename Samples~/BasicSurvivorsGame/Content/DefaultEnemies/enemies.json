@@ -1,0 +1,12 @@
+{
+  "enemies": [
+    {
+      "id": "enemy.survivors.swarm",
+      "displayName": "Swarm Thrall",
+      "health": 10,
+      "moveSpeed": 2.3,
+      "contactDamage": 6,
+      "experienceDrop": 2
+    }
+  ]
+}

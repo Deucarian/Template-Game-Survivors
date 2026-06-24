@@ -1,0 +1,20 @@
+{
+  "weapons": [
+    {
+      "id": "weapon.survivors.arcane-wand",
+      "fireMode": "Projectile",
+      "projectileId": "projectile.survivors.arcane-bolt",
+      "cooldownSeconds": 0.62,
+      "range": 14
+    }
+  ],
+  "projectiles": [
+    {
+      "id": "projectile.survivors.arcane-bolt",
+      "damageType": "damage.survivors.arcane",
+      "damage": 7,
+      "speed": 11.5,
+      "lifetimeSeconds": 2.4
+    }
+  ]
+}

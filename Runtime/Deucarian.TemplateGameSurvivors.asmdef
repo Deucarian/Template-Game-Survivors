@@ -1,0 +1,23 @@
+{
+  "name": "Deucarian.TemplateGameSurvivors",
+  "rootNamespace": "Deucarian.TemplateGameSurvivors",
+  "references": [
+    "Deucarian.Attacks",
+    "Deucarian.Combat",
+    "Deucarian.Encounters",
+    "Deucarian.GameplayFoundation",
+    "Deucarian.Projectiles",
+    "Deucarian.RunUpgrades",
+    "Deucarian.WeaponSystems",
+    "Deucarian.WorldSpawning"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

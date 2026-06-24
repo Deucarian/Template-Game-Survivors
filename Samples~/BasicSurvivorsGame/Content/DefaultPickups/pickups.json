@@ -1,0 +1,15 @@
+{
+  "pickups": [
+    {
+      "id": "pickup.survivors.experience",
+      "displayName": "XP Gem",
+      "attractRange": 3.25,
+      "attractionSpeed": 7.8
+    },
+    {
+      "id": "pickup.survivors.magnet",
+      "displayName": "Magnet",
+      "behavior": "Recall all active XP gems"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Deucarian.TemplateGameSurvivors.BasicSurvivorsGame",
+  "rootNamespace": "Deucarian.TemplateGameSurvivors.BasicSurvivorsGame",
+  "references": [
+    "Deucarian.TemplateGameSurvivors"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

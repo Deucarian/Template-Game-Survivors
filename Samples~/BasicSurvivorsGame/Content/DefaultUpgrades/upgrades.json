@@ -1,0 +1,9 @@
+{
+  "upgrades": [
+    { "id": "upgrade.survivors.arcane-damage", "rarity": "Common", "effect": "survivors.damage.flat" },
+    { "id": "upgrade.survivors.quick-casting", "rarity": "Common", "effect": "survivors.weapon.cooldown_multiplier" },
+    { "id": "upgrade.survivors.swift-steps", "rarity": "Uncommon", "effect": "survivors.player.move_speed" },
+    { "id": "upgrade.survivors.gem-magnet", "rarity": "Uncommon", "effect": "survivors.pickup.range" },
+    { "id": "upgrade.survivors.iron-blood", "rarity": "Rare", "effect": "survivors.player.max_health" }
+  ]
+}

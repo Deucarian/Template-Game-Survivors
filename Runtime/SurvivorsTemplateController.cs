@@ -1,0 +1,1336 @@
+using System;
+using System.Collections.Generic;
+using Deucarian.Attacks;
+using Deucarian.Combat;
+using Deucarian.Encounters;
+using Deucarian.Projectiles;
+using Deucarian.RunUpgrades;
+using Deucarian.WeaponSystems;
+using Deucarian.WorldSpawning;
+using UnityEngine;
+
+namespace Deucarian.TemplateGameSurvivors
+{
+    public enum SurvivorsRunState
+    {
+        Booting = 0,
+        Playing = 1,
+        LevelUp = 2,
+        GameOver = 3
+    }
+
+    public enum SurvivorsPickupKind
+    {
+        Experience = 0,
+        Magnet = 1
+    }
+
+    [Serializable]
+    public sealed class SurvivorsTemplateTuning
+    {
+        public float PlayerMoveSpeed = 5.75f;
+        public float PlayerRadius = 0.55f;
+        public float PlayerMaxHealth = 36f;
+        public float PlayerContactInvulnerabilitySeconds = 0.35f;
+        public float EnemySpawnRadius = 12f;
+        public float EnemySpawnIntervalSeconds = 0.95f;
+        public int EnemyMaximumAlive = 32;
+        public float EnemyMaxHealth = 10f;
+        public float EnemyMoveSpeed = 2.3f;
+        public float EnemyRadius = 0.48f;
+        public float EnemyContactDamage = 6f;
+        public float EnemyContactIntervalSeconds = 0.7f;
+        public int EnemyExperienceReward = 2;
+        public float WeaponCooldownSeconds = 0.62f;
+        public float WeaponRange = 14f;
+        public float ProjectileDamage = 7f;
+        public float ProjectileSpeed = 11.5f;
+        public float ProjectileRadius = 0.22f;
+        public float ProjectileLifetimeSeconds = 2.4f;
+        public float PickupAttractRange = 3.25f;
+        public float PickupAttractionSpeed = 7.8f;
+        public float PickupCollectRadius = 0.72f;
+        public float MagnetRecallSpeedMultiplier = 2.4f;
+        public int ExperienceRequiredBase = 5;
+        public int ExperienceRequiredPerLevel = 3;
+        public int DraftChoiceCount = 3;
+        public int RunSeed = 20260624;
+
+        public SurvivorsTemplateTuning Clone()
+        {
+            return (SurvivorsTemplateTuning)MemberwiseClone();
+        }
+    }
+
+    public static class BasicSurvivorsGame
+    {
+        public static readonly DamageTypeId ArcaneDamageType = new DamageTypeId("damage.survivors.arcane");
+        public static readonly WorldSpawnableId SwarmEnemySpawnableId = new WorldSpawnableId("enemy.survivors.swarm");
+        public static readonly WorldSpawnableId ExperiencePickupSpawnableId = new WorldSpawnableId("pickup.survivors.experience");
+        public static readonly WorldSpawnableId MagnetPickupSpawnableId = new WorldSpawnableId("pickup.survivors.magnet");
+        public static readonly WorldSpawnableId ProjectileSpawnableId = new WorldSpawnableId("projectile.survivors.arcane-bolt");
+        public static readonly WorldSpawnChannelId RadialSpawnChannelId = new WorldSpawnChannelId("spawn.survivors.radial");
+        public static readonly WorldSpawnChannelId ExplicitSpawnChannelId = new WorldSpawnChannelId("spawn.survivors.explicit");
+        public static readonly AttackDefinitionId ArcaneBoltAttackId = new AttackDefinitionId("attack.survivors.arcane-bolt");
+        public static readonly ProjectileDefinitionId ArcaneBoltProjectileId = new ProjectileDefinitionId("projectile.survivors.arcane-bolt");
+        public static readonly WeaponDefinitionId ArcaneWandWeaponId = new WeaponDefinitionId("weapon.survivors.arcane-wand");
+        public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
+        public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
+        public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
+        public static readonly RunUpgradeEffectId MagnetRangeEffect = new RunUpgradeEffectId("survivors.pickup.range");
+        public static readonly RunUpgradeEffectId MaxHealthEffect = new RunUpgradeEffectId("survivors.player.max_health");
+        public static readonly RunUpgradeTargetId PlayerTarget = new RunUpgradeTargetId("survivors.player");
+        public static readonly RunUpgradeTargetId WeaponTarget = new RunUpgradeTargetId("survivors.weapon.arcane-wand");
+        public static readonly RunUpgradeTargetId PickupTarget = new RunUpgradeTargetId("survivors.pickups");
+
+        public static SurvivorsTemplateTuning CreateDefaultTuning()
+        {
+            return new SurvivorsTemplateTuning();
+        }
+
+        public static CombatCatalog CreateCombatCatalog()
+        {
+            return new CombatCatalog(new[]
+            {
+                new DamageTypeDefinition(ArcaneDamageType)
+            });
+        }
+
+        public static WeaponDefinition CreateWeaponDefinition()
+        {
+            return new WeaponDefinition(
+                ArcaneWandWeaponId,
+                WeaponFireMode.Projectile,
+                ArcaneBoltAttackId,
+                cooldownTicks: 37,
+                projectileDefinitionId: ArcaneBoltProjectileId,
+                pattern: WeaponFirePattern.Single);
+        }
+
+        public static ProjectileDefinition CreateProjectileDefinition(SurvivorsTemplateTuning tuning = null)
+        {
+            SurvivorsTemplateTuning resolved = tuning ?? CreateDefaultTuning();
+            return new ProjectileDefinition(
+                ArcaneBoltProjectileId,
+                ProjectileSpawnableId,
+                ArcaneDamageType,
+                resolved.ProjectileDamage,
+                Mathf.Max(1, Mathf.RoundToInt(resolved.ProjectileLifetimeSeconds * 60f)),
+                resolved.ProjectileSpeed,
+                maxImpacts: 1);
+        }
+
+        public static EncounterDefinition CreateEncounterDefinition()
+        {
+            return new EncounterDefinition(
+                new EncounterId("encounter.survivors.first-slice"),
+                Array.Empty<WeightedSpawnTableDefinition>(),
+                new[]
+                {
+                    new WaveDefinition(
+                        new WaveId("wave.survivors.opening-ring"),
+                        0,
+                        new[]
+                        {
+                            SpawnGroupDefinition.Fixed(
+                                new SpawnGroupId("group.survivors.opening-swarm"),
+                                new SpawnableId(SwarmEnemySpawnableId.Value),
+                                count: 128,
+                                batchSize: 1,
+                                initialDelayTicks: 0,
+                                intervalTicks: 57,
+                                channelId: new SpawnChannelId(RadialSpawnChannelId.Value))
+                        })
+                },
+                new[]
+                {
+                    ObjectiveDefinition.Manual(new EncounterObjectiveId("objective.survivors.keep-running"), ObjectiveRole.Completion)
+                },
+                seed: 20260624);
+        }
+
+        public static RunUpgradeCatalog CreateRunUpgradeCatalog()
+        {
+            return new RunUpgradeCatalog(new[]
+            {
+                Upgrade("upgrade.survivors.arcane-damage", RunUpgradeRarity.Common, 70, 8, DamageBonusEffect, WeaponTarget, 2.0d),
+                Upgrade("upgrade.survivors.quick-casting", RunUpgradeRarity.Common, 60, 6, FireRateEffect, WeaponTarget, -0.08d),
+                Upgrade("upgrade.survivors.swift-steps", RunUpgradeRarity.Uncommon, 44, 5, MoveSpeedEffect, PlayerTarget, 0.45d),
+                Upgrade("upgrade.survivors.gem-magnet", RunUpgradeRarity.Uncommon, 44, 5, MagnetRangeEffect, PickupTarget, 1.1d),
+                Upgrade("upgrade.survivors.iron-blood", RunUpgradeRarity.Rare, 28, 4, MaxHealthEffect, PlayerTarget, 8.0d)
+            });
+        }
+
+        public static string GetUpgradeDisplayName(RunUpgradeId id)
+        {
+            string value = id.Value;
+            if (value == "upgrade.survivors.arcane-damage") return "Arcane Damage";
+            if (value == "upgrade.survivors.quick-casting") return "Quick Casting";
+            if (value == "upgrade.survivors.swift-steps") return "Swift Steps";
+            if (value == "upgrade.survivors.gem-magnet") return "Gem Magnet";
+            if (value == "upgrade.survivors.iron-blood") return "Iron Blood";
+            return value;
+        }
+
+        private static RunUpgradeDefinition Upgrade(string id, RunUpgradeRarity rarity, int weight, int maxRank, RunUpgradeEffectId effect, RunUpgradeTargetId target, double amount)
+        {
+            return new RunUpgradeDefinition(
+                new RunUpgradeId(id),
+                rarity,
+                weight,
+                maxRank,
+                new[] { new RunUpgradeEffectDescriptor(effect, target, amount) });
+        }
+    }
+
+    public sealed class SurvivorsTemplateController : MonoBehaviour
+    {
+        private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
+
+        [SerializeField]
+        private bool autoStart = true;
+
+        [SerializeField]
+        private bool buildVisualsOnAwake = true;
+
+        [SerializeField]
+        private SurvivorsTemplateTuning tuning;
+
+        private readonly List<SurvivorsEnemyActor> _enemies = new List<SurvivorsEnemyActor>(64);
+        private readonly List<SurvivorsPickupActor> _pickups = new List<SurvivorsPickupActor>(128);
+        private readonly List<SurvivorsProjectileActor> _projectiles = new List<SurvivorsProjectileActor>(64);
+        private Transform _worldRoot;
+        private Transform _prefabRoot;
+        private GameObject _playerObject;
+        private Renderer _playerRenderer;
+        private Camera _camera;
+        private GameObject _enemyPrefab;
+        private GameObject _experiencePickupPrefab;
+        private GameObject _magnetPickupPrefab;
+        private GameObject _projectilePrefab;
+        private SurvivorsSpawnPoseResolver _poseResolver;
+        private WorldSpawnService _spawnService;
+        private HealthState _playerHealth;
+        private RunUpgradeCatalog _upgradeCatalog;
+        private RunUpgradeState _upgradeState;
+        private RunUpgradeDraft _currentDraft;
+        private CombatCatalog _combatCatalog;
+        private WeaponDefinition _weaponDefinition;
+        private ProjectileDefinition _projectileDefinition;
+        private float _enemySpawnTimer;
+        private float _weaponCooldownTimer;
+        private float _playerInvulnerabilityTimer;
+        private long _spawnSequence;
+        private bool _runStarted;
+
+        public SurvivorsRunState State { get; private set; } = SurvivorsRunState.Booting;
+        public int Level { get; private set; } = 1;
+        public int Experience { get; private set; }
+        public int PendingLevelUps { get; private set; }
+        public int SpawnedCount { get; private set; }
+        public int KilledCount { get; private set; }
+        public int ProjectileLaunchCount { get; private set; }
+        public int ExperienceCollected { get; private set; }
+        public int SelectedUpgradeCount { get; private set; }
+        public int MagnetRecallCount { get; private set; }
+        public float RunTimeSeconds { get; private set; }
+        public float MoveSpeedBonus { get; private set; }
+        public float DamageBonus { get; private set; }
+        public float WeaponCooldownMultiplierBonus { get; private set; }
+        public float PickupRangeBonus { get; private set; }
+        public int ActiveEnemyCount => _enemies.Count;
+        public int ActivePickupCount => _pickups.Count;
+        public int ActiveProjectileCount => _projectiles.Count;
+        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus;
+        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus);
+        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus));
+        public float CurrentHealth => _playerHealth == null ? 0f : (float)_playerHealth.CurrentHealth;
+        public float MaxHealth => _playerHealth == null ? 0f : (float)_playerHealth.MaximumHealth;
+        public Vector3 PlayerPosition => _playerObject == null ? transform.position : _playerObject.transform.position;
+        public CombatCatalog CombatCatalog => _combatCatalog;
+        public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateDefaultTuning());
+        public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
+        public bool IsPlaying => State == SurvivorsRunState.Playing;
+        public bool IsLevelUpOpen => State == SurvivorsRunState.LevelUp;
+        public bool IsGameOver => State == SurvivorsRunState.GameOver;
+        public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
+
+        private void Awake()
+        {
+            if (tuning == null)
+            {
+                tuning = BasicSurvivorsGame.CreateDefaultTuning();
+            }
+        }
+
+        private void Start()
+        {
+            if (autoStart && !_runStarted)
+            {
+                StartRun();
+            }
+        }
+
+        private void Update()
+        {
+            if (!_runStarted)
+            {
+                return;
+            }
+
+            if (State == SurvivorsRunState.LevelUp)
+            {
+                HandleLevelUpInput();
+                return;
+            }
+
+            if (State == SurvivorsRunState.GameOver)
+            {
+                if (Input.GetKeyDown(KeyCode.R))
+                {
+                    RestartRun();
+                }
+                return;
+            }
+
+            Vector2 movement = ReadMovementInput();
+            Simulate(Time.deltaTime, movement);
+
+            if (Input.GetKeyDown(KeyCode.M))
+            {
+                TriggerMagnetRecall();
+            }
+        }
+
+        private void LateUpdate()
+        {
+            if (_camera == null || _playerObject == null)
+            {
+                return;
+            }
+
+            Vector3 target = _playerObject.transform.position + new Vector3(0f, 13.5f, -9.5f);
+            _camera.transform.position = Vector3.Lerp(_camera.transform.position, target, 14f * Time.deltaTime);
+            _camera.transform.rotation = Quaternion.Euler(58f, 0f, 0f);
+        }
+
+        private void OnGUI()
+        {
+            if (!_runStarted)
+            {
+                return;
+            }
+
+            GUI.Box(new Rect(12, 12, 260, 112), string.Empty);
+            GUI.Label(new Rect(24, 22, 230, 22), $"HP {CurrentHealth:0}/{MaxHealth:0}  LV {Level}  XP {Experience}/{RequiredExperienceForNextLevel}");
+            GUI.Label(new Rect(24, 44, 230, 22), $"Enemies {ActiveEnemyCount}  Kills {KilledCount}");
+            GUI.Label(new Rect(24, 66, 230, 22), $"Damage {ProjectileDamage:0.0}  Cooldown {WeaponCooldownSeconds:0.00}s");
+            GUI.Label(new Rect(24, 88, 230, 22), "WASD/Arrows move  M magnet  R restart");
+
+            if (State == SurvivorsRunState.LevelUp)
+            {
+                DrawLevelUpOverlay();
+            }
+            else if (State == SurvivorsRunState.GameOver)
+            {
+                GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 70f, 300f, 140f), "Game Over");
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f, 140f, 34f), "Restart"))
+                {
+                    RestartRun();
+                }
+            }
+        }
+
+        public void StartRun()
+        {
+            ClearRun();
+            SurvivorsTemplateTuning resolved = CurrentTuning;
+            _combatCatalog = BasicSurvivorsGame.CreateCombatCatalog();
+            _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
+            _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
+            _upgradeCatalog = BasicSurvivorsGame.CreateRunUpgradeCatalog();
+            _upgradeState = new RunUpgradeState();
+            _playerHealth = new HealthState(new CombatantId("combatant.survivors.player"), resolved.PlayerMaxHealth, resolved.PlayerMaxHealth);
+            Level = 1;
+            Experience = 0;
+            PendingLevelUps = 0;
+            SpawnedCount = 0;
+            KilledCount = 0;
+            ProjectileLaunchCount = 0;
+            ExperienceCollected = 0;
+            SelectedUpgradeCount = 0;
+            MagnetRecallCount = 0;
+            RunTimeSeconds = 0f;
+            MoveSpeedBonus = 0f;
+            DamageBonus = 0f;
+            WeaponCooldownMultiplierBonus = 0f;
+            PickupRangeBonus = 0f;
+            _enemySpawnTimer = 0f;
+            _weaponCooldownTimer = 0.08f;
+            _playerInvulnerabilityTimer = 0f;
+            _spawnSequence = 0;
+            _currentDraft = null;
+            BuildRuntimeWorld();
+            State = SurvivorsRunState.Playing;
+            _runStarted = true;
+        }
+
+        public void RestartRun()
+        {
+            StartRun();
+        }
+
+        public void Simulate(float deltaTime, Vector2 movementInput = default)
+        {
+            if (!_runStarted || State != SurvivorsRunState.Playing)
+            {
+                return;
+            }
+
+            float dt = Mathf.Max(0f, deltaTime);
+            RunTimeSeconds += dt;
+            _playerInvulnerabilityTimer = Mathf.Max(0f, _playerInvulnerabilityTimer - dt);
+            MovePlayer(movementInput, dt);
+            TickEnemySpawning(dt);
+            TickWeapon(dt);
+            TickEnemies(dt);
+            TickProjectiles(dt);
+            TickPickups(dt);
+        }
+
+        public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, float healthOverride = -1f)
+        {
+            EnsureRunStartedForTest();
+            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true);
+            if (enemy != null && healthOverride > 0f)
+            {
+                enemy.OverrideHealthForTest(healthOverride);
+            }
+
+            return enemy;
+        }
+
+        public SurvivorsPickupActor SpawnExperienceForTest(Vector3 position, int amount)
+        {
+            EnsureRunStartedForTest();
+            return SpawnPickup(SurvivorsPickupKind.Experience, position, amount);
+        }
+
+        public SurvivorsPickupActor SpawnMagnetForTest(Vector3 position)
+        {
+            EnsureRunStartedForTest();
+            return SpawnPickup(SurvivorsPickupKind.Magnet, position, 1);
+        }
+
+        public void FireWeaponForTest()
+        {
+            EnsureRunStartedForTest();
+            FireWeapon();
+        }
+
+        public void ForceLevelUp()
+        {
+            EnsureRunStartedForTest();
+            PendingLevelUps++;
+            OpenLevelUpDraft();
+        }
+
+        public void KillPlayerForTest()
+        {
+            ApplyDamageToPlayer(MaxHealth + 1000f, "test.kill");
+        }
+
+        public void ApplyDamageToPlayer(float amount, string source)
+        {
+            if (_playerHealth == null || State == SurvivorsRunState.GameOver)
+            {
+                return;
+            }
+
+            DamageRequest request = new DamageRequest(
+                _playerHealth.Id,
+                new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, amount) },
+                sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.enemy" : source),
+                preResolvedCritical: false);
+            CombatDamageResolver.Resolve(_combatCatalog, _playerHealth, null, request);
+            if (!_playerHealth.IsAlive)
+            {
+                State = SurvivorsRunState.GameOver;
+            }
+        }
+
+        public bool SelectUpgrade(int index)
+        {
+            if (State != SurvivorsRunState.LevelUp || _currentDraft == null || index < 0 || index >= _currentDraft.Choices.Count)
+            {
+                return false;
+            }
+
+            RunUpgradeDefinition selected = _currentDraft.Choices[index];
+            RunUpgradeSelectionResult selection = _upgradeState.Select(_upgradeCatalog, selected.Id);
+            if (!selection.Succeeded)
+            {
+                return false;
+            }
+
+            ApplyUpgrade(selected);
+            SelectedUpgradeCount++;
+            PendingLevelUps = Mathf.Max(0, PendingLevelUps - 1);
+            _currentDraft = null;
+            if (PendingLevelUps > 0)
+            {
+                OpenLevelUpDraft();
+            }
+            else
+            {
+                State = SurvivorsRunState.Playing;
+            }
+
+            return true;
+        }
+
+        public void TriggerMagnetRecall()
+        {
+            MagnetRecallCount++;
+            for (int i = 0; i < _pickups.Count; i++)
+            {
+                SurvivorsPickupActor pickup = _pickups[i];
+                if (pickup != null && pickup.Kind == SurvivorsPickupKind.Experience)
+                {
+                    pickup.StartGlobalRecall(CurrentTuning.MagnetRecallSpeedMultiplier);
+                }
+            }
+        }
+
+        internal void HandleEnemyKilled(SurvivorsEnemyActor enemy)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            KilledCount++;
+            Vector3 position = enemy.transform.position;
+            int xp = Mathf.Max(1, enemy.ExperienceReward);
+            _enemies.Remove(enemy);
+            if (_spawnService != null && enemy.InstanceId.Value > 0)
+            {
+                _spawnService.Despawn(enemy.InstanceId, DespawnReason.Killed);
+            }
+
+            SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
+        }
+
+        internal void ReleaseEnemy(SurvivorsEnemyActor enemy, DespawnReason reason)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            _enemies.Remove(enemy);
+            if (_spawnService != null && enemy.InstanceId.Value > 0)
+            {
+                _spawnService.Despawn(enemy.InstanceId, reason);
+            }
+        }
+
+        internal void ReleaseProjectile(SurvivorsProjectileActor projectile, DespawnReason reason)
+        {
+            if (projectile == null)
+            {
+                return;
+            }
+
+            _projectiles.Remove(projectile);
+            if (_spawnService != null && projectile.InstanceId.Value > 0)
+            {
+                _spawnService.Despawn(projectile.InstanceId, reason);
+            }
+        }
+
+        internal void CollectPickup(SurvivorsPickupActor pickup)
+        {
+            if (pickup == null)
+            {
+                return;
+            }
+
+            if (pickup.Kind == SurvivorsPickupKind.Magnet)
+            {
+                TriggerMagnetRecall();
+            }
+            else
+            {
+                GainExperience(Mathf.Max(1, pickup.Amount));
+            }
+
+            _pickups.Remove(pickup);
+            if (_spawnService != null && pickup.InstanceId.Value > 0)
+            {
+                _spawnService.Despawn(pickup.InstanceId, DespawnReason.Completed);
+            }
+        }
+
+        internal SurvivorsEnemyActor FindNearestEnemy(Vector3 origin, float range)
+        {
+            SurvivorsEnemyActor best = null;
+            float bestDistance = range * range;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                float distance = (enemy.transform.position - origin).sqrMagnitude;
+                if (distance <= bestDistance)
+                {
+                    bestDistance = distance;
+                    best = enemy;
+                }
+            }
+
+            return best;
+        }
+
+        internal IReadOnlyList<SurvivorsEnemyActor> ActiveEnemies => _enemies;
+
+        private void EnsureRunStartedForTest()
+        {
+            if (!_runStarted)
+            {
+                StartRun();
+            }
+        }
+
+        private void BuildRuntimeWorld()
+        {
+            _worldRoot = new GameObject("SurvivorsRuntimeWorld").transform;
+            _worldRoot.SetParent(transform, false);
+            _prefabRoot = new GameObject("SurvivorsTemplatePrefabSources").transform;
+            _prefabRoot.SetParent(_worldRoot, false);
+            _prefabRoot.gameObject.SetActive(false);
+            _playerObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            _playerObject.name = "Survivors Player";
+            _playerObject.transform.SetParent(_worldRoot, false);
+            _playerObject.transform.localScale = new Vector3(0.85f, 1f, 0.85f);
+            _playerRenderer = _playerObject.GetComponentInChildren<Renderer>();
+            ApplyColor(_playerRenderer, new Color(0.78f, 0.91f, 1f));
+
+            _enemyPrefab = CreatePrimitivePrefab("Survivors Swarm Enemy Prefab", PrimitiveType.Capsule, new Color(0.88f, 0.22f, 0.32f), typeof(SurvivorsEnemyActor));
+            _experiencePickupPrefab = CreatePrimitivePrefab("Survivors XP Gem Prefab", PrimitiveType.Sphere, new Color(0.22f, 0.83f, 1f), typeof(SurvivorsPickupActor));
+            _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, new Color(1f, 0.86f, 0.18f), typeof(SurvivorsPickupActor));
+            _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, new Color(0.78f, 0.42f, 1f), typeof(SurvivorsProjectileActor));
+
+            _poseResolver = new SurvivorsSpawnPoseResolver(this);
+            var spawnables = new[]
+            {
+                new SpawnableDefinition(BasicSurvivorsGame.SwarmEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 8, CurrentTuning.EnemyMaximumAlive + 8, "survivors-enemy-pool"),
+                new SpawnableDefinition(BasicSurvivorsGame.ExperiencePickupSpawnableId, new GameObjectPrefabProvider(_experiencePickupPrefab), 16, 256, "survivors-xp-pool"),
+                new SpawnableDefinition(BasicSurvivorsGame.MagnetPickupSpawnableId, new GameObjectPrefabProvider(_magnetPickupPrefab), 2, 16, "survivors-magnet-pool"),
+                new SpawnableDefinition(BasicSurvivorsGame.ProjectileSpawnableId, new GameObjectPrefabProvider(_projectilePrefab), 12, 96, "survivors-projectile-pool")
+            };
+            _spawnService = new WorldSpawnService(new SpawnableCatalog(spawnables), _poseResolver, _worldRoot, rootName: "SurvivorsWorldSpawning");
+            _spawnService.Warmup();
+
+            if (buildVisualsOnAwake)
+            {
+                BuildArenaVisuals();
+            }
+
+            EnsureCamera();
+        }
+
+        private GameObject CreatePrimitivePrefab(string name, PrimitiveType primitive, Color color, Type actorType)
+        {
+            GameObject prefab = GameObject.CreatePrimitive(primitive);
+            prefab.name = name;
+            prefab.transform.SetParent(_prefabRoot, false);
+            prefab.transform.localScale = Vector3.one;
+            ApplyColor(prefab.GetComponentInChildren<Renderer>(), color);
+            prefab.AddComponent(actorType);
+            prefab.SetActive(false);
+            return prefab;
+        }
+
+        private void BuildArenaVisuals()
+        {
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            floor.name = "Survivors Arena Ring";
+            floor.transform.SetParent(_worldRoot, false);
+            floor.transform.localScale = new Vector3(16f, 0.035f, 16f);
+            ApplyColor(floor.GetComponentInChildren<Renderer>(), new Color(0.08f, 0.1f, 0.12f));
+        }
+
+        private void EnsureCamera()
+        {
+            _camera = Camera.main;
+            if (_camera == null)
+            {
+                GameObject cameraObject = new GameObject("Main Camera");
+                _camera = cameraObject.AddComponent<Camera>();
+                cameraObject.tag = "MainCamera";
+            }
+
+            _camera.orthographic = true;
+            _camera.orthographicSize = 8.2f;
+            _camera.transform.position = PlayerPosition + new Vector3(0f, 13.5f, -9.5f);
+            _camera.transform.rotation = Quaternion.Euler(58f, 0f, 0f);
+        }
+
+        private void ClearRun()
+        {
+            _runStarted = false;
+            _enemies.Clear();
+            _pickups.Clear();
+            _projectiles.Clear();
+            if (_spawnService != null)
+            {
+                _spawnService.Dispose();
+                _spawnService = null;
+            }
+
+            if (_worldRoot != null)
+            {
+                DestroyUnityObject(_worldRoot.gameObject);
+                _worldRoot = null;
+            }
+        }
+
+        private void MovePlayer(Vector2 movementInput, float deltaTime)
+        {
+            if (_playerObject == null || movementInput.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            Vector2 normalized = movementInput.sqrMagnitude > 1f ? movementInput.normalized : movementInput;
+            Vector3 delta = new Vector3(normalized.x, 0f, normalized.y) * (PlayerMoveSpeed * deltaTime);
+            _playerObject.transform.position += delta;
+            if (delta.sqrMagnitude > 0.0001f)
+            {
+                _playerObject.transform.forward = delta.normalized;
+            }
+        }
+
+        private void TickEnemySpawning(float deltaTime)
+        {
+            _enemySpawnTimer -= deltaTime;
+            if (_enemySpawnTimer > 0f || _enemies.Count >= CurrentTuning.EnemyMaximumAlive)
+            {
+                return;
+            }
+
+            SpawnEnemy(Vector3.zero, explicitPosition: false);
+            _enemySpawnTimer = CurrentTuning.EnemySpawnIntervalSeconds;
+        }
+
+        private SurvivorsEnemyActor SpawnEnemy(Vector3 position, bool explicitPosition)
+        {
+            long sequence = ++_spawnSequence;
+            WorldSpawnChannelId channel = explicitPosition ? BasicSurvivorsGame.ExplicitSpawnChannelId : BasicSurvivorsGame.RadialSpawnChannelId;
+            if (explicitPosition)
+            {
+                _poseResolver.RegisterExplicitPose(sequence, position);
+            }
+
+            SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
+                BasicSurvivorsGame.SwarmEnemySpawnableId,
+                channel,
+                sequence,
+                new WorldSpawnRequestContext("SurvivorsTemplate", waveId: "wave.survivors.opening-ring", groupId: "group.survivors.opening-swarm")));
+            if (!result.Succeeded || result.Instance == null)
+            {
+                return null;
+            }
+
+            SurvivorsEnemyActor enemy = result.Instance.GetComponent<SurvivorsEnemyActor>();
+            enemy.Initialize(
+                this,
+                CurrentTuning.EnemyMaxHealth,
+                CurrentTuning.EnemyMoveSpeed,
+                CurrentTuning.EnemyRadius,
+                CurrentTuning.EnemyContactDamage,
+                CurrentTuning.EnemyContactIntervalSeconds,
+                CurrentTuning.EnemyExperienceReward);
+            _enemies.Add(enemy);
+            SpawnedCount++;
+            return enemy;
+        }
+
+        private SurvivorsPickupActor SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount)
+        {
+            long sequence = ++_spawnSequence;
+            WorldSpawnableId spawnable = kind == SurvivorsPickupKind.Magnet
+                ? BasicSurvivorsGame.MagnetPickupSpawnableId
+                : BasicSurvivorsGame.ExperiencePickupSpawnableId;
+            _poseResolver.RegisterExplicitPose(sequence, position);
+            SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
+                spawnable,
+                BasicSurvivorsGame.ExplicitSpawnChannelId,
+                sequence,
+                new WorldSpawnRequestContext("SurvivorsTemplate", groupId: kind.ToString())));
+            if (!result.Succeeded || result.Instance == null)
+            {
+                return null;
+            }
+
+            SurvivorsPickupActor pickup = result.Instance.GetComponent<SurvivorsPickupActor>();
+            pickup.Initialize(this, kind, Mathf.Max(1, amount), CurrentTuning.PickupAttractRange + PickupRangeBonus, CurrentTuning.PickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
+            _pickups.Add(pickup);
+            return pickup;
+        }
+
+        private void TickWeapon(float deltaTime)
+        {
+            _weaponCooldownTimer -= deltaTime;
+            if (_weaponCooldownTimer > 0f)
+            {
+                return;
+            }
+
+            if (FireWeapon())
+            {
+                _weaponCooldownTimer = WeaponCooldownSeconds;
+            }
+        }
+
+        private bool FireWeapon()
+        {
+            SurvivorsEnemyActor target = FindNearestEnemy(PlayerPosition, CurrentTuning.WeaponRange);
+            if (target == null)
+            {
+                return false;
+            }
+
+            if (_weaponDefinition.FireMode != WeaponFireMode.Projectile)
+            {
+                return false;
+            }
+
+            Vector3 origin = PlayerPosition + Vector3.up * 0.4f;
+            Vector3 direction = target.transform.position - origin;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.001f)
+            {
+                direction = Vector3.forward;
+            }
+
+            direction.Normalize();
+            long sequence = ++_spawnSequence;
+            _poseResolver.RegisterExplicitPose(sequence, origin + direction * 0.55f);
+            SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
+                BasicSurvivorsGame.ProjectileSpawnableId,
+                BasicSurvivorsGame.ExplicitSpawnChannelId,
+                sequence,
+                new WorldSpawnRequestContext("SurvivorsTemplate", groupId: _weaponDefinition.Id.Value)));
+            if (!result.Succeeded || result.Instance == null)
+            {
+                return false;
+            }
+
+            SurvivorsProjectileActor projectile = result.Instance.GetComponent<SurvivorsProjectileActor>();
+            projectile.Initialize(this, direction, _projectileDefinition.Speed, ProjectileDamage, CurrentTuning.ProjectileRadius, CurrentTuning.ProjectileLifetimeSeconds);
+            _projectiles.Add(projectile);
+            ProjectileLaunchCount++;
+            return true;
+        }
+
+        private void TickEnemies(float deltaTime)
+        {
+            for (int i = _enemies.Count - 1; i >= 0; i--)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    _enemies.RemoveAt(i);
+                    continue;
+                }
+
+                enemy.Simulate(deltaTime);
+            }
+        }
+
+        private void TickProjectiles(float deltaTime)
+        {
+            for (int i = _projectiles.Count - 1; i >= 0; i--)
+            {
+                SurvivorsProjectileActor projectile = _projectiles[i];
+                if (projectile == null || !projectile.IsActive)
+                {
+                    _projectiles.RemoveAt(i);
+                    continue;
+                }
+
+                projectile.Simulate(deltaTime);
+            }
+        }
+
+        private void TickPickups(float deltaTime)
+        {
+            for (int i = _pickups.Count - 1; i >= 0; i--)
+            {
+                SurvivorsPickupActor pickup = _pickups[i];
+                if (pickup == null || !pickup.IsActive)
+                {
+                    _pickups.RemoveAt(i);
+                    continue;
+                }
+
+                pickup.Simulate(deltaTime);
+            }
+        }
+
+        private void GainExperience(int amount)
+        {
+            ExperienceCollected += Mathf.Max(1, amount);
+            Experience += Mathf.Max(1, amount);
+            while (Experience >= RequiredExperienceForNextLevel)
+            {
+                Experience -= RequiredExperienceForNextLevel;
+                Level++;
+                PendingLevelUps++;
+            }
+
+            if (PendingLevelUps > 0 && State == SurvivorsRunState.Playing)
+            {
+                OpenLevelUpDraft();
+            }
+        }
+
+        private void OpenLevelUpDraft()
+        {
+            _currentDraft = RunUpgradeDraftService.Generate(
+                _upgradeCatalog,
+                _upgradeState,
+                new RunUpgradeDraftRequest(CurrentTuning.DraftChoiceCount, CurrentTuning.RunSeed + Level + SelectedUpgradeCount));
+            State = SurvivorsRunState.LevelUp;
+        }
+
+        private void ApplyUpgrade(RunUpgradeDefinition upgrade)
+        {
+            for (int i = 0; i < upgrade.Effects.Count; i++)
+            {
+                RunUpgradeEffectDescriptor effect = upgrade.Effects[i];
+                if (effect.EffectId.Equals(BasicSurvivorsGame.DamageBonusEffect))
+                {
+                    DamageBonus += (float)effect.Amount;
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.FireRateEffect))
+                {
+                    WeaponCooldownMultiplierBonus = Mathf.Max(-0.75f, WeaponCooldownMultiplierBonus + (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.MoveSpeedEffect))
+                {
+                    MoveSpeedBonus += (float)effect.Amount;
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect))
+                {
+                    PickupRangeBonus += (float)effect.Amount;
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.MaxHealthEffect) && _playerHealth != null)
+                {
+                    _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + effect.Amount, MaximumChangePolicy.FillToMaximum);
+                }
+            }
+        }
+
+        private void DrawLevelUpOverlay()
+        {
+            float width = 420f;
+            float height = 84f + CurrentDraftChoices.Count * 48f;
+            Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            GUI.Box(rect, "Level Up");
+            for (int i = 0; i < CurrentDraftChoices.Count; i++)
+            {
+                RunUpgradeDefinition choice = CurrentDraftChoices[i];
+                Rect buttonRect = new Rect(rect.x + 24f, rect.y + 44f + i * 48f, width - 48f, 34f);
+                string label = $"{i + 1}. {BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id)} ({choice.Rarity})";
+                if (GUI.Button(buttonRect, label))
+                {
+                    SelectUpgrade(i);
+                }
+            }
+        }
+
+        private void HandleLevelUpInput()
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                SelectUpgrade(0);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                SelectUpgrade(1);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha3))
+            {
+                SelectUpgrade(2);
+            }
+        }
+
+        private Vector2 ReadMovementInput()
+        {
+            float x = 0f;
+            float y = 0f;
+            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) x -= 1f;
+            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) x += 1f;
+            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) y -= 1f;
+            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) y += 1f;
+            return new Vector2(x, y);
+        }
+
+        private static void ApplyColor(Renderer renderer, Color color)
+        {
+            if (renderer == null)
+            {
+                return;
+            }
+
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            renderer.sharedMaterial = new Material(shader);
+            renderer.sharedMaterial.color = color;
+        }
+
+        private static void DestroyUnityObject(UnityEngine.Object target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(target);
+            }
+            else
+            {
+                DestroyImmediate(target);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            ClearRun();
+        }
+    }
+
+    public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
+    {
+        private SurvivorsTemplateController _controller;
+        private HealthState _health;
+        private float _moveSpeed;
+        private float _contactDamage;
+        private float _contactInterval;
+        private float _contactCooldown;
+
+        public SpawnInstanceId InstanceId { get; private set; }
+        public bool IsAlive => _health != null && _health.IsAlive;
+        public float Radius { get; private set; }
+        public int ExperienceReward { get; private set; }
+        public float CurrentHealth => _health == null ? 0f : (float)_health.CurrentHealth;
+
+        public void Initialize(SurvivorsTemplateController controller, float maxHealth, float moveSpeed, float radius, float contactDamage, float contactInterval, int experienceReward)
+        {
+            _controller = controller;
+            _moveSpeed = moveSpeed;
+            Radius = Mathf.Max(0.05f, radius);
+            _contactDamage = Mathf.Max(0f, contactDamage);
+            _contactInterval = Mathf.Max(0.05f, contactInterval);
+            _contactCooldown = 0f;
+            ExperienceReward = Mathf.Max(1, experienceReward);
+            string id = InstanceId.Value > 0 ? "combatant.survivors.enemy." + InstanceId.Value : "combatant.survivors.enemy.pending";
+            _health = new HealthState(new CombatantId(id), maxHealth, maxHealth);
+            transform.localScale = Vector3.one * (Radius * 2f);
+        }
+
+        public void Simulate(float deltaTime)
+        {
+            if (!IsAlive || _controller == null || !_controller.IsPlaying)
+            {
+                return;
+            }
+
+            Vector3 direction = _controller.PlayerPosition - transform.position;
+            direction.y = 0f;
+            float distance = direction.magnitude;
+            if (distance > 0.001f)
+            {
+                Vector3 normalized = direction / distance;
+                transform.position += normalized * (_moveSpeed * deltaTime);
+                transform.forward = normalized;
+            }
+
+            _contactCooldown -= deltaTime;
+            if (_contactCooldown <= 0f && distance <= Radius + _controller.CurrentTuning.PlayerRadius)
+            {
+                _controller.ApplyDamageToPlayer(_contactDamage, "combatant.survivors.enemy." + InstanceId.Value);
+                _contactCooldown = _contactInterval;
+            }
+        }
+
+        public DamageResult ApplyDamage(float amount, string source)
+        {
+            if (_controller == null || _health == null || !IsAlive)
+            {
+                return null;
+            }
+
+            DamageRequest request = new DamageRequest(
+                _health.Id,
+                new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, amount) },
+                sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.player" : source),
+                preResolvedCritical: false);
+            DamageResolutionResult result = CombatDamageResolver.Resolve(_controller.CombatCatalog, _health, null, request);
+            if (!_health.IsAlive)
+            {
+                _controller.HandleEnemyKilled(this);
+            }
+
+            return result.Damage;
+        }
+
+        public void OverrideHealthForTest(float health)
+        {
+            string id = InstanceId.Value > 0 ? "combatant.survivors.enemy." + InstanceId.Value : "combatant.survivors.enemy.test";
+            float resolved = Mathf.Max(1f, health);
+            _health = new HealthState(new CombatantId(id), resolved, resolved);
+        }
+
+        public void OnWorldSpawned(WorldSpawnContext context)
+        {
+            InstanceId = context.InstanceId;
+        }
+
+        public void OnWorldDespawned(DespawnReason reason)
+        {
+            _controller = null;
+            _health = null;
+        }
+
+        public void ResetForWorldSpawn()
+        {
+            _controller = null;
+            _health = null;
+            _contactCooldown = 0f;
+            InstanceId = default;
+        }
+    }
+
+    public sealed class SurvivorsProjectileActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
+    {
+        private SurvivorsTemplateController _controller;
+        private Vector3 _direction;
+        private float _speed;
+        private float _damage;
+        private float _radius;
+        private float _lifetime;
+
+        public SpawnInstanceId InstanceId { get; private set; }
+        public bool IsActive { get; private set; }
+
+        public void Initialize(SurvivorsTemplateController controller, Vector3 direction, float speed, float damage, float radius, float lifetime)
+        {
+            _controller = controller;
+            _direction = direction.sqrMagnitude <= 0.001f ? Vector3.forward : direction.normalized;
+            _speed = Mathf.Max(0f, speed);
+            _damage = Mathf.Max(0f, damage);
+            _radius = Mathf.Max(0.05f, radius);
+            _lifetime = Mathf.Max(0.05f, lifetime);
+            IsActive = true;
+            transform.localScale = Vector3.one * (_radius * 2f);
+        }
+
+        public void Simulate(float deltaTime)
+        {
+            if (!IsActive || _controller == null)
+            {
+                return;
+            }
+
+            _lifetime -= deltaTime;
+            if (_lifetime <= 0f)
+            {
+                IsActive = false;
+                _controller.ReleaseProjectile(this, DespawnReason.OutOfBounds);
+                return;
+            }
+
+            transform.position += _direction * (_speed * deltaTime);
+            IReadOnlyList<SurvivorsEnemyActor> enemies = _controller.ActiveEnemies;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                float hitRange = _radius + enemy.Radius;
+                if ((enemy.transform.position - transform.position).sqrMagnitude <= hitRange * hitRange)
+                {
+                    enemy.ApplyDamage(_damage, "combatant.survivors.player");
+                    IsActive = false;
+                    _controller.ReleaseProjectile(this, DespawnReason.Completed);
+                    return;
+                }
+            }
+        }
+
+        public void OnWorldSpawned(WorldSpawnContext context)
+        {
+            InstanceId = context.InstanceId;
+        }
+
+        public void OnWorldDespawned(DespawnReason reason)
+        {
+            _controller = null;
+            IsActive = false;
+        }
+
+        public void ResetForWorldSpawn()
+        {
+            _controller = null;
+            IsActive = false;
+            InstanceId = default;
+        }
+    }
+
+    public sealed class SurvivorsPickupActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
+    {
+        private SurvivorsTemplateController _controller;
+        private float _attractRange;
+        private float _attractionSpeed;
+        private float _collectRadius;
+        private bool _globalRecall;
+        private float _recallSpeedMultiplier;
+        private float _currentSpeed;
+
+        public SpawnInstanceId InstanceId { get; private set; }
+        public bool IsActive { get; private set; }
+        public SurvivorsPickupKind Kind { get; private set; }
+        public int Amount { get; private set; }
+
+        public void Initialize(SurvivorsTemplateController controller, SurvivorsPickupKind kind, int amount, float attractRange, float attractionSpeed, float collectRadius)
+        {
+            _controller = controller;
+            Kind = kind;
+            Amount = Mathf.Max(1, amount);
+            _attractRange = Mathf.Max(0.1f, attractRange);
+            _attractionSpeed = Mathf.Max(0.1f, attractionSpeed);
+            _collectRadius = Mathf.Max(0.1f, collectRadius);
+            _globalRecall = false;
+            _recallSpeedMultiplier = 1f;
+            _currentSpeed = 0f;
+            IsActive = true;
+            transform.localScale = Vector3.one * (kind == SurvivorsPickupKind.Magnet ? 0.58f : 0.34f);
+        }
+
+        public void StartGlobalRecall(float speedMultiplier)
+        {
+            if (Kind != SurvivorsPickupKind.Experience)
+            {
+                return;
+            }
+
+            _globalRecall = true;
+            _recallSpeedMultiplier = Mathf.Max(1f, speedMultiplier);
+            _currentSpeed = Mathf.Max(_currentSpeed, _attractionSpeed * 1.5f);
+        }
+
+        public void Simulate(float deltaTime)
+        {
+            if (!IsActive || _controller == null)
+            {
+                return;
+            }
+
+            Vector3 playerPosition = _controller.PlayerPosition;
+            Vector3 offset = playerPosition - transform.position;
+            offset.y = 0f;
+            float distance = offset.magnitude;
+            bool shouldAttract = _globalRecall || distance <= _attractRange;
+            if (shouldAttract && distance > 0.001f)
+            {
+                float targetSpeed = _attractionSpeed * (_globalRecall ? _recallSpeedMultiplier * Mathf.Clamp(1f + distance * 0.18f, 1f, 10f) : 1f);
+                _currentSpeed = Mathf.MoveTowards(_currentSpeed, targetSpeed, targetSpeed * 8f * deltaTime);
+                float travel = Mathf.Min(distance, _currentSpeed * deltaTime);
+                transform.position += offset.normalized * travel;
+                distance = Vector3.Distance(transform.position, playerPosition);
+            }
+            else
+            {
+                _currentSpeed = Mathf.MoveTowards(_currentSpeed, 0f, _attractionSpeed * 5f * deltaTime);
+            }
+
+            if (_globalRecall)
+            {
+                transform.Rotate(0f, 420f * deltaTime, 0f, Space.Self);
+            }
+
+            if (distance <= _collectRadius)
+            {
+                IsActive = false;
+                _controller.CollectPickup(this);
+            }
+        }
+
+        public void OnWorldSpawned(WorldSpawnContext context)
+        {
+            InstanceId = context.InstanceId;
+        }
+
+        public void OnWorldDespawned(DespawnReason reason)
+        {
+            _controller = null;
+            IsActive = false;
+        }
+
+        public void ResetForWorldSpawn()
+        {
+            _controller = null;
+            IsActive = false;
+            InstanceId = default;
+            _globalRecall = false;
+            _currentSpeed = 0f;
+        }
+    }
+
+    public sealed class SurvivorsSpawnPoseResolver : ISpawnPoseResolver
+    {
+        private readonly SurvivorsTemplateController _controller;
+        private readonly Dictionary<long, Vector3> _explicitPoses = new Dictionary<long, Vector3>();
+
+        public SurvivorsSpawnPoseResolver(SurvivorsTemplateController controller)
+        {
+            _controller = controller;
+        }
+
+        public void RegisterExplicitPose(long sequence, Vector3 position)
+        {
+            _explicitPoses[sequence] = position;
+        }
+
+        public SpawnPoseResult TryResolvePose(WorldSpawnRequest request)
+        {
+            if (_explicitPoses.TryGetValue(request.Sequence, out Vector3 explicitPosition))
+            {
+                _explicitPoses.Remove(request.Sequence);
+                return SpawnPoseResult.Success(new SpawnPose(explicitPosition, Quaternion.identity));
+            }
+
+            if (!request.ChannelId.Equals(BasicSurvivorsGame.RadialSpawnChannelId))
+            {
+                return SpawnPoseResult.Failure("Unknown Survivors spawn channel: " + request.ChannelId);
+            }
+
+            float angle = (request.Sequence * 137.50777f) * Mathf.Deg2Rad;
+            float radius = _controller == null ? 12f : _controller.CurrentTuning.EnemySpawnRadius;
+            Vector3 center = _controller == null ? Vector3.zero : _controller.PlayerPosition;
+            Vector3 position = center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+            return SpawnPoseResult.Success(new SpawnPose(position, Quaternion.identity));
+        }
+    }
+}

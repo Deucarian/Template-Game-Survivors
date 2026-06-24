@@ -1,0 +1,29 @@
+{
+  "name": "Deucarian.TemplateGameSurvivors.Tests",
+  "rootNamespace": "Deucarian.TemplateGameSurvivors.Tests",
+  "references": [
+    "Deucarian.TemplateGameSurvivors",
+    "Deucarian.Combat",
+    "Deucarian.Encounters",
+    "Deucarian.Projectiles",
+    "Deucarian.RunUpgrades",
+    "Deucarian.WeaponSystems",
+    "Deucarian.WorldSpawning"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "noEngineReferences": false
+}
