@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Deucarian.Attacks;
 using Deucarian.Combat;
-using Deucarian.Encounters;
 using Deucarian.Projectiles;
 using Deucarian.RunUpgrades;
 using Deucarian.WeaponSystems;
@@ -11,178 +9,6 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public enum SurvivorsRunState
-    {
-        Booting = 0,
-        Playing = 1,
-        LevelUp = 2,
-        GameOver = 3
-    }
-
-    public enum SurvivorsPickupKind
-    {
-        Experience = 0,
-        Magnet = 1
-    }
-
-    [Serializable]
-    public sealed class SurvivorsTemplateTuning
-    {
-        public float PlayerMoveSpeed = 5.75f;
-        public float PlayerRadius = 0.55f;
-        public float PlayerMaxHealth = 36f;
-        public float PlayerContactInvulnerabilitySeconds = 0.35f;
-        public float EnemySpawnRadius = 12f;
-        public float EnemySpawnIntervalSeconds = 0.95f;
-        public int EnemyMaximumAlive = 32;
-        public float EnemyMaxHealth = 10f;
-        public float EnemyMoveSpeed = 2.3f;
-        public float EnemyRadius = 0.48f;
-        public float EnemyContactDamage = 6f;
-        public float EnemyContactIntervalSeconds = 0.7f;
-        public int EnemyExperienceReward = 2;
-        public float WeaponCooldownSeconds = 0.62f;
-        public float WeaponRange = 14f;
-        public float ProjectileDamage = 7f;
-        public float ProjectileSpeed = 11.5f;
-        public float ProjectileRadius = 0.22f;
-        public float ProjectileLifetimeSeconds = 2.4f;
-        public float PickupAttractRange = 3.25f;
-        public float PickupAttractionSpeed = 7.8f;
-        public float PickupCollectRadius = 0.72f;
-        public float MagnetRecallSpeedMultiplier = 2.4f;
-        public int ExperienceRequiredBase = 5;
-        public int ExperienceRequiredPerLevel = 3;
-        public int DraftChoiceCount = 3;
-        public int RunSeed = 20260624;
-
-        public SurvivorsTemplateTuning Clone()
-        {
-            return (SurvivorsTemplateTuning)MemberwiseClone();
-        }
-    }
-
-    public static class BasicSurvivorsGame
-    {
-        public static readonly DamageTypeId ArcaneDamageType = new DamageTypeId("damage.survivors.arcane");
-        public static readonly WorldSpawnableId SwarmEnemySpawnableId = new WorldSpawnableId("enemy.survivors.swarm");
-        public static readonly WorldSpawnableId ExperiencePickupSpawnableId = new WorldSpawnableId("pickup.survivors.experience");
-        public static readonly WorldSpawnableId MagnetPickupSpawnableId = new WorldSpawnableId("pickup.survivors.magnet");
-        public static readonly WorldSpawnableId ProjectileSpawnableId = new WorldSpawnableId("projectile.survivors.arcane-bolt");
-        public static readonly WorldSpawnChannelId RadialSpawnChannelId = new WorldSpawnChannelId("spawn.survivors.radial");
-        public static readonly WorldSpawnChannelId ExplicitSpawnChannelId = new WorldSpawnChannelId("spawn.survivors.explicit");
-        public static readonly AttackDefinitionId ArcaneBoltAttackId = new AttackDefinitionId("attack.survivors.arcane-bolt");
-        public static readonly ProjectileDefinitionId ArcaneBoltProjectileId = new ProjectileDefinitionId("projectile.survivors.arcane-bolt");
-        public static readonly WeaponDefinitionId ArcaneWandWeaponId = new WeaponDefinitionId("weapon.survivors.arcane-wand");
-        public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
-        public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
-        public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
-        public static readonly RunUpgradeEffectId MagnetRangeEffect = new RunUpgradeEffectId("survivors.pickup.range");
-        public static readonly RunUpgradeEffectId MaxHealthEffect = new RunUpgradeEffectId("survivors.player.max_health");
-        public static readonly RunUpgradeTargetId PlayerTarget = new RunUpgradeTargetId("survivors.player");
-        public static readonly RunUpgradeTargetId WeaponTarget = new RunUpgradeTargetId("survivors.weapon.arcane-wand");
-        public static readonly RunUpgradeTargetId PickupTarget = new RunUpgradeTargetId("survivors.pickups");
-
-        public static SurvivorsTemplateTuning CreateDefaultTuning()
-        {
-            return new SurvivorsTemplateTuning();
-        }
-
-        public static CombatCatalog CreateCombatCatalog()
-        {
-            return new CombatCatalog(new[]
-            {
-                new DamageTypeDefinition(ArcaneDamageType)
-            });
-        }
-
-        public static WeaponDefinition CreateWeaponDefinition()
-        {
-            return new WeaponDefinition(
-                ArcaneWandWeaponId,
-                WeaponFireMode.Projectile,
-                ArcaneBoltAttackId,
-                cooldownTicks: 37,
-                projectileDefinitionId: ArcaneBoltProjectileId,
-                pattern: WeaponFirePattern.Single);
-        }
-
-        public static ProjectileDefinition CreateProjectileDefinition(SurvivorsTemplateTuning tuning = null)
-        {
-            SurvivorsTemplateTuning resolved = tuning ?? CreateDefaultTuning();
-            return new ProjectileDefinition(
-                ArcaneBoltProjectileId,
-                ProjectileSpawnableId,
-                ArcaneDamageType,
-                resolved.ProjectileDamage,
-                Mathf.Max(1, Mathf.RoundToInt(resolved.ProjectileLifetimeSeconds * 60f)),
-                resolved.ProjectileSpeed,
-                maxImpacts: 1);
-        }
-
-        public static EncounterDefinition CreateEncounterDefinition()
-        {
-            return new EncounterDefinition(
-                new EncounterId("encounter.survivors.first-slice"),
-                Array.Empty<WeightedSpawnTableDefinition>(),
-                new[]
-                {
-                    new WaveDefinition(
-                        new WaveId("wave.survivors.opening-ring"),
-                        0,
-                        new[]
-                        {
-                            SpawnGroupDefinition.Fixed(
-                                new SpawnGroupId("group.survivors.opening-swarm"),
-                                new SpawnableId(SwarmEnemySpawnableId.Value),
-                                count: 128,
-                                batchSize: 1,
-                                initialDelayTicks: 0,
-                                intervalTicks: 57,
-                                channelId: new SpawnChannelId(RadialSpawnChannelId.Value))
-                        })
-                },
-                new[]
-                {
-                    ObjectiveDefinition.Manual(new EncounterObjectiveId("objective.survivors.keep-running"), ObjectiveRole.Completion)
-                },
-                seed: 20260624);
-        }
-
-        public static RunUpgradeCatalog CreateRunUpgradeCatalog()
-        {
-            return new RunUpgradeCatalog(new[]
-            {
-                Upgrade("upgrade.survivors.arcane-damage", RunUpgradeRarity.Common, 70, 8, DamageBonusEffect, WeaponTarget, 2.0d),
-                Upgrade("upgrade.survivors.quick-casting", RunUpgradeRarity.Common, 60, 6, FireRateEffect, WeaponTarget, -0.08d),
-                Upgrade("upgrade.survivors.swift-steps", RunUpgradeRarity.Uncommon, 44, 5, MoveSpeedEffect, PlayerTarget, 0.45d),
-                Upgrade("upgrade.survivors.gem-magnet", RunUpgradeRarity.Uncommon, 44, 5, MagnetRangeEffect, PickupTarget, 1.1d),
-                Upgrade("upgrade.survivors.iron-blood", RunUpgradeRarity.Rare, 28, 4, MaxHealthEffect, PlayerTarget, 8.0d)
-            });
-        }
-
-        public static string GetUpgradeDisplayName(RunUpgradeId id)
-        {
-            string value = id.Value;
-            if (value == "upgrade.survivors.arcane-damage") return "Arcane Damage";
-            if (value == "upgrade.survivors.quick-casting") return "Quick Casting";
-            if (value == "upgrade.survivors.swift-steps") return "Swift Steps";
-            if (value == "upgrade.survivors.gem-magnet") return "Gem Magnet";
-            if (value == "upgrade.survivors.iron-blood") return "Iron Blood";
-            return value;
-        }
-
-        private static RunUpgradeDefinition Upgrade(string id, RunUpgradeRarity rarity, int weight, int maxRank, RunUpgradeEffectId effect, RunUpgradeTargetId target, double amount)
-        {
-            return new RunUpgradeDefinition(
-                new RunUpgradeId(id),
-                rarity,
-                weight,
-                maxRank,
-                new[] { new RunUpgradeEffectDescriptor(effect, target, amount) });
-        }
-    }
-
     public sealed class SurvivorsTemplateController : MonoBehaviour
     {
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
@@ -217,8 +43,8 @@ namespace Deucarian.TemplateGameSurvivors
         private CombatCatalog _combatCatalog;
         private WeaponDefinition _weaponDefinition;
         private ProjectileDefinition _projectileDefinition;
+        private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
         private float _enemySpawnTimer;
-        private float _weaponCooldownTimer;
         private float _playerInvulnerabilityTimer;
         private long _spawnSequence;
         private bool _runStarted;
@@ -230,6 +56,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int SpawnedCount { get; private set; }
         public int KilledCount { get; private set; }
         public int ProjectileLaunchCount { get; private set; }
+        public int OrbitHitCount { get; private set; }
+        public int MeleeSwingCount { get; private set; }
+        public int MeleeHitCount { get; private set; }
+        public int BurstPulseCount { get; private set; }
+        public int BurstHitCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -238,15 +69,20 @@ namespace Deucarian.TemplateGameSurvivors
         public float DamageBonus { get; private set; }
         public float WeaponCooldownMultiplierBonus { get; private set; }
         public float PickupRangeBonus { get; private set; }
+        public int OrbitBladeBonus { get; private set; }
+        public int MeleeTargetBonus { get; private set; }
+        public int BurstCountBonus { get; private set; }
         public int ActiveEnemyCount => _enemies.Count;
         public int ActivePickupCount => _pickups.Count;
         public int ActiveProjectileCount => _projectiles.Count;
+        public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus;
         public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus);
         public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus));
         public float CurrentHealth => _playerHealth == null ? 0f : (float)_playerHealth.CurrentHealth;
         public float MaxHealth => _playerHealth == null ? 0f : (float)_playerHealth.MaximumHealth;
         public Vector3 PlayerPosition => _playerObject == null ? transform.position : _playerObject.transform.position;
+        public Vector3 PlayerForward => _playerObject == null ? Vector3.forward : _playerObject.transform.forward;
         public CombatCatalog CombatCatalog => _combatCatalog;
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateDefaultTuning());
         public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
@@ -357,6 +193,11 @@ namespace Deucarian.TemplateGameSurvivors
             SpawnedCount = 0;
             KilledCount = 0;
             ProjectileLaunchCount = 0;
+            OrbitHitCount = 0;
+            MeleeSwingCount = 0;
+            MeleeHitCount = 0;
+            BurstPulseCount = 0;
+            BurstHitCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -365,12 +206,15 @@ namespace Deucarian.TemplateGameSurvivors
             DamageBonus = 0f;
             WeaponCooldownMultiplierBonus = 0f;
             PickupRangeBonus = 0f;
+            OrbitBladeBonus = 0;
+            MeleeTargetBonus = 0;
+            BurstCountBonus = 0;
             _enemySpawnTimer = 0f;
-            _weaponCooldownTimer = 0.08f;
             _playerInvulnerabilityTimer = 0f;
             _spawnSequence = 0;
             _currentDraft = null;
             BuildRuntimeWorld();
+            _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved));
             State = SurvivorsRunState.Playing;
             _runStarted = true;
         }
@@ -425,7 +269,13 @@ namespace Deucarian.TemplateGameSurvivors
         public void FireWeaponForTest()
         {
             EnsureRunStartedForTest();
-            FireWeapon();
+            _weaponLoadout?.FireForTest(SurvivorsWeaponArchetype.Projectile);
+        }
+
+        public bool FireWeaponForTest(SurvivorsWeaponArchetype archetype)
+        {
+            EnsureRunStartedForTest();
+            return _weaponLoadout != null && _weaponLoadout.FireForTest(archetype);
         }
 
         public void ForceLevelUp()
@@ -438,6 +288,36 @@ namespace Deucarian.TemplateGameSurvivors
         public void KillPlayerForTest()
         {
             ApplyDamageToPlayer(MaxHealth + 1000f, "test.kill");
+        }
+
+        public bool ApplyUpgradeByIdForTest(string id)
+        {
+            EnsureRunStartedForTest();
+            if (_upgradeCatalog == null || _upgradeState == null || string.IsNullOrWhiteSpace(id))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition upgrade = _upgradeCatalog.Definitions[i];
+                if (upgrade == null || !string.Equals(upgrade.Id.Value, id, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                RunUpgradeSelectionResult selection = _upgradeState.Select(_upgradeCatalog, upgrade.Id);
+                if (!selection.Succeeded)
+                {
+                    return false;
+                }
+
+                ApplyUpgrade(upgrade);
+                SelectedUpgradeCount++;
+                return true;
+            }
+
+            return false;
         }
 
         public void ApplyDamageToPlayer(float amount, string source)
@@ -597,6 +477,105 @@ namespace Deucarian.TemplateGameSurvivors
 
         internal IReadOnlyList<SurvivorsEnemyActor> ActiveEnemies => _enemies;
 
+        internal Transform RuntimeWorldRoot => _worldRoot;
+
+        internal float ResolveWeaponDamage(SurvivorsWeaponArchetypeDefinition definition)
+        {
+            if (definition == null)
+            {
+                return 0f;
+            }
+
+            return Mathf.Max(0f, definition.Damage + DamageBonus);
+        }
+
+        internal float ResolveWeaponCooldownSeconds(SurvivorsWeaponArchetypeDefinition definition)
+        {
+            if (definition == null)
+            {
+                return WeaponCooldownSeconds;
+            }
+
+            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus));
+        }
+
+        internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction)
+        {
+            if (definition == null || _spawnService == null)
+            {
+                return false;
+            }
+
+            Vector3 resolvedDirection = direction.sqrMagnitude <= 0.001f ? Vector3.forward : direction.normalized;
+            Vector3 origin = PlayerPosition + Vector3.up * 0.4f;
+            long sequence = ++_spawnSequence;
+            _poseResolver.RegisterExplicitPose(sequence, origin + resolvedDirection * 0.55f);
+            SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
+                BasicSurvivorsGame.ProjectileSpawnableId,
+                BasicSurvivorsGame.ExplicitSpawnChannelId,
+                sequence,
+                new WorldSpawnRequestContext("SurvivorsTemplate", groupId: definition.Id)));
+            if (!result.Succeeded || result.Instance == null)
+            {
+                return false;
+            }
+
+            SurvivorsProjectileActor projectile = result.Instance.GetComponent<SurvivorsProjectileActor>();
+            projectile.Initialize(this, resolvedDirection, definition.ProjectileSpeed, ResolveWeaponDamage(definition), definition.ProjectileRadius, definition.ProjectileLifetimeSeconds);
+            _projectiles.Add(projectile);
+            ProjectileLaunchCount++;
+            return true;
+        }
+
+        internal void CollectEnemiesWithinRadius(Vector3 origin, float radius, List<SurvivorsEnemyActor> results)
+        {
+            if (results == null)
+            {
+                return;
+            }
+
+            results.Clear();
+            float radiusSquared = radius * radius;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                if ((enemy.transform.position - origin).sqrMagnitude <= radiusSquared)
+                {
+                    results.Add(enemy);
+                }
+            }
+        }
+
+        internal void RecordOrbitHit()
+        {
+            OrbitHitCount++;
+        }
+
+        internal void RecordMeleeSwing()
+        {
+            MeleeSwingCount++;
+        }
+
+        internal void RecordMeleeHit()
+        {
+            MeleeHitCount++;
+        }
+
+        internal void RecordBurstPulse()
+        {
+            BurstPulseCount++;
+        }
+
+        internal void RecordBurstHit()
+        {
+            BurstHitCount++;
+        }
+
         private void EnsureRunStartedForTest()
         {
             if (!_runStarted)
@@ -683,6 +662,12 @@ namespace Deucarian.TemplateGameSurvivors
         private void ClearRun()
         {
             _runStarted = false;
+            if (_weaponLoadout != null)
+            {
+                _weaponLoadout.Dispose();
+                _weaponLoadout = null;
+            }
+
             _enemies.Clear();
             _pickups.Clear();
             _projectiles.Clear();
@@ -785,57 +770,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void TickWeapon(float deltaTime)
         {
-            _weaponCooldownTimer -= deltaTime;
-            if (_weaponCooldownTimer > 0f)
-            {
-                return;
-            }
-
-            if (FireWeapon())
-            {
-                _weaponCooldownTimer = WeaponCooldownSeconds;
-            }
-        }
-
-        private bool FireWeapon()
-        {
-            SurvivorsEnemyActor target = FindNearestEnemy(PlayerPosition, CurrentTuning.WeaponRange);
-            if (target == null)
-            {
-                return false;
-            }
-
-            if (_weaponDefinition.FireMode != WeaponFireMode.Projectile)
-            {
-                return false;
-            }
-
-            Vector3 origin = PlayerPosition + Vector3.up * 0.4f;
-            Vector3 direction = target.transform.position - origin;
-            direction.y = 0f;
-            if (direction.sqrMagnitude <= 0.001f)
-            {
-                direction = Vector3.forward;
-            }
-
-            direction.Normalize();
-            long sequence = ++_spawnSequence;
-            _poseResolver.RegisterExplicitPose(sequence, origin + direction * 0.55f);
-            SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
-                BasicSurvivorsGame.ProjectileSpawnableId,
-                BasicSurvivorsGame.ExplicitSpawnChannelId,
-                sequence,
-                new WorldSpawnRequestContext("SurvivorsTemplate", groupId: _weaponDefinition.Id.Value)));
-            if (!result.Succeeded || result.Instance == null)
-            {
-                return false;
-            }
-
-            SurvivorsProjectileActor projectile = result.Instance.GetComponent<SurvivorsProjectileActor>();
-            projectile.Initialize(this, direction, _projectileDefinition.Speed, ProjectileDamage, CurrentTuning.ProjectileRadius, CurrentTuning.ProjectileLifetimeSeconds);
-            _projectiles.Add(projectile);
-            ProjectileLaunchCount++;
-            return true;
+            _weaponLoadout?.Tick(deltaTime);
         }
 
         private void TickEnemies(float deltaTime)
@@ -933,6 +868,18 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.MaxHealthEffect) && _playerHealth != null)
                 {
                     _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + effect.Amount, MaximumChangePolicy.FillToMaximum);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitBladeEffect))
+                {
+                    OrbitBladeBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.MeleeTargetEffect))
+                {
+                    MeleeTargetBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.BurstCountEffect))
+                {
+                    BurstCountBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
                 }
             }
         }

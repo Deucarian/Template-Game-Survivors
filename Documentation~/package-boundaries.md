@@ -18,6 +18,9 @@ The following intentionally stay local in Phase 2L:
 - radial spawn position rules
 - nearest-enemy auto-targeting
 - projectile steering and collision checks
+- orbit blade motion and contact cadence
+- melee arc overlap rules
+- burst nova sequencing and pulse visuals
 - XP pickup attraction
 - magnet recall
 - level-up overlay
@@ -30,6 +33,7 @@ Do not extract these yet. Revisit only after parity gaps repeat across real temp
 - generalized horde escalation
 - pooled projectile impact adapters
 - richer Survivors weapon archetype descriptors
+- beam/hitscan adapters after projectile/orbit/melee/burst parity is stable
 - XP/drop lifecycle abstractions
 - content validation for authored Survivors libraries
 - diagnostics for spawn pressure, pool stats, and draft state

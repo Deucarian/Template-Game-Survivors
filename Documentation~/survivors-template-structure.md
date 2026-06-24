@@ -2,14 +2,28 @@
 
 ## Runtime Kit
 
-`Runtime/SurvivorsTemplateController.cs` contains the first-slice composition root, local actors, and local genre adapters:
+`Runtime/BasicSurvivorsGame.cs` contains sample-kit tuning, stable IDs, descriptors, and the small authored default catalog:
+
+- `SurvivorsTemplateTuning`
+- `BasicSurvivorsGame`
+- `SurvivorsRunState`
+- `SurvivorsPickupKind`
+
+`Runtime/SurvivorsTemplateController.cs` contains the run composition root, local actors, and local genre adapters:
 
 - `SurvivorsTemplateController`
 - `SurvivorsEnemyActor`
 - `SurvivorsProjectileActor`
 - `SurvivorsPickupActor`
 - `SurvivorsSpawnPoseResolver`
-- `BasicSurvivorsGame`
+
+`Runtime/SurvivorsWeaponArchetypes.cs` contains the local Survivors weapon-kit runtimes:
+
+- projectile auto-fire adapter
+- orbit blade contact runtime
+- melee slash arc runtime
+- burst nova sequence runtime
+- short-lived primitive visuals for sample-only feedback
 
 This is reusable Survivors template-kit code, not concrete product content.
 
@@ -28,5 +42,5 @@ These files are examples for product-owned content flipping. They are not intend
 
 ## Tests
 
-- `Tests/EditMode` covers descriptors, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, and magnet recall.
-- `Tests/PlayMode` covers first playable runtime boot and death/restart.
+- `Tests/EditMode` covers descriptors, archetype config, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, and magnet recall.
+- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, and a run upgrade affecting a new archetype.

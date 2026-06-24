@@ -4,6 +4,9 @@
     { "id": "upgrade.survivors.quick-casting", "rarity": "Common", "effect": "survivors.weapon.cooldown_multiplier" },
     { "id": "upgrade.survivors.swift-steps", "rarity": "Uncommon", "effect": "survivors.player.move_speed" },
     { "id": "upgrade.survivors.gem-magnet", "rarity": "Uncommon", "effect": "survivors.pickup.range" },
-    { "id": "upgrade.survivors.iron-blood", "rarity": "Rare", "effect": "survivors.player.max_health" }
+    { "id": "upgrade.survivors.iron-blood", "rarity": "Rare", "effect": "survivors.player.max_health" },
+    { "id": "upgrade.survivors.orbiting-focus", "rarity": "Uncommon", "effect": "survivors.orbit.blade_count" },
+    { "id": "upgrade.survivors.crescent-chain", "rarity": "Uncommon", "effect": "survivors.melee.target_count" },
+    { "id": "upgrade.survivors.nova-echo", "rarity": "Rare", "effect": "survivors.burst.count" }
   ]
 }

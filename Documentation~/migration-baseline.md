@@ -8,6 +8,10 @@ Reference: the existing local Vampire Survivors clone repository used for Phase 
 - Gameplay is a top-down XZ arena loop with keyboard movement.
 - Player auto-attacks nearest enemies with class-owned weapon loadouts.
 - Projectile, orbit, burst, melee, hitscan, grenade, trap, mine, summon, and payload archetypes exist in the full clone.
+- Orbit weapons maintain rotating contact blades with per-enemy hit cooldowns.
+- Melee weapons anchor toward a nearby enemy, apply an arc overlap, cap targets by hit count, and show a short slash visual.
+- Burst weapons queue one or more nova pulses, optionally repeated by authored timing and later mutation hooks.
+- Hitscan/beam weapons exist in the reference as nearest-target beams with optional piercing, but are not part of the Phase 2M playable slice.
 - Enemies spawn from authored waves, chase the player, and apply contact damage on cooldown.
 - Enemies drop XP pickups on death.
 - XP pickups attract inside pickup range, then accelerate into the player.
@@ -32,3 +36,14 @@ The first Deucarian Survivors template slice ports only:
 - game-over and restart
 
 Everything else remains documented for later parity phases.
+
+## Phase 2M Weapon Archetype Slice
+
+The second slice adds local template-kit implementations for:
+
+- orbit contact blades
+- melee slash arcs
+- burst nova pulses
+- run-upgrade hooks for orbit blade count, melee target count, and burst count
+
+These stay local to the Survivors template. No shared package extraction is performed in this phase.

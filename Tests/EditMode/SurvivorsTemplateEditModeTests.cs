@@ -14,12 +14,18 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             WeaponDefinition weapon = BasicSurvivorsGame.CreateWeaponDefinition();
             ProjectileDefinition projectile = BasicSurvivorsGame.CreateProjectileDefinition();
             RunUpgradeCatalog upgrades = BasicSurvivorsGame.CreateRunUpgradeCatalog();
+            var archetypes = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions();
 
             Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponId, weapon.Id);
             Assert.AreEqual(WeaponFireMode.Projectile, weapon.FireMode);
             Assert.AreEqual(BasicSurvivorsGame.ArcaneBoltProjectileId, projectile.Id);
             Assert.AreEqual(BasicSurvivorsGame.ProjectileSpawnableId, projectile.SpawnableId);
-            Assert.That(upgrades.Definitions.Count, Is.GreaterThanOrEqualTo(5));
+            Assert.That(upgrades.Definitions.Count, Is.GreaterThanOrEqualTo(8));
+            Assert.That(archetypes.Count, Is.EqualTo(4));
+            Assert.That(archetypes[0].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Projectile));
+            Assert.That(archetypes[1].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Orbit));
+            Assert.That(archetypes[2].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Melee));
+            Assert.That(archetypes[3].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Burst));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
 
@@ -118,6 +124,29 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     controller.MaxHealth > previousMaxHealth ||
                     controller.PickupRangeBonus > 0f;
                 Assert.IsTrue(changed);
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void OrbitUpgradeAddsBladeToLocalWeaponRuntime()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            try
+            {
+                controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 20f);
+                Step(controller, 1, 1f / 60f);
+                int baseline = controller.ActiveOrbitBladeCount;
+
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.orbiting-focus"));
+                Step(controller, 1, 1f / 60f);
+
+                Assert.That(baseline, Is.GreaterThanOrEqualTo(1));
+                Assert.That(controller.OrbitBladeBonus, Is.GreaterThanOrEqualTo(1));
+                Assert.That(controller.ActiveOrbitBladeCount, Is.GreaterThan(baseline));
             }
             finally
             {
