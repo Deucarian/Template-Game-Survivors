@@ -62,9 +62,24 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator OrbitWeaponCanDamageAndKillEnemy()
+        public IEnumerator DefaultClassStartsWithExpectedLoadout()
         {
             SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, controller.SelectedClassId);
+            Assert.AreEqual(1, controller.ActiveWeaponCount);
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
+            Assert.IsFalse(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator OrbitWeaponCanDamageAndKillEnemy()
+        {
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 1f);
@@ -84,7 +99,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator MeleeAndBurstWeaponsCanDamageAndKillEnemies()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.4f, 0f, 0f), 1f);
@@ -107,7 +122,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator RunUpgradeCanAffectNewWeaponArchetype()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 20f);
@@ -129,7 +144,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator HitscanWeaponCanDamageAndKillEnemy()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
@@ -224,7 +239,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator GrenadePayloadCanDetonateDamageAndKillEnemy()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 100f);
@@ -242,7 +257,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator TrapPayloadCanArmTriggerAndKillEnemy()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.1f, 0f, 0f), 30f);
@@ -261,7 +276,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator PayloadUpgradeCanAffectPayloadBehavior()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.bigger-booms"));
@@ -463,8 +478,40 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(controller.CurrentTuning.PlayerMoveSpeed));
             Assert.That(controller.ProjectileDamage, Is.GreaterThan(controller.CurrentTuning.ProjectileDamage));
             Assert.That(controller.MaxHealth, Is.GreaterThan(controller.CurrentTuning.PlayerMaxHealth));
+            Assert.That(controller.ActiveWeaponCount, Is.GreaterThan(1));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
 
             Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ClassSpecificUpgradeAppearsOnlyWhenValid()
+        {
+            SurvivorsTemplateController defaultController = CreateController();
+            yield return null;
+
+            defaultController.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId);
+            yield return null;
+
+            Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            Assert.AreEqual(-1, IndexOfDraftChoice(defaultController, BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            Object.Destroy(defaultController.gameObject);
+            yield return null;
+
+            SurvivorsTemplateController emberController = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
+            yield return null;
+
+            emberController.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId);
+            yield return null;
+
+            int gatedChoiceIndex = IndexOfDraftChoice(emberController, BasicSurvivorsGame.PrismaticBeamUpgradeId);
+            Assert.That(gatedChoiceIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.IsTrue(emberController.SelectUpgrade(gatedChoiceIndex));
+            Assert.That(emberController.HitscanPierceBonus, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(emberController.gameObject);
         }
 
         [UnityTest]
@@ -530,6 +577,33 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             return controller;
+        }
+
+        private static SurvivorsTemplateController CreateControllerWithClass(string classId)
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            Assert.IsTrue(controller.UnlockClassForTest(classId));
+            Assert.IsTrue(controller.TrySelectClassForTest(classId));
+            controller.StartRun();
+            return controller;
+        }
+
+        private static int IndexOfDraftChoice(SurvivorsTemplateController controller, string upgradeId)
+        {
+            if (controller == null || string.IsNullOrWhiteSpace(upgradeId))
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
+            {
+                if (string.Equals(controller.CurrentDraftChoices[i].Id.Value, upgradeId, StringComparison.Ordinal))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         private static IEnumerator SimulateFrames(SurvivorsTemplateController controller, int frames)

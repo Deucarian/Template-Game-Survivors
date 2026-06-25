@@ -155,6 +155,7 @@ namespace Deucarian.TemplateGameSurvivors
     public sealed class SurvivorsWeaponLoadoutRuntime
     {
         private readonly List<SurvivorsWeaponRuntimeBase> _weapons = new List<SurvivorsWeaponRuntimeBase>();
+        private readonly List<string> _weaponIds = new List<string>();
 
         public SurvivorsWeaponLoadoutRuntime(SurvivorsTemplateController controller, IReadOnlyList<SurvivorsWeaponArchetypeDefinition> definitions)
         {
@@ -177,8 +178,12 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 _weapons.Add(CreateRuntime(controller, definition));
+                _weaponIds.Add(definition.Id);
             }
         }
+
+        public IReadOnlyList<string> WeaponIds => _weaponIds;
+        public int WeaponCount => _weapons.Count;
 
         public int ActiveOrbitBladeCount
         {
@@ -220,6 +225,24 @@ namespace Deucarian.TemplateGameSurvivors
             return fired;
         }
 
+        public bool ContainsWeapon(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _weaponIds.Count; i++)
+            {
+                if (string.Equals(_weaponIds[i], id, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public void Dispose()
         {
             for (int i = 0; i < _weapons.Count; i++)
@@ -228,6 +251,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _weapons.Clear();
+            _weaponIds.Clear();
         }
 
         private static SurvivorsWeaponRuntimeBase CreateRuntime(SurvivorsTemplateController controller, SurvivorsWeaponArchetypeDefinition definition)

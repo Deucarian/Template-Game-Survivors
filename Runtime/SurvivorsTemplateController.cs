@@ -15,6 +15,7 @@ namespace Deucarian.TemplateGameSurvivors
     {
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
+        private static readonly string[] EmptyWeaponIds = Array.Empty<string>();
 
         [SerializeField]
         private bool autoStart = true;
@@ -51,6 +52,7 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
         private SurvivorsRunFlowRuntime _runFlow;
         private IReadOnlyList<SurvivorsRelicDefinition> _relicDefinitions;
+        private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> _upgradeClassGates;
         private SurvivorsClassLibraryDefinition _classLibrary;
         private SurvivorsClassDefinition _selectedClass;
         private SurvivorsMetaProgressionService _metaProgression;
@@ -131,6 +133,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
         public int ActivePickupCount => _pickups.Count;
         public int ActiveProjectileCount => _projectiles.Count;
+        public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
+        public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus;
         public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus);
@@ -269,13 +273,14 @@ namespace Deucarian.TemplateGameSurvivors
             _combatCatalog = BasicSurvivorsGame.CreateCombatCatalog();
             _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
             _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
-            _upgradeCatalog = BasicSurvivorsGame.CreateRunUpgradeCatalog();
             _upgradeState = new RunUpgradeState();
             _relicDefinitions = BasicSurvivorsGame.CreateRelicDefinitions();
+            _upgradeClassGates = BasicSurvivorsGame.CreateClassUpgradeGates();
             _classLibrary = BasicSurvivorsGame.CreateClassLibraryDefinition();
             EnsureMetaProgressionLoaded();
             _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
             _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
+            _upgradeCatalog = CreateRunUpgradeCatalogForSelectedClass();
             _playerHealth = new HealthState(new CombatantId("combatant.survivors.player"), resolved.PlayerMaxHealth, resolved.PlayerMaxHealth);
             Level = 1;
             Experience = 0;
@@ -347,7 +352,7 @@ namespace Deucarian.TemplateGameSurvivors
             ApplySelectedClassBonuses();
             BuildRuntimeWorld();
             _runFlow = new SurvivorsRunFlowRuntime(BasicSurvivorsGame.CreateRunFlowDefinition(resolved));
-            _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved));
+            _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved)));
             State = SurvivorsRunState.Playing;
             _runStarted = true;
         }
@@ -448,6 +453,16 @@ namespace Deucarian.TemplateGameSurvivors
             OpenLevelUpDraft();
         }
 
+        public void ForceLevelUpWithLockedChoiceForTest(string upgradeId)
+        {
+            EnsureRunStartedForTest();
+            PendingLevelUps++;
+            var lockedChoices = string.IsNullOrWhiteSpace(upgradeId)
+                ? null
+                : new[] { new RunUpgradeId(upgradeId) };
+            OpenLevelUpDraft(lockedChoices);
+        }
+
         public void KillPlayerForTest()
         {
             ApplyDamageToPlayer(MaxHealth + 1000f, "test.kill");
@@ -519,6 +534,18 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureMetaProgressionLoaded();
             EnsureClassLibraryLoaded();
             return _metaProgression.IsClassUnlocked(classId, _classLibrary);
+        }
+
+        public bool HasWeaponInLoadoutForTest(string weaponId)
+        {
+            EnsureRunStartedForTest();
+            return _weaponLoadout != null && _weaponLoadout.ContainsWeapon(weaponId);
+        }
+
+        public bool IsUpgradeAvailableInRunForTest(string upgradeId)
+        {
+            EnsureRunStartedForTest();
+            return _upgradeCatalog != null && !string.IsNullOrWhiteSpace(upgradeId) && _upgradeCatalog.TryGet(new RunUpgradeId(upgradeId), out _);
         }
 
         public bool OpenBossRelicDraftForTest()
@@ -1082,10 +1109,76 @@ namespace Deucarian.TemplateGameSurvivors
         {
             _classLibrary ??= BasicSurvivorsGame.CreateClassLibraryDefinition();
             _relicDefinitions ??= BasicSurvivorsGame.CreateRelicDefinitions();
+            _upgradeClassGates ??= BasicSurvivorsGame.CreateClassUpgradeGates();
             if (_metaProgression != null)
             {
                 _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
             }
+        }
+
+        private RunUpgradeCatalog CreateRunUpgradeCatalogForSelectedClass()
+        {
+            RunUpgradeCatalog fullCatalog = BasicSurvivorsGame.CreateRunUpgradeCatalog();
+            var definitions = new List<RunUpgradeDefinition>(fullCatalog.Definitions.Count);
+            for (int i = 0; i < fullCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = fullCatalog.Definitions[i];
+                if (definition != null && IsUpgradeAllowedForSelectedClass(definition.Id.Value))
+                {
+                    definitions.Add(definition);
+                }
+            }
+
+            return definitions.Count == 0 ? fullCatalog : new RunUpgradeCatalog(definitions);
+        }
+
+        private bool IsUpgradeAllowedForSelectedClass(string upgradeId)
+        {
+            if (string.IsNullOrWhiteSpace(upgradeId) || _upgradeClassGates == null)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < _upgradeClassGates.Count; i++)
+            {
+                SurvivorsClassUpgradeGateDefinition gate = _upgradeClassGates[i];
+                if (gate != null && string.Equals(gate.UpgradeId, upgradeId, StringComparison.Ordinal))
+                {
+                    return gate.IsAvailableToClass(_selectedClass);
+                }
+            }
+
+            return true;
+        }
+
+        private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> ResolveStartingWeaponDefinitions(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> allDefinitions)
+        {
+            if (allDefinitions == null || allDefinitions.Count == 0)
+            {
+                return Array.Empty<SurvivorsWeaponArchetypeDefinition>();
+            }
+
+            if (_selectedClass == null || _selectedClass.StartingWeaponIds.Count == 0)
+            {
+                return allDefinitions;
+            }
+
+            var selected = new List<SurvivorsWeaponArchetypeDefinition>(_selectedClass.StartingWeaponIds.Count);
+            for (int classWeaponIndex = 0; classWeaponIndex < _selectedClass.StartingWeaponIds.Count; classWeaponIndex++)
+            {
+                string weaponId = _selectedClass.StartingWeaponIds[classWeaponIndex];
+                for (int definitionIndex = 0; definitionIndex < allDefinitions.Count; definitionIndex++)
+                {
+                    SurvivorsWeaponArchetypeDefinition definition = allDefinitions[definitionIndex];
+                    if (definition != null && string.Equals(definition.Id, weaponId, StringComparison.Ordinal))
+                    {
+                        selected.Add(definition);
+                        break;
+                    }
+                }
+            }
+
+            return selected.Count == 0 ? new[] { allDefinitions[0] } : selected;
         }
 
         private void ApplyPersistentMetaBonuses()
@@ -1472,7 +1565,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void OpenLevelUpDraft()
+        private void OpenLevelUpDraft(IReadOnlyList<RunUpgradeId> lockedChoices = null)
         {
             if (_rewardSelectionKind == SurvivorsRewardSelectionKind.BossRelic)
             {
@@ -1482,7 +1575,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentDraft = RunUpgradeDraftService.Generate(
                 _upgradeCatalog,
                 _upgradeState,
-                new RunUpgradeDraftRequest(CurrentTuning.DraftChoiceCount, CurrentTuning.RunSeed + Level + SelectedUpgradeCount));
+                new RunUpgradeDraftRequest(CurrentTuning.DraftChoiceCount, CurrentTuning.RunSeed + Level + SelectedUpgradeCount, lockedChoices: lockedChoices));
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;

@@ -147,11 +147,19 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly WorldSpawnChannelId ExplicitSpawnChannelId = new WorldSpawnChannelId("spawn.survivors.explicit");
         public static readonly AttackDefinitionId ArcaneBoltAttackId = new AttackDefinitionId("attack.survivors.arcane-bolt");
         public static readonly ProjectileDefinitionId ArcaneBoltProjectileId = new ProjectileDefinitionId("projectile.survivors.arcane-bolt");
-        public static readonly WeaponDefinitionId ArcaneWandWeaponId = new WeaponDefinitionId("weapon.survivors.arcane-wand");
-        public static readonly WeaponDefinitionId StarBeamWeaponId = new WeaponDefinitionId("weapon.survivors.star-beam");
-        public static readonly WeaponDefinitionId GravityGrenadeWeaponId = new WeaponDefinitionId("weapon.survivors.gravity-grenade");
-        public static readonly WeaponDefinitionId RuneTrapWeaponId = new WeaponDefinitionId("weapon.survivors.rune-trap");
-        public static readonly WeaponDefinitionId AetherMineWeaponId = new WeaponDefinitionId("weapon.survivors.aether-mine");
+        public const string ArcaneWandWeaponContentId = "weapon.survivors.arcane-wand";
+        public const string OrbitWardWeaponContentId = "weapon.survivors.orbit-ward";
+        public const string MoonSlashWeaponContentId = "weapon.survivors.moon-slash";
+        public const string StarNovaWeaponContentId = "weapon.survivors.star-nova";
+        public const string StarBeamWeaponContentId = "weapon.survivors.star-beam";
+        public const string GravityGrenadeWeaponContentId = "weapon.survivors.gravity-grenade";
+        public const string RuneTrapWeaponContentId = "weapon.survivors.rune-trap";
+        public const string AetherMineWeaponContentId = "weapon.survivors.aether-mine";
+        public static readonly WeaponDefinitionId ArcaneWandWeaponId = new WeaponDefinitionId(ArcaneWandWeaponContentId);
+        public static readonly WeaponDefinitionId StarBeamWeaponId = new WeaponDefinitionId(StarBeamWeaponContentId);
+        public static readonly WeaponDefinitionId GravityGrenadeWeaponId = new WeaponDefinitionId(GravityGrenadeWeaponContentId);
+        public static readonly WeaponDefinitionId RuneTrapWeaponId = new WeaponDefinitionId(RuneTrapWeaponContentId);
+        public static readonly WeaponDefinitionId AetherMineWeaponId = new WeaponDefinitionId(AetherMineWeaponContentId);
         public static readonly CurrencyId BloodShardsCurrencyId = new CurrencyId("currency.survivors.blood-shards");
         public static readonly TrackId LegacyExperienceTrackId = new TrackId("track.survivors.legacy-xp");
         public static readonly ResearchNodeId ArcaneLegacyMetaUpgradeId = new ResearchNodeId("meta.survivors.arcane-legacy");
@@ -164,6 +172,13 @@ namespace Deucarian.TemplateGameSurvivors
         public const string DefaultClassId = "class.survivors.arcane-initiate";
         public const string EmberVanguardClassId = "class.survivors.ember-vanguard";
         public const string EmberVanguardUnlockRewardId = "reward.survivors.class.ember-vanguard";
+        public const string OrbitingFocusUpgradeId = "upgrade.survivors.orbiting-focus";
+        public const string CrescentChainUpgradeId = "upgrade.survivors.crescent-chain";
+        public const string NovaEchoUpgradeId = "upgrade.survivors.nova-echo";
+        public const string PrismaticBeamUpgradeId = "upgrade.survivors.prismatic-beam";
+        public const string ExtraPayloadUpgradeId = "upgrade.survivors.extra-payload";
+        public const string BiggerBoomsUpgradeId = "upgrade.survivors.bigger-booms";
+        public const string WiderTriggersUpgradeId = "upgrade.survivors.wider-triggers";
         public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
@@ -273,7 +288,7 @@ namespace Deucarian.TemplateGameSurvivors
             return new[]
             {
                 new SurvivorsWeaponArchetypeDefinition(
-                    ArcaneWandWeaponId.Value,
+                    ArcaneWandWeaponContentId,
                     "Arcane Wand",
                     SurvivorsWeaponArchetype.Projectile,
                     resolved.WeaponCooldownSeconds,
@@ -288,7 +303,7 @@ namespace Deucarian.TemplateGameSurvivors
                     projectileForkCount: resolved.ProjectileForkCount,
                     projectileReturnCount: resolved.ProjectileReturnCount),
                 new SurvivorsWeaponArchetypeDefinition(
-                    "weapon.survivors.orbit-ward",
+                    OrbitWardWeaponContentId,
                     "Orbit Ward",
                     SurvivorsWeaponArchetype.Orbit,
                     cooldownSeconds: 0.05f,
@@ -300,7 +315,7 @@ namespace Deucarian.TemplateGameSurvivors
                     orbitDegreesPerSecond: resolved.OrbitDegreesPerSecond,
                     orbitContactTickIntervalSeconds: resolved.OrbitContactTickIntervalSeconds),
                 new SurvivorsWeaponArchetypeDefinition(
-                    "weapon.survivors.moon-slash",
+                    MoonSlashWeaponContentId,
                     "Moon Slash",
                     SurvivorsWeaponArchetype.Melee,
                     resolved.MeleeCooldownSeconds,
@@ -311,7 +326,7 @@ namespace Deucarian.TemplateGameSurvivors
                     meleeArcDegrees: resolved.MeleeArcDegrees,
                     meleeVisualDurationSeconds: resolved.MeleeVisualDurationSeconds),
                 new SurvivorsWeaponArchetypeDefinition(
-                    "weapon.survivors.star-nova",
+                    StarNovaWeaponContentId,
                     "Star Nova",
                     SurvivorsWeaponArchetype.Burst,
                     resolved.BurstCooldownSeconds,
@@ -322,7 +337,7 @@ namespace Deucarian.TemplateGameSurvivors
                     burstRepeatIntervalSeconds: resolved.BurstRepeatIntervalSeconds,
                     burstVisualDurationSeconds: resolved.BurstVisualDurationSeconds),
                 new SurvivorsWeaponArchetypeDefinition(
-                    StarBeamWeaponId.Value,
+                    StarBeamWeaponContentId,
                     "Star Beam",
                     SurvivorsWeaponArchetype.Hitscan,
                     resolved.HitscanCooldownSeconds,
@@ -334,7 +349,7 @@ namespace Deucarian.TemplateGameSurvivors
                     hitscanVisualDurationSeconds: resolved.HitscanVisualDurationSeconds,
                     hitscanPierces: resolved.HitscanPierces),
                 new SurvivorsWeaponArchetypeDefinition(
-                    GravityGrenadeWeaponId.Value,
+                    GravityGrenadeWeaponContentId,
                     "Gravity Grenade",
                     SurvivorsWeaponArchetype.Grenade,
                     resolved.GrenadeCooldownSeconds,
@@ -352,7 +367,7 @@ namespace Deucarian.TemplateGameSurvivors
                     payloadHazardTickIntervalSeconds: resolved.PayloadHazardTickIntervalSeconds,
                     payloadHazardDamageRatio: resolved.PayloadHazardDamageRatio),
                 new SurvivorsWeaponArchetypeDefinition(
-                    RuneTrapWeaponId.Value,
+                    RuneTrapWeaponContentId,
                     "Rune Trap",
                     SurvivorsWeaponArchetype.Trap,
                     resolved.TrapCooldownSeconds,
@@ -371,7 +386,7 @@ namespace Deucarian.TemplateGameSurvivors
                     payloadHazardTickIntervalSeconds: resolved.PayloadHazardTickIntervalSeconds,
                     payloadHazardDamageRatio: resolved.PayloadHazardDamageRatio),
                 new SurvivorsWeaponArchetypeDefinition(
-                    AetherMineWeaponId.Value,
+                    AetherMineWeaponContentId,
                     "Aether Mine",
                     SurvivorsWeaponArchetype.Mine,
                     resolved.MineCooldownSeconds,
@@ -427,17 +442,17 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.swift-steps", RunUpgradeRarity.Uncommon, 44, 5, MoveSpeedEffect, PlayerTarget, 0.45d),
                 Upgrade("upgrade.survivors.gem-magnet", RunUpgradeRarity.Uncommon, 44, 5, MagnetRangeEffect, PickupTarget, 1.1d),
                 Upgrade("upgrade.survivors.iron-blood", RunUpgradeRarity.Rare, 28, 4, MaxHealthEffect, PlayerTarget, 8.0d),
-                Upgrade("upgrade.survivors.orbiting-focus", RunUpgradeRarity.Uncommon, 38, 4, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
-                Upgrade("upgrade.survivors.crescent-chain", RunUpgradeRarity.Uncommon, 34, 4, MeleeTargetEffect, MeleeWeaponTarget, 1.0d),
-                Upgrade("upgrade.survivors.nova-echo", RunUpgradeRarity.Rare, 24, 3, BurstCountEffect, BurstWeaponTarget, 1.0d),
+                Upgrade(OrbitingFocusUpgradeId, RunUpgradeRarity.Uncommon, 38, 4, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
+                Upgrade(CrescentChainUpgradeId, RunUpgradeRarity.Uncommon, 34, 4, MeleeTargetEffect, MeleeWeaponTarget, 1.0d),
+                Upgrade(NovaEchoUpgradeId, RunUpgradeRarity.Rare, 24, 3, BurstCountEffect, BurstWeaponTarget, 1.0d),
                 Upgrade("upgrade.survivors.piercing-bolts", RunUpgradeRarity.Uncommon, 36, 4, ProjectilePierceEffect, WeaponTarget, 1.0d),
                 Upgrade("upgrade.survivors.chain-bolts", RunUpgradeRarity.Rare, 26, 3, ProjectileChainEffect, WeaponTarget, 1.0d),
                 Upgrade("upgrade.survivors.forked-bolts", RunUpgradeRarity.Rare, 24, 3, ProjectileForkEffect, WeaponTarget, 1.0d),
                 Upgrade("upgrade.survivors.returning-bolts", RunUpgradeRarity.Rare, 22, 2, ProjectileReturnEffect, WeaponTarget, 1.0d),
-                Upgrade("upgrade.survivors.prismatic-beam", RunUpgradeRarity.Uncommon, 30, 3, HitscanPierceEffect, HitscanWeaponTarget, 1.0d),
-                Upgrade("upgrade.survivors.extra-payload", RunUpgradeRarity.Rare, 22, 2, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
-                Upgrade("upgrade.survivors.bigger-booms", RunUpgradeRarity.Uncommon, 32, 4, PayloadRadiusEffect, PayloadWeaponTarget, 0.45d),
-                Upgrade("upgrade.survivors.wider-triggers", RunUpgradeRarity.Uncommon, 28, 4, PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.35d)
+                Upgrade(PrismaticBeamUpgradeId, RunUpgradeRarity.Uncommon, 30, 3, HitscanPierceEffect, HitscanWeaponTarget, 1.0d),
+                Upgrade(ExtraPayloadUpgradeId, RunUpgradeRarity.Rare, 22, 2, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
+                Upgrade(BiggerBoomsUpgradeId, RunUpgradeRarity.Uncommon, 32, 4, PayloadRadiusEffect, PayloadWeaponTarget, 0.45d),
+                Upgrade(WiderTriggersUpgradeId, RunUpgradeRarity.Uncommon, 28, 4, PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.35d)
             });
         }
 
@@ -497,14 +512,15 @@ namespace Deucarian.TemplateGameSurvivors
                 new SurvivorsClassDefinition(
                     DefaultClassId,
                     "Arcane Initiate",
-                    ArcaneWandWeaponId.Value,
+                    ArcaneWandWeaponContentId,
                     isUnlockedByDefault: true,
                     unlockRewardId: string.Empty,
-                    startingStatModifiers: Array.Empty<SurvivorsClassStatModifierDefinition>()),
+                    startingStatModifiers: Array.Empty<SurvivorsClassStatModifierDefinition>(),
+                    startingWeaponIds: new[] { ArcaneWandWeaponContentId }),
                 new SurvivorsClassDefinition(
                     EmberVanguardClassId,
                     "Ember Vanguard",
-                    StarBeamWeaponId.Value,
+                    StarBeamWeaponContentId,
                     isUnlockedByDefault: false,
                     unlockRewardId: EmberVanguardUnlockRewardId,
                     startingStatModifiers: new[]
@@ -512,8 +528,34 @@ namespace Deucarian.TemplateGameSurvivors
                         new SurvivorsClassStatModifierDefinition(SurvivorsClassStatKind.MoveSpeed, 0.65f),
                         new SurvivorsClassStatModifierDefinition(SurvivorsClassStatKind.Damage, 1.25f),
                         new SurvivorsClassStatModifierDefinition(SurvivorsClassStatKind.MaxHealth, 6f)
+                    },
+                    startingWeaponIds: new[]
+                    {
+                        ArcaneWandWeaponContentId,
+                        OrbitWardWeaponContentId,
+                        MoonSlashWeaponContentId,
+                        StarNovaWeaponContentId,
+                        StarBeamWeaponContentId,
+                        GravityGrenadeWeaponContentId,
+                        RuneTrapWeaponContentId,
+                        AetherMineWeaponContentId
                     })
-            });
+            }, DefaultClassId);
+        }
+
+        public static IReadOnlyList<SurvivorsClassUpgradeGateDefinition> CreateClassUpgradeGates()
+        {
+            string[] emberOnly = { EmberVanguardClassId };
+            return new[]
+            {
+                new SurvivorsClassUpgradeGateDefinition(OrbitingFocusUpgradeId, emberOnly),
+                new SurvivorsClassUpgradeGateDefinition(CrescentChainUpgradeId, emberOnly),
+                new SurvivorsClassUpgradeGateDefinition(NovaEchoUpgradeId, emberOnly),
+                new SurvivorsClassUpgradeGateDefinition(PrismaticBeamUpgradeId, emberOnly),
+                new SurvivorsClassUpgradeGateDefinition(ExtraPayloadUpgradeId, emberOnly),
+                new SurvivorsClassUpgradeGateDefinition(BiggerBoomsUpgradeId, emberOnly),
+                new SurvivorsClassUpgradeGateDefinition(WiderTriggersUpgradeId, emberOnly)
+            };
         }
 
         public static SurvivorsMetaProgressionDefinition CreateMetaProgressionDefinition()

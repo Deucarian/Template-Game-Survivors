@@ -5,16 +5,16 @@
     { "id": "upgrade.survivors.swift-steps", "rarity": "Uncommon", "effect": "survivors.player.move_speed", "target": "survivors.player" },
     { "id": "upgrade.survivors.gem-magnet", "rarity": "Uncommon", "effect": "survivors.pickup.range", "target": "survivors.pickups" },
     { "id": "upgrade.survivors.iron-blood", "rarity": "Rare", "effect": "survivors.player.max_health", "target": "survivors.player" },
-    { "id": "upgrade.survivors.orbiting-focus", "rarity": "Uncommon", "effect": "survivors.orbit.blade_count", "target": "survivors.weapon.orbit-ward" },
-    { "id": "upgrade.survivors.crescent-chain", "rarity": "Uncommon", "effect": "survivors.melee.target_count", "target": "survivors.weapon.moon-slash" },
-    { "id": "upgrade.survivors.nova-echo", "rarity": "Rare", "effect": "survivors.burst.count", "target": "survivors.weapon.star-nova" },
+    { "id": "upgrade.survivors.orbiting-focus", "rarity": "Uncommon", "effect": "survivors.orbit.blade_count", "target": "survivors.weapon.orbit-ward", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.crescent-chain", "rarity": "Uncommon", "effect": "survivors.melee.target_count", "target": "survivors.weapon.moon-slash", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.nova-echo", "rarity": "Rare", "effect": "survivors.burst.count", "target": "survivors.weapon.star-nova", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.piercing-bolts", "rarity": "Uncommon", "effect": "survivors.projectile.pierce_count", "target": "survivors.weapon.arcane-wand" },
     { "id": "upgrade.survivors.chain-bolts", "rarity": "Rare", "effect": "survivors.projectile.chain_count", "target": "survivors.weapon.arcane-wand" },
     { "id": "upgrade.survivors.forked-bolts", "rarity": "Rare", "effect": "survivors.projectile.fork_count", "target": "survivors.weapon.arcane-wand" },
     { "id": "upgrade.survivors.returning-bolts", "rarity": "Rare", "effect": "survivors.projectile.return_count", "target": "survivors.weapon.arcane-wand" },
-    { "id": "upgrade.survivors.prismatic-beam", "rarity": "Uncommon", "effect": "survivors.hitscan.pierce", "target": "survivors.weapon.star-beam" },
-    { "id": "upgrade.survivors.extra-payload", "rarity": "Rare", "effect": "survivors.payload.count", "target": "survivors.weapon.payloads" },
-    { "id": "upgrade.survivors.bigger-booms", "rarity": "Uncommon", "effect": "survivors.payload.radius", "target": "survivors.weapon.payloads" },
-    { "id": "upgrade.survivors.wider-triggers", "rarity": "Uncommon", "effect": "survivors.payload.trigger_radius", "target": "survivors.weapon.payloads" }
+    { "id": "upgrade.survivors.prismatic-beam", "rarity": "Uncommon", "effect": "survivors.hitscan.pierce", "target": "survivors.weapon.star-beam", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.extra-payload", "rarity": "Rare", "effect": "survivors.payload.count", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.bigger-booms", "rarity": "Uncommon", "effect": "survivors.payload.radius", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.wider-triggers", "rarity": "Uncommon", "effect": "survivors.payload.trigger_radius", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] }
   ]
 }

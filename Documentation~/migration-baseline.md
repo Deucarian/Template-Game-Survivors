@@ -135,3 +135,19 @@ The 2R template slice adds local template-kit implementations for:
 - sample relic/class JSON content and validation
 
 The richer reference behavior for passive skill trees, class-specific upgrade pools, class resource profiles, content-pack gates, class starting upgrade graphs, boss relic rarity tiers, reward selection timeout, and product-specific economy tuning is deliberately not ported yet. These systems remain local to the Survivors template until concrete reuse is proven. No shared package extraction, publishing, or package registry work is performed in this phase.
+
+## Phase 2S Class Run-Start And Upgrade Gate Slice
+
+The reference clone resolves the selected player class at run start, applies class-owned starting stats, grants class-owned starting weapons before fallback weapons, and filters run-upgrade availability by class ownership/capability gates. It also persists selected/unlocked class state and falls back safely when the saved selection is no longer valid.
+
+The 2S template slice adds local template-kit implementations for:
+
+- selected class controlling the run-start weapon loadout
+- selected class controlling starting move speed, damage, and max health
+- default Arcane Initiate fallback when a saved selected class is locked or missing
+- persisted unlock/selection behavior for the Ember Vanguard sample class
+- class-gated advanced upgrade availability for Ember-only weapon/payload upgrades
+- sample JSON metadata for default class, class loadouts, and allowed upgrade classes
+- content validation for class loadouts, default class references, and class-gated upgrade references
+
+The richer reference behavior for passive skill trees, authored capability tags, class resource profiles, archetype/signature content packs, class starting upgrade graphs, and class-specific upgrade pools beyond simple allowed-class gates is deliberately deferred. These systems remain local to the Survivors template. No shared package extraction, publishing, or package registry work is performed in this phase.

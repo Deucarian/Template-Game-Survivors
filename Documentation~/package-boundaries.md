@@ -13,7 +13,7 @@
 
 ## Local Survivors Kit Code
 
-The following intentionally stay local in Phase 2R:
+The following intentionally stay local in Phase 2S:
 
 - top-down player movement
 - camera follow
@@ -28,7 +28,10 @@ The following intentionally stay local in Phase 2R:
 - boss relic draft and selection rules
 - relic effect application
 - selected class, default class, and unlockable class rules
+- selected-class run-start reset/application order
+- class-owned starting weapon loadouts
 - class starting stat modifiers
+- class-gated upgrade availability
 - class unlock reward grants
 - blood shard and legacy XP reward calculation
 - persistent meta upgrade effects
@@ -70,7 +73,7 @@ Do not extract these yet. Revisit only after parity gaps repeat across real temp
 - content validation for authored libraries if multiple templates need the same rules
 - shared reward-draft abstractions only if another Survivors-style template proves the same shape
 - richer meta progression save DTOs only if multiple concrete games share the same persisted profile model
-- class library, class unlock, or relic reward abstractions only after another concrete Survivors-style kit proves the same authored shape
+- class library, class loadout, class upgrade-gate, class unlock, or relic reward abstractions only after another concrete Survivors-style kit proves the same authored shape
 - diagnostics for spawn pressure, pool stats, and draft state
 
-No shared package extraction happened in Phase 2R.
+No shared package extraction happened in Phase 2S.

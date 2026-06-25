@@ -1,9 +1,13 @@
 {
+  "defaultClassId": "class.survivors.arcane-initiate",
   "classes": [
     {
       "id": "class.survivors.arcane-initiate",
       "displayName": "Arcane Initiate",
       "startingWeaponId": "weapon.survivors.arcane-wand",
+      "startingWeaponIds": [
+        "weapon.survivors.arcane-wand"
+      ],
       "unlockedByDefault": true,
       "unlockRewardId": "",
       "statModifiers": []
@@ -12,6 +16,16 @@
       "id": "class.survivors.ember-vanguard",
       "displayName": "Ember Vanguard",
       "startingWeaponId": "weapon.survivors.star-beam",
+      "startingWeaponIds": [
+        "weapon.survivors.arcane-wand",
+        "weapon.survivors.orbit-ward",
+        "weapon.survivors.moon-slash",
+        "weapon.survivors.star-nova",
+        "weapon.survivors.star-beam",
+        "weapon.survivors.gravity-grenade",
+        "weapon.survivors.rune-trap",
+        "weapon.survivors.aether-mine"
+      ],
       "unlockedByDefault": false,
       "unlockRewardId": "reward.survivors.class.ember-vanguard",
       "statModifiers": [

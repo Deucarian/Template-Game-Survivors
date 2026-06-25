@@ -88,3 +88,18 @@ Phase 2R adds validation for:
 The Phase 2R relic and class systems remain local Survivors template-kit code. Skill trees, class-specific upgrade pools, class resource profiles, content-pack gates, boss relic rarity tiers, and reward-selection timeout behavior are deliberately deferred.
 
 No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2R validation.
+
+Phase 2S adds validation for:
+
+- runtime class loadout descriptor coverage
+- runtime and sample validation for default class IDs, starting weapon/loadout references, and class-gated upgrade references
+- clear validation failures for invalid class loadouts, missing/duplicate/empty class loadout entries, unknown default classes, unknown allowed classes, unknown gated upgrades, and duplicate class gates
+- locked or missing selected class fallback to the default class
+- default class starting with only the basic arcane wand loadout
+- unlocked selected class starting with the expected advanced loadout and stat profile
+- class-specific upgrades appearing only when the selected class is valid
+- existing first-slice, weapon, payload, run-flow, reward, relic, class unlock, save/load, and persistent-upgrade tests still passing
+
+The Phase 2S class run-start and upgrade-gate systems remain local Survivors template-kit code. Passive skill trees, class capability tags, resource profiles, content packs, class starting upgrade graphs, and richer class-specific upgrade pools are deliberately deferred.
+
+No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2S validation.

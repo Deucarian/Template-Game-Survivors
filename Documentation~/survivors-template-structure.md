@@ -55,7 +55,9 @@
 
 - boss relic definitions and deterministic relic draft selection
 - simple class definitions
+- class-owned starting weapon loadouts
 - starting stat modifiers
+- class-gated run-upgrade availability rules
 - selected/unlocked class library helpers
 
 `Runtime/SurvivorsContentValidation.cs` contains package-local validation for authored sample libraries and runtime catalogs:
@@ -68,7 +70,7 @@
 - valid run-upgrade target references
 - valid reward currency, legacy XP, persistent upgrade, rank cost, and target references
 - valid relic IDs, effect kinds, targets, weights, and amounts
-- valid class IDs, starting weapon references, unlock reward IDs, and starting stat modifiers
+- valid class IDs, default class references, starting weapon/loadout references, class-gated upgrade references, unlock reward IDs, and starting stat modifiers
 
 This is reusable Survivors template-kit code, not concrete product content.
 
@@ -86,9 +88,9 @@ This is reusable Survivors template-kit code, not concrete product content.
 - `Content/DefaultRelics/relics.json`
 - `Content/DefaultClasses/classes.json`
 
-The sample includes a swarm enemy, one scheduled miniboss, one final boss, blood shards, legacy XP, one persistent upgrade, boss/final-boss reward definitions, three boss relics, a default class, and one unlockable class. These files are examples for product-owned content flipping. They are not intended to become shared package code.
+The sample includes a swarm enemy, one scheduled miniboss, one final boss, blood shards, legacy XP, one persistent upgrade, boss/final-boss reward definitions, three boss relics, a default class with a basic loadout, one unlockable class with an advanced loadout/stat profile, and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
 
 ## Tests
 
-- `Tests/EditMode` covers descriptors, archetype config, content validation, reward/meta validation, class unlock persistence, save migration, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
-- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, timed miniboss/boss spawning, boss/miniboss death, relic choice/application, victory, reward grants, class unlock persistence, save/load persistence, persistent upgrade effects, and run upgrades affecting new archetypes/modifiers.
+- `Tests/EditMode` covers descriptors, archetype config, content validation, reward/meta validation, class unlock persistence, locked/missing class fallback, class loadout/gate validation, save migration, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
+- `Tests/PlayMode` covers first playable runtime boot, death/restart, default and selected class loadouts, class-gated upgrade availability, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, timed miniboss/boss spawning, boss/miniboss death, relic choice/application, victory, reward grants, class unlock persistence, save/load persistence, persistent upgrade effects, and run upgrades affecting new archetypes/modifiers.

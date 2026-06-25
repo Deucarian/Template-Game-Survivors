@@ -163,11 +163,13 @@ namespace Deucarian.TemplateGameSurvivors
             string startingWeaponId,
             bool isUnlockedByDefault,
             string unlockRewardId,
-            IReadOnlyList<SurvivorsClassStatModifierDefinition> startingStatModifiers)
+            IReadOnlyList<SurvivorsClassStatModifierDefinition> startingStatModifiers,
+            IReadOnlyList<string> startingWeaponIds = null)
         {
             Id = id ?? string.Empty;
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? Id : displayName;
             StartingWeaponId = startingWeaponId ?? string.Empty;
+            StartingWeaponIds = CopyWeaponIds(startingWeaponIds, StartingWeaponId);
             IsUnlockedByDefault = isUnlockedByDefault;
             UnlockRewardId = unlockRewardId ?? string.Empty;
             StartingStatModifiers = startingStatModifiers == null ? Array.Empty<SurvivorsClassStatModifierDefinition>() : Copy(startingStatModifiers);
@@ -176,6 +178,7 @@ namespace Deucarian.TemplateGameSurvivors
         public string Id { get; }
         public string DisplayName { get; }
         public string StartingWeaponId { get; }
+        public IReadOnlyList<string> StartingWeaponIds { get; }
         public bool IsUnlockedByDefault { get; }
         public string UnlockRewardId { get; }
         public IReadOnlyList<SurvivorsClassStatModifierDefinition> StartingStatModifiers { get; }
@@ -190,16 +193,45 @@ namespace Deucarian.TemplateGameSurvivors
 
             return copy;
         }
+
+        private static string[] CopyWeaponIds(IReadOnlyList<string> source, string fallback)
+        {
+            var ids = new List<string>();
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            if (source != null)
+            {
+                for (int i = 0; i < source.Count; i++)
+                {
+                    AddWeaponId(ids, seen, source[i]);
+                }
+            }
+
+            AddWeaponId(ids, seen, fallback);
+            return ids.ToArray();
+        }
+
+        private static void AddWeaponId(List<string> ids, HashSet<string> seen, string value)
+        {
+            string normalized = string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+            if (string.IsNullOrWhiteSpace(normalized) || !seen.Add(normalized))
+            {
+                return;
+            }
+
+            ids.Add(normalized);
+        }
     }
 
     public sealed class SurvivorsClassLibraryDefinition
     {
-        public SurvivorsClassLibraryDefinition(IReadOnlyList<SurvivorsClassDefinition> classes)
+        public SurvivorsClassLibraryDefinition(IReadOnlyList<SurvivorsClassDefinition> classes, string defaultClassId = null)
         {
             Classes = classes == null ? Array.Empty<SurvivorsClassDefinition>() : Copy(classes);
+            DefaultClassId = defaultClassId ?? string.Empty;
         }
 
         public IReadOnlyList<SurvivorsClassDefinition> Classes { get; }
+        public string DefaultClassId { get; }
 
         public bool TryGetClass(string id, out SurvivorsClassDefinition definition)
         {
@@ -219,6 +251,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         public SurvivorsClassDefinition FirstDefaultUnlocked()
         {
+            if (!string.IsNullOrWhiteSpace(DefaultClassId) && TryGetClass(DefaultClassId, out SurvivorsClassDefinition defaultClass) && defaultClass.IsUnlockedByDefault)
+            {
+                return defaultClass;
+            }
+
             for (int i = 0; i < Classes.Count; i++)
             {
                 SurvivorsClassDefinition definition = Classes[i];
@@ -240,6 +277,64 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return copy;
+        }
+    }
+
+    public sealed class SurvivorsClassUpgradeGateDefinition
+    {
+        public SurvivorsClassUpgradeGateDefinition(string upgradeId, IReadOnlyList<string> allowedClassIds)
+        {
+            UpgradeId = upgradeId ?? string.Empty;
+            AllowedClassIds = CopyAllowedClassIds(allowedClassIds);
+        }
+
+        public string UpgradeId { get; }
+        public IReadOnlyList<string> AllowedClassIds { get; }
+
+        public bool IsAvailableToClass(SurvivorsClassDefinition selectedClass)
+        {
+            if (AllowedClassIds.Count == 0)
+            {
+                return true;
+            }
+
+            if (selectedClass == null || string.IsNullOrWhiteSpace(selectedClass.Id))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < AllowedClassIds.Count; i++)
+            {
+                if (string.Equals(AllowedClassIds[i], selectedClass.Id, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string[] CopyAllowedClassIds(IReadOnlyList<string> source)
+        {
+            if (source == null || source.Count == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            var ids = new List<string>(source.Count);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < source.Count; i++)
+            {
+                string normalized = string.IsNullOrWhiteSpace(source[i]) ? string.Empty : source[i].Trim();
+                if (string.IsNullOrWhiteSpace(normalized) || !seen.Add(normalized))
+                {
+                    continue;
+                }
+
+                ids.Add(normalized);
+            }
+
+            return ids.ToArray();
         }
     }
 }

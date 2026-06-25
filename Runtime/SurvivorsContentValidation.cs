@@ -31,7 +31,8 @@ namespace Deucarian.TemplateGameSurvivors
             SurvivorsRunFlowDefinition runFlow = null,
             SurvivorsMetaProgressionDefinition metaProgression = null,
             IReadOnlyList<SurvivorsRelicDefinition> relics = null,
-            SurvivorsClassLibraryDefinition classes = null)
+            SurvivorsClassLibraryDefinition classes = null,
+            IReadOnlyList<SurvivorsClassUpgradeGateDefinition> classUpgradeGates = null)
         {
             var result = new SurvivorsContentValidationResult();
             ValidateWeaponDefinitions(weapons, result);
@@ -54,6 +55,11 @@ namespace Deucarian.TemplateGameSurvivors
             if (classes != null)
             {
                 ValidateClassLibrary(classes, BuildKnownWeaponIds(weapons), result);
+            }
+
+            if (classUpgradeGates != null)
+            {
+                ValidateClassUpgradeGates(classUpgradeGates, upgrades, classes, result);
             }
 
             return result;
@@ -84,7 +90,7 @@ namespace Deucarian.TemplateGameSurvivors
                 ? null
                 : ParseJson<ClassLibraryJson>(classJson, "class library", result);
             ValidateWeaponLibrary(weaponLibrary, result);
-            ValidateUpgradeLibrary(upgradeLibrary, result);
+            ValidateUpgradeLibrary(upgradeLibrary, classLibrary, result);
             ValidateEnemyLibrary(enemyLibrary, result);
             ValidateRewardLibrary(rewardLibrary, result);
             ValidateRelicLibrary(relicLibrary, result);
@@ -326,6 +332,7 @@ namespace Deucarian.TemplateGameSurvivors
                 ValidateClassRecord(
                     definition.Id,
                     definition.StartingWeaponId,
+                    definition.StartingWeaponIds,
                     definition.IsUnlockedByDefault,
                     definition.UnlockRewardId,
                     definition.StartingStatModifiers,
@@ -345,6 +352,61 @@ namespace Deucarian.TemplateGameSurvivors
             if (defaultUnlockedCount == 0)
             {
                 result.AddError("Class library requires at least one default unlocked class.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(classLibrary.DefaultClassId))
+            {
+                if (!classIds.Contains(classLibrary.DefaultClassId))
+                {
+                    result.AddError($"Class library references unknown default class id: {classLibrary.DefaultClassId}");
+                }
+                else if (!classLibrary.TryGetClass(classLibrary.DefaultClassId, out SurvivorsClassDefinition defaultClass) || !defaultClass.IsUnlockedByDefault)
+                {
+                    result.AddError($"Class library default class must be unlocked by default: {classLibrary.DefaultClassId}");
+                }
+            }
+        }
+
+        private static void ValidateClassUpgradeGates(
+            IReadOnlyList<SurvivorsClassUpgradeGateDefinition> gates,
+            RunUpgradeCatalog upgrades,
+            SurvivorsClassLibraryDefinition classes,
+            SurvivorsContentValidationResult result)
+        {
+            if (gates == null)
+            {
+                return;
+            }
+
+            var knownUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
+            if (upgrades != null)
+            {
+                for (int i = 0; i < upgrades.Definitions.Count; i++)
+                {
+                    RunUpgradeDefinition definition = upgrades.Definitions[i];
+                    if (definition != null)
+                    {
+                        knownUpgradeIds.Add(definition.Id.Value);
+                    }
+                }
+            }
+
+            var knownClassIds = BuildKnownClassIds(classes);
+            var gatedUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < gates.Count; i++)
+            {
+                SurvivorsClassUpgradeGateDefinition gate = gates[i];
+                if (gate == null)
+                {
+                    result.AddError($"Class upgrade gate at index {i} is null.");
+                    continue;
+                }
+
+                ValidateClassUpgradeGateRecord(gate.UpgradeId, gate.AllowedClassIds, knownUpgradeIds, knownClassIds, result);
+                if (!string.IsNullOrWhiteSpace(gate.UpgradeId) && !gatedUpgradeIds.Add(gate.UpgradeId))
+                {
+                    result.AddError($"Duplicate class upgrade gate id: {gate.UpgradeId}");
+                }
             }
         }
 
@@ -603,7 +665,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private static void ValidateUpgradeLibrary(UpgradeLibraryJson library, SurvivorsContentValidationResult result)
+        private static void ValidateUpgradeLibrary(UpgradeLibraryJson library, ClassLibraryJson classLibrary, SurvivorsContentValidationResult result)
         {
             if (library == null)
             {
@@ -623,6 +685,7 @@ namespace Deucarian.TemplateGameSurvivors
                 knownTargets.Add(targetIds[i].Value);
             }
 
+            HashSet<string> knownClassIds = BuildKnownClassIds(classLibrary);
             var upgradeIds = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < library.upgrades.Length; i++)
             {
@@ -647,6 +710,8 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError($"Upgrade {upgrade.id} references unknown target: {upgrade.target}");
                 }
+
+                ValidateAllowedClassIds("Upgrade " + upgrade.id, upgrade.allowedClasses, knownClassIds, result);
             }
         }
 
@@ -892,6 +957,7 @@ namespace Deucarian.TemplateGameSurvivors
                 ValidateClassRecord(
                     classRecord.id,
                     classRecord.startingWeaponId,
+                    classRecord.startingWeaponIds,
                     classRecord.unlockedByDefault,
                     classRecord.unlockRewardId,
                     classRecord.statModifiers,
@@ -911,6 +977,34 @@ namespace Deucarian.TemplateGameSurvivors
             if (defaultUnlockedCount == 0)
             {
                 result.AddError("Sample class library requires at least one default unlocked class.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(library.defaultClassId))
+            {
+                if (!classIds.Contains(library.defaultClassId))
+                {
+                    result.AddError($"Sample class library references unknown default class id: {library.defaultClassId}");
+                }
+                else
+                {
+                    bool defaultUnlocked = false;
+                    for (int i = 0; i < library.classes.Length; i++)
+                    {
+                        ClassRecordJson classRecord = library.classes[i];
+                        if (classRecord != null &&
+                            string.Equals(classRecord.id, library.defaultClassId, StringComparison.Ordinal) &&
+                            classRecord.unlockedByDefault)
+                        {
+                            defaultUnlocked = true;
+                            break;
+                        }
+                    }
+
+                    if (!defaultUnlocked)
+                    {
+                        result.AddError($"Sample class library default class must be unlocked by default: {library.defaultClassId}");
+                    }
+                }
             }
         }
 
@@ -1074,6 +1168,7 @@ namespace Deucarian.TemplateGameSurvivors
         private static void ValidateClassRecord(
             string id,
             string startingWeaponId,
+            IReadOnlyList<string> startingWeaponIds,
             bool unlockedByDefault,
             string unlockRewardId,
             IReadOnlyList<SurvivorsClassStatModifierDefinition> statModifiers,
@@ -1090,6 +1185,8 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 result.AddError($"Class {resolvedId} references unknown starting weapon: {startingWeaponId}");
             }
+
+            ValidateClassStartingWeaponIds(resolvedId, startingWeaponIds, knownWeaponIds, result);
 
             if (!unlockedByDefault && string.IsNullOrWhiteSpace(unlockRewardId))
             {
@@ -1117,6 +1214,7 @@ namespace Deucarian.TemplateGameSurvivors
         private static void ValidateClassRecord(
             string id,
             string startingWeaponId,
+            string[] startingWeaponIds,
             bool unlockedByDefault,
             string unlockRewardId,
             StatModifierRecordJson[] statModifiers,
@@ -1133,6 +1231,8 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 result.AddError($"Class {resolvedId} references unknown starting weapon: {startingWeaponId}");
             }
+
+            ValidateClassStartingWeaponIds(resolvedId, startingWeaponIds, knownWeaponIds, result);
 
             if (!unlockedByDefault && string.IsNullOrWhiteSpace(unlockRewardId))
             {
@@ -1154,6 +1254,93 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 ValidateClassStatRecord(resolvedId, modifier.stat, modifier.amount, result);
+            }
+        }
+
+        private static void ValidateClassStartingWeaponIds(
+            string classId,
+            IReadOnlyList<string> startingWeaponIds,
+            HashSet<string> knownWeaponIds,
+            SurvivorsContentValidationResult result)
+        {
+            if (startingWeaponIds == null || startingWeaponIds.Count == 0)
+            {
+                result.AddError($"Class {classId} requires at least one starting weapon in its loadout.");
+                return;
+            }
+
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < startingWeaponIds.Count; i++)
+            {
+                string weaponId = startingWeaponIds[i];
+                if (string.IsNullOrWhiteSpace(weaponId))
+                {
+                    result.AddError($"Class {classId} starting weapon loadout contains an empty id.");
+                    continue;
+                }
+
+                if (!seen.Add(weaponId))
+                {
+                    result.AddError($"Class {classId} has duplicate starting weapon id: {weaponId}");
+                }
+
+                if (knownWeaponIds == null || !knownWeaponIds.Contains(weaponId))
+                {
+                    result.AddError($"Class {classId} references unknown loadout weapon: {weaponId}");
+                }
+            }
+        }
+
+        private static void ValidateClassUpgradeGateRecord(
+            string upgradeId,
+            IReadOnlyList<string> allowedClassIds,
+            HashSet<string> knownUpgradeIds,
+            HashSet<string> knownClassIds,
+            SurvivorsContentValidationResult result)
+        {
+            string resolvedId = string.IsNullOrWhiteSpace(upgradeId) ? "unknown upgrade" : upgradeId;
+            if (string.IsNullOrWhiteSpace(upgradeId))
+            {
+                result.AddError("Class upgrade gate is missing an upgrade id.");
+            }
+            else if (knownUpgradeIds == null || !knownUpgradeIds.Contains(upgradeId))
+            {
+                result.AddError($"Class upgrade gate references unknown upgrade id: {upgradeId}");
+            }
+
+            ValidateAllowedClassIds("Class upgrade gate " + resolvedId, allowedClassIds, knownClassIds, result);
+        }
+
+        private static void ValidateAllowedClassIds(
+            string label,
+            IReadOnlyList<string> allowedClassIds,
+            HashSet<string> knownClassIds,
+            SurvivorsContentValidationResult result)
+        {
+            if (allowedClassIds == null || allowedClassIds.Count == 0)
+            {
+                return;
+            }
+
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < allowedClassIds.Count; i++)
+            {
+                string classId = allowedClassIds[i];
+                if (string.IsNullOrWhiteSpace(classId))
+                {
+                    result.AddError($"{label} allowed class list contains an empty id.");
+                    continue;
+                }
+
+                if (!seen.Add(classId))
+                {
+                    result.AddError($"{label} allowed class list contains duplicate id: {classId}");
+                }
+
+                if (knownClassIds == null || !knownClassIds.Contains(classId))
+                {
+                    result.AddError($"{label} references unknown class id: {classId}");
+                }
             }
         }
 
@@ -1185,6 +1372,51 @@ namespace Deucarian.TemplateGameSurvivors
                 if (weapon != null && !string.IsNullOrWhiteSpace(weapon.Id))
                 {
                     ids.Add(weapon.Id);
+                }
+            }
+
+            return ids;
+        }
+
+        private static HashSet<string> BuildKnownClassIds(SurvivorsClassLibraryDefinition classes)
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (classes == null)
+            {
+                return ids;
+            }
+
+            for (int i = 0; i < classes.Classes.Count; i++)
+            {
+                SurvivorsClassDefinition definition = classes.Classes[i];
+                if (definition != null && !string.IsNullOrWhiteSpace(definition.Id))
+                {
+                    ids.Add(definition.Id);
+                }
+            }
+
+            return ids;
+        }
+
+        private static HashSet<string> BuildKnownClassIds(ClassLibraryJson classLibrary)
+        {
+            if (classLibrary == null)
+            {
+                return BuildKnownClassIds(BasicSurvivorsGame.CreateClassLibraryDefinition());
+            }
+
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (classLibrary.classes == null)
+            {
+                return ids;
+            }
+
+            for (int i = 0; i < classLibrary.classes.Length; i++)
+            {
+                ClassRecordJson classRecord = classLibrary.classes[i];
+                if (classRecord != null && !string.IsNullOrWhiteSpace(classRecord.id))
+                {
+                    ids.Add(classRecord.id);
                 }
             }
 
@@ -1290,6 +1522,7 @@ namespace Deucarian.TemplateGameSurvivors
             public string rarity;
             public string effect;
             public string target;
+            public string[] allowedClasses;
         }
 
         [Serializable]
@@ -1380,6 +1613,7 @@ namespace Deucarian.TemplateGameSurvivors
         [Serializable]
         private sealed class ClassLibraryJson
         {
+            public string defaultClassId;
             public ClassRecordJson[] classes;
         }
 
@@ -1389,6 +1623,7 @@ namespace Deucarian.TemplateGameSurvivors
             public string id;
             public string displayName;
             public string startingWeaponId;
+            public string[] startingWeaponIds;
             public bool unlockedByDefault;
             public string unlockRewardId;
             public StatModifierRecordJson[] statModifiers;
