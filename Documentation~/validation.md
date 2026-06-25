@@ -55,3 +55,19 @@ Phase 2P adds validation for:
 - existing defeat/restart flow
 
 No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2P validation.
+
+Phase 2Q adds validation for:
+
+- runtime reward/meta descriptor validation
+- sample reward JSON validation for blood shards, legacy XP, persistent upgrades, and reward definitions
+- clear validation failures for duplicate currency IDs, duplicate persistent upgrade IDs, invalid persistent upgrade targets, missing persistent upgrade effects, invalid rank costs, duplicate reward IDs, missing reward currency/track references, and empty rewards
+- reference-shaped run reward calculation for duration, level, miniboss kills, boss kills, victory, and boss bonus rewards
+- v1-to-v2 meta profile save migration
+- miniboss reward grant when a run ends in defeat
+- final boss reward grant and victory reward persistence
+- save/load persistence across controller instances
+- persistent meta upgrade affecting a later run's projectile damage
+
+The Phase 2Q save path uses `com.deucarian.persistence` and `com.deucarian.progression` from local Survivors kit code. Boss relic drafts, class unlocks, skill trees, richer meta upgrade graphs, and concrete-product reward economies are deliberately deferred.
+
+No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2Q validation.

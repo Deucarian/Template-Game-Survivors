@@ -8,10 +8,12 @@
 - `Projectiles`: stable projectile descriptor for the first projectile.
 - `Run Upgrades`: deterministic draft generation, rank tracking, and max-rank filtering.
 - `Encounters`: first-slice encounter/wave descriptors for authored spawn-flow shape.
+- `Progression`: local Survivors meta currency, legacy XP track, and ranked persistent upgrade purchase state.
+- `Persistence`: local Survivors meta profile save/load and schema migration.
 
 ## Local Survivors Kit Code
 
-The following intentionally stay local in Phase 2P:
+The following intentionally stay local in Phase 2Q:
 
 - top-down player movement
 - camera follow
@@ -21,6 +23,11 @@ The following intentionally stay local in Phase 2P:
 - miniboss and boss timing rules
 - victory state machine
 - boss/miniboss sample profiles and reward-drop rules
+- run result summary rules
+- boss/miniboss reward bonus rules
+- blood shard and legacy XP reward calculation
+- persistent meta upgrade effects
+- local meta profile DTO shape and migration mapping
 - nearest-enemy auto-targeting
 - projectile steering and collision checks
 - hitscan/beam targeting and primitive beam visuals
@@ -56,6 +63,8 @@ Do not extract these yet. Revisit only after parity gaps repeat across real temp
 - pooled payload and ground-hazard lifecycle only if another template needs the same runtime contract
 - XP/drop lifecycle abstractions
 - content validation for authored libraries if multiple templates need the same rules
+- shared reward-draft abstractions only if another Survivors-style template proves the same shape
+- richer meta progression save DTOs only if multiple concrete games share the same persisted profile model
 - diagnostics for spawn pressure, pool stats, and draft state
 
-No shared package extraction happened in Phase 2P.
+No shared package extraction happened in Phase 2Q.

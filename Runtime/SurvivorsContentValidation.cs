@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Deucarian.Progression;
 using Deucarian.RunUpgrades;
 using UnityEngine;
 
@@ -27,7 +28,8 @@ namespace Deucarian.TemplateGameSurvivors
             IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons,
             RunUpgradeCatalog upgrades,
             IReadOnlyList<RunUpgradeTargetId> knownUpgradeTargets,
-            SurvivorsRunFlowDefinition runFlow = null)
+            SurvivorsRunFlowDefinition runFlow = null,
+            SurvivorsMetaProgressionDefinition metaProgression = null)
         {
             var result = new SurvivorsContentValidationResult();
             ValidateWeaponDefinitions(weapons, result);
@@ -35,6 +37,11 @@ namespace Deucarian.TemplateGameSurvivors
             if (runFlow != null)
             {
                 ValidateRunFlowDefinition(runFlow, result);
+            }
+
+            if (metaProgression != null)
+            {
+                ValidateMetaProgressionDefinition(metaProgression, knownUpgradeTargets, result);
             }
 
             return result;
@@ -47,7 +54,7 @@ namespace Deucarian.TemplateGameSurvivors
             return result;
         }
 
-        public static SurvivorsContentValidationResult ValidateSampleJson(string weaponJson, string upgradeJson, string enemyJson = null)
+        public static SurvivorsContentValidationResult ValidateSampleJson(string weaponJson, string upgradeJson, string enemyJson = null, string rewardJson = null)
         {
             var result = new SurvivorsContentValidationResult();
             WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
@@ -55,9 +62,13 @@ namespace Deucarian.TemplateGameSurvivors
             EnemyLibraryJson enemyLibrary = string.IsNullOrWhiteSpace(enemyJson)
                 ? null
                 : ParseJson<EnemyLibraryJson>(enemyJson, "enemy library", result);
+            RewardLibraryJson rewardLibrary = string.IsNullOrWhiteSpace(rewardJson)
+                ? null
+                : ParseJson<RewardLibraryJson>(rewardJson, "reward library", result);
             ValidateWeaponLibrary(weaponLibrary, result);
             ValidateUpgradeLibrary(upgradeLibrary, result);
             ValidateEnemyLibrary(enemyLibrary, result);
+            ValidateRewardLibrary(rewardLibrary, result);
             return result;
         }
 
@@ -116,6 +127,120 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             ValidateEnemyStats(profile.Id, profile.MaxHealth, profile.MoveSpeed, profile.Radius, profile.ContactDamage, profile.ContactIntervalSeconds, profile.ExperienceReward, result);
+        }
+
+        private static void ValidateMetaProgressionDefinition(
+            SurvivorsMetaProgressionDefinition metaProgression,
+            IReadOnlyList<RunUpgradeTargetId> knownUpgradeTargets,
+            SurvivorsContentValidationResult result)
+        {
+            if (metaProgression == null)
+            {
+                result.AddError("Meta progression definition is required.");
+                return;
+            }
+
+            if (metaProgression.BloodShardsCurrencyId.IsEmpty)
+            {
+                result.AddError("Meta progression requires a blood shards currency id.");
+            }
+
+            if (metaProgression.LegacyExperienceTrackId.IsEmpty)
+            {
+                result.AddError("Meta progression requires a legacy XP track id.");
+            }
+
+            var knownTargets = new HashSet<string>(StringComparer.Ordinal);
+            if (knownUpgradeTargets != null)
+            {
+                for (int i = 0; i < knownUpgradeTargets.Count; i++)
+                {
+                    knownTargets.Add(knownUpgradeTargets[i].Value);
+                }
+            }
+
+            var upgradeIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < metaProgression.PersistentUpgrades.Count; i++)
+            {
+                SurvivorsPersistentUpgradeDefinition upgrade = metaProgression.PersistentUpgrades[i];
+                if (upgrade == null)
+                {
+                    result.AddError($"Persistent upgrade definition at index {i} is null.");
+                    continue;
+                }
+
+                if (upgrade.Id.IsEmpty || string.IsNullOrWhiteSpace(upgrade.Id.Value))
+                {
+                    result.AddError($"Persistent upgrade definition at index {i} is missing an id.");
+                }
+                else if (!upgradeIds.Add(upgrade.Id.Value))
+                {
+                    result.AddError($"Duplicate persistent upgrade id: {upgrade.Id.Value}");
+                }
+
+                if (string.IsNullOrWhiteSpace(upgrade.EffectId))
+                {
+                    result.AddError($"Persistent upgrade {upgrade.Id.Value} is missing an effect id.");
+                }
+
+                if (string.IsNullOrWhiteSpace(upgrade.TargetId) || !knownTargets.Contains(upgrade.TargetId))
+                {
+                    result.AddError($"Persistent upgrade {upgrade.Id.Value} targets unknown content id: {upgrade.TargetId}");
+                }
+
+                if (upgrade.MaxRank < 1)
+                {
+                    result.AddError($"Persistent upgrade {upgrade.Id.Value} requires max rank at least one.");
+                }
+
+                if (upgrade.RankCosts.Count != upgrade.MaxRank)
+                {
+                    result.AddError($"Persistent upgrade {upgrade.Id.Value} rank cost count must match max rank.");
+                }
+
+                for (int costIndex = 0; costIndex < upgrade.RankCosts.Count; costIndex++)
+                {
+                    if (upgrade.RankCosts[costIndex] <= 0)
+                    {
+                        result.AddError($"Persistent upgrade {upgrade.Id.Value} rank cost must be above zero.");
+                    }
+                }
+            }
+
+            var rewardIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < metaProgression.Rewards.Count; i++)
+            {
+                SurvivorsRewardDefinition reward = metaProgression.Rewards[i];
+                if (reward == null)
+                {
+                    result.AddError($"Reward definition at index {i} is null.");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(reward.Id))
+                {
+                    result.AddError($"Reward definition at index {i} is missing an id.");
+                }
+                else if (!rewardIds.Add(reward.Id))
+                {
+                    result.AddError($"Duplicate reward id: {reward.Id}");
+                }
+
+                if (!reward.CurrencyId.Equals(metaProgression.BloodShardsCurrencyId))
+                {
+                    result.AddError($"Reward {reward.Id} references unknown currency id: {reward.CurrencyId.Value}");
+                }
+
+                if (!reward.TrackId.Equals(metaProgression.LegacyExperienceTrackId))
+                {
+                    result.AddError($"Reward {reward.Id} references unknown progression track id: {reward.TrackId.Value}");
+                }
+
+                if (reward.CurrencyAmount <= 0 && reward.TrackAmount <= 0)
+                {
+                    result.AddError($"Reward {reward.Id} must grant currency or legacy XP.");
+                }
+            }
         }
 
         private static void ValidateWeaponDefinitions(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons, SurvivorsContentValidationResult result)
@@ -420,6 +545,182 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static void ValidateRewardLibrary(RewardLibraryJson library, SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            var currencyIds = new HashSet<string>(StringComparer.Ordinal);
+            if (library.currencies == null || library.currencies.Length == 0)
+            {
+                result.AddError("Sample reward library must contain at least one currency.");
+            }
+            else
+            {
+                for (int i = 0; i < library.currencies.Length; i++)
+                {
+                    CurrencyRecordJson currency = library.currencies[i];
+                    if (currency == null || string.IsNullOrWhiteSpace(currency.id))
+                    {
+                        result.AddError($"Currency record at index {i} is missing an id.");
+                        continue;
+                    }
+
+                    if (!IsValidCurrencyId(currency.id))
+                    {
+                        result.AddError($"Currency {currency.id} is not a valid currency id.");
+                    }
+
+                    if (!currencyIds.Add(currency.id))
+                    {
+                        result.AddError($"Duplicate currency id: {currency.id}");
+                    }
+                }
+            }
+
+            var trackIds = new HashSet<string>(StringComparer.Ordinal);
+            if (library.tracks == null || library.tracks.Length == 0)
+            {
+                result.AddError("Sample reward library must contain at least one legacy XP track.");
+            }
+            else
+            {
+                for (int i = 0; i < library.tracks.Length; i++)
+                {
+                    TrackRecordJson track = library.tracks[i];
+                    if (track == null || string.IsNullOrWhiteSpace(track.id))
+                    {
+                        result.AddError($"Progression track record at index {i} is missing an id.");
+                        continue;
+                    }
+
+                    if (!IsValidTrackId(track.id))
+                    {
+                        result.AddError($"Progression track {track.id} is not a valid track id.");
+                    }
+
+                    if (!trackIds.Add(track.id))
+                    {
+                        result.AddError($"Duplicate progression track id: {track.id}");
+                    }
+                }
+            }
+
+            var knownTargets = new HashSet<string>(StringComparer.Ordinal);
+            IReadOnlyList<RunUpgradeTargetId> targetIds = BasicSurvivorsGame.CreateKnownUpgradeTargets();
+            for (int i = 0; i < targetIds.Count; i++)
+            {
+                knownTargets.Add(targetIds[i].Value);
+            }
+
+            var persistentUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
+            if (library.persistentUpgrades == null || library.persistentUpgrades.Length == 0)
+            {
+                result.AddError("Sample reward library must contain at least one persistent upgrade.");
+            }
+            else
+            {
+                for (int i = 0; i < library.persistentUpgrades.Length; i++)
+                {
+                    PersistentUpgradeRecordJson upgrade = library.persistentUpgrades[i];
+                    if (upgrade == null || string.IsNullOrWhiteSpace(upgrade.id))
+                    {
+                        result.AddError($"Persistent upgrade record at index {i} is missing an id.");
+                        continue;
+                    }
+
+                    if (!IsValidResearchNodeId(upgrade.id))
+                    {
+                        result.AddError($"Persistent upgrade {upgrade.id} is not a valid upgrade id.");
+                    }
+
+                    if (!persistentUpgradeIds.Add(upgrade.id))
+                    {
+                        result.AddError($"Duplicate persistent upgrade id: {upgrade.id}");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(upgrade.effect))
+                    {
+                        result.AddError($"Persistent upgrade {upgrade.id} is missing an effect id.");
+                    }
+
+                    if (!knownTargets.Contains(upgrade.target))
+                    {
+                        result.AddError($"Persistent upgrade {upgrade.id} references unknown target: {upgrade.target}");
+                    }
+
+                    if (upgrade.maxRank < 1)
+                    {
+                        result.AddError($"Persistent upgrade {upgrade.id} requires max rank at least one.");
+                    }
+
+                    if (upgrade.rankCosts == null || upgrade.rankCosts.Length != upgrade.maxRank)
+                    {
+                        result.AddError($"Persistent upgrade {upgrade.id} rank cost count must match max rank.");
+                    }
+                    else
+                    {
+                        for (int costIndex = 0; costIndex < upgrade.rankCosts.Length; costIndex++)
+                        {
+                            if (upgrade.rankCosts[costIndex] <= 0)
+                            {
+                                result.AddError($"Persistent upgrade {upgrade.id} rank cost must be above zero.");
+                            }
+                        }
+                    }
+                }
+            }
+
+            var rewardIds = new HashSet<string>(StringComparer.Ordinal);
+            if (library.rewards == null || library.rewards.Length == 0)
+            {
+                result.AddError("Sample reward library must contain at least one reward.");
+                return;
+            }
+
+            for (int i = 0; i < library.rewards.Length; i++)
+            {
+                RewardRecordJson reward = library.rewards[i];
+                if (reward == null || string.IsNullOrWhiteSpace(reward.id))
+                {
+                    result.AddError($"Reward record at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!rewardIds.Add(reward.id))
+                {
+                    result.AddError($"Duplicate reward id: {reward.id}");
+                }
+
+                if (!currencyIds.Contains(reward.currencyId))
+                {
+                    result.AddError($"Reward {reward.id} references unknown currency: {reward.currencyId}");
+                }
+
+                if (!trackIds.Contains(reward.trackId))
+                {
+                    result.AddError($"Reward {reward.id} references unknown progression track: {reward.trackId}");
+                }
+
+                if (reward.currencyAmount < 0)
+                {
+                    result.AddError($"Reward {reward.id} cannot grant negative currency.");
+                }
+
+                if (reward.trackAmount < 0)
+                {
+                    result.AddError($"Reward {reward.id} cannot grant negative legacy XP.");
+                }
+
+                if (reward.currencyAmount == 0 && reward.trackAmount == 0)
+                {
+                    result.AddError($"Reward {reward.id} must grant currency or legacy XP.");
+                }
+            }
+        }
+
         private static void ValidateEnemyLibrary(EnemyLibraryJson library, SurvivorsContentValidationResult result)
         {
             if (library == null)
@@ -526,6 +827,42 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static bool IsValidCurrencyId(string value)
+        {
+            try
+            {
+                return !new CurrencyId(value).IsEmpty;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static bool IsValidTrackId(string value)
+        {
+            try
+            {
+                return !new TrackId(value).IsEmpty;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        private static bool IsValidResearchNodeId(string value)
+        {
+            try
+            {
+                return !new ResearchNodeId(value).IsEmpty;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         private static T ParseJson<T>(string json, string label, SurvivorsContentValidationResult result)
         {
             if (string.IsNullOrWhiteSpace(json))
@@ -611,6 +948,51 @@ namespace Deucarian.TemplateGameSurvivors
             public int experienceDrop;
             public float spawnTimeSeconds;
             public bool finalBoss;
+        }
+
+        [Serializable]
+        private sealed class RewardLibraryJson
+        {
+            public CurrencyRecordJson[] currencies;
+            public TrackRecordJson[] tracks;
+            public PersistentUpgradeRecordJson[] persistentUpgrades;
+            public RewardRecordJson[] rewards;
+        }
+
+        [Serializable]
+        private sealed class CurrencyRecordJson
+        {
+            public string id;
+            public string displayName;
+        }
+
+        [Serializable]
+        private sealed class TrackRecordJson
+        {
+            public string id;
+            public string displayName;
+        }
+
+        [Serializable]
+        private sealed class PersistentUpgradeRecordJson
+        {
+            public string id;
+            public string displayName;
+            public string target;
+            public string effect;
+            public int maxRank;
+            public int[] rankCosts;
+            public float damageBonusPerRank;
+        }
+
+        [Serializable]
+        private sealed class RewardRecordJson
+        {
+            public string id;
+            public string currencyId;
+            public int currencyAmount;
+            public string trackId;
+            public int trackAmount;
         }
     }
 }

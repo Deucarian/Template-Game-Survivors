@@ -1,0 +1,41 @@
+{
+  "currencies": [
+    {
+      "id": "currency.survivors.blood-shards",
+      "displayName": "Blood Shards"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "track.survivors.legacy-xp",
+      "displayName": "Legacy XP"
+    }
+  ],
+  "persistentUpgrades": [
+    {
+      "id": "meta.survivors.arcane-legacy",
+      "displayName": "Arcane Legacy",
+      "target": "survivors.weapon.arcane-wand",
+      "effect": "survivors.meta.damage.flat",
+      "maxRank": 3,
+      "rankCosts": [5, 8, 13],
+      "damageBonusPerRank": 1.5
+    }
+  ],
+  "rewards": [
+    {
+      "id": "reward.survivors.miniboss",
+      "currencyId": "currency.survivors.blood-shards",
+      "currencyAmount": 4,
+      "trackId": "track.survivors.legacy-xp",
+      "trackAmount": 25
+    },
+    {
+      "id": "reward.survivors.final-boss",
+      "currencyId": "currency.survivors.blood-shards",
+      "currencyAmount": 18,
+      "trackId": "track.survivors.legacy-xp",
+      "trackAmount": 120
+    }
+  ]
+}

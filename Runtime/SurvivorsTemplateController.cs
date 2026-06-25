@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using Deucarian.Combat;
+using Deucarian.Persistence;
+using Deucarian.Persistence.Unity;
 using Deucarian.Projectiles;
 using Deucarian.RunUpgrades;
 using Deucarian.WeaponSystems;
@@ -45,10 +47,18 @@ namespace Deucarian.TemplateGameSurvivors
         private ProjectileDefinition _projectileDefinition;
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
         private SurvivorsRunFlowRuntime _runFlow;
+        private SurvivorsMetaProgressionService _metaProgression;
+        private IPersistenceService _injectedMetaPersistence;
+        private SaveSlotId _metaSaveSlotId = new SaveSlotId("survivors-template");
         private float _enemySpawnTimer;
         private float _playerInvulnerabilityTimer;
         private long _spawnSequence;
         private bool _runStarted;
+        private bool _ownsMetaProgressionService;
+        private bool _metaProfileLoaded;
+        private bool _runRewardsGranted;
+        private int _bonusBloodShardsEarnedThisRun;
+        private int _bonusLegacyExperienceEarnedThisRun;
 
         public SurvivorsRunState State { get; private set; } = SurvivorsRunState.Booting;
         public int Level { get; private set; } = 1;
@@ -77,12 +87,20 @@ namespace Deucarian.TemplateGameSurvivors
         public int BossSpawnCount { get; private set; }
         public int MinibossKilledCount { get; private set; }
         public int BossKilledCount { get; private set; }
+        public int MinibossRewardGrantCount { get; private set; }
+        public int BossRewardGrantCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
+        public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
+        public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
+        public int BloodShardsEarnedThisRun { get; private set; }
+        public int LegacyExperienceEarnedThisRun { get; private set; }
+        public SurvivorsRunRewardSummary LastRunResult { get; private set; }
         public float RunTimeSeconds { get; private set; }
         public float MoveSpeedBonus { get; private set; }
         public float DamageBonus { get; private set; }
+        public float PersistentDamageBonus { get; private set; }
         public float WeaponCooldownMultiplierBonus { get; private set; }
         public float PickupRangeBonus { get; private set; }
         public int OrbitBladeBonus { get; private set; }
@@ -113,6 +131,11 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateDefaultTuning());
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
+        public long MetaBloodShards => _metaProgression == null ? 0 : _metaProgression.UnspentBloodShards;
+        public long LifetimeBloodShards => _metaProgression == null ? 0 : _metaProgression.LifetimeBloodShards;
+        public long LifetimeLegacyExperience => _metaProgression == null ? 0 : _metaProgression.LifetimeLegacyExperience;
+        public int MetaCompletedRuns => _metaProgression == null ? 0 : _metaProgression.CompletedRuns;
+        public int MetaBossVictories => _metaProgression == null ? 0 : _metaProgression.BossVictories;
         public SurvivorsRunPhase RunPhase => _runFlow == null ? SurvivorsRunPhase.Opening : _runFlow.Phase;
         public int RunEscalationLevel => _runFlow == null ? 0 : _runFlow.EscalationLevel;
         public bool IsPlaying => State == SurvivorsRunState.Playing;
@@ -187,13 +210,14 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            GUI.Box(new Rect(12, 12, 280, 150), string.Empty);
+            GUI.Box(new Rect(12, 12, 280, 174), string.Empty);
             GUI.Label(new Rect(24, 22, 230, 22), $"HP {CurrentHealth:0}/{MaxHealth:0}  LV {Level}  XP {Experience}/{RequiredExperienceForNextLevel}");
             GUI.Label(new Rect(24, 44, 230, 22), $"Enemies {ActiveEnemyCount}  Kills {KilledCount}");
             GUI.Label(new Rect(24, 66, 250, 22), $"Phase {RunPhase}  Time {RunTimeSeconds:0}s  Esc {RunEscalationLevel}");
             GUI.Label(new Rect(24, 88, 250, 22), $"Bosses {ActiveBossCount}  Minibosses {ActiveMinibossCount}");
             GUI.Label(new Rect(24, 110, 230, 22), $"Damage {ProjectileDamage:0.0}  Cooldown {WeaponCooldownSeconds:0.00}s");
-            GUI.Label(new Rect(24, 132, 230, 22), "WASD/Arrows move  M magnet  R restart");
+            GUI.Label(new Rect(24, 132, 250, 22), $"Shards {MetaBloodShards}  Legacy XP {LifetimeLegacyExperience}");
+            GUI.Label(new Rect(24, 154, 230, 22), "WASD/Arrows move  M magnet  R restart");
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -201,17 +225,19 @@ namespace Deucarian.TemplateGameSurvivors
             }
             else if (State == SurvivorsRunState.GameOver)
             {
-                GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 70f, 300f, 140f), "Game Over");
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f, 140f, 34f), "Restart"))
+                GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 82f, 300f, 164f), "Game Over");
+                GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 28f, 232f, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP");
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f + 18f, 140f, 34f), "Restart"))
                 {
                     RestartRun();
                 }
             }
             else if (State == SurvivorsRunState.Victory)
             {
-                GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 70f, 300f, 140f), "Victory");
+                GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 82f, 300f, 164f), "Victory");
                 GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 28f, 232f, 22f), $"Run cleared in {RunTimeSeconds:0}s");
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f + 10f, 140f, 34f), "Restart"))
+                GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 6f, 232f, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP");
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f + 30f, 140f, 34f), "Restart"))
                 {
                     RestartRun();
                 }
@@ -227,6 +253,7 @@ namespace Deucarian.TemplateGameSurvivors
             _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
             _upgradeCatalog = BasicSurvivorsGame.CreateRunUpgradeCatalog();
             _upgradeState = new RunUpgradeState();
+            EnsureMetaProgressionLoaded();
             _playerHealth = new HealthState(new CombatantId("combatant.survivors.player"), resolved.PlayerMaxHealth, resolved.PlayerMaxHealth);
             Level = 1;
             Experience = 0;
@@ -254,12 +281,18 @@ namespace Deucarian.TemplateGameSurvivors
             BossSpawnCount = 0;
             MinibossKilledCount = 0;
             BossKilledCount = 0;
+            MinibossRewardGrantCount = 0;
+            BossRewardGrantCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
+            BloodShardsEarnedThisRun = 0;
+            LegacyExperienceEarnedThisRun = 0;
+            LastRunResult = null;
             RunTimeSeconds = 0f;
             MoveSpeedBonus = 0f;
             DamageBonus = 0f;
+            PersistentDamageBonus = 0f;
             WeaponCooldownMultiplierBonus = 0f;
             PickupRangeBonus = 0f;
             OrbitBladeBonus = 0;
@@ -273,10 +306,14 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadCountBonus = 0;
             PayloadExplosionRadiusBonus = 0f;
             PayloadTriggerRadiusBonus = 0f;
+            _runRewardsGranted = false;
+            _bonusBloodShardsEarnedThisRun = 0;
+            _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
             _playerInvulnerabilityTimer = 0f;
             _spawnSequence = 0;
             _currentDraft = null;
+            ApplyPersistentMetaBonuses();
             BuildRuntimeWorld();
             _runFlow = new SurvivorsRunFlowRuntime(BasicSurvivorsGame.CreateRunFlowDefinition(resolved));
             _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved));
@@ -385,6 +422,47 @@ namespace Deucarian.TemplateGameSurvivors
             ApplyDamageToPlayer(MaxHealth + 1000f, "test.kill");
         }
 
+        public void ConfigureMetaPersistenceForTest(IPersistenceService persistence, SaveSlotId slotId)
+        {
+            _injectedMetaPersistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
+            _metaSaveSlotId = slotId;
+            ReleaseMetaProgressionService();
+        }
+
+        public bool TryPurchasePersistentUpgradeForTest(string id)
+        {
+            return TryPurchasePersistentUpgrade(id);
+        }
+
+        public bool TryPurchasePersistentUpgrade(string id)
+        {
+            EnsureMetaProgressionLoaded();
+            bool purchased = _metaProgression.TryPurchasePersistentUpgrade(id);
+            if (purchased && _runStarted)
+            {
+                ApplyPersistentMetaBonuses();
+            }
+
+            return purchased;
+        }
+
+        public int GetPersistentUpgradeRankForTest(string id)
+        {
+            EnsureMetaProgressionLoaded();
+            return _metaProgression.GetPersistentUpgradeRank(id);
+        }
+
+        public void ResetMetaProgressionForTest()
+        {
+            EnsureMetaProgressionLoaded();
+            _metaProgression.Reset();
+            _metaProgression.Load();
+            if (_runStarted)
+            {
+                ApplyPersistentMetaBonuses();
+            }
+        }
+
         public bool ApplyUpgradeByIdForTest(string id)
         {
             EnsureRunStartedForTest();
@@ -430,6 +508,7 @@ namespace Deucarian.TemplateGameSurvivors
             CombatDamageResolver.Resolve(_combatCatalog, _playerHealth, null, request);
             if (!_playerHealth.IsAlive)
             {
+                GrantRunRewards(victory: false);
                 State = SurvivorsRunState.GameOver;
                 _currentDraft = null;
             }
@@ -499,10 +578,12 @@ namespace Deucarian.TemplateGameSurvivors
             if (role == SurvivorsEnemyRole.Miniboss)
             {
                 MinibossKilledCount++;
+                GrantBossReward(SurvivorsEnemyRole.Miniboss);
             }
             else if (role == SurvivorsEnemyRole.Boss)
             {
                 BossKilledCount++;
+                GrantBossReward(SurvivorsEnemyRole.Boss);
                 EnterVictory();
             }
         }
@@ -900,6 +981,92 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void EnsureMetaProgressionLoaded()
+        {
+            if (_metaProgression == null)
+            {
+                IPersistenceService persistence = _injectedMetaPersistence ??
+                    new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider()));
+                _ownsMetaProgressionService = _injectedMetaPersistence == null;
+                _metaProgression = new SurvivorsMetaProgressionService(
+                    persistence,
+                    _metaSaveSlotId,
+                    BasicSurvivorsGame.CreateMetaProgressionDefinition());
+                _metaProfileLoaded = false;
+            }
+
+            if (!_metaProfileLoaded)
+            {
+                _metaProgression.Load();
+                _metaProfileLoaded = true;
+            }
+        }
+
+        private void ApplyPersistentMetaBonuses()
+        {
+            EnsureMetaProgressionLoaded();
+            float previousBonus = PersistentDamageBonus;
+            PersistentDamageBonus = _metaProgression.GetPersistentDamageBonus(BasicSurvivorsGame.WeaponTarget.Value);
+            DamageBonus += PersistentDamageBonus - previousBonus;
+        }
+
+        private void GrantBossReward(SurvivorsEnemyRole role)
+        {
+            string rewardId = role == SurvivorsEnemyRole.Boss ? BasicSurvivorsGame.BossRewardId : BasicSurvivorsGame.MinibossRewardId;
+            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            if (!definition.TryGetReward(rewardId, out SurvivorsRewardDefinition reward))
+            {
+                return;
+            }
+
+            _bonusBloodShardsEarnedThisRun += reward.CurrencyAmount;
+            _bonusLegacyExperienceEarnedThisRun += reward.TrackAmount;
+            if (role == SurvivorsEnemyRole.Boss)
+            {
+                BossRewardGrantCount++;
+            }
+            else
+            {
+                MinibossRewardGrantCount++;
+            }
+        }
+
+        private void GrantRunRewards(bool victory)
+        {
+            if (_runRewardsGranted)
+            {
+                return;
+            }
+
+            EnsureMetaProgressionLoaded();
+            LastRunResult = SurvivorsRunRewardCalculator.Calculate(
+                RunTimeSeconds,
+                Level,
+                MinibossKilledCount,
+                BossKilledCount,
+                victory,
+                _bonusBloodShardsEarnedThisRun,
+                _bonusLegacyExperienceEarnedThisRun);
+            BloodShardsEarnedThisRun = LastRunResult.BloodShardsEarned;
+            LegacyExperienceEarnedThisRun = LastRunResult.LegacyExperienceEarned;
+            if (_metaProgression.GrantRunRewards(LastRunResult).Succeeded)
+            {
+                _runRewardsGranted = true;
+            }
+        }
+
+        private void ReleaseMetaProgressionService()
+        {
+            if (_metaProgression != null && _ownsMetaProgressionService)
+            {
+                _metaProgression.Dispose();
+            }
+
+            _metaProgression = null;
+            _ownsMetaProgressionService = false;
+            _metaProfileLoaded = false;
+        }
+
         private void MovePlayer(Vector2 movementInput, float deltaTime)
         {
             if (_playerObject == null || movementInput.sqrMagnitude <= 0.0001f)
@@ -952,6 +1119,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _runFlow.TryConsumeBossVictory();
             }
 
+            GrantRunRewards(victory: true);
             _currentDraft = null;
             State = SurvivorsRunState.Victory;
         }
@@ -1326,6 +1494,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void OnDestroy()
         {
             ClearRun();
+            ReleaseMetaProgressionService();
         }
     }
 

@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using Deucarian.Persistence;
 using Deucarian.Projectiles;
+using Deucarian.Progression;
 using Deucarian.RunUpgrades;
 using Deucarian.WeaponSystems;
 using NUnit.Framework;
@@ -18,6 +20,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             ProjectileDefinition projectile = BasicSurvivorsGame.CreateProjectileDefinition();
             RunUpgradeCatalog upgrades = BasicSurvivorsGame.CreateRunUpgradeCatalog();
             var archetypes = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions();
+            SurvivorsMetaProgressionDefinition meta = BasicSurvivorsGame.CreateMetaProgressionDefinition();
 
             Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponId, weapon.Id);
             Assert.AreEqual(WeaponFireMode.Projectile, weapon.FireMode);
@@ -33,6 +36,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(archetypes[5].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Grenade));
             Assert.That(archetypes[6].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Trap));
             Assert.That(archetypes[7].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Mine));
+            Assert.AreEqual(BasicSurvivorsGame.BloodShardsCurrencyId, meta.BloodShardsCurrencyId);
+            Assert.AreEqual(BasicSurvivorsGame.LegacyExperienceTrackId, meta.LegacyExperienceTrackId);
+            Assert.AreEqual(1, meta.PersistentUpgrades.Count);
+            Assert.AreEqual(2, meta.Rewards.Count);
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
 
@@ -43,7 +50,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(),
                 BasicSurvivorsGame.CreateRunUpgradeCatalog(),
                 BasicSurvivorsGame.CreateKnownUpgradeTargets(),
-                BasicSurvivorsGame.CreateRunFlowDefinition());
+                BasicSurvivorsGame.CreateRunFlowDefinition(),
+                BasicSurvivorsGame.CreateMetaProgressionDefinition());
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -55,8 +63,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
             string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
             string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
 
-            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson);
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson);
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -97,6 +106,96 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("hazard duration", errors);
             StringAssert.Contains("hazard tick interval", errors);
             StringAssert.Contains("negative hazard damage ratio", errors);
+        }
+
+        [Test]
+        public void InvalidRewardSampleContentReportsMetaErrors()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\",\"hitscanCount\":1,\"hitscanWidth\":1}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
+            string rewardJson = "{\"currencies\":[{\"id\":\"currency.dup\"},{\"id\":\"currency.dup\"}],\"tracks\":[{\"id\":\"track.valid\"}],\"persistentUpgrades\":[{\"id\":\"meta.dup\",\"target\":\"target.missing\",\"effect\":\"\",\"maxRank\":2,\"rankCosts\":[5]},{\"id\":\"meta.dup\",\"target\":\"survivors.weapon.arcane-wand\",\"effect\":\"effect.valid\",\"maxRank\":1,\"rankCosts\":[0]}],\"rewards\":[{\"id\":\"reward.dup\",\"currencyId\":\"currency.missing\",\"trackId\":\"track.missing\",\"currencyAmount\":0,\"trackAmount\":0},{\"id\":\"reward.dup\",\"currencyId\":\"currency.dup\",\"trackId\":\"track.valid\",\"currencyAmount\":1,\"trackAmount\":0}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, rewardJson: rewardJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("Duplicate currency id", errors);
+            StringAssert.Contains("Duplicate persistent upgrade id", errors);
+            StringAssert.Contains("unknown target", errors);
+            StringAssert.Contains("missing an effect id", errors);
+            StringAssert.Contains("rank cost count", errors);
+            StringAssert.Contains("rank cost must be above zero", errors);
+            StringAssert.Contains("Duplicate reward id", errors);
+            StringAssert.Contains("unknown currency", errors);
+            StringAssert.Contains("unknown progression track", errors);
+            StringAssert.Contains("must grant currency or legacy XP", errors);
+        }
+
+        [Test]
+        public void RunRewardCalculatorMatchesReferenceShape()
+        {
+            SurvivorsRunRewardSummary summary = SurvivorsRunRewardCalculator.Calculate(
+                runDurationSeconds: 121f,
+                levelReached: 5,
+                minibossKills: 2,
+                bossKills: 1,
+                victory: true,
+                bonusBloodShards: 18,
+                bonusLegacyExperience: 120);
+
+            Assert.AreEqual(34, summary.BloodShardsEarned);
+            Assert.AreEqual(235, summary.LegacyExperienceEarned);
+            Assert.AreEqual(5, summary.LevelReached);
+            Assert.IsTrue(summary.Victory);
+        }
+
+        [Test]
+        public void MetaProfileSaveMigrationMapsLegacyCurrencyAndRanks()
+        {
+            var storage = new InMemoryTextStorage();
+            var persistence = new PersistenceService(storage);
+            var slotId = new SaveSlotId("migration-test");
+            var serializer = new NewtonsoftPersistenceSerializer();
+            var legacyDefinition = new DocumentDefinition<LegacyMetaProfileV1>(
+                SurvivorsMetaProgressionService.ProfileDocumentId,
+                new SchemaVersion(1),
+                () => new LegacyMetaProfileV1());
+            var legacyProfile = new LegacyMetaProfileV1
+            {
+                BloodShards = 11,
+                LegacyExperience = 42,
+                HighestLevelReached = 6,
+                BestRunDurationSeconds = 77f,
+                CompletedRuns = 2,
+                BossVictories = 1,
+                PersistentUpgradeRanks =
+                {
+                    new SurvivorsPersistentUpgradeRankRecord
+                    {
+                        Id = BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value,
+                        Rank = 1
+                    }
+                }
+            };
+            storage.Files["survivors-meta-profile__migration-test.json"] = SaveEnvelopeCodec.Create(
+                legacyDefinition,
+                legacyProfile,
+                serializer,
+                DateTimeOffset.UtcNow);
+            using (var service = new SurvivorsMetaProgressionService(persistence, slotId))
+            {
+                LoadResult<SurvivorsMetaProfileDocument> load = service.Load();
+
+                Assert.IsTrue(load.Succeeded, load.Message);
+                Assert.AreEqual(LoadOutcome.Migrated, load.Outcome);
+                Assert.AreEqual(11, service.LifetimeBloodShards);
+                Assert.AreEqual(42, service.LifetimeLegacyExperience);
+                Assert.AreEqual(6, service.HighestLevelReached);
+                Assert.AreEqual(77f, service.BestRunDurationSeconds);
+                Assert.AreEqual(2, service.CompletedRuns);
+                Assert.AreEqual(1, service.BossVictories);
+                Assert.AreEqual(1, service.GetPersistentUpgradeRank(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
+            }
         }
 
         [Test]
@@ -367,6 +466,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         {
             var root = new GameObject("Survivors Template EditMode Test");
             SurvivorsTemplateController controller = root.AddComponent<SurvivorsTemplateController>();
+            controller.ConfigureMetaPersistenceForTest(
+                new PersistenceService(new InMemoryTextStorage()),
+                new SaveSlotId("edit-" + Guid.NewGuid().ToString("N")));
             controller.StartRun();
             return controller;
         }
@@ -394,6 +496,17 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             {
                 UnityEngine.Object.DestroyImmediate(controller.gameObject);
             }
+        }
+
+        private sealed class LegacyMetaProfileV1
+        {
+            public long BloodShards;
+            public long LegacyExperience;
+            public int HighestLevelReached;
+            public float BestRunDurationSeconds;
+            public int CompletedRuns;
+            public int BossVictories;
+            public System.Collections.Generic.List<SurvivorsPersistentUpgradeRankRecord> PersistentUpgradeRanks = new System.Collections.Generic.List<SurvivorsPersistentUpgradeRankRecord>();
         }
     }
 }

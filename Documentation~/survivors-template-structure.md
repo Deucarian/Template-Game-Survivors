@@ -42,6 +42,14 @@
 - area explosion overlap and primitive explosion visuals
 - simple local hazard zones with tick damage
 
+`Runtime/SurvivorsMetaProgression.cs` contains the local Survivors reward and meta-progression adapter:
+
+- run result summary data
+- reference-shaped blood shard and legacy XP reward calculation
+- boss/miniboss reward bonus definitions
+- persisted meta profile document and v1-to-v2 migration
+- one sample ranked persistent upgrade that adds arcane wand damage to later runs
+
 `Runtime/SurvivorsContentValidation.cs` contains package-local validation for authored sample libraries and runtime catalogs:
 
 - unique weapon and upgrade IDs
@@ -50,6 +58,7 @@
 - valid payload timing/radius values
 - valid boss/miniboss enemy roles, spawn times, and combat stats
 - valid run-upgrade target references
+- valid reward currency, legacy XP, persistent upgrade, rank cost, and target references
 
 This is reusable Survivors template-kit code, not concrete product content.
 
@@ -63,10 +72,11 @@ This is reusable Survivors template-kit code, not concrete product content.
 - `Content/DefaultWeapons/weapons.json`
 - `Content/DefaultUpgrades/upgrades.json`
 - `Content/DefaultPickups/pickups.json`
+- `Content/DefaultRewards/rewards.json`
 
-The enemy sample includes a swarm enemy, one scheduled miniboss, and one final boss. These files are examples for product-owned content flipping. They are not intended to become shared package code.
+The sample includes a swarm enemy, one scheduled miniboss, one final boss, blood shards, legacy XP, one persistent upgrade, and boss/final-boss reward definitions. These files are examples for product-owned content flipping. They are not intended to become shared package code.
 
 ## Tests
 
-- `Tests/EditMode` covers descriptors, archetype config, content validation, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
-- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, timed miniboss/boss spawning, boss/miniboss death, victory, and run upgrades affecting new archetypes/modifiers.
+- `Tests/EditMode` covers descriptors, archetype config, content validation, reward/meta validation, save migration, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
+- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, timed miniboss/boss spawning, boss/miniboss death, victory, reward grants, save/load persistence, persistent upgrade effects, and run upgrades affecting new archetypes/modifiers.

@@ -4,6 +4,8 @@
   "references": [
     "Deucarian.TemplateGameSurvivors",
     "Deucarian.Combat",
+    "Deucarian.Persistence",
+    "Deucarian.Progression",
     "Deucarian.RunUpgrades"
   ],
   "includePlatforms": [],

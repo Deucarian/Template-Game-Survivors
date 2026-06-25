@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Deucarian.Attacks;
 using Deucarian.Combat;
 using Deucarian.Encounters;
+using Deucarian.Progression;
 using Deucarian.Projectiles;
 using Deucarian.RunUpgrades;
 using Deucarian.WeaponSystems;
@@ -151,6 +152,12 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly WeaponDefinitionId GravityGrenadeWeaponId = new WeaponDefinitionId("weapon.survivors.gravity-grenade");
         public static readonly WeaponDefinitionId RuneTrapWeaponId = new WeaponDefinitionId("weapon.survivors.rune-trap");
         public static readonly WeaponDefinitionId AetherMineWeaponId = new WeaponDefinitionId("weapon.survivors.aether-mine");
+        public static readonly CurrencyId BloodShardsCurrencyId = new CurrencyId("currency.survivors.blood-shards");
+        public static readonly TrackId LegacyExperienceTrackId = new TrackId("track.survivors.legacy-xp");
+        public static readonly ResearchNodeId ArcaneLegacyMetaUpgradeId = new ResearchNodeId("meta.survivors.arcane-legacy");
+        public const string MetaDamageEffectId = "survivors.meta.damage.flat";
+        public const string MinibossRewardId = "reward.survivors.miniboss";
+        public const string BossRewardId = "reward.survivors.final-boss";
         public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
@@ -444,6 +451,29 @@ namespace Deucarian.TemplateGameSurvivors
                 PayloadWeaponTarget,
                 PickupTarget
             };
+        }
+
+        public static SurvivorsMetaProgressionDefinition CreateMetaProgressionDefinition()
+        {
+            return new SurvivorsMetaProgressionDefinition(
+                BloodShardsCurrencyId,
+                LegacyExperienceTrackId,
+                new[]
+                {
+                    new SurvivorsPersistentUpgradeDefinition(
+                        ArcaneLegacyMetaUpgradeId,
+                        "Arcane Legacy",
+                        WeaponTarget.Value,
+                        MetaDamageEffectId,
+                        maxRank: 3,
+                        rankCosts: new[] { 5, 8, 13 },
+                        damageBonusPerRank: 1.5f)
+                },
+                new[]
+                {
+                    new SurvivorsRewardDefinition(MinibossRewardId, BloodShardsCurrencyId, 4, LegacyExperienceTrackId, 25),
+                    new SurvivorsRewardDefinition(BossRewardId, BloodShardsCurrencyId, 18, LegacyExperienceTrackId, 120)
+                });
         }
 
         public static string GetUpgradeDisplayName(RunUpgradeId id)

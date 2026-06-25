@@ -1,7 +1,10 @@
+using System;
 using System.Collections;
+using Deucarian.Persistence;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using Object = UnityEngine.Object;
 
 namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 {
@@ -308,6 +311,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.MinibossKilledCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.MinibossRewardGrantCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(4));
             Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(1));
 
@@ -328,6 +333,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.BossKilledCount, Is.GreaterThanOrEqualTo(1));
             Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
             Assert.IsTrue(controller.IsVictory);
+            Assert.That(controller.BossRewardGrantCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.BloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(18));
+            Assert.That(controller.LegacyExperienceEarnedThisRun, Is.GreaterThanOrEqualTo(120));
+            Assert.That(controller.MetaBloodShards, Is.GreaterThanOrEqualTo(18));
+            Assert.AreEqual(1, controller.MetaBossVictories);
 
             Object.Destroy(controller.gameObject);
         }
@@ -347,10 +357,83 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Object.Destroy(controller.gameObject);
         }
 
-        private static SurvivorsTemplateController CreateController()
+        [UnityTest]
+        public IEnumerator MinibossRewardIsGrantedWhenRunEndsInDefeat()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            SurvivorsEnemyActor miniboss = controller.SpawnMinibossForTest(controller.PlayerPosition + new Vector3(2.2f, 0f, 0f), 1f);
+            miniboss.ApplyDamage(100f, "test.miniboss");
+            yield return null;
+            controller.KillPlayerForTest();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.GameOver, controller.State);
+            Assert.That(controller.MinibossRewardGrantCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.BloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(4));
+            Assert.That(controller.LegacyExperienceEarnedThisRun, Is.GreaterThanOrEqualTo(25));
+            Assert.That(controller.MetaBloodShards, Is.GreaterThanOrEqualTo(4));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator MetaCurrencyPersistsAcrossControllerInstances()
+        {
+            var storage = new InMemoryTextStorage();
+            const string slot = "play-persistence";
+            SurvivorsTemplateController first = CreateController(storage, slot);
+            yield return null;
+
+            SurvivorsEnemyActor boss = first.SpawnBossForTest(first.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+            long savedBloodShards = first.MetaBloodShards;
+
+            Object.Destroy(first.gameObject);
+            yield return null;
+
+            SurvivorsTemplateController second = CreateController(storage, slot);
+            yield return null;
+
+            Assert.That(savedBloodShards, Is.GreaterThanOrEqualTo(18));
+            Assert.AreEqual(savedBloodShards, second.MetaBloodShards);
+            Assert.AreEqual(1, second.MetaBossVictories);
+
+            Object.Destroy(second.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator PersistentUpgradeAffectsNewRunDamage()
+        {
+            var storage = new InMemoryTextStorage();
+            SurvivorsTemplateController controller = CreateController(storage, "play-meta-upgrade");
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+
+            Assert.IsTrue(controller.TryPurchasePersistentUpgradeForTest(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
+            Assert.AreEqual(1, controller.GetPersistentUpgradeRankForTest(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
+
+            controller.RestartRun();
+            yield return null;
+
+            Assert.That(controller.PersistentDamageBonus, Is.GreaterThan(0f));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(7f));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        private static SurvivorsTemplateController CreateController(InMemoryTextStorage storage = null, string slot = null)
         {
             var root = new GameObject("Survivors Template PlayMode Test");
             SurvivorsTemplateController controller = root.AddComponent<SurvivorsTemplateController>();
+            controller.ConfigureMetaPersistenceForTest(
+                new PersistenceService(storage ?? new InMemoryTextStorage()),
+                new SaveSlotId(string.IsNullOrWhiteSpace(slot) ? "play-" + Guid.NewGuid().ToString("N") : slot));
             controller.StartRun();
             return controller;
         }

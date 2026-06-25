@@ -5,6 +5,8 @@
     "Deucarian.TemplateGameSurvivors",
     "Deucarian.Combat",
     "Deucarian.Encounters",
+    "Deucarian.Persistence",
+    "Deucarian.Progression",
     "Deucarian.Projectiles",
     "Deucarian.RunUpgrades",
     "Deucarian.WeaponSystems",

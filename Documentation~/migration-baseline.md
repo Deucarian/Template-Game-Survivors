@@ -99,3 +99,20 @@ The 2P template slice adds local template-kit implementations for:
 - boss/miniboss content validation
 
 The reference boss relic draft, blood shard rewards, legacy XP rewards, authored multi-boss schedules, elites, death-spawn enemies, meta-progression grant flow, and stress tooling are deliberately not ported yet. These systems remain local to the Survivors template until another concrete game proves a reusable package shape. No shared package extraction, publishing, or package registry work is performed in this phase.
+
+## Phase 2Q Rewards, Meta Progression, And Save Slice
+
+The reference clone grants run-end blood shards and legacy XP from elapsed duration, level reached, elite/miniboss kills, boss kills, victory, and boss encounter bonuses. It persists a profile with lifetime and unspent blood shards, legacy XP, best run stats, boss victories, selected content, unlocks, and ranked meta upgrades. It also includes richer boss relic choices, class unlocks, skill trees, and save migration history.
+
+The 2Q template slice adds local template-kit implementations for:
+
+- run result summary data
+- blood shard and legacy XP rewards using the reference reward-calculation shape
+- miniboss and final-boss reward bonuses
+- persisted meta profile with lifetime/unspent blood shards, legacy XP, best run data, completed runs, boss victories, and ranked persistent upgrade records
+- v1-to-v2 meta profile migration
+- one sample persistent Arcane Legacy upgrade that increases arcane wand damage in later runs
+- sample reward/meta JSON content and validation
+- reset/debug persistence hooks for tests and future editor tooling
+
+Boss relic drafts, class unlocks, skill trees, selected class/level persistence, concrete-game economy tuning, and full reference save-schema parity are deliberately deferred. These systems remain local to the Survivors template until concrete reuse is proven. No shared package extraction, publishing, or package registry work is performed in this phase.
