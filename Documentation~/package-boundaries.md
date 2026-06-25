@@ -13,7 +13,7 @@
 
 ## Local Survivors Kit Code
 
-The following intentionally stay local in Phase 2Q:
+The following intentionally stay local in Phase 2R:
 
 - top-down player movement
 - camera follow
@@ -25,9 +25,14 @@ The following intentionally stay local in Phase 2Q:
 - boss/miniboss sample profiles and reward-drop rules
 - run result summary rules
 - boss/miniboss reward bonus rules
+- boss relic draft and selection rules
+- relic effect application
+- selected class, default class, and unlockable class rules
+- class starting stat modifiers
+- class unlock reward grants
 - blood shard and legacy XP reward calculation
 - persistent meta upgrade effects
-- local meta profile DTO shape and migration mapping
+- local meta profile DTO shape and migration mapping, including selected/unlocked class IDs
 - nearest-enemy auto-targeting
 - projectile steering and collision checks
 - hitscan/beam targeting and primitive beam visuals
@@ -65,6 +70,7 @@ Do not extract these yet. Revisit only after parity gaps repeat across real temp
 - content validation for authored libraries if multiple templates need the same rules
 - shared reward-draft abstractions only if another Survivors-style template proves the same shape
 - richer meta progression save DTOs only if multiple concrete games share the same persisted profile model
+- class library, class unlock, or relic reward abstractions only after another concrete Survivors-style kit proves the same authored shape
 - diagnostics for spawn pressure, pool stats, and draft state
 
-No shared package extraction happened in Phase 2Q.
+No shared package extraction happened in Phase 2R.

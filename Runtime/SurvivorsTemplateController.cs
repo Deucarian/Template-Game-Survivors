@@ -14,6 +14,7 @@ namespace Deucarian.TemplateGameSurvivors
     public sealed class SurvivorsTemplateController : MonoBehaviour
     {
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
+        private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
 
         [SerializeField]
         private bool autoStart = true;
@@ -42,11 +43,16 @@ namespace Deucarian.TemplateGameSurvivors
         private RunUpgradeCatalog _upgradeCatalog;
         private RunUpgradeState _upgradeState;
         private RunUpgradeDraft _currentDraft;
+        private SurvivorsRelicDraft _currentRelicDraft;
+        private SurvivorsRewardSelectionKind _rewardSelectionKind;
         private CombatCatalog _combatCatalog;
         private WeaponDefinition _weaponDefinition;
         private ProjectileDefinition _projectileDefinition;
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
         private SurvivorsRunFlowRuntime _runFlow;
+        private IReadOnlyList<SurvivorsRelicDefinition> _relicDefinitions;
+        private SurvivorsClassLibraryDefinition _classLibrary;
+        private SurvivorsClassDefinition _selectedClass;
         private SurvivorsMetaProgressionService _metaProgression;
         private IPersistenceService _injectedMetaPersistence;
         private SaveSlotId _metaSaveSlotId = new SaveSlotId("survivors-template");
@@ -89,6 +95,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int BossKilledCount { get; private set; }
         public int MinibossRewardGrantCount { get; private set; }
         public int BossRewardGrantCount { get; private set; }
+        public int BossRelicDraftOpenCount { get; private set; }
+        public int SelectedRelicCount { get; private set; }
+        public int ClassUnlockRewardCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -101,6 +110,9 @@ namespace Deucarian.TemplateGameSurvivors
         public float MoveSpeedBonus { get; private set; }
         public float DamageBonus { get; private set; }
         public float PersistentDamageBonus { get; private set; }
+        public float RelicDamageBonus { get; private set; }
+        public float RelicCooldownMultiplierBonus { get; private set; }
+        public float RelicPickupRangeBonus { get; private set; }
         public float WeaponCooldownMultiplierBonus { get; private set; }
         public float PickupRangeBonus { get; private set; }
         public int OrbitBladeBonus { get; private set; }
@@ -131,15 +143,21 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateDefaultTuning());
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
+        public IReadOnlyList<SurvivorsRelicDefinition> CurrentRelicChoices => _currentRelicDraft == null ? EmptyRelicChoices : _currentRelicDraft.Choices;
+        public SurvivorsClassDefinition SelectedClass => _selectedClass;
+        public string SelectedClassId => _selectedClass == null ? string.Empty : _selectedClass.Id;
         public long MetaBloodShards => _metaProgression == null ? 0 : _metaProgression.UnspentBloodShards;
         public long LifetimeBloodShards => _metaProgression == null ? 0 : _metaProgression.LifetimeBloodShards;
         public long LifetimeLegacyExperience => _metaProgression == null ? 0 : _metaProgression.LifetimeLegacyExperience;
         public int MetaCompletedRuns => _metaProgression == null ? 0 : _metaProgression.CompletedRuns;
         public int MetaBossVictories => _metaProgression == null ? 0 : _metaProgression.BossVictories;
+        public int MetaUnlockedClassCount => _metaProgression == null ? 0 : _metaProgression.UnlockedClassIds.Count;
         public SurvivorsRunPhase RunPhase => _runFlow == null ? SurvivorsRunPhase.Opening : _runFlow.Phase;
         public int RunEscalationLevel => _runFlow == null ? 0 : _runFlow.EscalationLevel;
         public bool IsPlaying => State == SurvivorsRunState.Playing;
         public bool IsLevelUpOpen => State == SurvivorsRunState.LevelUp;
+        public bool IsRunUpgradeDraftOpen => State == SurvivorsRunState.LevelUp && _rewardSelectionKind == SurvivorsRewardSelectionKind.LevelUp;
+        public bool IsRelicChoiceOpen => State == SurvivorsRunState.LevelUp && _rewardSelectionKind == SurvivorsRewardSelectionKind.BossRelic;
         public bool IsGameOver => State == SurvivorsRunState.GameOver;
         public bool IsVictory => State == SurvivorsRunState.Victory;
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
@@ -253,7 +271,11 @@ namespace Deucarian.TemplateGameSurvivors
             _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
             _upgradeCatalog = BasicSurvivorsGame.CreateRunUpgradeCatalog();
             _upgradeState = new RunUpgradeState();
+            _relicDefinitions = BasicSurvivorsGame.CreateRelicDefinitions();
+            _classLibrary = BasicSurvivorsGame.CreateClassLibraryDefinition();
             EnsureMetaProgressionLoaded();
+            _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
+            _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
             _playerHealth = new HealthState(new CombatantId("combatant.survivors.player"), resolved.PlayerMaxHealth, resolved.PlayerMaxHealth);
             Level = 1;
             Experience = 0;
@@ -283,6 +305,9 @@ namespace Deucarian.TemplateGameSurvivors
             BossKilledCount = 0;
             MinibossRewardGrantCount = 0;
             BossRewardGrantCount = 0;
+            BossRelicDraftOpenCount = 0;
+            SelectedRelicCount = 0;
+            ClassUnlockRewardCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -293,6 +318,9 @@ namespace Deucarian.TemplateGameSurvivors
             MoveSpeedBonus = 0f;
             DamageBonus = 0f;
             PersistentDamageBonus = 0f;
+            RelicDamageBonus = 0f;
+            RelicCooldownMultiplierBonus = 0f;
+            RelicPickupRangeBonus = 0f;
             WeaponCooldownMultiplierBonus = 0f;
             PickupRangeBonus = 0f;
             OrbitBladeBonus = 0;
@@ -313,7 +341,10 @@ namespace Deucarian.TemplateGameSurvivors
             _playerInvulnerabilityTimer = 0f;
             _spawnSequence = 0;
             _currentDraft = null;
+            _currentRelicDraft = null;
+            _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             ApplyPersistentMetaBonuses();
+            ApplySelectedClassBonuses();
             BuildRuntimeWorld();
             _runFlow = new SurvivorsRunFlowRuntime(BasicSurvivorsGame.CreateRunFlowDefinition(resolved));
             _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved));
@@ -463,6 +494,44 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        public bool UnlockClassForTest(string classId)
+        {
+            EnsureMetaProgressionLoaded();
+            EnsureClassLibraryLoaded();
+            return _metaProgression.UnlockClass(classId, _classLibrary);
+        }
+
+        public bool TrySelectClassForTest(string classId)
+        {
+            EnsureMetaProgressionLoaded();
+            EnsureClassLibraryLoaded();
+            bool selected = _metaProgression.TrySetSelectedClass(classId, _classLibrary);
+            if (selected)
+            {
+                _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
+            }
+
+            return selected;
+        }
+
+        public bool IsClassUnlockedForTest(string classId)
+        {
+            EnsureMetaProgressionLoaded();
+            EnsureClassLibraryLoaded();
+            return _metaProgression.IsClassUnlocked(classId, _classLibrary);
+        }
+
+        public bool OpenBossRelicDraftForTest()
+        {
+            EnsureRunStartedForTest();
+            return OpenBossRelicDraft();
+        }
+
+        public bool SelectRelicForTest(int index)
+        {
+            return SelectRelic(index);
+        }
+
         public bool ApplyUpgradeByIdForTest(string id)
         {
             EnsureRunStartedForTest();
@@ -510,13 +579,18 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 GrantRunRewards(victory: false);
                 State = SurvivorsRunState.GameOver;
-                _currentDraft = null;
+                ClearRewardDrafts();
             }
         }
 
         public bool SelectUpgrade(int index)
         {
-            if (State != SurvivorsRunState.LevelUp || _currentDraft == null || index < 0 || index >= _currentDraft.Choices.Count)
+            if (_rewardSelectionKind == SurvivorsRewardSelectionKind.BossRelic)
+            {
+                return SelectRelic(index);
+            }
+
+            if (State != SurvivorsRunState.LevelUp || _rewardSelectionKind != SurvivorsRewardSelectionKind.LevelUp || _currentDraft == null || index < 0 || index >= _currentDraft.Choices.Count)
             {
                 return false;
             }
@@ -532,6 +606,7 @@ namespace Deucarian.TemplateGameSurvivors
             SelectedUpgradeCount++;
             PendingLevelUps = Mathf.Max(0, PendingLevelUps - 1);
             _currentDraft = null;
+            _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             if (PendingLevelUps > 0)
             {
                 OpenLevelUpDraft();
@@ -579,6 +654,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 MinibossKilledCount++;
                 GrantBossReward(SurvivorsEnemyRole.Miniboss);
+                OpenBossRelicDraft();
             }
             else if (role == SurvivorsEnemyRole.Boss)
             {
@@ -1002,12 +1078,52 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void EnsureClassLibraryLoaded()
+        {
+            _classLibrary ??= BasicSurvivorsGame.CreateClassLibraryDefinition();
+            _relicDefinitions ??= BasicSurvivorsGame.CreateRelicDefinitions();
+            if (_metaProgression != null)
+            {
+                _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
+            }
+        }
+
         private void ApplyPersistentMetaBonuses()
         {
             EnsureMetaProgressionLoaded();
             float previousBonus = PersistentDamageBonus;
             PersistentDamageBonus = _metaProgression.GetPersistentDamageBonus(BasicSurvivorsGame.WeaponTarget.Value);
             DamageBonus += PersistentDamageBonus - previousBonus;
+        }
+
+        private void ApplySelectedClassBonuses()
+        {
+            if (_selectedClass == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _selectedClass.StartingStatModifiers.Count; i++)
+            {
+                SurvivorsClassStatModifierDefinition modifier = _selectedClass.StartingStatModifiers[i];
+                if (modifier == null)
+                {
+                    continue;
+                }
+
+                if (modifier.StatKind == SurvivorsClassStatKind.MoveSpeed)
+                {
+                    MoveSpeedBonus += modifier.Amount;
+                }
+                else if (modifier.StatKind == SurvivorsClassStatKind.Damage)
+                {
+                    DamageBonus += modifier.Amount;
+                }
+                else if (modifier.StatKind == SurvivorsClassStatKind.MaxHealth && _playerHealth != null)
+                {
+                    _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + modifier.Amount, MaximumChangePolicy.FillToMaximum);
+                }
+            }
         }
 
         private void GrantBossReward(SurvivorsEnemyRole role)
@@ -1052,6 +1168,19 @@ namespace Deucarian.TemplateGameSurvivors
             if (_metaProgression.GrantRunRewards(LastRunResult).Succeeded)
             {
                 _runRewardsGranted = true;
+                if (victory)
+                {
+                    GrantVictoryClassUnlockReward();
+                }
+            }
+        }
+
+        private void GrantVictoryClassUnlockReward()
+        {
+            EnsureClassLibraryLoaded();
+            if (_metaProgression != null && _metaProgression.UnlockClass(BasicSurvivorsGame.EmberVanguardClassId, _classLibrary))
+            {
+                ClassUnlockRewardCount++;
             }
         }
 
@@ -1120,7 +1249,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             GrantRunRewards(victory: true);
-            _currentDraft = null;
+            ClearRewardDrafts();
             State = SurvivorsRunState.Victory;
         }
 
@@ -1319,6 +1448,13 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void ClearRewardDrafts()
+        {
+            _currentDraft = null;
+            _currentRelicDraft = null;
+            _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
+        }
+
         private void GainExperience(int amount)
         {
             ExperienceCollected += Mathf.Max(1, amount);
@@ -1338,11 +1474,90 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void OpenLevelUpDraft()
         {
+            if (_rewardSelectionKind == SurvivorsRewardSelectionKind.BossRelic)
+            {
+                return;
+            }
+
             _currentDraft = RunUpgradeDraftService.Generate(
                 _upgradeCatalog,
                 _upgradeState,
                 new RunUpgradeDraftRequest(CurrentTuning.DraftChoiceCount, CurrentTuning.RunSeed + Level + SelectedUpgradeCount));
+            _currentRelicDraft = null;
+            _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
+        }
+
+        private bool OpenBossRelicDraft()
+        {
+            if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
+            {
+                return false;
+            }
+
+            EnsureClassLibraryLoaded();
+            _currentRelicDraft = SurvivorsRelicDraftService.Generate(
+                _relicDefinitions,
+                CurrentTuning.DraftChoiceCount,
+                CurrentTuning.RunSeed + MinibossKilledCount + SelectedRelicCount + 97);
+            if (_currentRelicDraft == null || _currentRelicDraft.Choices.Count == 0)
+            {
+                _currentRelicDraft = null;
+                return false;
+            }
+
+            _currentDraft = null;
+            _rewardSelectionKind = SurvivorsRewardSelectionKind.BossRelic;
+            BossRelicDraftOpenCount++;
+            State = SurvivorsRunState.LevelUp;
+            return true;
+        }
+
+        private bool SelectRelic(int index)
+        {
+            if (State != SurvivorsRunState.LevelUp || _rewardSelectionKind != SurvivorsRewardSelectionKind.BossRelic || _currentRelicDraft == null || index < 0 || index >= _currentRelicDraft.Choices.Count)
+            {
+                return false;
+            }
+
+            ApplyRelic(_currentRelicDraft.Choices[index]);
+            SelectedRelicCount++;
+            _currentRelicDraft = null;
+            _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
+            if (PendingLevelUps > 0)
+            {
+                OpenLevelUpDraft();
+            }
+            else
+            {
+                State = SurvivorsRunState.Playing;
+            }
+
+            return true;
+        }
+
+        private void ApplyRelic(SurvivorsRelicDefinition relic)
+        {
+            if (relic == null)
+            {
+                return;
+            }
+
+            if (relic.EffectKind == SurvivorsRelicEffectKind.DamageBonus)
+            {
+                RelicDamageBonus += relic.Amount;
+                DamageBonus += relic.Amount;
+            }
+            else if (relic.EffectKind == SurvivorsRelicEffectKind.CooldownMultiplier)
+            {
+                RelicCooldownMultiplierBonus += relic.Amount;
+                WeaponCooldownMultiplierBonus = Mathf.Max(-0.75f, WeaponCooldownMultiplierBonus + relic.Amount);
+            }
+            else if (relic.EffectKind == SurvivorsRelicEffectKind.PickupRange)
+            {
+                RelicPickupRangeBonus += relic.Amount;
+                PickupRangeBonus += relic.Amount;
+            }
         }
 
         private void ApplyUpgrade(RunUpgradeDefinition upgrade)
@@ -1420,14 +1635,25 @@ namespace Deucarian.TemplateGameSurvivors
         private void DrawLevelUpOverlay()
         {
             float width = 420f;
-            float height = 84f + CurrentDraftChoices.Count * 48f;
+            int choiceCount = IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
+            float height = 84f + choiceCount * 48f;
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
-            GUI.Box(rect, "Level Up");
-            for (int i = 0; i < CurrentDraftChoices.Count; i++)
+            GUI.Box(rect, IsRelicChoiceOpen ? "Choose a Boss Relic" : "Level Up");
+            for (int i = 0; i < choiceCount; i++)
             {
-                RunUpgradeDefinition choice = CurrentDraftChoices[i];
                 Rect buttonRect = new Rect(rect.x + 24f, rect.y + 44f + i * 48f, width - 48f, 34f);
-                string label = $"{i + 1}. {BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id)} ({choice.Rarity})";
+                string label;
+                if (IsRelicChoiceOpen)
+                {
+                    SurvivorsRelicDefinition relic = CurrentRelicChoices[i];
+                    label = $"{i + 1}. {relic.DisplayName}";
+                }
+                else
+                {
+                    RunUpgradeDefinition choice = CurrentDraftChoices[i];
+                    label = $"{i + 1}. {BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id)} ({choice.Rarity})";
+                }
+
                 if (GUI.Button(buttonRect, label))
                 {
                     SelectUpgrade(i);

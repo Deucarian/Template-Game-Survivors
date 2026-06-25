@@ -211,7 +211,7 @@ namespace Deucarian.TemplateGameSurvivors
 
     public sealed class SurvivorsMetaProfileDocument
     {
-        public const int CurrentSchemaVersion = 2;
+        public const int CurrentSchemaVersion = 3;
 
         public long LifetimeBloodShards;
         public long UnspentBloodShards;
@@ -221,6 +221,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int CompletedRuns;
         public int BossVictories;
         public List<SurvivorsPersistentUpgradeRankRecord> PersistentUpgradeRanks = new List<SurvivorsPersistentUpgradeRankRecord>();
+        public string SelectedClassId;
+        public List<string> UnlockedClassIds = new List<string>();
     }
 
     public sealed class SurvivorsPersistentUpgradeRankRecord
@@ -275,7 +277,12 @@ namespace Deucarian.TemplateGameSurvivors
                         ProfileDocumentId,
                         new SchemaVersion(1),
                         new SchemaVersion(2),
-                        MigrateV1ToV2)
+                        MigrateV1ToV2),
+                    new DelegateDocumentMigration(
+                        ProfileDocumentId,
+                        new SchemaVersion(2),
+                        new SchemaVersion(3),
+                        MigrateV2ToV3)
                 }));
         }
 
@@ -406,6 +413,112 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return bonus;
+        }
+
+        public IReadOnlyList<string> UnlockedClassIds => _profile == null || _profile.UnlockedClassIds == null
+            ? Array.Empty<string>()
+            : _profile.UnlockedClassIds;
+
+        public string SelectedClassId => _profile == null ? string.Empty : (_profile.SelectedClassId ?? string.Empty);
+
+        public bool EnsureDefaultClassUnlocks(SurvivorsClassLibraryDefinition classLibrary)
+        {
+            ThrowIfDisposed();
+            bool changed = false;
+            _profile.UnlockedClassIds ??= new List<string>();
+            if (classLibrary != null)
+            {
+                for (int i = 0; i < classLibrary.Classes.Count; i++)
+                {
+                    SurvivorsClassDefinition definition = classLibrary.Classes[i];
+                    if (definition == null || !definition.IsUnlockedByDefault || string.IsNullOrWhiteSpace(definition.Id))
+                    {
+                        continue;
+                    }
+
+                    if (!ContainsClassId(_profile.UnlockedClassIds, definition.Id))
+                    {
+                        _profile.UnlockedClassIds.Add(definition.Id);
+                        changed = true;
+                    }
+                }
+
+                SurvivorsClassDefinition selected = ResolveSelectedClassWithoutMutation(classLibrary);
+                if (selected != null && !string.Equals(_profile.SelectedClassId, selected.Id, StringComparison.Ordinal))
+                {
+                    _profile.SelectedClassId = selected.Id;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                NormalizeProfile(_profile);
+                Save();
+            }
+
+            return changed;
+        }
+
+        public bool IsClassUnlocked(string classId, SurvivorsClassLibraryDefinition classLibrary)
+        {
+            if (classLibrary == null || string.IsNullOrWhiteSpace(classId) || !classLibrary.TryGetClass(classId, out SurvivorsClassDefinition definition))
+            {
+                return false;
+            }
+
+            return definition.IsUnlockedByDefault || ContainsClassId(_profile.UnlockedClassIds, definition.Id);
+        }
+
+        public bool UnlockClass(string classId, SurvivorsClassLibraryDefinition classLibrary)
+        {
+            ThrowIfDisposed();
+            if (classLibrary == null || string.IsNullOrWhiteSpace(classId) || !classLibrary.TryGetClass(classId, out SurvivorsClassDefinition definition))
+            {
+                return false;
+            }
+
+            _profile.UnlockedClassIds ??= new List<string>();
+            if (ContainsClassId(_profile.UnlockedClassIds, definition.Id))
+            {
+                return false;
+            }
+
+            _profile.UnlockedClassIds.Add(definition.Id);
+            if (string.IsNullOrWhiteSpace(_profile.SelectedClassId))
+            {
+                _profile.SelectedClassId = definition.Id;
+            }
+
+            NormalizeProfile(_profile);
+            Save();
+            return true;
+        }
+
+        public bool TrySetSelectedClass(string classId, SurvivorsClassLibraryDefinition classLibrary)
+        {
+            ThrowIfDisposed();
+            if (!IsClassUnlocked(classId, classLibrary))
+            {
+                return false;
+            }
+
+            if (string.Equals(_profile.SelectedClassId, classId, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            _profile.SelectedClassId = classId;
+            NormalizeProfile(_profile);
+            Save();
+            return true;
+        }
+
+        public SurvivorsClassDefinition ResolveSelectedClass(SurvivorsClassLibraryDefinition classLibrary)
+        {
+            ThrowIfDisposed();
+            EnsureDefaultClassUnlocks(classLibrary);
+            return ResolveSelectedClassWithoutMutation(classLibrary);
         }
 
         public RewardBundle CreateRewardBundle(SurvivorsRewardDefinition reward)
@@ -560,12 +673,38 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
+            if (profile.UnlockedClassIds != null)
+            {
+                seen.Clear();
+                for (int i = 0; i < profile.UnlockedClassIds.Count; i++)
+                {
+                    string id = profile.UnlockedClassIds[i];
+                    if (string.IsNullOrWhiteSpace(id))
+                    {
+                        return ValidationResult.Failure("Survivors meta profile unlocked class entries require ids.");
+                    }
+
+                    if (!seen.Add(id))
+                    {
+                        return ValidationResult.Failure("Survivors meta profile contains duplicate unlocked class id: " + id);
+                    }
+                }
+            }
+
+            if (profile.SelectedClassId != null && profile.SelectedClassId.Length > 0 && string.IsNullOrWhiteSpace(profile.SelectedClassId))
+            {
+                return ValidationResult.Failure("Survivors meta profile selected class id cannot be whitespace.");
+            }
+
             return ValidationResult.Success();
         }
 
         private static void NormalizeProfile(SurvivorsMetaProfileDocument profile)
         {
             profile.PersistentUpgradeRanks ??= new List<SurvivorsPersistentUpgradeRankRecord>();
+            profile.UnlockedClassIds ??= new List<string>();
+            profile.SelectedClassId = string.IsNullOrWhiteSpace(profile.SelectedClassId) ? string.Empty : profile.SelectedClassId.Trim();
+            NormalizeClassIdList(profile.UnlockedClassIds);
             profile.LifetimeBloodShards = Math.Max(0, profile.LifetimeBloodShards);
             profile.UnspentBloodShards = Math.Max(0, Math.Min(profile.UnspentBloodShards, profile.LifetimeBloodShards));
             profile.LifetimeLegacyExperience = Math.Max(0, profile.LifetimeLegacyExperience);
@@ -587,15 +726,109 @@ namespace Deucarian.TemplateGameSurvivors
                 BestRunDurationSeconds = Math.Max(0f, old.BestRunDurationSeconds),
                 CompletedRuns = Math.Max(0, old.CompletedRuns),
                 BossVictories = Math.Max(0, old.BossVictories),
-                PersistentUpgradeRanks = old.PersistentUpgradeRanks ?? new List<SurvivorsPersistentUpgradeRankRecord>()
+                PersistentUpgradeRanks = old.PersistentUpgradeRanks ?? new List<SurvivorsPersistentUpgradeRankRecord>(),
+                SelectedClassId = string.Empty,
+                UnlockedClassIds = new List<string>()
             };
             return serializer.Serialize(migrated);
+        }
+
+        private static string MigrateV2ToV3(string payloadJson, IPersistenceSerializer serializer)
+        {
+            SurvivorsMetaProfileDocumentV2 old = serializer.Deserialize<SurvivorsMetaProfileDocumentV2>(payloadJson) ?? new SurvivorsMetaProfileDocumentV2();
+            var migrated = new SurvivorsMetaProfileDocument
+            {
+                LifetimeBloodShards = Math.Max(0, old.LifetimeBloodShards),
+                UnspentBloodShards = Math.Max(0, old.UnspentBloodShards),
+                LifetimeLegacyExperience = Math.Max(0, old.LifetimeLegacyExperience),
+                HighestLevelReached = Math.Max(0, old.HighestLevelReached),
+                BestRunDurationSeconds = Math.Max(0f, old.BestRunDurationSeconds),
+                CompletedRuns = Math.Max(0, old.CompletedRuns),
+                BossVictories = Math.Max(0, old.BossVictories),
+                PersistentUpgradeRanks = old.PersistentUpgradeRanks ?? new List<SurvivorsPersistentUpgradeRankRecord>(),
+                SelectedClassId = string.Empty,
+                UnlockedClassIds = new List<string>()
+            };
+            NormalizeProfile(migrated);
+            return serializer.Serialize(migrated);
+        }
+
+        private SurvivorsClassDefinition ResolveSelectedClassWithoutMutation(SurvivorsClassLibraryDefinition classLibrary)
+        {
+            if (classLibrary == null || classLibrary.Classes.Count == 0)
+            {
+                return null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_profile.SelectedClassId) &&
+                classLibrary.TryGetClass(_profile.SelectedClassId, out SurvivorsClassDefinition selected) &&
+                IsClassUnlocked(selected.Id, classLibrary))
+            {
+                return selected;
+            }
+
+            for (int i = 0; i < classLibrary.Classes.Count; i++)
+            {
+                SurvivorsClassDefinition definition = classLibrary.Classes[i];
+                if (definition != null && IsClassUnlocked(definition.Id, classLibrary))
+                {
+                    return definition;
+                }
+            }
+
+            return classLibrary.FirstDefaultUnlocked();
+        }
+
+        private static bool ContainsClassId(List<string> classIds, string classId)
+        {
+            if (classIds == null || string.IsNullOrWhiteSpace(classId))
+            {
+                return false;
+            }
+
+            for (int i = 0; i < classIds.Count; i++)
+            {
+                if (string.Equals(classIds[i], classId, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void NormalizeClassIdList(List<string> classIds)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = classIds.Count - 1; i >= 0; i--)
+            {
+                string normalized = string.IsNullOrWhiteSpace(classIds[i]) ? string.Empty : classIds[i].Trim();
+                if (string.IsNullOrWhiteSpace(normalized) || !seen.Add(normalized))
+                {
+                    classIds.RemoveAt(i);
+                    continue;
+                }
+
+                classIds[i] = normalized;
+            }
         }
 
         private sealed class SurvivorsMetaProfileDocumentV1
         {
             public long BloodShards;
             public long LegacyExperience;
+            public int HighestLevelReached;
+            public float BestRunDurationSeconds;
+            public int CompletedRuns;
+            public int BossVictories;
+            public List<SurvivorsPersistentUpgradeRankRecord> PersistentUpgradeRanks = new List<SurvivorsPersistentUpgradeRankRecord>();
+        }
+
+        private sealed class SurvivorsMetaProfileDocumentV2
+        {
+            public long LifetimeBloodShards;
+            public long UnspentBloodShards;
+            public long LifetimeLegacyExperience;
             public int HighestLevelReached;
             public float BestRunDurationSeconds;
             public int CompletedRuns;

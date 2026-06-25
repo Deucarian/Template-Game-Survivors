@@ -320,6 +320,48 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator MinibossDeathOpensBossRelicChoice()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            SurvivorsEnemyActor miniboss = controller.SpawnMinibossForTest(controller.PlayerPosition + new Vector3(2.4f, 0f, 0f), 1f);
+            miniboss.ApplyDamage(100f, "test.miniboss");
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.IsTrue(controller.IsRelicChoiceOpen);
+            Assert.That(controller.BossRelicDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(3, controller.CurrentRelicChoices.Count);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SelectedBossRelicAffectsCurrentRun()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.OpenBossRelicDraftForTest());
+            float previousRelicDamage = controller.RelicDamageBonus;
+            float previousRelicCooldown = controller.RelicCooldownMultiplierBonus;
+            float previousRelicPickup = controller.RelicPickupRangeBonus;
+
+            Assert.IsTrue(controller.SelectRelicForTest(0));
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.SelectedRelicCount);
+            bool relicChanged = controller.RelicDamageBonus != previousRelicDamage ||
+                controller.RelicCooldownMultiplierBonus != previousRelicCooldown ||
+                controller.RelicPickupRangeBonus != previousRelicPickup;
+            Assert.IsTrue(relicChanged);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator BossCanDieAndTriggerVictory()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -338,6 +380,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LegacyExperienceEarnedThisRun, Is.GreaterThanOrEqualTo(120));
             Assert.That(controller.MetaBloodShards, Is.GreaterThanOrEqualTo(18));
             Assert.AreEqual(1, controller.MetaBossVictories);
+            Assert.That(controller.ClassUnlockRewardCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
 
             Object.Destroy(controller.gameObject);
         }
@@ -405,6 +449,52 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator SelectedClassAffectsStartingState()
+        {
+            var storage = new InMemoryTextStorage();
+            SurvivorsTemplateController controller = CreateController(storage, "play-class-start", startRun: false);
+
+            Assert.IsTrue(controller.UnlockClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            Assert.IsTrue(controller.TrySelectClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            controller.StartRun();
+            yield return null;
+
+            Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, controller.SelectedClassId);
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(controller.CurrentTuning.PlayerMoveSpeed));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(controller.CurrentTuning.ProjectileDamage));
+            Assert.That(controller.MaxHealth, Is.GreaterThan(controller.CurrentTuning.PlayerMaxHealth));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ClassUnlockPersistsAfterVictory()
+        {
+            var storage = new InMemoryTextStorage();
+            const string slot = "play-class-unlock";
+            SurvivorsTemplateController first = CreateController(storage, slot);
+            yield return null;
+
+            SurvivorsEnemyActor boss = first.SpawnBossForTest(first.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+
+            Assert.IsTrue(first.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            Object.Destroy(first.gameObject);
+            yield return null;
+
+            SurvivorsTemplateController second = CreateController(storage, slot, startRun: false);
+            Assert.IsTrue(second.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            Assert.IsTrue(second.TrySelectClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            second.StartRun();
+            yield return null;
+
+            Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, second.SelectedClassId);
+
+            Object.Destroy(second.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator PersistentUpgradeAffectsNewRunDamage()
         {
             var storage = new InMemoryTextStorage();
@@ -427,14 +517,18 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Object.Destroy(controller.gameObject);
         }
 
-        private static SurvivorsTemplateController CreateController(InMemoryTextStorage storage = null, string slot = null)
+        private static SurvivorsTemplateController CreateController(InMemoryTextStorage storage = null, string slot = null, bool startRun = true)
         {
             var root = new GameObject("Survivors Template PlayMode Test");
             SurvivorsTemplateController controller = root.AddComponent<SurvivorsTemplateController>();
             controller.ConfigureMetaPersistenceForTest(
                 new PersistenceService(storage ?? new InMemoryTextStorage()),
                 new SaveSlotId(string.IsNullOrWhiteSpace(slot) ? "play-" + Guid.NewGuid().ToString("N") : slot));
-            controller.StartRun();
+            if (startRun)
+            {
+                controller.StartRun();
+            }
+
             return controller;
         }
 

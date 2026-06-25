@@ -10,9 +10,12 @@ Open `Scenes/BasicSurvivorsGame.unity` and enter play mode.
 - Payload upgrades can add extra payloads, bigger explosions, and wider trigger radii.
 - The run escalates over time, spawns a miniboss, then spawns a final boss.
 - Minibosses and bosses add blood shard and legacy XP reward bonuses to the run summary.
+- Miniboss defeat opens a simple boss relic choice.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
+- Defeating the final boss unlocks the Ember Vanguard sample class.
 - Victory or defeat persists the run summary to a local meta profile.
 - The sample includes one persistent Arcane Legacy upgrade that increases arcane wand damage in later runs.
+- The sample includes a default Arcane Initiate class, one unlockable class, and three boss relics.
 - XP gems pull into the player when close.
 - Press `M` to trigger a debug magnet recall.
 - Pick a level-up choice with the mouse or number keys.

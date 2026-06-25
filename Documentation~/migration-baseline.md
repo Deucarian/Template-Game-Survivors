@@ -116,3 +116,22 @@ The 2Q template slice adds local template-kit implementations for:
 - reset/debug persistence hooks for tests and future editor tooling
 
 Boss relic drafts, class unlocks, skill trees, selected class/level persistence, concrete-game economy tuning, and full reference save-schema parity are deliberately deferred. These systems remain local to the Survivors template until concrete reuse is proven. No shared package extraction, publishing, or package registry work is performed in this phase.
+
+## Phase 2R Relic Rewards, Classes, And Meta Content Slice
+
+The reference clone separates normal level-up upgrades from boss relic rewards. Miniboss/boss reward selections use the same paused choice surface but draw from a boss relic pool and do not consume pending level-up selections. The reference also resolves a selected class at run start, applies class starting weapons/stats/upgrades, persists selected class state, and supports unlockable classes with richer passive trees and content-pack/resource-profile gates.
+
+The 2R template slice adds local template-kit implementations for:
+
+- boss relic reward drafts after miniboss defeat
+- selecting one relic reward and applying its current-run effect
+- sample relic effects for damage, fire-rate cooldown multiplier, and pickup range
+- simple class definitions
+- selected class persistence in the local meta profile
+- default class unlock persistence
+- one unlockable sample class granted by final boss victory
+- selected class starting stat modifiers for move speed, damage, and max health
+- v2-to-v3 meta profile migration for selected/unlocked class IDs
+- sample relic/class JSON content and validation
+
+The richer reference behavior for passive skill trees, class-specific upgrade pools, class resource profiles, content-pack gates, class starting upgrade graphs, boss relic rarity tiers, reward selection timeout, and product-specific economy tuning is deliberately not ported yet. These systems remain local to the Survivors template until concrete reuse is proven. No shared package extraction, publishing, or package registry work is performed in this phase.

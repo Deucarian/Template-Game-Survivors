@@ -29,7 +29,9 @@ namespace Deucarian.TemplateGameSurvivors
             RunUpgradeCatalog upgrades,
             IReadOnlyList<RunUpgradeTargetId> knownUpgradeTargets,
             SurvivorsRunFlowDefinition runFlow = null,
-            SurvivorsMetaProgressionDefinition metaProgression = null)
+            SurvivorsMetaProgressionDefinition metaProgression = null,
+            IReadOnlyList<SurvivorsRelicDefinition> relics = null,
+            SurvivorsClassLibraryDefinition classes = null)
         {
             var result = new SurvivorsContentValidationResult();
             ValidateWeaponDefinitions(weapons, result);
@@ -44,6 +46,16 @@ namespace Deucarian.TemplateGameSurvivors
                 ValidateMetaProgressionDefinition(metaProgression, knownUpgradeTargets, result);
             }
 
+            if (relics != null)
+            {
+                ValidateRelicDefinitions(relics, knownUpgradeTargets, result);
+            }
+
+            if (classes != null)
+            {
+                ValidateClassLibrary(classes, BuildKnownWeaponIds(weapons), result);
+            }
+
             return result;
         }
 
@@ -54,7 +66,7 @@ namespace Deucarian.TemplateGameSurvivors
             return result;
         }
 
-        public static SurvivorsContentValidationResult ValidateSampleJson(string weaponJson, string upgradeJson, string enemyJson = null, string rewardJson = null)
+        public static SurvivorsContentValidationResult ValidateSampleJson(string weaponJson, string upgradeJson, string enemyJson = null, string rewardJson = null, string relicJson = null, string classJson = null)
         {
             var result = new SurvivorsContentValidationResult();
             WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
@@ -65,10 +77,18 @@ namespace Deucarian.TemplateGameSurvivors
             RewardLibraryJson rewardLibrary = string.IsNullOrWhiteSpace(rewardJson)
                 ? null
                 : ParseJson<RewardLibraryJson>(rewardJson, "reward library", result);
+            RelicLibraryJson relicLibrary = string.IsNullOrWhiteSpace(relicJson)
+                ? null
+                : ParseJson<RelicLibraryJson>(relicJson, "relic library", result);
+            ClassLibraryJson classLibrary = string.IsNullOrWhiteSpace(classJson)
+                ? null
+                : ParseJson<ClassLibraryJson>(classJson, "class library", result);
             ValidateWeaponLibrary(weaponLibrary, result);
             ValidateUpgradeLibrary(upgradeLibrary, result);
             ValidateEnemyLibrary(enemyLibrary, result);
             ValidateRewardLibrary(rewardLibrary, result);
+            ValidateRelicLibrary(relicLibrary, result);
+            ValidateClassLibraryJson(classLibrary, result);
             return result;
         }
 
@@ -240,6 +260,91 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError($"Reward {reward.Id} must grant currency or legacy XP.");
                 }
+            }
+        }
+
+        private static void ValidateRelicDefinitions(
+            IReadOnlyList<SurvivorsRelicDefinition> relics,
+            IReadOnlyList<RunUpgradeTargetId> knownUpgradeTargets,
+            SurvivorsContentValidationResult result)
+        {
+            if (relics == null || relics.Count == 0)
+            {
+                result.AddError("At least one relic definition is required.");
+                return;
+            }
+
+            var knownTargets = new HashSet<string>(StringComparer.Ordinal);
+            if (knownUpgradeTargets != null)
+            {
+                for (int i = 0; i < knownUpgradeTargets.Count; i++)
+                {
+                    knownTargets.Add(knownUpgradeTargets[i].Value);
+                }
+            }
+
+            var relicIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < relics.Count; i++)
+            {
+                SurvivorsRelicDefinition relic = relics[i];
+                if (relic == null)
+                {
+                    result.AddError($"Relic definition at index {i} is null.");
+                    continue;
+                }
+
+                ValidateRelicRecord(relic.Id, relic.TargetId, relic.EffectId, relic.EffectKind.ToString(), relic.Amount, relic.Weight, knownTargets, result);
+                if (!string.IsNullOrWhiteSpace(relic.Id) && !relicIds.Add(relic.Id))
+                {
+                    result.AddError($"Duplicate relic id: {relic.Id}");
+                }
+            }
+        }
+
+        private static void ValidateClassLibrary(
+            SurvivorsClassLibraryDefinition classLibrary,
+            HashSet<string> knownWeaponIds,
+            SurvivorsContentValidationResult result)
+        {
+            if (classLibrary == null || classLibrary.Classes.Count == 0)
+            {
+                result.AddError("At least one class definition is required.");
+                return;
+            }
+
+            var classIds = new HashSet<string>(StringComparer.Ordinal);
+            int defaultUnlockedCount = 0;
+            for (int i = 0; i < classLibrary.Classes.Count; i++)
+            {
+                SurvivorsClassDefinition definition = classLibrary.Classes[i];
+                if (definition == null)
+                {
+                    result.AddError($"Class definition at index {i} is null.");
+                    continue;
+                }
+
+                ValidateClassRecord(
+                    definition.Id,
+                    definition.StartingWeaponId,
+                    definition.IsUnlockedByDefault,
+                    definition.UnlockRewardId,
+                    definition.StartingStatModifiers,
+                    knownWeaponIds,
+                    result);
+                if (!string.IsNullOrWhiteSpace(definition.Id) && !classIds.Add(definition.Id))
+                {
+                    result.AddError($"Duplicate class id: {definition.Id}");
+                }
+
+                if (definition.IsUnlockedByDefault)
+                {
+                    defaultUnlockedCount++;
+                }
+            }
+
+            if (defaultUnlockedCount == 0)
+            {
+                result.AddError("Class library requires at least one default unlocked class.");
             }
         }
 
@@ -721,6 +826,94 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static void ValidateRelicLibrary(RelicLibraryJson library, SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            if (library.relics == null || library.relics.Length == 0)
+            {
+                result.AddError("Sample relic library must contain at least one relic.");
+                return;
+            }
+
+            var knownTargets = new HashSet<string>(StringComparer.Ordinal);
+            IReadOnlyList<RunUpgradeTargetId> targetIds = BasicSurvivorsGame.CreateKnownUpgradeTargets();
+            for (int i = 0; i < targetIds.Count; i++)
+            {
+                knownTargets.Add(targetIds[i].Value);
+            }
+
+            var relicIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < library.relics.Length; i++)
+            {
+                RelicRecordJson relic = library.relics[i];
+                if (relic == null)
+                {
+                    result.AddError($"Relic record at index {i} is null.");
+                    continue;
+                }
+
+                ValidateRelicRecord(relic.id, relic.target, relic.effect, relic.effectKind, relic.amount, relic.weight, knownTargets, result);
+                if (!string.IsNullOrWhiteSpace(relic.id) && !relicIds.Add(relic.id))
+                {
+                    result.AddError($"Duplicate relic id: {relic.id}");
+                }
+            }
+        }
+
+        private static void ValidateClassLibraryJson(ClassLibraryJson library, SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            if (library.classes == null || library.classes.Length == 0)
+            {
+                result.AddError("Sample class library must contain at least one class.");
+                return;
+            }
+
+            HashSet<string> knownWeaponIds = BuildKnownWeaponIds(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions());
+            var classIds = new HashSet<string>(StringComparer.Ordinal);
+            int defaultUnlockedCount = 0;
+            for (int i = 0; i < library.classes.Length; i++)
+            {
+                ClassRecordJson classRecord = library.classes[i];
+                if (classRecord == null)
+                {
+                    result.AddError($"Class record at index {i} is null.");
+                    continue;
+                }
+
+                ValidateClassRecord(
+                    classRecord.id,
+                    classRecord.startingWeaponId,
+                    classRecord.unlockedByDefault,
+                    classRecord.unlockRewardId,
+                    classRecord.statModifiers,
+                    knownWeaponIds,
+                    result);
+                if (!string.IsNullOrWhiteSpace(classRecord.id) && !classIds.Add(classRecord.id))
+                {
+                    result.AddError($"Duplicate class id: {classRecord.id}");
+                }
+
+                if (classRecord.unlockedByDefault)
+                {
+                    defaultUnlockedCount++;
+                }
+            }
+
+            if (defaultUnlockedCount == 0)
+            {
+                result.AddError("Sample class library requires at least one default unlocked class.");
+            }
+        }
+
         private static void ValidateEnemyLibrary(EnemyLibraryJson library, SurvivorsContentValidationResult result)
         {
             if (library == null)
@@ -825,6 +1018,177 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 result.AddError($"Enemy {id} requires experience drop above zero.");
             }
+        }
+
+        private static void ValidateRelicRecord(
+            string id,
+            string targetId,
+            string effectId,
+            string effectKind,
+            float amount,
+            int weight,
+            HashSet<string> knownTargets,
+            SurvivorsContentValidationResult result)
+        {
+            string resolvedId = string.IsNullOrWhiteSpace(id) ? "unknown relic" : id;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                result.AddError("Relic record is missing an id.");
+            }
+
+            if (string.IsNullOrWhiteSpace(effectId))
+            {
+                result.AddError($"Relic {resolvedId} is missing an effect id.");
+            }
+
+            if (string.IsNullOrWhiteSpace(targetId) || knownTargets == null || !knownTargets.Contains(targetId))
+            {
+                result.AddError($"Relic {resolvedId} references unknown target: {targetId}");
+            }
+
+            if (weight <= 0)
+            {
+                result.AddError($"Relic {resolvedId} requires weight above zero.");
+            }
+
+            if (!Enum.TryParse(effectKind, ignoreCase: true, out SurvivorsRelicEffectKind parsedKind) ||
+                !Enum.IsDefined(typeof(SurvivorsRelicEffectKind), parsedKind))
+            {
+                result.AddError($"Relic {resolvedId} references unknown effect kind: {effectKind}");
+                return;
+            }
+
+            if (parsedKind == SurvivorsRelicEffectKind.CooldownMultiplier)
+            {
+                if (amount >= 0f || amount <= -0.75f)
+                {
+                    result.AddError($"Relic {resolvedId} cooldown multiplier amount must be below zero and above -0.75.");
+                }
+            }
+            else if (amount <= 0f)
+            {
+                result.AddError($"Relic {resolvedId} amount must be above zero.");
+            }
+        }
+
+        private static void ValidateClassRecord(
+            string id,
+            string startingWeaponId,
+            bool unlockedByDefault,
+            string unlockRewardId,
+            IReadOnlyList<SurvivorsClassStatModifierDefinition> statModifiers,
+            HashSet<string> knownWeaponIds,
+            SurvivorsContentValidationResult result)
+        {
+            string resolvedId = string.IsNullOrWhiteSpace(id) ? "unknown class" : id;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                result.AddError("Class record is missing an id.");
+            }
+
+            if (string.IsNullOrWhiteSpace(startingWeaponId) || knownWeaponIds == null || !knownWeaponIds.Contains(startingWeaponId))
+            {
+                result.AddError($"Class {resolvedId} references unknown starting weapon: {startingWeaponId}");
+            }
+
+            if (!unlockedByDefault && string.IsNullOrWhiteSpace(unlockRewardId))
+            {
+                result.AddError($"Class {resolvedId} requires an unlock reward id.");
+            }
+
+            if (statModifiers == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < statModifiers.Count; i++)
+            {
+                SurvivorsClassStatModifierDefinition modifier = statModifiers[i];
+                if (modifier == null)
+                {
+                    result.AddError($"Class {resolvedId} stat modifier at index {i} is null.");
+                    continue;
+                }
+
+                ValidateClassStatRecord(resolvedId, modifier.StatKind.ToString(), modifier.Amount, result);
+            }
+        }
+
+        private static void ValidateClassRecord(
+            string id,
+            string startingWeaponId,
+            bool unlockedByDefault,
+            string unlockRewardId,
+            StatModifierRecordJson[] statModifiers,
+            HashSet<string> knownWeaponIds,
+            SurvivorsContentValidationResult result)
+        {
+            string resolvedId = string.IsNullOrWhiteSpace(id) ? "unknown class" : id;
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                result.AddError("Class record is missing an id.");
+            }
+
+            if (string.IsNullOrWhiteSpace(startingWeaponId) || knownWeaponIds == null || !knownWeaponIds.Contains(startingWeaponId))
+            {
+                result.AddError($"Class {resolvedId} references unknown starting weapon: {startingWeaponId}");
+            }
+
+            if (!unlockedByDefault && string.IsNullOrWhiteSpace(unlockRewardId))
+            {
+                result.AddError($"Class {resolvedId} requires an unlock reward id.");
+            }
+
+            if (statModifiers == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < statModifiers.Length; i++)
+            {
+                StatModifierRecordJson modifier = statModifiers[i];
+                if (modifier == null)
+                {
+                    result.AddError($"Class {resolvedId} stat modifier at index {i} is null.");
+                    continue;
+                }
+
+                ValidateClassStatRecord(resolvedId, modifier.stat, modifier.amount, result);
+            }
+        }
+
+        private static void ValidateClassStatRecord(string classId, string stat, float amount, SurvivorsContentValidationResult result)
+        {
+            if (!Enum.TryParse(stat, ignoreCase: true, out SurvivorsClassStatKind parsedStat) ||
+                !Enum.IsDefined(typeof(SurvivorsClassStatKind), parsedStat))
+            {
+                result.AddError($"Class {classId} references unknown stat: {stat}");
+            }
+
+            if (Mathf.Approximately(amount, 0f))
+            {
+                result.AddError($"Class {classId} stat modifier amount cannot be zero.");
+            }
+        }
+
+        private static HashSet<string> BuildKnownWeaponIds(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons)
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (weapons == null)
+            {
+                return ids;
+            }
+
+            for (int i = 0; i < weapons.Count; i++)
+            {
+                SurvivorsWeaponArchetypeDefinition weapon = weapons[i];
+                if (weapon != null && !string.IsNullOrWhiteSpace(weapon.Id))
+                {
+                    ids.Add(weapon.Id);
+                }
+            }
+
+            return ids;
         }
 
         private static bool IsValidCurrencyId(string value)
@@ -993,6 +1357,48 @@ namespace Deucarian.TemplateGameSurvivors
             public int currencyAmount;
             public string trackId;
             public int trackAmount;
+        }
+
+        [Serializable]
+        private sealed class RelicLibraryJson
+        {
+            public RelicRecordJson[] relics;
+        }
+
+        [Serializable]
+        private sealed class RelicRecordJson
+        {
+            public string id;
+            public string displayName;
+            public string target;
+            public string effect;
+            public string effectKind;
+            public float amount;
+            public int weight;
+        }
+
+        [Serializable]
+        private sealed class ClassLibraryJson
+        {
+            public ClassRecordJson[] classes;
+        }
+
+        [Serializable]
+        private sealed class ClassRecordJson
+        {
+            public string id;
+            public string displayName;
+            public string startingWeaponId;
+            public bool unlockedByDefault;
+            public string unlockRewardId;
+            public StatModifierRecordJson[] statModifiers;
+        }
+
+        [Serializable]
+        private sealed class StatModifierRecordJson
+        {
+            public string stat;
+            public float amount;
         }
     }
 }

@@ -21,6 +21,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             RunUpgradeCatalog upgrades = BasicSurvivorsGame.CreateRunUpgradeCatalog();
             var archetypes = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions();
             SurvivorsMetaProgressionDefinition meta = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            var relics = BasicSurvivorsGame.CreateRelicDefinitions();
+            SurvivorsClassLibraryDefinition classes = BasicSurvivorsGame.CreateClassLibraryDefinition();
 
             Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponId, weapon.Id);
             Assert.AreEqual(WeaponFireMode.Projectile, weapon.FireMode);
@@ -40,6 +42,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(BasicSurvivorsGame.LegacyExperienceTrackId, meta.LegacyExperienceTrackId);
             Assert.AreEqual(1, meta.PersistentUpgrades.Count);
             Assert.AreEqual(2, meta.Rewards.Count);
+            Assert.AreEqual(3, relics.Count);
+            Assert.AreEqual(2, classes.Classes.Count);
+            Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, classes.Classes[0].Id);
+            Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, classes.Classes[1].Id);
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
 
@@ -51,7 +57,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 BasicSurvivorsGame.CreateRunUpgradeCatalog(),
                 BasicSurvivorsGame.CreateKnownUpgradeTargets(),
                 BasicSurvivorsGame.CreateRunFlowDefinition(),
-                BasicSurvivorsGame.CreateMetaProgressionDefinition());
+                BasicSurvivorsGame.CreateMetaProgressionDefinition(),
+                BasicSurvivorsGame.CreateRelicDefinitions(),
+                BasicSurvivorsGame.CreateClassLibraryDefinition());
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -64,8 +72,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
             string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
             string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
 
-            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson);
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson);
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -132,6 +142,30 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void InvalidRelicAndClassSampleContentReportsErrors()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\",\"hitscanCount\":1,\"hitscanWidth\":1}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
+            string relicJson = "{\"relics\":[{\"id\":\"relic.dup\",\"target\":\"target.missing\",\"effect\":\"\",\"effectKind\":\"NoSuchKind\",\"amount\":0,\"weight\":0},{\"id\":\"relic.dup\",\"target\":\"survivors.pickups\",\"effect\":\"effect.valid\",\"effectKind\":\"PickupRange\",\"amount\":1,\"weight\":1}]}";
+            string classJson = "{\"classes\":[{\"id\":\"class.dup\",\"startingWeaponId\":\"weapon.missing\",\"unlockedByDefault\":false,\"unlockRewardId\":\"\",\"statModifiers\":[{\"stat\":\"NoSuchStat\",\"amount\":0}]},{\"id\":\"class.dup\",\"startingWeaponId\":\"weapon.valid\",\"unlockedByDefault\":false,\"unlockRewardId\":\"reward.unlock\",\"statModifiers\":[]}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, relicJson: relicJson, classJson: classJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("Duplicate relic id", errors);
+            StringAssert.Contains("unknown target", errors);
+            StringAssert.Contains("missing an effect id", errors);
+            StringAssert.Contains("unknown effect kind", errors);
+            StringAssert.Contains("weight above zero", errors);
+            StringAssert.Contains("Duplicate class id", errors);
+            StringAssert.Contains("unknown starting weapon", errors);
+            StringAssert.Contains("unlock reward id", errors);
+            StringAssert.Contains("unknown stat", errors);
+            StringAssert.Contains("requires at least one default unlocked class", errors);
+        }
+
+        [Test]
         public void RunRewardCalculatorMatchesReferenceShape()
         {
             SurvivorsRunRewardSummary summary = SurvivorsRunRewardCalculator.Calculate(
@@ -195,6 +229,36 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Assert.AreEqual(2, service.CompletedRuns);
                 Assert.AreEqual(1, service.BossVictories);
                 Assert.AreEqual(1, service.GetPersistentUpgradeRank(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
+                Assert.AreEqual(string.Empty, service.SelectedClassId);
+            }
+        }
+
+        [Test]
+        public void ClassUnlockAndSelectionPersistInMetaProfile()
+        {
+            var storage = new InMemoryTextStorage();
+            var slotId = new SaveSlotId("class-persistence-test");
+            SurvivorsClassLibraryDefinition classes = BasicSurvivorsGame.CreateClassLibraryDefinition();
+
+            using (var service = new SurvivorsMetaProgressionService(new PersistenceService(storage), slotId))
+            {
+                service.Load();
+                service.EnsureDefaultClassUnlocks(classes);
+
+                Assert.IsTrue(service.IsClassUnlocked(BasicSurvivorsGame.DefaultClassId, classes));
+                Assert.IsFalse(service.IsClassUnlocked(BasicSurvivorsGame.EmberVanguardClassId, classes));
+                Assert.IsTrue(service.UnlockClass(BasicSurvivorsGame.EmberVanguardClassId, classes));
+                Assert.IsTrue(service.TrySetSelectedClass(BasicSurvivorsGame.EmberVanguardClassId, classes));
+            }
+
+            using (var service = new SurvivorsMetaProgressionService(new PersistenceService(storage), slotId))
+            {
+                service.Load();
+                service.EnsureDefaultClassUnlocks(classes);
+
+                Assert.IsTrue(service.IsClassUnlocked(BasicSurvivorsGame.EmberVanguardClassId, classes));
+                Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, service.SelectedClassId);
+                Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, service.ResolveSelectedClass(classes).Id);
             }
         }
 

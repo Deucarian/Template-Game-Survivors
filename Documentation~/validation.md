@@ -71,3 +71,20 @@ Phase 2Q adds validation for:
 The Phase 2Q save path uses `com.deucarian.persistence` and `com.deucarian.progression` from local Survivors kit code. Boss relic drafts, class unlocks, skill trees, richer meta upgrade graphs, and concrete-product reward economies are deliberately deferred.
 
 No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2Q validation.
+
+Phase 2R adds validation for:
+
+- runtime relic/class descriptor validation
+- sample relic JSON validation for unique IDs, valid targets, valid effect kinds, positive weights, and valid effect amounts
+- sample class JSON validation for unique IDs, valid starting weapons, default unlock availability, unlock reward IDs, and valid stat modifiers
+- v2-to-v3 meta profile shape through selected/unlocked class fields
+- class unlock and selected class persistence through the local meta profile
+- miniboss death opening a boss relic draft
+- selected relic affecting the current run
+- final boss victory granting the sample class unlock
+- selected class affecting a new run's starting move speed, damage, and max health
+- persisted class unlock selection across controller instances
+
+The Phase 2R relic and class systems remain local Survivors template-kit code. Skill trees, class-specific upgrade pools, class resource profiles, content-pack gates, boss relic rarity tiers, and reward-selection timeout behavior are deliberately deferred.
+
+No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2R validation.

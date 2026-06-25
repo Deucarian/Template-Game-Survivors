@@ -158,6 +158,12 @@ namespace Deucarian.TemplateGameSurvivors
         public const string MetaDamageEffectId = "survivors.meta.damage.flat";
         public const string MinibossRewardId = "reward.survivors.miniboss";
         public const string BossRewardId = "reward.survivors.final-boss";
+        public const string BloodStarRelicId = "relic.survivors.blood-star";
+        public const string QuickenedSigilRelicId = "relic.survivors.quickened-sigil";
+        public const string GemheartCharmRelicId = "relic.survivors.gemheart-charm";
+        public const string DefaultClassId = "class.survivors.arcane-initiate";
+        public const string EmberVanguardClassId = "class.survivors.ember-vanguard";
+        public const string EmberVanguardUnlockRewardId = "reward.survivors.class.ember-vanguard";
         public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
@@ -451,6 +457,63 @@ namespace Deucarian.TemplateGameSurvivors
                 PayloadWeaponTarget,
                 PickupTarget
             };
+        }
+
+        public static IReadOnlyList<SurvivorsRelicDefinition> CreateRelicDefinitions()
+        {
+            return new[]
+            {
+                new SurvivorsRelicDefinition(
+                    BloodStarRelicId,
+                    "Blood Star Relic",
+                    WeaponTarget.Value,
+                    DamageBonusEffect.Value,
+                    SurvivorsRelicEffectKind.DamageBonus,
+                    amount: 3f,
+                    weight: 60),
+                new SurvivorsRelicDefinition(
+                    QuickenedSigilRelicId,
+                    "Quickened Sigil",
+                    WeaponTarget.Value,
+                    FireRateEffect.Value,
+                    SurvivorsRelicEffectKind.CooldownMultiplier,
+                    amount: -0.12f,
+                    weight: 45),
+                new SurvivorsRelicDefinition(
+                    GemheartCharmRelicId,
+                    "Gemheart Charm",
+                    PickupTarget.Value,
+                    MagnetRangeEffect.Value,
+                    SurvivorsRelicEffectKind.PickupRange,
+                    amount: 1.25f,
+                    weight: 40)
+            };
+        }
+
+        public static SurvivorsClassLibraryDefinition CreateClassLibraryDefinition()
+        {
+            return new SurvivorsClassLibraryDefinition(new[]
+            {
+                new SurvivorsClassDefinition(
+                    DefaultClassId,
+                    "Arcane Initiate",
+                    ArcaneWandWeaponId.Value,
+                    isUnlockedByDefault: true,
+                    unlockRewardId: string.Empty,
+                    startingStatModifiers: Array.Empty<SurvivorsClassStatModifierDefinition>()),
+                new SurvivorsClassDefinition(
+                    EmberVanguardClassId,
+                    "Ember Vanguard",
+                    StarBeamWeaponId.Value,
+                    isUnlockedByDefault: false,
+                    unlockRewardId: EmberVanguardUnlockRewardId,
+                    startingStatModifiers: new[]
+                    {
+                        new SurvivorsClassStatModifierDefinition(SurvivorsClassStatKind.MoveSpeed, 0.65f),
+                        new SurvivorsClassStatModifierDefinition(SurvivorsClassStatKind.Damage, 1.25f),
+                        new SurvivorsClassStatModifierDefinition(SurvivorsClassStatKind.MaxHealth, 6f)
+                    })
+            });
         }
 
         public static SurvivorsMetaProgressionDefinition CreateMetaProgressionDefinition()
