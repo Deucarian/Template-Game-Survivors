@@ -274,6 +274,79 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Object.Destroy(controller.gameObject);
         }
 
+        [UnityTest]
+        public IEnumerator RunFlowCanSpawnMinibossAndBossOverTime()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.Simulate(controller.CurrentTuning.MinibossSpawnTimeSeconds + 0.1f);
+            yield return null;
+
+            Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ActiveMinibossCount, Is.GreaterThanOrEqualTo(1));
+
+            float bossDelta = controller.CurrentTuning.BossSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f;
+            controller.Simulate(bossDelta);
+            yield return null;
+
+            Assert.That(controller.BossSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ActiveBossCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator MinibossCanDieAndDropExperience()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            SurvivorsEnemyActor miniboss = controller.SpawnMinibossForTest(controller.PlayerPosition + new Vector3(2.4f, 0f, 0f), 1f);
+            miniboss.ApplyDamage(100f, "test.miniboss");
+            yield return null;
+
+            Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.MinibossKilledCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator BossCanDieAndTriggerVictory()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+
+            Assert.That(controller.BossSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.BossKilledCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.IsTrue(controller.IsVictory);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SurvivalDurationCanTriggerVictory()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.Simulate(controller.CurrentTuning.SurvivalVictoryTimeSeconds + 0.1f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.IsTrue(controller.IsVictory);
+
+            Object.Destroy(controller.gameObject);
+        }
+
         private static SurvivorsTemplateController CreateController()
         {
             var root = new GameObject("Survivors Template PlayMode Test");

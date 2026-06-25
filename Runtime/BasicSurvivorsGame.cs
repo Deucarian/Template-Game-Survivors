@@ -16,7 +16,8 @@ namespace Deucarian.TemplateGameSurvivors
         Booting = 0,
         Playing = 1,
         LevelUp = 2,
-        GameOver = 3
+        GameOver = 3,
+        Victory = 4
     }
 
     public enum SurvivorsPickupKind
@@ -41,6 +42,28 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemyContactDamage = 6f;
         public float EnemyContactIntervalSeconds = 0.7f;
         public int EnemyExperienceReward = 2;
+        public float RunEscalationIntervalSeconds = 20f;
+        public float MinimumEnemySpawnIntervalSeconds = 0.28f;
+        public float EnemySpawnIntervalReductionPerEscalation = 0.07f;
+        public int EnemyMaximumAliveIncreasePerEscalation = 4;
+        public float EnemyHealthMultiplierPerEscalation = 0.16f;
+        public float EnemyMoveSpeedMultiplierPerEscalation = 0.04f;
+        public float EnemyExperienceMultiplierPerEscalation = 0.12f;
+        public float MinibossSpawnTimeSeconds = 30f;
+        public float MinibossMaxHealth = 46f;
+        public float MinibossMoveSpeed = 2.15f;
+        public float MinibossRadius = 0.82f;
+        public float MinibossContactDamage = 10f;
+        public float MinibossContactIntervalSeconds = 0.85f;
+        public int MinibossExperienceReward = 9;
+        public float BossSpawnTimeSeconds = 90f;
+        public float BossMaxHealth = 150f;
+        public float BossMoveSpeed = 1.85f;
+        public float BossRadius = 1.18f;
+        public float BossContactDamage = 16f;
+        public float BossContactIntervalSeconds = 0.95f;
+        public int BossExperienceReward = 24;
+        public float SurvivalVictoryTimeSeconds = 180f;
         public float WeaponCooldownSeconds = 0.62f;
         public float WeaponRange = 14f;
         public float ProjectileDamage = 7f;
@@ -114,6 +137,8 @@ namespace Deucarian.TemplateGameSurvivors
     {
         public static readonly DamageTypeId ArcaneDamageType = new DamageTypeId("damage.survivors.arcane");
         public static readonly WorldSpawnableId SwarmEnemySpawnableId = new WorldSpawnableId("enemy.survivors.swarm");
+        public static readonly WorldSpawnableId MinibossEnemySpawnableId = new WorldSpawnableId("enemy.survivors.miniboss");
+        public static readonly WorldSpawnableId BossEnemySpawnableId = new WorldSpawnableId("enemy.survivors.boss");
         public static readonly WorldSpawnableId ExperiencePickupSpawnableId = new WorldSpawnableId("pickup.survivors.experience");
         public static readonly WorldSpawnableId MagnetPickupSpawnableId = new WorldSpawnableId("pickup.survivors.magnet");
         public static readonly WorldSpawnableId ProjectileSpawnableId = new WorldSpawnableId("projectile.survivors.arcane-bolt");
@@ -189,6 +214,44 @@ namespace Deucarian.TemplateGameSurvivors
                 Mathf.Max(1, Mathf.RoundToInt(resolved.ProjectileLifetimeSeconds * 60f)),
                 resolved.ProjectileSpeed,
                 maxImpacts: 1);
+        }
+
+        public static SurvivorsRunFlowDefinition CreateRunFlowDefinition(SurvivorsTemplateTuning tuning = null)
+        {
+            SurvivorsTemplateTuning resolved = tuning ?? CreateDefaultTuning();
+            return new SurvivorsRunFlowDefinition(
+                resolved.RunEscalationIntervalSeconds,
+                resolved.MinimumEnemySpawnIntervalSeconds,
+                resolved.EnemySpawnIntervalReductionPerEscalation,
+                resolved.EnemyMaximumAliveIncreasePerEscalation,
+                resolved.EnemyHealthMultiplierPerEscalation,
+                resolved.EnemyMoveSpeedMultiplierPerEscalation,
+                resolved.EnemyExperienceMultiplierPerEscalation,
+                resolved.MinibossSpawnTimeSeconds,
+                new SurvivorsEnemyProfile(
+                    SurvivorsEnemyRole.Miniboss,
+                    MinibossEnemySpawnableId.Value,
+                    "Bloodbound Miniboss",
+                    resolved.MinibossMaxHealth,
+                    resolved.MinibossMoveSpeed,
+                    resolved.MinibossRadius,
+                    resolved.MinibossContactDamage,
+                    resolved.MinibossContactIntervalSeconds,
+                    resolved.MinibossExperienceReward,
+                    new Color(1f, 0.48f, 0.18f)),
+                resolved.BossSpawnTimeSeconds,
+                new SurvivorsEnemyProfile(
+                    SurvivorsEnemyRole.Boss,
+                    BossEnemySpawnableId.Value,
+                    "Eclipse Boss",
+                    resolved.BossMaxHealth,
+                    resolved.BossMoveSpeed,
+                    resolved.BossRadius,
+                    resolved.BossContactDamage,
+                    resolved.BossContactIntervalSeconds,
+                    resolved.BossExperienceReward,
+                    new Color(0.58f, 0.18f, 1f)),
+                resolved.SurvivalVictoryTimeSeconds);
         }
 
         public static IReadOnlyList<SurvivorsWeaponArchetypeDefinition> CreateWeaponArchetypeDefinitions(SurvivorsTemplateTuning tuning = null)

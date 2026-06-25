@@ -3,6 +3,7 @@
   "rootNamespace": "Deucarian.TemplateGameSurvivors.PlayModeTests",
   "references": [
     "Deucarian.TemplateGameSurvivors",
+    "Deucarian.Combat",
     "Deucarian.RunUpgrades"
   ],
   "includePlatforms": [],

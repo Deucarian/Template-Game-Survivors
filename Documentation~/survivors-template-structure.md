@@ -17,6 +17,14 @@
 - `SurvivorsPickupActor`
 - `SurvivorsSpawnPoseResolver`
 
+`Runtime/SurvivorsRunFlow.cs` contains local Survivors run-structure logic:
+
+- elapsed-time phase progression
+- escalation multipliers for swarm pressure
+- miniboss and boss profile definitions
+- scheduled miniboss/boss spawn events
+- boss-defeat and survival-duration victory triggers
+
 `Runtime/SurvivorsWeaponArchetypes.cs` contains the local Survivors weapon-kit runtimes:
 
 - projectile auto-fire adapter
@@ -40,6 +48,7 @@
 - valid weapon archetype names
 - valid projectile references from projectile weapons
 - valid payload timing/radius values
+- valid boss/miniboss enemy roles, spawn times, and combat stats
 - valid run-upgrade target references
 
 This is reusable Survivors template-kit code, not concrete product content.
@@ -55,9 +64,9 @@ This is reusable Survivors template-kit code, not concrete product content.
 - `Content/DefaultUpgrades/upgrades.json`
 - `Content/DefaultPickups/pickups.json`
 
-These files are examples for product-owned content flipping. They are not intended to become shared package code.
+The enemy sample includes a swarm enemy, one scheduled miniboss, and one final boss. These files are examples for product-owned content flipping. They are not intended to become shared package code.
 
 ## Tests
 
-- `Tests/EditMode` covers descriptors, archetype config, content validation, payload config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
-- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, and run upgrades affecting new archetypes/modifiers.
+- `Tests/EditMode` covers descriptors, archetype config, content validation, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
+- `Tests/PlayMode` covers first playable runtime boot, death/restart, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, timed miniboss/boss spawning, boss/miniboss death, victory, and run upgrades affecting new archetypes/modifiers.

@@ -19,7 +19,8 @@ Reference: the existing local Vampire Survivors clone repository used for Phase 
 - Level-up pauses the run into a three-choice draft.
 - Choosing a draft item applies a run upgrade and resumes play.
 - Player death transitions to game over and restart is supported.
-- Boss/final-boss, class selection, passive trees, skill graphs, save migration, meta progression, and stress tooling exist in the reference but are deliberately outside the first template slice.
+- Boss/final-boss encounters spawn from authored schedules, recurring bosses can grant bonus rewards and boss relic choices, final boss death triggers victory, and run escalation increases pressure over elapsed time.
+- Class selection, passive trees, skill graphs, save migration, meta progression, and stress tooling exist in the reference but are deliberately outside the current template slices.
 
 ## Phase 2L Slice
 
@@ -79,3 +80,22 @@ The 2O template slice adds local template-kit implementations for:
 - payload content validation for timing and radius fields
 
 The richer reference behavior for grenade bounce, cluster payloads, payload chain reactions, slip hazards, and damage augment propagation is deliberately not ported yet. These systems remain local to the Survivors template. No shared package extraction, publishing, or package registry work is performed in this phase.
+
+## Phase 2P Boss, Miniboss, And Victory Slice
+
+The reference clone schedules bosses through wave/boss cadence data. Regular boss encounters appear before the final boss, boss deaths can grant bonus rewards and open boss-relic choices, final boss death transitions to victory, and a run escalation model increases spawn pressure and enemy/reward multipliers over time.
+
+The 2P template slice adds local template-kit implementations for:
+
+- run timer and phase progression
+- swarm escalation for spawn interval, max alive, health, speed, and XP
+- scheduled miniboss spawn
+- scheduled final boss spawn
+- boss/miniboss profile sample content
+- boss/miniboss death counters and XP drops
+- final boss death victory
+- survival-duration victory
+- clearer defeat/restart and victory/restart state handling
+- boss/miniboss content validation
+
+The reference boss relic draft, blood shard rewards, legacy XP rewards, authored multi-boss schedules, elites, death-spawn enemies, meta-progression grant flow, and stress tooling are deliberately not ported yet. These systems remain local to the Survivors template until another concrete game proves a reusable package shape. No shared package extraction, publishing, or package registry work is performed in this phase.

@@ -42,7 +42,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateRuntimeContent(
                 BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(),
                 BasicSurvivorsGame.CreateRunUpgradeCatalog(),
-                BasicSurvivorsGame.CreateKnownUpgradeTargets());
+                BasicSurvivorsGame.CreateKnownUpgradeTargets(),
+                BasicSurvivorsGame.CreateRunFlowDefinition());
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -53,8 +54,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string sampleRoot = GetSampleRoot();
             string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
             string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
 
-            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson);
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson);
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -95,6 +97,71 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("hazard duration", errors);
             StringAssert.Contains("hazard tick interval", errors);
             StringAssert.Contains("negative hazard damage ratio", errors);
+        }
+
+        [Test]
+        public void InvalidBossAndMinibossContentReportsRunFlowErrors()
+        {
+            var badRunFlow = new SurvivorsRunFlowDefinition(
+                escalationIntervalSeconds: 0f,
+                minimumEnemySpawnIntervalSeconds: 0f,
+                enemySpawnIntervalReductionPerEscalation: -1f,
+                enemyMaximumAliveIncreasePerEscalation: -1,
+                enemyHealthMultiplierPerEscalation: 0f,
+                enemyMoveSpeedMultiplierPerEscalation: 0f,
+                enemyExperienceMultiplierPerEscalation: 0f,
+                minibossSpawnTimeSeconds: 20f,
+                miniboss: new SurvivorsEnemyProfile(SurvivorsEnemyRole.Boss, "", "", 0f, 0f, 0f, -1f, 0f, 0, Color.white),
+                bossSpawnTimeSeconds: 10f,
+                boss: new SurvivorsEnemyProfile(SurvivorsEnemyRole.Miniboss, "enemy.bad.boss", "", 0f, 0f, 0f, -1f, 0f, 0, Color.white),
+                survivalVictoryTimeSeconds: 8f);
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateRunFlowContent(badRunFlow);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("escalation interval", errors);
+            StringAssert.Contains("Boss spawn time", errors);
+            StringAssert.Contains("Survival victory time", errors);
+            StringAssert.Contains("miniboss profile", errors);
+            StringAssert.Contains("boss profile", errors);
+            StringAssert.Contains("health above zero", errors);
+        }
+
+        [Test]
+        public void RunFlowRuntimeEscalatesAndConsumesBossEvents()
+        {
+            SurvivorsRunFlowDefinition definition = BasicSurvivorsGame.CreateRunFlowDefinition();
+            var runtime = new SurvivorsRunFlowRuntime(definition);
+
+            runtime.Tick(definition.EscalationIntervalSeconds + 0.1f);
+
+            Assert.AreEqual(1, runtime.EscalationLevel);
+            Assert.AreEqual(SurvivorsRunPhase.Escalating, runtime.Phase);
+            Assert.IsTrue(runtime.TryConsumeMinibossSpawn(definition.MinibossSpawnTimeSeconds));
+            Assert.IsFalse(runtime.TryConsumeMinibossSpawn(definition.MinibossSpawnTimeSeconds + 1f));
+            Assert.IsTrue(runtime.TryConsumeBossSpawn(definition.BossSpawnTimeSeconds));
+            Assert.IsFalse(runtime.TryConsumeBossSpawn(definition.BossSpawnTimeSeconds + 1f));
+            Assert.IsTrue(runtime.TryConsumeBossVictory());
+            Assert.AreEqual(SurvivorsRunPhase.Victory, runtime.Phase);
+        }
+
+        [Test]
+        public void InvalidEnemySampleContentReportsBossDefinitionErrors()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Grenade\",\"payloadCount\":1,\"payloadTravelSpeed\":1,\"payloadArmingSeconds\":1,\"payloadLifetimeSeconds\":1,\"payloadTriggerRadius\":1,\"payloadExplosionRadius\":1}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.payloads\"}]}";
+            string enemyJson = "{\"enemies\":[{\"id\":\"enemy.dup\",\"role\":\"Miniboss\",\"health\":0,\"moveSpeed\":0,\"radius\":0,\"contactDamage\":-1,\"contactIntervalSeconds\":0,\"experienceDrop\":0,\"spawnTimeSeconds\":0},{\"id\":\"enemy.dup\",\"role\":\"NoSuchRole\",\"health\":1,\"moveSpeed\":1,\"radius\":1,\"contactDamage\":0,\"contactIntervalSeconds\":1,\"experienceDrop\":1}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("Duplicate enemy id", errors);
+            StringAssert.Contains("unknown role", errors);
+            StringAssert.Contains("health above zero", errors);
+            StringAssert.Contains("spawn time above zero", errors);
+            StringAssert.Contains("boss definition", errors);
         }
 
         [Test]

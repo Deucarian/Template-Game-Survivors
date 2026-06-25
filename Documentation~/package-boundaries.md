@@ -11,11 +11,16 @@
 
 ## Local Survivors Kit Code
 
-The following intentionally stay local in Phase 2O:
+The following intentionally stay local in Phase 2P:
 
 - top-down player movement
 - camera follow
 - radial spawn position rules
+- run timer and run phase progression
+- swarm escalation tuning
+- miniboss and boss timing rules
+- victory state machine
+- boss/miniboss sample profiles and reward-drop rules
 - nearest-enemy auto-targeting
 - projectile steering and collision checks
 - hitscan/beam targeting and primitive beam visuals
@@ -41,6 +46,8 @@ The following intentionally stay local in Phase 2O:
 Do not extract these yet. Revisit only after parity gaps repeat across real templates or products:
 
 - generalized horde escalation
+- boss/miniboss encounter descriptors only after another template proves the same cadence/reward shape
+- victory/miniboss reward hooks only after repeated reuse
 - pooled projectile impact adapters and impact VFX hooks
 - richer Survivors weapon archetype descriptors
 - beam/hitscan adapters only after another game proves the same shape
@@ -51,4 +58,4 @@ Do not extract these yet. Revisit only after parity gaps repeat across real temp
 - content validation for authored libraries if multiple templates need the same rules
 - diagnostics for spawn pressure, pool stats, and draft state
 
-No shared package extraction happened in Phase 2O.
+No shared package extraction happened in Phase 2P.

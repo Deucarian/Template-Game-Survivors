@@ -42,3 +42,16 @@ Phase 2O adds validation for:
 - run upgrade affecting payload behavior
 
 No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2O validation.
+
+Phase 2P adds validation for:
+
+- local run-flow descriptor and escalation validation
+- sample enemy JSON validation for swarm, miniboss, and boss definitions
+- clear validation failures for invalid boss/miniboss role, timing, health, move speed, radius, contact interval, contact damage, XP, and duplicate enemy IDs
+- timed miniboss and boss spawn smoke
+- miniboss death and XP drop smoke
+- boss death and victory trigger smoke
+- survival-duration victory smoke
+- existing defeat/restart flow
+
+No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2P validation.

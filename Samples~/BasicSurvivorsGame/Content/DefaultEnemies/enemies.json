@@ -3,10 +3,38 @@
     {
       "id": "enemy.survivors.swarm",
       "displayName": "Swarm Thrall",
+      "role": "Swarm",
       "health": 10,
       "moveSpeed": 2.3,
+      "radius": 0.48,
       "contactDamage": 6,
+      "contactIntervalSeconds": 0.7,
       "experienceDrop": 2
+    },
+    {
+      "id": "enemy.survivors.miniboss",
+      "displayName": "Bloodbound Miniboss",
+      "role": "Miniboss",
+      "health": 46,
+      "moveSpeed": 2.15,
+      "radius": 0.82,
+      "contactDamage": 10,
+      "contactIntervalSeconds": 0.85,
+      "experienceDrop": 9,
+      "spawnTimeSeconds": 30
+    },
+    {
+      "id": "enemy.survivors.boss",
+      "displayName": "Eclipse Boss",
+      "role": "Boss",
+      "health": 150,
+      "moveSpeed": 1.85,
+      "radius": 1.18,
+      "contactDamage": 16,
+      "contactIntervalSeconds": 0.95,
+      "experienceDrop": 24,
+      "spawnTimeSeconds": 90,
+      "finalBoss": true
     }
   ]
 }

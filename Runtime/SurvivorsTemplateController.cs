@@ -44,6 +44,7 @@ namespace Deucarian.TemplateGameSurvivors
         private WeaponDefinition _weaponDefinition;
         private ProjectileDefinition _projectileDefinition;
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
+        private SurvivorsRunFlowRuntime _runFlow;
         private float _enemySpawnTimer;
         private float _playerInvulnerabilityTimer;
         private long _spawnSequence;
@@ -72,6 +73,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadDetonationCount { get; private set; }
         public int PayloadExplosionHitCount { get; private set; }
         public int PayloadHazardTickCount { get; private set; }
+        public int MinibossSpawnCount { get; private set; }
+        public int BossSpawnCount { get; private set; }
+        public int MinibossKilledCount { get; private set; }
+        public int BossKilledCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -92,6 +97,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float PayloadExplosionRadiusBonus { get; private set; }
         public float PayloadTriggerRadiusBonus { get; private set; }
         public int ActiveEnemyCount => _enemies.Count;
+        public int ActiveMinibossCount => CountEnemiesByRole(SurvivorsEnemyRole.Miniboss);
+        public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
         public int ActivePickupCount => _pickups.Count;
         public int ActiveProjectileCount => _projectiles.Count;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
@@ -104,10 +111,14 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 PlayerForward => _playerObject == null ? Vector3.forward : _playerObject.transform.forward;
         public CombatCatalog CombatCatalog => _combatCatalog;
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateDefaultTuning());
+        public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
+        public SurvivorsRunPhase RunPhase => _runFlow == null ? SurvivorsRunPhase.Opening : _runFlow.Phase;
+        public int RunEscalationLevel => _runFlow == null ? 0 : _runFlow.EscalationLevel;
         public bool IsPlaying => State == SurvivorsRunState.Playing;
         public bool IsLevelUpOpen => State == SurvivorsRunState.LevelUp;
         public bool IsGameOver => State == SurvivorsRunState.GameOver;
+        public bool IsVictory => State == SurvivorsRunState.Victory;
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
 
         private void Awake()
@@ -139,7 +150,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            if (State == SurvivorsRunState.GameOver)
+            if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
             {
                 if (Input.GetKeyDown(KeyCode.R))
                 {
@@ -176,11 +187,13 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            GUI.Box(new Rect(12, 12, 260, 112), string.Empty);
+            GUI.Box(new Rect(12, 12, 280, 150), string.Empty);
             GUI.Label(new Rect(24, 22, 230, 22), $"HP {CurrentHealth:0}/{MaxHealth:0}  LV {Level}  XP {Experience}/{RequiredExperienceForNextLevel}");
             GUI.Label(new Rect(24, 44, 230, 22), $"Enemies {ActiveEnemyCount}  Kills {KilledCount}");
-            GUI.Label(new Rect(24, 66, 230, 22), $"Damage {ProjectileDamage:0.0}  Cooldown {WeaponCooldownSeconds:0.00}s");
-            GUI.Label(new Rect(24, 88, 230, 22), "WASD/Arrows move  M magnet  R restart");
+            GUI.Label(new Rect(24, 66, 250, 22), $"Phase {RunPhase}  Time {RunTimeSeconds:0}s  Esc {RunEscalationLevel}");
+            GUI.Label(new Rect(24, 88, 250, 22), $"Bosses {ActiveBossCount}  Minibosses {ActiveMinibossCount}");
+            GUI.Label(new Rect(24, 110, 230, 22), $"Damage {ProjectileDamage:0.0}  Cooldown {WeaponCooldownSeconds:0.00}s");
+            GUI.Label(new Rect(24, 132, 230, 22), "WASD/Arrows move  M magnet  R restart");
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -190,6 +203,15 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 70f, 300f, 140f), "Game Over");
                 if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f, 140f, 34f), "Restart"))
+                {
+                    RestartRun();
+                }
+            }
+            else if (State == SurvivorsRunState.Victory)
+            {
+                GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 70f, 300f, 140f), "Victory");
+                GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 28f, 232f, 22f), $"Run cleared in {RunTimeSeconds:0}s");
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f + 10f, 140f, 34f), "Restart"))
                 {
                     RestartRun();
                 }
@@ -228,6 +250,10 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadDetonationCount = 0;
             PayloadExplosionHitCount = 0;
             PayloadHazardTickCount = 0;
+            MinibossSpawnCount = 0;
+            BossSpawnCount = 0;
+            MinibossKilledCount = 0;
+            BossKilledCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -252,6 +278,7 @@ namespace Deucarian.TemplateGameSurvivors
             _spawnSequence = 0;
             _currentDraft = null;
             BuildRuntimeWorld();
+            _runFlow = new SurvivorsRunFlowRuntime(BasicSurvivorsGame.CreateRunFlowDefinition(resolved));
             _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved));
             State = SurvivorsRunState.Playing;
             _runStarted = true;
@@ -271,6 +298,12 @@ namespace Deucarian.TemplateGameSurvivors
 
             float dt = Mathf.Max(0f, deltaTime);
             RunTimeSeconds += dt;
+            TickRunFlow();
+            if (State != SurvivorsRunState.Playing)
+            {
+                return;
+            }
+
             _playerInvulnerabilityTimer = Mathf.Max(0f, _playerInvulnerabilityTimer - dt);
             MovePlayer(movementInput, dt);
             TickEnemySpawning(dt);
@@ -283,7 +316,31 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, float healthOverride = -1f)
         {
             EnsureRunStartedForTest();
-            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true);
+            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, SurvivorsEnemyRole.Swarm);
+            if (enemy != null && healthOverride > 0f)
+            {
+                enemy.OverrideHealthForTest(healthOverride);
+            }
+
+            return enemy;
+        }
+
+        public SurvivorsEnemyActor SpawnMinibossForTest(Vector3 position, float healthOverride = -1f)
+        {
+            EnsureRunStartedForTest();
+            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, SurvivorsEnemyRole.Miniboss);
+            if (enemy != null && healthOverride > 0f)
+            {
+                enemy.OverrideHealthForTest(healthOverride);
+            }
+
+            return enemy;
+        }
+
+        public SurvivorsEnemyActor SpawnBossForTest(Vector3 position, float healthOverride = -1f)
+        {
+            EnsureRunStartedForTest();
+            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, SurvivorsEnemyRole.Boss);
             if (enemy != null && healthOverride > 0f)
             {
                 enemy.OverrideHealthForTest(healthOverride);
@@ -360,7 +417,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void ApplyDamageToPlayer(float amount, string source)
         {
-            if (_playerHealth == null || State == SurvivorsRunState.GameOver)
+            if (_playerHealth == null || State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
             {
                 return;
             }
@@ -374,6 +431,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (!_playerHealth.IsAlive)
             {
                 State = SurvivorsRunState.GameOver;
+                _currentDraft = null;
             }
         }
 
@@ -429,6 +487,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             KilledCount++;
             Vector3 position = enemy.transform.position;
+            SurvivorsEnemyRole role = enemy.Role;
             int xp = Mathf.Max(1, enemy.ExperienceReward);
             _enemies.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
@@ -437,6 +496,15 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                MinibossKilledCount++;
+            }
+            else if (role == SurvivorsEnemyRole.Boss)
+            {
+                BossKilledCount++;
+                EnterVictory();
+            }
         }
 
         internal void ReleaseEnemy(SurvivorsEnemyActor enemy, DespawnReason reason)
@@ -706,6 +774,21 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadHazardTickCount++;
         }
 
+        private int CountEnemiesByRole(SurvivorsEnemyRole role)
+        {
+            int count = 0;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy != null && enemy.IsAlive && enemy.Role == role)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
         private void EnsureRunStartedForTest()
         {
             if (!_runStarted)
@@ -737,6 +820,8 @@ namespace Deucarian.TemplateGameSurvivors
             var spawnables = new[]
             {
                 new SpawnableDefinition(BasicSurvivorsGame.SwarmEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 8, CurrentTuning.EnemyMaximumAlive + 8, "survivors-enemy-pool"),
+                new SpawnableDefinition(BasicSurvivorsGame.MinibossEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 1, 8, "survivors-miniboss-pool"),
+                new SpawnableDefinition(BasicSurvivorsGame.BossEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 1, 4, "survivors-boss-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.ExperiencePickupSpawnableId, new GameObjectPrefabProvider(_experiencePickupPrefab), 16, 256, "survivors-xp-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.MagnetPickupSpawnableId, new GameObjectPrefabProvider(_magnetPickupPrefab), 2, 16, "survivors-magnet-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.ProjectileSpawnableId, new GameObjectPrefabProvider(_projectilePrefab), 12, 96, "survivors-projectile-pool")
@@ -798,6 +883,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _weaponLoadout = null;
             }
 
+            _runFlow = null;
             _enemies.Clear();
             _pickups.Clear();
             _projectiles.Clear();
@@ -830,19 +916,133 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void TickEnemySpawning(float deltaTime)
+        private void TickRunFlow()
         {
-            _enemySpawnTimer -= deltaTime;
-            if (_enemySpawnTimer > 0f || _enemies.Count >= CurrentTuning.EnemyMaximumAlive)
+            if (_runFlow == null)
             {
                 return;
             }
 
-            SpawnEnemy(Vector3.zero, explicitPosition: false);
-            _enemySpawnTimer = CurrentTuning.EnemySpawnIntervalSeconds;
+            _runFlow.Tick(RunTimeSeconds);
+            if (_runFlow.TryConsumeMinibossSpawn(RunTimeSeconds))
+            {
+                SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Miniboss);
+            }
+
+            if (_runFlow.TryConsumeBossSpawn(RunTimeSeconds))
+            {
+                SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Boss);
+            }
+
+            if (_runFlow.TryConsumeSurvivalVictory(RunTimeSeconds))
+            {
+                EnterVictory();
+            }
         }
 
-        private SurvivorsEnemyActor SpawnEnemy(Vector3 position, bool explicitPosition)
+        private void EnterVictory()
+        {
+            if (State == SurvivorsRunState.Victory || State == SurvivorsRunState.GameOver)
+            {
+                return;
+            }
+
+            if (_runFlow != null)
+            {
+                _runFlow.TryConsumeBossVictory();
+            }
+
+            _currentDraft = null;
+            State = SurvivorsRunState.Victory;
+        }
+
+        private float ResolveEnemySpawnIntervalSeconds()
+        {
+            return _runFlow == null
+                ? Mathf.Max(0.05f, CurrentTuning.EnemySpawnIntervalSeconds)
+                : _runFlow.ResolveSpawnInterval(CurrentTuning.EnemySpawnIntervalSeconds);
+        }
+
+        private int ResolveEnemyMaximumAlive()
+        {
+            return _runFlow == null
+                ? Mathf.Max(1, CurrentTuning.EnemyMaximumAlive)
+                : _runFlow.ResolveMaximumAlive(CurrentTuning.EnemyMaximumAlive);
+        }
+
+        private SurvivorsEnemyProfile ResolveEnemyProfile(SurvivorsEnemyRole role)
+        {
+            if (_runFlow != null && _runFlow.Definition != null)
+            {
+                if (role == SurvivorsEnemyRole.Miniboss)
+                {
+                    return _runFlow.Definition.Miniboss;
+                }
+
+                if (role == SurvivorsEnemyRole.Boss)
+                {
+                    return _runFlow.Definition.Boss;
+                }
+
+                return _runFlow.ResolveSwarmProfile(CurrentTuning);
+            }
+
+            return new SurvivorsEnemyProfile(
+                SurvivorsEnemyRole.Swarm,
+                BasicSurvivorsGame.SwarmEnemySpawnableId.Value,
+                "Swarm Thrall",
+                CurrentTuning.EnemyMaxHealth,
+                CurrentTuning.EnemyMoveSpeed,
+                CurrentTuning.EnemyRadius,
+                CurrentTuning.EnemyContactDamage,
+                CurrentTuning.EnemyContactIntervalSeconds,
+                CurrentTuning.EnemyExperienceReward,
+                new Color(0.88f, 0.22f, 0.32f));
+        }
+
+        private static WorldSpawnableId ResolveEnemySpawnableId(SurvivorsEnemyRole role)
+        {
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                return BasicSurvivorsGame.MinibossEnemySpawnableId;
+            }
+
+            if (role == SurvivorsEnemyRole.Boss)
+            {
+                return BasicSurvivorsGame.BossEnemySpawnableId;
+            }
+
+            return BasicSurvivorsGame.SwarmEnemySpawnableId;
+        }
+
+        private static string ResolveEnemyGroupId(SurvivorsEnemyRole role)
+        {
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                return "group.survivors.miniboss";
+            }
+
+            if (role == SurvivorsEnemyRole.Boss)
+            {
+                return "group.survivors.boss";
+            }
+
+            return "group.survivors.opening-swarm";
+        }
+
+        private void TickEnemySpawning(float deltaTime)
+        {
+            _enemySpawnTimer -= deltaTime;
+            if (_enemySpawnTimer > 0f || _enemies.Count >= ResolveEnemyMaximumAlive())
+            {
+                return;
+            }
+
+            SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Swarm);
+            _enemySpawnTimer = ResolveEnemySpawnIntervalSeconds();
+        }
+
+        private SurvivorsEnemyActor SpawnEnemy(Vector3 position, bool explicitPosition, SurvivorsEnemyRole role)
         {
             long sequence = ++_spawnSequence;
             WorldSpawnChannelId channel = explicitPosition ? BasicSurvivorsGame.ExplicitSpawnChannelId : BasicSurvivorsGame.RadialSpawnChannelId;
@@ -851,27 +1051,30 @@ namespace Deucarian.TemplateGameSurvivors
                 _poseResolver.RegisterExplicitPose(sequence, position);
             }
 
+            SurvivorsEnemyProfile profile = ResolveEnemyProfile(role);
             SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
-                BasicSurvivorsGame.SwarmEnemySpawnableId,
+                ResolveEnemySpawnableId(role),
                 channel,
                 sequence,
-                new WorldSpawnRequestContext("SurvivorsTemplate", waveId: "wave.survivors.opening-ring", groupId: "group.survivors.opening-swarm")));
+                new WorldSpawnRequestContext("SurvivorsTemplate", waveId: "wave.survivors.opening-ring", groupId: ResolveEnemyGroupId(role))));
             if (!result.Succeeded || result.Instance == null)
             {
                 return null;
             }
 
             SurvivorsEnemyActor enemy = result.Instance.GetComponent<SurvivorsEnemyActor>();
-            enemy.Initialize(
-                this,
-                CurrentTuning.EnemyMaxHealth,
-                CurrentTuning.EnemyMoveSpeed,
-                CurrentTuning.EnemyRadius,
-                CurrentTuning.EnemyContactDamage,
-                CurrentTuning.EnemyContactIntervalSeconds,
-                CurrentTuning.EnemyExperienceReward);
+            enemy.Initialize(this, profile);
             _enemies.Add(enemy);
             SpawnedCount++;
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                MinibossSpawnCount++;
+            }
+            else if (role == SurvivorsEnemyRole.Boss)
+            {
+                BossSpawnCount++;
+            }
+
             return enemy;
         }
 
@@ -1137,22 +1340,28 @@ namespace Deucarian.TemplateGameSurvivors
 
         public SpawnInstanceId InstanceId { get; private set; }
         public bool IsAlive => _health != null && _health.IsAlive;
+        public SurvivorsEnemyRole Role { get; private set; }
+        public string ProfileId { get; private set; }
         public float Radius { get; private set; }
         public int ExperienceReward { get; private set; }
         public float CurrentHealth => _health == null ? 0f : (float)_health.CurrentHealth;
 
-        public void Initialize(SurvivorsTemplateController controller, float maxHealth, float moveSpeed, float radius, float contactDamage, float contactInterval, int experienceReward)
+        public void Initialize(SurvivorsTemplateController controller, SurvivorsEnemyProfile profile)
         {
             _controller = controller;
-            _moveSpeed = moveSpeed;
-            Radius = Mathf.Max(0.05f, radius);
-            _contactDamage = Mathf.Max(0f, contactDamage);
-            _contactInterval = Mathf.Max(0.05f, contactInterval);
+            Role = profile.Role;
+            ProfileId = profile.Id;
+            _moveSpeed = Mathf.Max(0f, profile.MoveSpeed);
+            Radius = Mathf.Max(0.05f, profile.Radius);
+            _contactDamage = Mathf.Max(0f, profile.ContactDamage);
+            _contactInterval = Mathf.Max(0.05f, profile.ContactIntervalSeconds);
             _contactCooldown = 0f;
-            ExperienceReward = Mathf.Max(1, experienceReward);
+            ExperienceReward = Mathf.Max(1, profile.ExperienceReward);
             string id = InstanceId.Value > 0 ? "combatant.survivors.enemy." + InstanceId.Value : "combatant.survivors.enemy.pending";
+            float maxHealth = Mathf.Max(1f, profile.MaxHealth);
             _health = new HealthState(new CombatantId(id), maxHealth, maxHealth);
             transform.localScale = Vector3.one * (Radius * 2f);
+            ApplyTint(profile.Tint);
         }
 
         public void Simulate(float deltaTime)
@@ -1217,6 +1426,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             _controller = null;
             _health = null;
+            ProfileId = null;
         }
 
         public void ResetForWorldSpawn()
@@ -1224,7 +1434,21 @@ namespace Deucarian.TemplateGameSurvivors
             _controller = null;
             _health = null;
             _contactCooldown = 0f;
+            Role = SurvivorsEnemyRole.Swarm;
+            ProfileId = null;
             InstanceId = default;
+        }
+
+        private void ApplyTint(Color tint)
+        {
+            Renderer renderer = GetComponentInChildren<Renderer>();
+            if (renderer == null)
+            {
+                return;
+            }
+
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            renderer.material = new Material(shader) { color = tint };
         }
     }
 

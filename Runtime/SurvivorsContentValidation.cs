@@ -26,22 +26,96 @@ namespace Deucarian.TemplateGameSurvivors
         public static SurvivorsContentValidationResult ValidateRuntimeContent(
             IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons,
             RunUpgradeCatalog upgrades,
-            IReadOnlyList<RunUpgradeTargetId> knownUpgradeTargets)
+            IReadOnlyList<RunUpgradeTargetId> knownUpgradeTargets,
+            SurvivorsRunFlowDefinition runFlow = null)
         {
             var result = new SurvivorsContentValidationResult();
             ValidateWeaponDefinitions(weapons, result);
             ValidateUpgradeCatalog(upgrades, knownUpgradeTargets, result);
+            if (runFlow != null)
+            {
+                ValidateRunFlowDefinition(runFlow, result);
+            }
+
             return result;
         }
 
-        public static SurvivorsContentValidationResult ValidateSampleJson(string weaponJson, string upgradeJson)
+        public static SurvivorsContentValidationResult ValidateRunFlowContent(SurvivorsRunFlowDefinition runFlow)
+        {
+            var result = new SurvivorsContentValidationResult();
+            ValidateRunFlowDefinition(runFlow, result);
+            return result;
+        }
+
+        public static SurvivorsContentValidationResult ValidateSampleJson(string weaponJson, string upgradeJson, string enemyJson = null)
         {
             var result = new SurvivorsContentValidationResult();
             WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
             UpgradeLibraryJson upgradeLibrary = ParseJson<UpgradeLibraryJson>(upgradeJson, "upgrade library", result);
+            EnemyLibraryJson enemyLibrary = string.IsNullOrWhiteSpace(enemyJson)
+                ? null
+                : ParseJson<EnemyLibraryJson>(enemyJson, "enemy library", result);
             ValidateWeaponLibrary(weaponLibrary, result);
             ValidateUpgradeLibrary(upgradeLibrary, result);
+            ValidateEnemyLibrary(enemyLibrary, result);
             return result;
+        }
+
+        private static void ValidateRunFlowDefinition(SurvivorsRunFlowDefinition runFlow, SurvivorsContentValidationResult result)
+        {
+            if (runFlow == null)
+            {
+                result.AddError("Run flow definition is required.");
+                return;
+            }
+
+            if (runFlow.EscalationIntervalSeconds <= 0f)
+            {
+                result.AddError("Run flow escalation interval must be above zero.");
+            }
+
+            if (runFlow.MinimumEnemySpawnIntervalSeconds <= 0f)
+            {
+                result.AddError("Run flow minimum spawn interval must be above zero.");
+            }
+
+            if (runFlow.EnemySpawnIntervalReductionPerEscalation < 0f)
+            {
+                result.AddError("Run flow spawn interval reduction cannot be negative.");
+            }
+
+            if (runFlow.EnemyMaximumAliveIncreasePerEscalation < 0)
+            {
+                result.AddError("Run flow max-alive increase cannot be negative.");
+            }
+
+            if (runFlow.MinibossSpawnTimeSeconds <= 0f)
+            {
+                result.AddError("Miniboss spawn time must be above zero.");
+            }
+
+            if (runFlow.BossSpawnTimeSeconds <= runFlow.MinibossSpawnTimeSeconds)
+            {
+                result.AddError("Boss spawn time must be later than the miniboss spawn time.");
+            }
+
+            if (runFlow.SurvivalVictoryTimeSeconds <= runFlow.BossSpawnTimeSeconds)
+            {
+                result.AddError("Survival victory time must be later than the boss spawn time.");
+            }
+
+            ValidateEnemyProfile(runFlow.Miniboss, SurvivorsEnemyRole.Miniboss, "miniboss", result);
+            ValidateEnemyProfile(runFlow.Boss, SurvivorsEnemyRole.Boss, "boss", result);
+        }
+
+        private static void ValidateEnemyProfile(SurvivorsEnemyProfile profile, SurvivorsEnemyRole expectedRole, string label, SurvivorsContentValidationResult result)
+        {
+            if (profile.Role != expectedRole)
+            {
+                result.AddError($"{label} profile must use role {expectedRole}.");
+            }
+
+            ValidateEnemyStats(profile.Id, profile.MaxHealth, profile.MoveSpeed, profile.Radius, profile.ContactDamage, profile.ContactIntervalSeconds, profile.ExperienceReward, result);
         }
 
         private static void ValidateWeaponDefinitions(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons, SurvivorsContentValidationResult result)
@@ -346,6 +420,112 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static void ValidateEnemyLibrary(EnemyLibraryJson library, SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            if (library.enemies == null || library.enemies.Length == 0)
+            {
+                result.AddError("Sample enemy library must contain at least one enemy.");
+                return;
+            }
+
+            var enemyIds = new HashSet<string>(StringComparer.Ordinal);
+            int bossCount = 0;
+            int minibossCount = 0;
+            for (int i = 0; i < library.enemies.Length; i++)
+            {
+                EnemyRecordJson enemy = library.enemies[i];
+                if (enemy == null || string.IsNullOrWhiteSpace(enemy.id))
+                {
+                    result.AddError($"Enemy record at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!enemyIds.Add(enemy.id))
+                {
+                    result.AddError($"Duplicate enemy id: {enemy.id}");
+                }
+
+                if (!Enum.TryParse(enemy.role, ignoreCase: true, out SurvivorsEnemyRole role) ||
+                    !Enum.IsDefined(typeof(SurvivorsEnemyRole), role))
+                {
+                    result.AddError($"Enemy {enemy.id} references unknown role: {enemy.role}");
+                    continue;
+                }
+
+                if (role == SurvivorsEnemyRole.Miniboss)
+                {
+                    minibossCount++;
+                }
+                else if (role == SurvivorsEnemyRole.Boss)
+                {
+                    bossCount++;
+                }
+
+                ValidateEnemyStats(enemy.id, enemy.health, enemy.moveSpeed, enemy.radius, enemy.contactDamage, enemy.contactIntervalSeconds, enemy.experienceDrop, result);
+                if (role != SurvivorsEnemyRole.Swarm && enemy.spawnTimeSeconds <= 0f)
+                {
+                    result.AddError($"Enemy {enemy.id} requires spawn time above zero.");
+                }
+            }
+
+            if (minibossCount == 0)
+            {
+                result.AddError("Sample enemy library must contain a miniboss definition.");
+            }
+
+            if (bossCount == 0)
+            {
+                result.AddError("Sample enemy library must contain a boss definition.");
+            }
+        }
+
+        private static void ValidateEnemyStats(
+            string enemyId,
+            float health,
+            float moveSpeed,
+            float radius,
+            float contactDamage,
+            float contactIntervalSeconds,
+            int experienceDrop,
+            SurvivorsContentValidationResult result)
+        {
+            string id = string.IsNullOrWhiteSpace(enemyId) ? "unknown enemy" : enemyId;
+            if (health <= 0f)
+            {
+                result.AddError($"Enemy {id} requires health above zero.");
+            }
+
+            if (moveSpeed <= 0f)
+            {
+                result.AddError($"Enemy {id} requires move speed above zero.");
+            }
+
+            if (radius <= 0f)
+            {
+                result.AddError($"Enemy {id} requires radius above zero.");
+            }
+
+            if (contactDamage < 0f)
+            {
+                result.AddError($"Enemy {id} cannot use negative contact damage.");
+            }
+
+            if (contactIntervalSeconds <= 0f)
+            {
+                result.AddError($"Enemy {id} requires contact interval above zero.");
+            }
+
+            if (experienceDrop <= 0)
+            {
+                result.AddError($"Enemy {id} requires experience drop above zero.");
+            }
+        }
+
         private static T ParseJson<T>(string json, string label, SurvivorsContentValidationResult result)
         {
             if (string.IsNullOrWhiteSpace(json))
@@ -409,6 +589,28 @@ namespace Deucarian.TemplateGameSurvivors
             public string rarity;
             public string effect;
             public string target;
+        }
+
+        [Serializable]
+        private sealed class EnemyLibraryJson
+        {
+            public EnemyRecordJson[] enemies;
+        }
+
+        [Serializable]
+        private sealed class EnemyRecordJson
+        {
+            public string id;
+            public string displayName;
+            public string role;
+            public float health;
+            public float moveSpeed;
+            public float radius;
+            public float contactDamage;
+            public float contactIntervalSeconds;
+            public int experienceDrop;
+            public float spawnTimeSeconds;
+            public bool finalBoss;
         }
     }
 }
