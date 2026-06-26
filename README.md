@@ -21,6 +21,7 @@ First playable Survivors-style template package. This phase ports the core Vampi
 - Upgrade application through local Survivors kit adapters.
 - Authored content validation for IDs, archetype references, projectile references, upgrade targets, and boss/miniboss enemy definitions.
 - Authored content validation for relic IDs/effects/targets and class IDs/starting weapons/unlock requirements.
+- Editor-only authored content validation menu at `Tools > Deucarian > Templates > Survivors > Validate Content`.
 - Victory, game-over, and restart flow.
 
 ## Package Stance
@@ -34,7 +35,10 @@ This template uses existing Deucarian packages where their fit is already concre
 - `Encounters` for authored spawn-flow descriptors.
 - `Progression` for local meta currency, legacy XP, and ranked persistent upgrade state.
 - `Persistence` for the local Survivors meta profile save document.
+- `Game Content Authoring` only from editor assemblies to format and surface validation reports.
 
 The following remain local Survivors kit code for now: player movement, camera feel, radial spawn pose rules, run timing/escalation, boss/miniboss scheduling, victory state, boss reward rules, boss relic choice rules, class selection/unlock rules, class starting loadouts, class starting stat modifiers, class upgrade gates, run summary data, meta upgrade effects, XP magnet behavior, level-up/relic HUD, concrete projectile behavior, hitscan targeting/beam visuals, projectile modifier rules, payload placement/detonation/hazard rules, orbit motion, melee arc overlap, and burst nova timing.
+
+Survivors content rules stay local to the template. The editor menu runs the local validator, converts the result to `ContentValidationReport`, and uses Game Content Authoring only for report formatting.
 
 No shared package extraction or package publishing happens in this phase.

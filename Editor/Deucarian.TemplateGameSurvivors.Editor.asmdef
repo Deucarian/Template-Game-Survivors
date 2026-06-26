@@ -1,0 +1,20 @@
+{
+  "name": "Deucarian.TemplateGameSurvivors.Editor",
+  "rootNamespace": "Deucarian.TemplateGameSurvivors.Editor",
+  "references": [
+    "Deucarian.TemplateGameSurvivors",
+    "Deucarian.GameplayFoundation",
+    "Deucarian.GameContentAuthoring.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -3,8 +3,11 @@
   "rootNamespace": "Deucarian.TemplateGameSurvivors.Tests",
   "references": [
     "Deucarian.TemplateGameSurvivors",
+    "Deucarian.TemplateGameSurvivors.Editor",
     "Deucarian.Combat",
     "Deucarian.Encounters",
+    "Deucarian.GameContentAuthoring.Editor",
+    "Deucarian.GameplayFoundation",
     "Deucarian.Persistence",
     "Deucarian.Progression",
     "Deucarian.Projectiles",

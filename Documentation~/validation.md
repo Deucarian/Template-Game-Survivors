@@ -103,3 +103,13 @@ Phase 2S adds validation for:
 The Phase 2S class run-start and upgrade-gate systems remain local Survivors template-kit code. Passive skill trees, class capability tags, resource profiles, content packs, class starting upgrade graphs, and richer class-specific upgrade pools are deliberately deferred.
 
 No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2S validation.
+
+Phase 3E adds editor-side validation adoption:
+
+- `Tools > Deucarian > Templates > Survivors > Validate Content` validates the package `Samples~/BasicSurvivorsGame` JSON libraries.
+- The menu action runs the local `SurvivorsContentValidator`; Survivors-specific rules remain in this template.
+- The editor runner converts local validation errors to Gameplay Foundation `ContentValidationReport` issues.
+- Game Content Authoring formats and summarizes that report for console output only. Runtime assemblies do not reference editor-only authoring packages.
+- EditMode coverage checks that the editor runner builds a report, valid sample content has no errors, invalid sample content appears through the shared authoring report path, and the runtime asmdef has no editor-only authoring references.
+
+No gameplay behavior changes, shared package extraction, package publishing, Idle template mutation, or Movement-FPS migration is part of Phase 3E validation.
