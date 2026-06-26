@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Deucarian.GameplayFoundation;
 using Deucarian.Progression;
 using Deucarian.RunUpgrades;
 using UnityEngine;
@@ -412,25 +413,20 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static void ValidateWeaponDefinitions(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons, SurvivorsContentValidationResult result)
         {
+            var sharedReport = new ContentValidationReport();
+            ContentValidation.RequireUniqueIds(weapons, "Survivors weapon", weapon => weapon.Id, sharedReport, requireAtLeastOne: true);
+            AddSharedErrors(result, sharedReport);
             if (weapons == null || weapons.Count == 0)
             {
-                result.AddError("At least one Survivors weapon definition is required.");
                 return;
             }
 
-            var weaponIds = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < weapons.Count; i++)
             {
                 SurvivorsWeaponArchetypeDefinition weapon = weapons[i];
                 if (weapon == null)
                 {
-                    result.AddError($"Weapon definition at index {i} is null.");
                     continue;
-                }
-
-                if (!weaponIds.Add(weapon.Id))
-                {
-                    result.AddError($"Duplicate weapon id: {weapon.Id}");
                 }
 
                 if (!Enum.IsDefined(typeof(SurvivorsWeaponArchetype), weapon.Archetype))
@@ -482,28 +478,17 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            var knownTargets = new HashSet<string>(StringComparer.Ordinal);
-            if (knownUpgradeTargets != null)
-            {
-                for (int i = 0; i < knownUpgradeTargets.Count; i++)
-                {
-                    knownTargets.Add(knownUpgradeTargets[i].Value);
-                }
-            }
+            var sharedReport = new ContentValidationReport();
+            ContentReferenceSet knownTargets = ContentReferenceSet.From(knownUpgradeTargets, target => target.Value);
+            ContentValidation.RequireUniqueIds(upgrades.Definitions, "run upgrade", upgrade => upgrade.Id.Value, sharedReport, requireAtLeastOne: true);
+            AddSharedErrors(result, sharedReport);
 
-            var upgradeIds = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < upgrades.Definitions.Count; i++)
             {
                 RunUpgradeDefinition upgrade = upgrades.Definitions[i];
                 if (upgrade == null)
                 {
-                    result.AddError($"Upgrade definition at index {i} is null.");
                     continue;
-                }
-
-                if (!upgradeIds.Add(upgrade.Id.Value))
-                {
-                    result.AddError($"Duplicate upgrade id: {upgrade.Id.Value}");
                 }
 
                 for (int effectIndex = 0; effectIndex < upgrade.Effects.Count; effectIndex++)
@@ -514,6 +499,20 @@ namespace Deucarian.TemplateGameSurvivors
                         result.AddError($"Upgrade {upgrade.Id.Value} targets unknown content id: {effect.TargetId.Value}");
                     }
                 }
+            }
+        }
+
+        private static void AddSharedErrors(SurvivorsContentValidationResult result, ContentValidationReport report)
+        {
+            if (result == null || report == null)
+            {
+                return;
+            }
+
+            string[] errors = report.GetMessages();
+            for (int i = 0; i < errors.Length; i++)
+            {
+                result.AddError(errors[i]);
             }
         }
 
