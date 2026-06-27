@@ -46,8 +46,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(2, classes.Classes.Count);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, classes.DefaultClassId);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, classes.Classes[0].Id);
-            Assert.AreEqual(1, classes.Classes[0].StartingWeaponIds.Count);
+            Assert.That(classes.Classes[0].StartingWeaponIds.Count, Is.GreaterThanOrEqualTo(3));
             Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponContentId, classes.Classes[0].StartingWeaponIds[0]);
+            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.OrbitWardWeaponContentId));
+            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.MoonSlashWeaponContentId));
             Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, classes.Classes[1].Id);
             Assert.That(classes.Classes[1].StartingWeaponIds.Count, Is.GreaterThan(classes.Classes[0].StartingWeaponIds.Count));
             Assert.AreEqual(7, BasicSurvivorsGame.CreateClassUpgradeGates().Count);
@@ -460,12 +462,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             SurvivorsTemplateController controller = CreateController();
             try
             {
-                controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.15f, 0f, 0.1f), controller.RequiredExperienceForNextLevel);
+                int requiredExperience = controller.RequiredExperienceForNextLevel;
+                controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.15f, 0f, 0.1f), requiredExperience);
                 Step(controller, 8, 1f / 30f);
 
                 Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
                 Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
-                Assert.That(controller.ExperienceCollected, Is.GreaterThanOrEqualTo(5));
+                Assert.That(controller.ExperienceCollected, Is.GreaterThanOrEqualTo(requiredExperience));
             }
             finally
             {
