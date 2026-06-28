@@ -35,8 +35,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float PlayerMaxHealth = 36f;
         public float PlayerContactInvulnerabilitySeconds = 0.35f;
         public float EnemySpawnRadius = 12f;
-        public float EnemySpawnIntervalSeconds = 0.95f;
-        public int EnemyMaximumAlive = 32;
+        public float EnemySpawnIntervalSeconds = 0.72f;
+        public int EnemyMaximumAlive = 40;
         public float EnemyMaxHealth = 10f;
         public float EnemyMoveSpeed = 2.3f;
         public float EnemyRadius = 0.48f;
@@ -50,22 +50,22 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemyHealthMultiplierPerEscalation = 0.16f;
         public float EnemyMoveSpeedMultiplierPerEscalation = 0.04f;
         public float EnemyExperienceMultiplierPerEscalation = 0.12f;
-        public float MinibossSpawnTimeSeconds = 30f;
+        public float MinibossSpawnTimeSeconds = 24f;
         public float MinibossMaxHealth = 46f;
         public float MinibossMoveSpeed = 2.15f;
         public float MinibossRadius = 0.82f;
         public float MinibossContactDamage = 10f;
         public float MinibossContactIntervalSeconds = 0.85f;
         public int MinibossExperienceReward = 9;
-        public float BossSpawnTimeSeconds = 90f;
+        public float BossSpawnTimeSeconds = 76f;
         public float BossMaxHealth = 150f;
         public float BossMoveSpeed = 1.85f;
         public float BossRadius = 1.18f;
         public float BossContactDamage = 16f;
         public float BossContactIntervalSeconds = 0.95f;
         public int BossExperienceReward = 24;
-        public float SurvivalVictoryTimeSeconds = 180f;
-        public float WeaponCooldownSeconds = 0.62f;
+        public float SurvivalVictoryTimeSeconds = 140f;
+        public float WeaponCooldownSeconds = 0.52f;
         public float WeaponRange = 14f;
         public float ProjectileDamage = 7f;
         public float ProjectileSpeed = 11.5f;
@@ -123,7 +123,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float PickupAttractionSpeed = 7.8f;
         public float PickupCollectRadius = 0.72f;
         public float MagnetRecallSpeedMultiplier = 2.4f;
-        public int ExperienceRequiredBase = 5;
+        public int ExperienceRequiredBase = 4;
         public int ExperienceRequiredPerLevel = 3;
         public int DraftChoiceCount = 3;
         public int RunSeed = 20260624;
@@ -516,7 +516,12 @@ namespace Deucarian.TemplateGameSurvivors
                     isUnlockedByDefault: true,
                     unlockRewardId: string.Empty,
                     startingStatModifiers: Array.Empty<SurvivorsClassStatModifierDefinition>(),
-                    startingWeaponIds: new[] { ArcaneWandWeaponContentId }),
+                    startingWeaponIds: new[]
+                    {
+                        ArcaneWandWeaponContentId,
+                        OrbitWardWeaponContentId,
+                        MoonSlashWeaponContentId
+                    }),
                 new SurvivorsClassDefinition(
                     EmberVanguardClassId,
                     "Ember Vanguard",

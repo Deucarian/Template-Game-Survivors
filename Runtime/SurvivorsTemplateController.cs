@@ -13,6 +13,15 @@ namespace Deucarian.TemplateGameSurvivors
 {
     public sealed class SurvivorsTemplateController : MonoBehaviour
     {
+        private const string FeedbackRootName = "Survivors Feedback Presentation";
+        private const string SpawnPulseName = "Survivors Spawn Pulse";
+        private const string FirePulseName = "Survivors Weapon Fire Pulse";
+        private const string KillPulseName = "Survivors Kill Burst";
+        private const string PickupPulseName = "Survivors Pickup Pulse";
+        private const string LevelUpPulseName = "Survivors Level Up Pulse";
+        private const string BossPulseName = "Survivors Boss Cue Pulse";
+        private const string FeedbackAudioName = "Survivors Feedback Audio";
+
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
         private static readonly string[] EmptyWeaponIds = Array.Empty<string>();
@@ -38,6 +47,24 @@ namespace Deucarian.TemplateGameSurvivors
         private GameObject _experiencePickupPrefab;
         private GameObject _magnetPickupPrefab;
         private GameObject _projectilePrefab;
+        private Transform _feedbackRoot;
+        private ParticleSystem _spawnPulse;
+        private ParticleSystem _firePulse;
+        private ParticleSystem _killPulse;
+        private ParticleSystem _pickupPulse;
+        private ParticleSystem _levelUpPulse;
+        private ParticleSystem _bossPulse;
+        private AudioSource _feedbackAudio;
+        private AudioClip _spawnClip;
+        private AudioClip _fireClip;
+        private AudioClip _killClip;
+        private AudioClip _pickupClip;
+        private AudioClip _levelUpClip;
+        private AudioClip _bossClip;
+        private AudioClip _dangerClip;
+        private GUIStyle _hudTitleStyle;
+        private GUIStyle _hudLabelStyle;
+        private GUIStyle _hudSmallStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService;
         private HealthState _playerHealth;
@@ -232,14 +259,17 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            GUI.Box(new Rect(12, 12, 280, 174), string.Empty);
-            GUI.Label(new Rect(24, 22, 230, 22), $"HP {CurrentHealth:0}/{MaxHealth:0}  LV {Level}  XP {Experience}/{RequiredExperienceForNextLevel}");
-            GUI.Label(new Rect(24, 44, 230, 22), $"Enemies {ActiveEnemyCount}  Kills {KilledCount}");
-            GUI.Label(new Rect(24, 66, 250, 22), $"Phase {RunPhase}  Time {RunTimeSeconds:0}s  Esc {RunEscalationLevel}");
-            GUI.Label(new Rect(24, 88, 250, 22), $"Bosses {ActiveBossCount}  Minibosses {ActiveMinibossCount}");
-            GUI.Label(new Rect(24, 110, 230, 22), $"Damage {ProjectileDamage:0.0}  Cooldown {WeaponCooldownSeconds:0.00}s");
-            GUI.Label(new Rect(24, 132, 250, 22), $"Shards {MetaBloodShards}  Legacy XP {LifetimeLegacyExperience}");
-            GUI.Label(new Rect(24, 154, 230, 22), "WASD/Arrows move  M magnet  R restart");
+            EnsureHudStyles();
+            GUI.Box(new Rect(12, 12, 356, 240), string.Empty);
+            GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
+            DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
+            DrawHudBar(new Rect(24, 74, 318, 18), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
+            DrawHudBar(new Rect(24, 98, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
+            GUI.Label(new Rect(24, 124, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {RunPhase} +{RunEscalationLevel}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 146, 318, 22), $"Enemies {ActiveEnemyCount}/{ResolveEnemyMaximumAlive()}   Kills {KilledCount}   XP Gems {ActivePickupCount}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 168, 318, 22), $"Miniboss {ActiveMinibossCount}   Boss {ActiveBossCount}   Shards {MetaBloodShards}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 190, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(24, 214, 318, 22), "WASD/Arrows move   M magnet   1-3 choose   R restart", _hudSmallStyle);
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -607,6 +637,11 @@ namespace Deucarian.TemplateGameSurvivors
                 GrantRunRewards(victory: false);
                 State = SurvivorsRunState.GameOver;
                 ClearRewardDrafts();
+                PlayFeedback(_bossPulse, PlayerPosition, 34, _dangerClip);
+            }
+            else
+            {
+                PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip);
             }
         }
 
@@ -677,6 +712,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
+            PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip);
             if (role == SurvivorsEnemyRole.Miniboss)
             {
                 MinibossKilledCount++;
@@ -735,6 +771,7 @@ namespace Deucarian.TemplateGameSurvivors
                 GainExperience(Mathf.Max(1, pickup.Amount));
             }
 
+            PlayFeedback(_pickupPulse, pickup.transform.position, pickup.Kind == SurvivorsPickupKind.Magnet ? 28 : 10, _pickupClip);
             _pickups.Remove(pickup);
             if (_spawnService != null && pickup.InstanceId.Value > 0)
             {
@@ -851,6 +888,7 @@ namespace Deucarian.TemplateGameSurvivors
                 ignoredEnemyIds);
             _projectiles.Add(projectile);
             ProjectileLaunchCount++;
+            PlayFeedback(_firePulse, origin, 8, _fireClip);
             return true;
         }
 
@@ -1018,6 +1056,7 @@ namespace Deucarian.TemplateGameSurvivors
                 BuildArenaVisuals();
             }
 
+            BuildFeedbackPresentation();
             EnsureCamera();
         }
 
@@ -1029,17 +1068,135 @@ namespace Deucarian.TemplateGameSurvivors
             prefab.transform.localScale = Vector3.one;
             ApplyColor(prefab.GetComponentInChildren<Renderer>(), color);
             prefab.AddComponent(actorType);
+            if (actorType == typeof(SurvivorsProjectileActor))
+            {
+                var trail = prefab.AddComponent<TrailRenderer>();
+                trail.time = 0.18f;
+                trail.startWidth = 0.2f;
+                trail.endWidth = 0.02f;
+                trail.material = new Material(Shader.Find("Sprites/Default"));
+                trail.startColor = new Color(0.86f, 0.48f, 1f, 0.95f);
+                trail.endColor = new Color(0.18f, 0.86f, 1f, 0f);
+            }
+
             prefab.SetActive(false);
             return prefab;
         }
 
         private void BuildArenaVisuals()
         {
-            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            floor.name = "Survivors Arena Ring";
-            floor.transform.SetParent(_worldRoot, false);
-            floor.transform.localScale = new Vector3(16f, 0.035f, 16f);
-            ApplyColor(floor.GetComponentInChildren<Renderer>(), new Color(0.08f, 0.1f, 0.12f));
+            CreateArenaPrimitive("Survivors Arena Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(17.5f, 0.035f, 17.5f), new Color(0.07f, 0.09f, 0.12f));
+            CreateArenaPrimitive("Inner XP Magnet Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(6.4f, 0.04f, 6.4f), new Color(0.09f, 0.16f, 0.2f));
+            CreateArenaPrimitive("Player Safe Readability Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(2.1f, 0.05f, 2.1f), new Color(0.12f, 0.19f, 0.28f));
+
+            CreateArenaPrimitive("North Spawn Warning", PrimitiveType.Cube, new Vector3(0f, 0.09f, 8.8f), new Vector3(4.4f, 0.08f, 0.28f), new Color(0.62f, 0.12f, 0.18f));
+            CreateArenaPrimitive("East Spawn Warning", PrimitiveType.Cube, new Vector3(8.8f, 0.09f, 0f), new Vector3(0.28f, 0.08f, 4.4f), new Color(0.62f, 0.12f, 0.18f));
+            CreateArenaPrimitive("South Spawn Warning", PrimitiveType.Cube, new Vector3(0f, 0.09f, -8.8f), new Vector3(4.4f, 0.08f, 0.28f), new Color(0.62f, 0.12f, 0.18f));
+            CreateArenaPrimitive("West Spawn Warning", PrimitiveType.Cube, new Vector3(-8.8f, 0.09f, 0f), new Vector3(0.28f, 0.08f, 4.4f), new Color(0.62f, 0.12f, 0.18f));
+
+            for (int i = 0; i < 12; i++)
+            {
+                float angle = i * 30f * Mathf.Deg2Rad;
+                Vector3 position = new Vector3(Mathf.Cos(angle) * 5.4f, 0.12f, Mathf.Sin(angle) * 5.4f);
+                Vector3 scale = i % 2 == 0 ? new Vector3(0.9f, 0.18f, 0.32f) : new Vector3(0.32f, 0.18f, 0.9f);
+                CreateArenaPrimitive("Rune Lane Marker " + (i + 1).ToString(), PrimitiveType.Cube, position, scale, new Color(0.18f, 0.2f, 0.32f));
+            }
+        }
+
+        private GameObject CreateArenaPrimitive(string name, PrimitiveType primitive, Vector3 position, Vector3 scale, Color color)
+        {
+            GameObject instance = GameObject.CreatePrimitive(primitive);
+            instance.name = name;
+            instance.transform.SetParent(_worldRoot, false);
+            instance.transform.localPosition = position;
+            instance.transform.localScale = scale;
+            ApplyColor(instance.GetComponentInChildren<Renderer>(), color);
+            Collider collider = instance.GetComponent<Collider>();
+            if (collider != null)
+            {
+                collider.enabled = false;
+            }
+
+            return instance;
+        }
+
+        private void BuildFeedbackPresentation()
+        {
+            GameObject root = new GameObject(FeedbackRootName);
+            root.transform.SetParent(_worldRoot, false);
+            _feedbackRoot = root.transform;
+            _spawnPulse = CreateFeedbackPulse(SpawnPulseName, new Color(1f, 0.3f, 0.28f), 0.2f, 2.2f, 0.5f);
+            _firePulse = CreateFeedbackPulse(FirePulseName, new Color(0.82f, 0.4f, 1f), 0.16f, 2.8f, 0.35f);
+            _killPulse = CreateFeedbackPulse(KillPulseName, new Color(0.4f, 0.95f, 1f), 0.22f, 3.2f, 0.45f);
+            _pickupPulse = CreateFeedbackPulse(PickupPulseName, new Color(0.2f, 0.82f, 1f), 0.14f, 2.4f, 0.35f);
+            _levelUpPulse = CreateFeedbackPulse(LevelUpPulseName, new Color(1f, 0.85f, 0.24f), 0.28f, 2.0f, 0.7f);
+            _bossPulse = CreateFeedbackPulse(BossPulseName, new Color(1f, 0.3f, 0.82f), 0.32f, 3.6f, 0.65f);
+
+            GameObject audioObject = new GameObject(FeedbackAudioName);
+            audioObject.transform.SetParent(_feedbackRoot, false);
+            _feedbackAudio = audioObject.AddComponent<AudioSource>();
+            _feedbackAudio.playOnAwake = false;
+            _feedbackAudio.spatialBlend = 0f;
+            _feedbackAudio.volume = 0.28f;
+            _spawnClip = CreateTone("survivors-spawn", 170f, 0.12f, 0.16f);
+            _fireClip = CreateTone("survivors-fire", 540f, 0.07f, 0.13f);
+            _killClip = CreateTone("survivors-kill", 760f, 0.1f, 0.18f);
+            _pickupClip = CreateTone("survivors-pickup", 1040f, 0.07f, 0.16f);
+            _levelUpClip = CreateTone("survivors-level-up", 880f, 0.2f, 0.2f);
+            _bossClip = CreateTone("survivors-boss", 92f, 0.28f, 0.24f);
+            _dangerClip = CreateTone("survivors-danger", 130f, 0.16f, 0.2f);
+        }
+
+        private ParticleSystem CreateFeedbackPulse(string name, Color color, float startSize, float startSpeed, float lifetime)
+        {
+            GameObject instance = new GameObject(name);
+            instance.transform.SetParent(_feedbackRoot, false);
+            ParticleSystem particles = instance.AddComponent<ParticleSystem>();
+            ParticleSystem.MainModule main = particles.main;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.startLifetime = lifetime;
+            main.startSpeed = startSpeed;
+            main.startSize = startSize;
+            main.startColor = color;
+            main.maxParticles = 120;
+            ParticleSystem.EmissionModule emission = particles.emission;
+            emission.enabled = false;
+            ParticleSystem.ShapeModule shape = particles.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.35f;
+            return particles;
+        }
+
+        private void PlayFeedback(ParticleSystem particles, Vector3 position, int count, AudioClip clip)
+        {
+            if (particles != null)
+            {
+                particles.transform.position = position + Vector3.up * 0.28f;
+                particles.Emit(Mathf.Max(1, count));
+            }
+
+            if (_feedbackAudio != null && clip != null)
+            {
+                _feedbackAudio.PlayOneShot(clip);
+            }
+        }
+
+        private static AudioClip CreateTone(string name, float frequency, float durationSeconds, float volume)
+        {
+            const int sampleRate = 22050;
+            int sampleCount = Mathf.Max(1, Mathf.CeilToInt(sampleRate * durationSeconds));
+            float[] samples = new float[sampleCount];
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = i / (float)sampleRate;
+                float fade = Mathf.Clamp01(1f - i / (float)sampleCount);
+                samples[i] = Mathf.Sin(Mathf.PI * 2f * frequency * t) * volume * fade;
+            }
+
+            AudioClip clip = AudioClip.Create(name, sampleCount, 1, sampleRate, false);
+            clip.SetData(samples, 0);
+            return clip;
         }
 
         private void EnsureCamera()
@@ -1049,7 +1206,12 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 GameObject cameraObject = new GameObject("Main Camera");
                 _camera = cameraObject.AddComponent<Camera>();
+                cameraObject.AddComponent<AudioListener>();
                 cameraObject.tag = "MainCamera";
+            }
+            else if (_camera.GetComponent<AudioListener>() == null)
+            {
+                _camera.gameObject.AddComponent<AudioListener>();
             }
 
             _camera.orthographic = true;
@@ -1344,6 +1506,7 @@ namespace Deucarian.TemplateGameSurvivors
             GrantRunRewards(victory: true);
             ClearRewardDrafts();
             State = SurvivorsRunState.Victory;
+            PlayFeedback(_levelUpPulse, PlayerPosition, 42, _levelUpClip);
         }
 
         private float ResolveEnemySpawnIntervalSeconds()
@@ -1459,10 +1622,16 @@ namespace Deucarian.TemplateGameSurvivors
             if (role == SurvivorsEnemyRole.Miniboss)
             {
                 MinibossSpawnCount++;
+                PlayFeedback(_bossPulse, enemy.transform.position, 42, _bossClip);
             }
             else if (role == SurvivorsEnemyRole.Boss)
             {
                 BossSpawnCount++;
+                PlayFeedback(_bossPulse, enemy.transform.position, 58, _bossClip);
+            }
+            else
+            {
+                PlayFeedback(_spawnPulse, enemy.transform.position, 10, _spawnClip);
             }
 
             return enemy;
@@ -1579,6 +1748,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
+            PlayFeedback(_levelUpPulse, PlayerPosition, 34, _levelUpClip);
         }
 
         private bool OpenBossRelicDraft()
@@ -1603,6 +1773,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardSelectionKind = SurvivorsRewardSelectionKind.BossRelic;
             BossRelicDraftOpenCount++;
             State = SurvivorsRunState.LevelUp;
+            PlayFeedback(_bossPulse, PlayerPosition, 44, _bossClip);
             return true;
         }
 
@@ -1752,6 +1923,90 @@ namespace Deucarian.TemplateGameSurvivors
                     SelectUpgrade(i);
                 }
             }
+        }
+
+        private void EnsureHudStyles()
+        {
+            if (_hudTitleStyle != null)
+            {
+                return;
+            }
+
+            _hudTitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 17,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(0.84f, 0.94f, 1f) }
+            };
+            _hudLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 12,
+                normal = { textColor = Color.white }
+            };
+            _hudSmallStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 11,
+                normal = { textColor = new Color(0.78f, 0.88f, 0.95f) },
+                wordWrap = true
+            };
+        }
+
+        private void DrawHudBar(Rect rect, string label, float value, Color fill)
+        {
+            GUI.Box(rect, GUIContent.none);
+            Rect fillRect = new Rect(rect.x + 2f, rect.y + 2f, Mathf.Max(0f, rect.width - 4f) * Mathf.Clamp01(value), rect.height - 4f);
+            Color oldColor = GUI.color;
+            GUI.color = fill;
+            GUI.DrawTexture(fillRect, Texture2D.whiteTexture);
+            GUI.color = oldColor;
+            GUI.Label(rect, label + " " + Mathf.RoundToInt(Mathf.Clamp01(value) * 100f).ToString() + "%", _hudSmallStyle);
+        }
+
+        private string ResolveWeaponHudLabel()
+        {
+            if (ActiveWeaponIds.Count == 0)
+            {
+                return "none";
+            }
+
+            const int maxShown = 4;
+            string label = string.Empty;
+            int shown = Mathf.Min(maxShown, ActiveWeaponIds.Count);
+            for (int i = 0; i < shown; i++)
+            {
+                if (i > 0)
+                {
+                    label += ", ";
+                }
+
+                label += ShortWeaponName(ActiveWeaponIds[i]);
+            }
+
+            if (ActiveWeaponIds.Count > shown)
+            {
+                label += " +" + (ActiveWeaponIds.Count - shown).ToString();
+            }
+
+            return label;
+        }
+
+        private static string ShortWeaponName(string weaponId)
+        {
+            if (weaponId == BasicSurvivorsGame.ArcaneWandWeaponContentId) return "Wand";
+            if (weaponId == BasicSurvivorsGame.OrbitWardWeaponContentId) return "Orbit";
+            if (weaponId == BasicSurvivorsGame.MoonSlashWeaponContentId) return "Slash";
+            if (weaponId == BasicSurvivorsGame.StarNovaWeaponContentId) return "Nova";
+            if (weaponId == BasicSurvivorsGame.StarBeamWeaponContentId) return "Beam";
+            if (weaponId == BasicSurvivorsGame.GravityGrenadeWeaponContentId) return "Grenade";
+            if (weaponId == BasicSurvivorsGame.RuneTrapWeaponContentId) return "Trap";
+            if (weaponId == BasicSurvivorsGame.AetherMineWeaponContentId) return "Mine";
+            return string.IsNullOrWhiteSpace(weaponId) ? "unknown" : weaponId;
+        }
+
+        private static string FormatRunTime(float seconds)
+        {
+            int total = Mathf.Max(0, Mathf.FloorToInt(seconds));
+            return (total / 60).ToString("00") + ":" + (total % 60).ToString("00");
         }
 
         private void HandleLevelUpInput()

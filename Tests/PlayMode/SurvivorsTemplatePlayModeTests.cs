@@ -10,6 +10,15 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 {
     public sealed class SurvivorsTemplatePlayModeTests
     {
+        private const string FeedbackRootName = "Survivors Feedback Presentation";
+        private const string SpawnPulseName = "Survivors Spawn Pulse";
+        private const string FirePulseName = "Survivors Weapon Fire Pulse";
+        private const string KillPulseName = "Survivors Kill Burst";
+        private const string PickupPulseName = "Survivors Pickup Pulse";
+        private const string LevelUpPulseName = "Survivors Level Up Pulse";
+        private const string BossPulseName = "Survivors Boss Cue Pulse";
+        private const string FeedbackAudioName = "Survivors Feedback Audio";
+
         [UnityTest]
         public IEnumerator FirstPlayableSliceBootsSpawnsKillsAndLevels()
         {
@@ -43,6 +52,32 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator RuntimePresentationCreatesFeedbackParticlesAudioAndProjectileTrails()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsNotNull(GameObject.Find(FeedbackRootName));
+            Assert.IsNotNull(GameObject.Find(SpawnPulseName));
+            Assert.IsNotNull(GameObject.Find(FirePulseName));
+            Assert.IsNotNull(GameObject.Find(KillPulseName));
+            Assert.IsNotNull(GameObject.Find(PickupPulseName));
+            Assert.IsNotNull(GameObject.Find(LevelUpPulseName));
+            Assert.IsNotNull(GameObject.Find(BossPulseName));
+            Assert.IsNotNull(GameObject.Find(FeedbackAudioName));
+            Assert.That(Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None).Length, Is.GreaterThanOrEqualTo(6));
+            Assert.That(Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None).Length, Is.GreaterThanOrEqualTo(1));
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 20f);
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            yield return null;
+
+            Assert.That(Object.FindObjectsByType<TrailRenderer>(FindObjectsSortMode.None).Length, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator PlayerCanDieAndRestart()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -68,8 +103,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, controller.SelectedClassId);
-            Assert.AreEqual(1, controller.ActiveWeaponCount);
+            Assert.That(controller.ActiveWeaponCount, Is.GreaterThanOrEqualTo(3));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.OrbitWardWeaponContentId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.MoonSlashWeaponContentId));
             Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
             Assert.IsFalse(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
 
@@ -166,8 +203,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.piercing-bolts"));
-            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 1f);
-            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.75f, 0f, 0f), 1f);
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3.6f, 0f, 0f), 1f);
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4.25f, 0f, 0f), 1f);
 
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
             yield return SimulateFrames(controller, 90);
@@ -205,8 +242,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.forked-bolts"));
-            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 1f);
-            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 1.2f), 1f);
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3.6f, 0f, 0f), 1f);
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3.6f, 0f, 1.2f), 1f);
 
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
             yield return SimulateFrames(controller, 120);
