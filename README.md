@@ -95,7 +95,9 @@ Keep these systems local to this template until reuse is proven across another S
 - Hitscan targeting, beam visuals, projectile modifier rules, payload placement, detonation, hazard rules, orbit motion, melee arc overlap, and burst nova timing.
 - Survivors-specific content validation rules for sample JSON and runtime catalogs.
 
-## Content Validation
+## Validation
+
+### Content Validation
 
 From the Unity editor, run:
 
