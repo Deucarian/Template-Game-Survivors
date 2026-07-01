@@ -1,44 +1,136 @@
 # Deucarian Template Game - Survivors
 
-First playable Survivors-style template package. This phase ports the core Vampire-clone loop into a Deucarian-shaped package without migrating the full game or extracting new shared packages.
+Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, level-up choices, miniboss and boss pressure, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
 
-## First Slice
+The template is intentionally a game slice, not a reusable Survivors framework. Genre-specific systems stay local until a second concrete game proves a shared package boundary.
 
-- Top-down player movement on the XZ plane.
-- Radial enemy spawning around the player.
-- Enemy chase and contact damage.
-- Auto-fired projectile weapon targeting the nearest enemy.
-- Local projectile, orbit, melee slash, burst nova, hitscan/beam, grenade, trap, and mine weapon archetypes.
-- Local projectile modifiers for pierce, chain, fork/split, and return/boomerang behavior.
-- Local payload behavior for arcing grenades, placed traps/mines, delayed arming, proximity triggers, area explosions, and simple hazard ticks.
-- Local run timer, escalation, miniboss, boss, victory, and defeat/restart flow.
-- Local boss/miniboss reward bonuses, run result summary, blood shard currency, legacy XP, and one persistent damage upgrade.
-- Local boss relic reward draft choices that affect the current run.
-- Local class definitions, selected class persistence, class-owned starting loadouts/stats, class-gated upgrade availability, and one unlockable sample class.
-- Local persisted meta profile with schema migration support, unlock state, selected class state, and reset/debug hooks for validation.
-- Enemy death, XP gem drops, pickup attraction, and magnet recall.
-- Three-choice level-up draft powered by `com.deucarian.run-upgrades`.
-- Upgrade application through local Survivors kit adapters.
-- Authored content validation for IDs, archetype references, projectile references, upgrade targets, and boss/miniboss enemy definitions.
-- Authored content validation for relic IDs/effects/targets and class IDs/starting weapons/unlock requirements.
-- Editor-only authored content validation menu at `Tools > Deucarian > Templates > Survivors > Validate Content`.
-- Victory, game-over, and restart flow.
+## When To Use This
 
-## Package Stance
+Use this package when you want:
 
-This template uses existing Deucarian packages where their fit is already concrete:
+- A Deucarian-shaped Survivors starter scene that can be opened and played quickly.
+- A reference for composing Combat, World Spawning, Weapon Systems, Projectiles, Attacks, Encounters, Run Upgrades, Progression, Persistence, Game Content Authoring, Gameplay Foundation, and Common in a template game.
+- Local examples of projectile, orbit, melee, burst, hitscan, grenade, trap, mine, relic, class, meta, and boss-flow adapters that are safe to customize per game.
 
-- `Combat` for health and damage resolution.
-- `World Spawning` for pooled enemies, pickups, and projectile visuals.
-- `Weapon Systems` and `Projectiles` for stable descriptors.
-- `Run Upgrades` for draft and run-upgrade selection state.
-- `Encounters` for authored spawn-flow descriptors.
-- `Progression` for local meta currency, legacy XP, and ranked persistent upgrade state.
-- `Persistence` for the local Survivors meta profile save document.
-- `Game Content Authoring` only from editor assemblies to format and surface validation reports.
+Do not use this as a generic Survivors framework, reusable combat rules package, shared projectile package, registry source of truth, or package installer surface. Those capabilities belong to lower reusable packages or other Deucarian owners.
 
-The following remain local Survivors kit code for now: player movement, camera feel, radial spawn pose rules, run timing/escalation, boss/miniboss scheduling, victory state, boss reward rules, boss relic choice rules, class selection/unlock rules, class starting loadouts, class starting stat modifiers, class upgrade gates, run summary data, meta upgrade effects, XP magnet behavior, level-up/relic HUD, concrete projectile behavior, hitscan targeting/beam visuals, projectile modifier rules, payload placement/detonation/hazard rules, orbit motion, melee arc overlap, and burst nova timing.
+## Install
 
-Survivors content rules stay local to the template. The editor menu runs the local validator, converts the result to `ContentValidationReport`, and uses Game Content Authoring only for report formatting.
+Unity compatibility: `6000.3` or newer.
 
-No shared package extraction or package publishing happens in this phase.
+Install from Unity Package Manager with one of these Git URLs:
+
+```json
+"com.deucarian.template.game.survivors": "https://github.com/Deucarian/Template-Game-Survivors.git#main"
+```
+
+```json
+"com.deucarian.template.game.survivors": "https://github.com/Deucarian/Template-Game-Survivors.git#develop"
+```
+
+Use `#main` for stable package consumption and `#develop` when testing active package work.
+
+## Play In 3 Minutes
+
+1. Add the package through Package Manager.
+2. Import the `Basic Survivors Game` sample.
+3. Open the imported sample scene, or in this repository open `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`.
+4. Press Play.
+5. Move through the horde, collect XP gems, choose level-up options, take a relic after the miniboss, then defeat the final boss or reach the survival-duration clear condition.
+
+The scene contains a tiny bootstrap object. At runtime it creates the arena, player, enemy/pickup/projectile pools, camera, run timer, HUD, draft UI, relic UI, meta profile service, victory state, defeat state, and restart flow.
+
+## Controls
+
+- WASD or arrow keys: move
+- Mouse: choose level-up or boss relic buttons
+- 1/2/3: choose level-up or boss relic options
+- M: trigger debug magnet recall
+- R: restart after death or victory
+
+Weapons auto-fire toward nearby targets. XP gems pull toward the player when close; magnet pickups and the debug recall pull XP from farther away.
+
+## What To Customize First
+
+- Weapon and projectile feel: edit `Samples~/BasicSurvivorsGame/Content/DefaultWeapons/weapons.json`, then compare with `Runtime/BasicSurvivorsGame.cs` and `CreateWeaponArchetypeDefinitions`.
+- Upgrades and class gates: edit `Samples~/BasicSurvivorsGame/Content/DefaultUpgrades/upgrades.json` and `CreateClassUpgradeGates`.
+- Enemies, miniboss, boss, and rewards: edit `Samples~/BasicSurvivorsGame/Content/DefaultEnemies/enemies.json`, `Samples~/BasicSurvivorsGame/Content/DefaultRewards/rewards.json`, and `CreateRunFlowDefinition`.
+- Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
+- Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.
+- Run tuning: start with `CreateDefaultTuning` before changing controller internals.
+
+## Sample And API Map
+
+- Sample scene: `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`
+- Sample bootstrap: `Samples~/BasicSurvivorsGame/Scripts/BasicSurvivorsGameBootstrap.cs`
+- Main runtime catalog: `Runtime/BasicSurvivorsGame.cs`
+- Runtime controller: `Runtime/SurvivorsTemplateController.cs`
+- Local content validation: `Runtime/SurvivorsContentValidation.cs`
+- Editor validation menu: `Editor/SurvivorsEditorContentValidation.cs`
+- Structure notes: `Documentation~/survivors-template-structure.md`
+- Validation notes: `Documentation~/validation.md`
+
+## Integrations
+
+This slice uses:
+
+- `com.deucarian.common` for approved transient Unity object cleanup.
+- `com.deucarian.combat` for health and damage resolution.
+- `com.deucarian.world-spawning` for pooled enemies, pickups, and projectile visuals.
+- `com.deucarian.weapon-systems`, `com.deucarian.projectiles`, and `com.deucarian.attacks` for stable descriptors and package-owned primitives.
+- `com.deucarian.run-upgrades` for draft and run-upgrade selection state.
+- `com.deucarian.encounters` for authored spawn-flow descriptors.
+- `com.deucarian.progression` for local meta currency, legacy XP, and ranked persistent upgrade state.
+- `com.deucarian.persistence` for the local Survivors meta profile save document.
+- `com.deucarian.game-content-authoring` from editor validation code for report formatting.
+- `com.deucarian.gameplay-foundation` for stable IDs and deterministic primitives surfaced by Deucarian runtime packages.
+
+## Local Template Code
+
+Keep these systems local to this template until reuse is proven across another Survivors-style game:
+
+- Player movement, camera feel, radial spawn pose rules, run timing, escalation, boss/miniboss scheduling, and victory state.
+- Boss reward rules, boss relic choice rules, class selection/unlock rules, class starting loadouts, class stat modifiers, and class upgrade gates.
+- Run summary data, meta upgrade effects, XP magnet behavior, level-up/relic HUD, and concrete projectile behavior.
+- Hitscan targeting, beam visuals, projectile modifier rules, payload placement, detonation, hazard rules, orbit motion, melee arc overlap, and burst nova timing.
+- Survivors-specific content validation rules for sample JSON and runtime catalogs.
+
+## Validation
+
+### Content Validation
+
+From the Unity editor, run:
+
+`Tools > Deucarian > Templates > Survivors > Validate Content`
+
+The menu validates sample JSON and runtime catalogs for IDs, archetype references, projectile references, upgrade targets, boss/miniboss enemy definitions, relic effects, class IDs, starting weapons, and unlock requirements. The report is written to the Unity console for template developer visibility.
+
+Before committing package changes, run:
+
+```powershell
+python C:/Repositories/Package-Registry/Tools/deucarian_package_validator.py --registry-root C:/Repositories/Package-Registry --repository-root . --config deucarian-package.json
+git diff --check
+```
+
+Run existing Unity EditMode and PlayMode tests when changing code, asmdefs, package dependencies, sample JSON, or sample behavior.
+
+## Screenshots And GIFs
+
+No screenshot or GIF assets are committed yet. Add `Documentation~/media/` captures once the sample has stable visual direction, then link the first gameplay GIF, one class/relic choice screenshot, and one boss-wave screenshot from this section.
+
+## Troubleshooting
+
+- Sample scene is missing: import `Basic Survivors Game` from Package Manager, or open the repository copy under `Samples~`.
+- Weapons do not fire: enemies must be in range; move near the horde and wait for auto-fire cadence.
+- Draft choices do not appear: collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
+- Relic choices do not appear: defeat the miniboss first.
+- Persistent class or meta state looks stale: use the template reset/debug hooks from tests or clear the local sample save before validating a fresh profile.
+- Defeat or victory is stuck: press `R` or click the restart button.
+
+## Deferred
+
+Passive skill trees, richer class-specific upgrade pools, content-pack gates, reward-selection timeout behavior, production UI, monetization, networking, and shared package extraction are deferred.
+
+## License
+
+MIT. See `LICENSE.md`.

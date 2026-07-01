@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Deucarian.Common;
 using Deucarian.Combat;
 using Deucarian.Persistence;
 using Deucarian.Persistence.Unity;
@@ -1241,7 +1242,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (_worldRoot != null)
             {
-                DestroyUnityObject(_worldRoot.gameObject);
+                ReleaseTemplateObject(_worldRoot.gameObject);
                 _worldRoot = null;
             }
         }
@@ -2048,21 +2049,9 @@ namespace Deucarian.TemplateGameSurvivors
             renderer.sharedMaterial.color = color;
         }
 
-        private static void DestroyUnityObject(UnityEngine.Object target)
+        private static void ReleaseTemplateObject(UnityEngine.Object target)
         {
-            if (target == null)
-            {
-                return;
-            }
-
-            if (Application.isPlaying)
-            {
-                Destroy(target);
-            }
-            else
-            {
-                DestroyImmediate(target);
-            }
+            UnityObjectUtility.DestroySafely(target);
         }
 
         private void OnDestroy()

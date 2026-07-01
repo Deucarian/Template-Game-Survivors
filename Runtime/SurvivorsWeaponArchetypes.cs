@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Deucarian.Common;
 using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
@@ -604,7 +605,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 if (_blades[i] != null)
                 {
-                    SurvivorsVisualUtility.DestroyUnityObject(_blades[i].gameObject);
+                    SurvivorsVisualUtility.ReleaseTemplateObject(_blades[i].gameObject);
                 }
             }
 
@@ -630,7 +631,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _blades.RemoveAt(_blades.Count - 1);
                 if (blade != null)
                 {
-                    SurvivorsVisualUtility.DestroyUnityObject(blade.gameObject);
+                    SurvivorsVisualUtility.ReleaseTemplateObject(blade.gameObject);
                 }
             }
         }
@@ -962,7 +963,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (_elapsed >= _lifetime)
             {
-                SurvivorsVisualUtility.DestroyUnityObject(gameObject);
+                SurvivorsVisualUtility.ReleaseTemplateObject(gameObject);
             }
         }
     }
@@ -981,7 +982,7 @@ namespace Deucarian.TemplateGameSurvivors
             Collider collider = visual.GetComponent<Collider>();
             if (collider != null)
             {
-                DestroyUnityObject(collider);
+                ReleaseTemplateObject(collider);
             }
 
             ApplyColor(visual.GetComponentInChildren<Renderer>(), color);
@@ -1000,21 +1001,9 @@ namespace Deucarian.TemplateGameSurvivors
             renderer.sharedMaterial.color = color;
         }
 
-        public static void DestroyUnityObject(UnityEngine.Object target)
+        public static void ReleaseTemplateObject(UnityEngine.Object target)
         {
-            if (target == null)
-            {
-                return;
-            }
-
-            if (Application.isPlaying)
-            {
-                UnityEngine.Object.Destroy(target);
-            }
-            else
-            {
-                UnityEngine.Object.DestroyImmediate(target);
-            }
+            UnityObjectUtility.DestroySafely(target);
         }
     }
 }
