@@ -3,6 +3,7 @@ using System.Collections;
 using Deucarian.Persistence;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
 
@@ -65,6 +66,39 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(2.75f, 4f));
             Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(8, 12));
             Assert.AreEqual(1f, controller.CurrentEnemySpeedMultiplier);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ImportedPlaytestSceneStartsControllerInHumanPlaytest()
+        {
+            const string sceneName = "PLAYTEST_THIS_SCENE_Survivors_Game";
+            if (!Application.CanStreamedLevelBeLoaded(sceneName))
+            {
+                Assert.Ignore("Imported playtest scene is not in this project's build settings.");
+            }
+
+            SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
+            SurvivorsTemplateController controller = null;
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < deadline)
+            {
+                controller = Object.FindFirstObjectByType<SurvivorsTemplateController>();
+                if (controller != null && controller.State == SurvivorsRunState.Playing)
+                {
+                    break;
+                }
+
+                yield return null;
+            }
+
+            Assert.NotNull(controller, "Imported playtest scene did not create a SurvivorsTemplateController.");
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
+            Assert.AreEqual(1f, Time.timeScale);
+            Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(2.75f, 4f));
+            Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(8, 12));
 
             Object.Destroy(controller.gameObject);
         }
