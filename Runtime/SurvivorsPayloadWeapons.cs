@@ -250,7 +250,7 @@ namespace Deucarian.TemplateGameSurvivors
         public void DisposePayload()
         {
             IsActive = false;
-            SurvivorsVisualUtility.DestroyUnityObject(gameObject);
+            SurvivorsVisualUtility.ReleaseTemplateObject(gameObject);
         }
     }
 
@@ -330,7 +330,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 IsActive = false;
                 _onDetonate?.Invoke(transform.position);
-                SurvivorsVisualUtility.DestroyUnityObject(gameObject);
+                SurvivorsVisualUtility.ReleaseTemplateObject(gameObject);
             }
         }
     }
@@ -414,7 +414,7 @@ namespace Deucarian.TemplateGameSurvivors
                 else
                 {
                     IsActive = false;
-                    SurvivorsVisualUtility.DestroyUnityObject(gameObject);
+                    SurvivorsVisualUtility.ReleaseTemplateObject(gameObject);
                 }
             }
         }
@@ -451,7 +451,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             IsActive = false;
             _onDetonate?.Invoke(transform.position);
-            SurvivorsVisualUtility.DestroyUnityObject(gameObject);
+            SurvivorsVisualUtility.ReleaseTemplateObject(gameObject);
         }
     }
 
@@ -505,7 +505,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (_duration <= 0f)
             {
                 IsActive = false;
-                SurvivorsVisualUtility.DestroyUnityObject(gameObject);
+                SurvivorsVisualUtility.ReleaseTemplateObject(gameObject);
             }
         }
 

@@ -3,6 +3,7 @@
   "rootNamespace": "Deucarian.TemplateGameSurvivors",
   "references": [
     "Deucarian.Attacks",
+    "Deucarian.Common",
     "Deucarian.Combat",
     "Deucarian.Encounters",
     "Deucarian.GameplayFoundation",
