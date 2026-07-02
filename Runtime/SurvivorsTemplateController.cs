@@ -34,6 +34,9 @@ namespace Deucarian.TemplateGameSurvivors
         private bool buildVisualsOnAwake = true;
 
         [SerializeField]
+        private SurvivorsPacingProfile pacingProfile = SurvivorsPacingProfile.Normal;
+
+        [SerializeField]
         private SurvivorsTemplateTuning tuning;
 
         private readonly List<SurvivorsEnemyActor> _enemies = new List<SurvivorsEnemyActor>(64);
@@ -191,7 +194,9 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 PlayerPosition => _playerObject == null ? transform.position : _playerObject.transform.position;
         public Vector3 PlayerForward => _playerObject == null ? Vector3.forward : _playerObject.transform.forward;
         public CombatCatalog CombatCatalog => _combatCatalog;
-        public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateDefaultTuning());
+        public SurvivorsPacingProfile CurrentPacingProfile => CurrentTuning.PacingProfile;
+        public bool IsDebugFastPacing => CurrentPacingProfile == SurvivorsPacingProfile.DebugFast;
+        public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateTuning(pacingProfile));
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
         public IReadOnlyList<SurvivorsRelicDefinition> CurrentRelicChoices => _currentRelicDraft == null ? EmptyRelicChoices : _currentRelicDraft.Choices;
@@ -218,7 +223,11 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (tuning == null)
             {
-                tuning = BasicSurvivorsGame.CreateDefaultTuning();
+                tuning = BasicSurvivorsGame.CreateTuning(pacingProfile);
+            }
+            else
+            {
+                pacingProfile = tuning.PacingProfile;
             }
         }
 
@@ -584,6 +593,16 @@ namespace Deucarian.TemplateGameSurvivors
             CurrentTuning.EnemyMaximumAlive = target;
             CurrentTuning.EnemySpawnIntervalSeconds = Mathf.Min(CurrentTuning.EnemySpawnIntervalSeconds, target >= 250 ? 0.18f : 0.28f);
             DebugFillArenaToTarget(SurvivorsEnemyRole.Swarm, Mathf.Min(target, 160), CurrentTuning.EnemySpawnRadius);
+        }
+
+        public void DebugApplyPacingProfile(SurvivorsPacingProfile profile)
+        {
+            ApplyPacingProfile(profile, restartRun: _runStarted);
+        }
+
+        public void ApplyPacingProfileForTest(SurvivorsPacingProfile profile, bool restartRun = false)
+        {
+            ApplyPacingProfile(profile, restartRun);
         }
 
         public void DebugResetMetaProgression()
@@ -1934,6 +1953,16 @@ namespace Deucarian.TemplateGameSurvivors
             State = SurvivorsRunState.LevelUp;
             BeginRewardSelectionTimeout();
             PlayFeedback(_levelUpPulse, PlayerPosition, 34, _levelUpClip);
+        }
+
+        private void ApplyPacingProfile(SurvivorsPacingProfile profile, bool restartRun)
+        {
+            tuning = BasicSurvivorsGame.CreateTuning(profile);
+            pacingProfile = tuning.PacingProfile;
+            if (restartRun)
+            {
+                RestartRun();
+            }
         }
 
         private bool OpenBossRelicDraft()

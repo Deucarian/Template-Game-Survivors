@@ -40,6 +40,8 @@ Use `#main` for stable package consumption and `#develop` when testing active pa
 4. Press Play.
 5. Move through the horde, collect XP gems, choose level-up options, take a relic after the miniboss, then defeat the final boss or reach the survival-duration clear condition.
 
+For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/BasicSurvivorsGame.unity`. More detail lives in `Documentation~/playtesting.md`.
+
 The scene contains a tiny bootstrap object. At runtime it creates the arena, player, enemy/pickup/projectile pools, camera, run timer, HUD, draft UI, relic UI, meta profile service, victory state, defeat state, and restart flow.
 
 ## Controls
@@ -54,6 +56,8 @@ Weapons auto-fire toward nearby targets. XP gems pull toward the player when clo
 
 The default playable kit recreates the spirit of the reference clone's Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst weapons while keeping stable Deucarian template IDs. Upgrade choices can add poison, bleed, execute, lifesteal, barrier, fan spread, pierce, chain, fork, return, orbit wall, targeted burst, burst echo, and payload mutations. Level-up and boss relic choices auto-pick the first option when their countdown expires.
 
+Default play uses `SurvivorsPacingProfile.Normal`: `Time.timeScale` stays at `1`, opening enemy spawns are slow enough to read, reward choices stay open for `45` seconds, and boss timings target a 30-minute run. `DebugFast` and `Showcase` profiles exist for validation and demos, but must be selected deliberately through the runtime debugger.
+
 ## What To Customize First
 
 - Weapon and projectile feel: edit `Samples~/BasicSurvivorsGame/Content/DefaultWeapons/weapons.json`, then compare with `Runtime/BasicSurvivorsGame.cs` and `CreateWeaponArchetypeDefinitions`.
@@ -61,8 +65,8 @@ The default playable kit recreates the spirit of the reference clone's Arc Bolt,
 - Enemies, miniboss, boss, and rewards: edit `Samples~/BasicSurvivorsGame/Content/DefaultEnemies/enemies.json`, `Samples~/BasicSurvivorsGame/Content/DefaultRewards/rewards.json`, and `CreateRunFlowDefinition`.
 - Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
 - Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.
-- Run tuning and reward timeout: start with `CreateDefaultTuning` before changing controller internals.
-- Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP, force level-ups, spawn bursts, fill the arena, apply stress profiles, inspect live build stats, trigger magnet recall, or reset meta progression.
+- Run tuning, pacing profiles, and reward timeout: start with `CreateDefaultTuning` and `CreateTuning(SurvivorsPacingProfile)` before changing controller internals.
+- Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP, force level-ups, spawn bursts, fill the arena, switch pacing profiles with a restart, apply stress profiles, inspect live build stats, trigger magnet recall, or reset meta progression.
 
 ## Asset Flip Shape
 
@@ -99,6 +103,7 @@ Intentionally not ported wholesale: the clone's twelve-class content-pack ecosys
 - Local content validation: `Runtime/SurvivorsContentValidation.cs`
 - Editor validation menu: `Editor/SurvivorsEditorContentValidation.cs`
 - Structure notes: `Documentation~/survivors-template-structure.md`
+- Playtesting notes: `Documentation~/playtesting.md`
 - Validation notes: `Documentation~/validation.md`
 
 ## Integrations
@@ -150,7 +155,7 @@ During Play Mode, run:
 
 `Tools > Deucarian > Templates > Survivors > Runtime Debugger`
 
-Use it to force XP, force level-up, spawn enemy bursts, fill the arena, apply stress targets, inspect live counts/build stats, trigger magnet recall, and reset the local meta profile.
+Use it to force XP, force level-up, spawn enemy bursts, fill the arena, apply stress targets, switch pacing profiles with a restart, inspect live counts/build stats, trigger magnet recall, and reset the local meta profile.
 
 ## Screenshots And GIFs
 

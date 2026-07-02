@@ -5,6 +5,7 @@
 `Runtime/BasicSurvivorsGame.cs` contains sample-kit tuning, stable IDs, descriptors, and the small authored default catalog:
 
 - `SurvivorsTemplateTuning`
+- `SurvivorsPacingProfile`
 - `BasicSurvivorsGame`
 - `SurvivorsRunState`
 - `SurvivorsPickupKind`
@@ -16,6 +17,7 @@
 - `SurvivorsProjectileActor`
 - `SurvivorsPickupActor`
 - `SurvivorsSpawnPoseResolver`
+- Normal, Debug Fast, and Showcase pacing profile selection
 - timed reward draft behavior for level-up and boss relic choices
 
 `Runtime/SurvivorsRunFlow.cs` contains local Survivors run-structure logic:

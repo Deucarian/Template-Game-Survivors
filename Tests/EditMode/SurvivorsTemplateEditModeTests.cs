@@ -79,6 +79,47 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void DefaultPacingProfileIsNormalAndReadable()
+        {
+            SurvivorsTemplateTuning tuning = BasicSurvivorsGame.CreateDefaultTuning();
+            SurvivorsEnemyProfile swarm = BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Swarm, tuning);
+            SurvivorsEnemyProfile runner = BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Runner, tuning);
+
+            Assert.AreEqual(SurvivorsPacingProfile.Normal, tuning.PacingProfile);
+            Assert.That(tuning.EnemySpawnIntervalSeconds, Is.GreaterThanOrEqualTo(1f));
+            Assert.That(tuning.MinimumEnemySpawnIntervalSeconds, Is.GreaterThanOrEqualTo(0.35f));
+            Assert.That(tuning.EnemyMaximumAlive, Is.LessThanOrEqualTo(40));
+            Assert.That(swarm.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
+            Assert.That(runner.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
+            Assert.That(tuning.ProjectileSpeed, Is.LessThanOrEqualTo(9f));
+            Assert.That(tuning.PickupAttractRange, Is.LessThanOrEqualTo(2.5f));
+            Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.GreaterThanOrEqualTo(30f));
+            Assert.That(tuning.MinibossSpawnTimeSeconds, Is.GreaterThanOrEqualTo(300f));
+            Assert.That(tuning.BossSpawnTimeSeconds, Is.GreaterThanOrEqualTo(1200f));
+            Assert.That(tuning.SurvivalVictoryTimeSeconds, Is.GreaterThanOrEqualTo(1800f));
+        }
+
+        [Test]
+        public void DebugFastPacingProfileIsOptInAndAccelerated()
+        {
+            SurvivorsTemplateTuning normal = BasicSurvivorsGame.CreateDefaultTuning();
+            SurvivorsTemplateTuning debugFast = BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.DebugFast);
+            SurvivorsTemplateTuning showcase = BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Showcase);
+
+            Assert.AreEqual(SurvivorsPacingProfile.Normal, normal.PacingProfile);
+            Assert.AreEqual(SurvivorsPacingProfile.DebugFast, debugFast.PacingProfile);
+            Assert.AreEqual(SurvivorsPacingProfile.Showcase, showcase.PacingProfile);
+            Assert.That(debugFast.EnemySpawnIntervalSeconds, Is.LessThan(normal.EnemySpawnIntervalSeconds));
+            Assert.That(debugFast.MinimumEnemySpawnIntervalSeconds, Is.LessThan(normal.MinimumEnemySpawnIntervalSeconds));
+            Assert.That(debugFast.EnemyMaximumAlive, Is.GreaterThan(normal.EnemyMaximumAlive));
+            Assert.That(debugFast.ExperienceRequiredBase, Is.LessThan(normal.ExperienceRequiredBase));
+            Assert.That(debugFast.MinibossSpawnTimeSeconds, Is.LessThan(normal.MinibossSpawnTimeSeconds));
+            Assert.That(debugFast.RewardSelectionTimeoutSeconds, Is.LessThan(normal.RewardSelectionTimeoutSeconds));
+            Assert.That(showcase.EnemySpawnIntervalSeconds, Is.GreaterThan(debugFast.EnemySpawnIntervalSeconds));
+            Assert.That(showcase.EnemySpawnIntervalSeconds, Is.LessThan(normal.EnemySpawnIntervalSeconds));
+        }
+
+        [Test]
         public void SampleContentJsonLoadsAndValidates()
         {
             string sampleRoot = GetSampleRoot();

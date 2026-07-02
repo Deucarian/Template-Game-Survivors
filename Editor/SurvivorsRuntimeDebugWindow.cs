@@ -11,6 +11,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         private int _fillTarget = 120;
         private int _stressTarget = 250;
         private float _spawnRadius = 10f;
+        private SurvivorsPacingProfile _pacingProfile = SurvivorsPacingProfile.DebugFast;
 
         [MenuItem("Tools/Deucarian/Templates/Survivors/Runtime Debugger", priority = 340)]
         public static void Open()
@@ -69,6 +70,13 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 controller.DebugApplyStressProfile(_stressTarget);
             }
 
+            EditorGUILayout.Space(8f);
+            _pacingProfile = (SurvivorsPacingProfile)EditorGUILayout.EnumPopup("Pacing Profile", _pacingProfile);
+            if (GUILayout.Button("Apply Pacing Profile And Restart"))
+            {
+                controller.DebugApplyPacingProfile(_pacingProfile);
+            }
+
             if (GUILayout.Button("Trigger Magnet Recall"))
             {
                 controller.TriggerMagnetRecall();
@@ -82,7 +90,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
         private static void DrawSnapshot(SurvivorsTemplateController controller)
         {
-            EditorGUILayout.LabelField("Run", $"{controller.State}  {controller.RunTimeSeconds:0}s  Level {controller.Level}");
+            EditorGUILayout.LabelField("Run", $"{controller.State}  {controller.RunTimeSeconds:0}s  Level {controller.Level}  {controller.CurrentPacingProfile}");
             EditorGUILayout.LabelField("Enemies", $"{controller.ActiveEnemyCount} alive, {controller.KilledCount} killed, {controller.ActiveEliteCount} elites");
             EditorGUILayout.LabelField("Build", $"Weapons {controller.ActiveWeaponCount}, Upgrades {controller.SelectedUpgradeCount}, Relics {controller.SelectedRelicCount}");
             EditorGUILayout.LabelField("Survivability", $"Health {controller.CurrentHealth:0}/{controller.MaxHealth:0}, Barrier {controller.BarrierValue:0}/{controller.BarrierCapacity:0}");

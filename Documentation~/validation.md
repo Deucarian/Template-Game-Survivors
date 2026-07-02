@@ -142,3 +142,14 @@ Phase 3H adds reward-selection timeout validation:
 - manual choice selection still clears the timer and resumes the run
 
 The timeout remains local template UI/runtime behavior. No production UI framework or shared reward-surface package is introduced.
+
+Phase 3I adds human-readable pacing validation:
+
+- `SurvivorsPacingProfile.Normal` is the default profile and keeps `Time.timeScale` at `1`.
+- Normal opening spawns use a `1.35` second interval, `36` maximum alive enemies, slower basic enemies, readable projectile speed, modest pickup magnet range, and a `45` second reward timeout.
+- `SurvivorsPacingProfile.DebugFast` and `SurvivorsPacingProfile.Showcase` are explicit profiles for validation and demo work, not sample defaults.
+- EditMode coverage checks Normal readability thresholds and Debug Fast acceleration as opt-in tuning.
+- PlayMode coverage checks the controller starts in Normal and only enters Debug Fast through an explicit profile switch.
+- `Documentation~/playtesting.md` documents the local playtest host project, imported sample scene, timing expectations, save reset, and Debug Fast workflow.
+
+The pacing profiles remain local template tuning. No package extraction or shared pacing framework is introduced.

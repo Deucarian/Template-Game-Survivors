@@ -52,6 +52,39 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ControllerUsesNormalPacingByDefault()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsPacingProfile.Normal, controller.CurrentPacingProfile);
+            Assert.IsFalse(controller.IsDebugFastPacing);
+            Assert.AreEqual(1f, Time.timeScale);
+            Assert.That(controller.CurrentTuning.RewardSelectionTimeoutSeconds, Is.GreaterThanOrEqualTo(30f));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator DebugFastPacingRequiresExplicitProfileSwitch()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            Assert.AreEqual(SurvivorsPacingProfile.Normal, controller.CurrentPacingProfile);
+
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.DebugFast);
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsTemplateTuning normal = BasicSurvivorsGame.CreateDefaultTuning();
+            Assert.AreEqual(SurvivorsPacingProfile.DebugFast, controller.CurrentPacingProfile);
+            Assert.IsTrue(controller.IsDebugFastPacing);
+            Assert.That(controller.CurrentTuning.EnemySpawnIntervalSeconds, Is.LessThan(normal.EnemySpawnIntervalSeconds));
+            Assert.That(controller.CurrentTuning.RewardSelectionTimeoutSeconds, Is.LessThan(normal.RewardSelectionTimeoutSeconds));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator LevelUpChoiceAutoSelectsAfterTimeout()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -288,7 +321,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator ForkedProjectileCanSpawnSecondaryProjectile()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureProjectileModifierOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
             yield return null;
 
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.forked-bolts"));
@@ -308,7 +343,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator ReturningProjectileCanBoomerangAfterHit()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureProjectileModifierOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
             yield return null;
 
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.returning-bolts"));
@@ -655,7 +692,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.That(controller.PersistentDamageBonus, Is.GreaterThan(0f));
-            Assert.That(controller.ProjectileDamage, Is.GreaterThan(7f));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(controller.CurrentTuning.ProjectileDamage));
 
             Object.Destroy(controller.gameObject);
         }
@@ -694,6 +731,19 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             tuning.HitscanDamage = 0f;
             tuning.GrenadeDamage = 0f;
             tuning.PlacedPayloadDamage = 6.8f;
+        }
+
+        private static void ConfigureProjectileModifierOnlyTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.EnemySpawnIntervalSeconds = 999f;
+            tuning.EnemyMoveSpeed = 0f;
+            tuning.EnemyContactDamage = 0f;
+            tuning.OrbitDamage = 0f;
+            tuning.MeleeDamage = 0f;
+            tuning.BurstDamage = 0f;
+            tuning.HitscanDamage = 0f;
+            tuning.GrenadeDamage = 0f;
+            tuning.PlacedPayloadDamage = 0f;
         }
 
         private static int IndexOfDraftChoice(SurvivorsTemplateController controller, string upgradeId)
