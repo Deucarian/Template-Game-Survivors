@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
@@ -5,8 +7,12 @@ namespace Deucarian.TemplateGameSurvivors
     public enum SurvivorsEnemyRole
     {
         Swarm = 0,
-        Miniboss = 1,
-        Boss = 2
+        Runner = 1,
+        Bruiser = 2,
+        Spitter = 3,
+        Elite = 4,
+        Miniboss = 5,
+        Boss = 6
     }
 
     public enum SurvivorsRunPhase
@@ -30,7 +36,11 @@ namespace Deucarian.TemplateGameSurvivors
             float contactDamage,
             float contactIntervalSeconds,
             int experienceReward,
-            Color tint)
+            Color tint,
+            float rangedAttackRange = 0f,
+            float rangedAttackDamage = 0f,
+            float rangedAttackIntervalSeconds = 0f,
+            float preferredRange = 0f)
         {
             Role = role;
             Id = id;
@@ -42,6 +52,10 @@ namespace Deucarian.TemplateGameSurvivors
             ContactIntervalSeconds = contactIntervalSeconds;
             ExperienceReward = experienceReward;
             Tint = tint;
+            RangedAttackRange = rangedAttackRange;
+            RangedAttackDamage = rangedAttackDamage;
+            RangedAttackIntervalSeconds = rangedAttackIntervalSeconds;
+            PreferredRange = preferredRange;
         }
 
         public SurvivorsEnemyRole Role { get; }
@@ -54,6 +68,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float ContactIntervalSeconds { get; }
         public int ExperienceReward { get; }
         public Color Tint { get; }
+        public float RangedAttackRange { get; }
+        public float RangedAttackDamage { get; }
+        public float RangedAttackIntervalSeconds { get; }
+        public float PreferredRange { get; }
     }
 
     public sealed class SurvivorsRunFlowDefinition
@@ -70,7 +88,8 @@ namespace Deucarian.TemplateGameSurvivors
             SurvivorsEnemyProfile miniboss,
             float bossSpawnTimeSeconds,
             SurvivorsEnemyProfile boss,
-            float survivalVictoryTimeSeconds)
+            float survivalVictoryTimeSeconds,
+            IReadOnlyList<SurvivorsEnemyProfile> swarmProfiles = null)
         {
             EscalationIntervalSeconds = escalationIntervalSeconds;
             MinimumEnemySpawnIntervalSeconds = minimumEnemySpawnIntervalSeconds;
@@ -84,6 +103,7 @@ namespace Deucarian.TemplateGameSurvivors
             BossSpawnTimeSeconds = bossSpawnTimeSeconds;
             Boss = boss;
             SurvivalVictoryTimeSeconds = survivalVictoryTimeSeconds;
+            SwarmProfiles = swarmProfiles == null ? Array.Empty<SurvivorsEnemyProfile>() : CopyProfiles(swarmProfiles);
         }
 
         public float EscalationIntervalSeconds { get; }
@@ -98,6 +118,18 @@ namespace Deucarian.TemplateGameSurvivors
         public float BossSpawnTimeSeconds { get; }
         public SurvivorsEnemyProfile Boss { get; }
         public float SurvivalVictoryTimeSeconds { get; }
+        public IReadOnlyList<SurvivorsEnemyProfile> SwarmProfiles { get; }
+
+        private static SurvivorsEnemyProfile[] CopyProfiles(IReadOnlyList<SurvivorsEnemyProfile> source)
+        {
+            SurvivorsEnemyProfile[] copy = new SurvivorsEnemyProfile[source.Count];
+            for (int index = 0; index < source.Count; index++)
+            {
+                copy[index] = source[index];
+            }
+
+            return copy;
+        }
     }
 
     public sealed class SurvivorsRunFlowRuntime
@@ -211,28 +243,126 @@ namespace Deucarian.TemplateGameSurvivors
             return Mathf.Max(1, baseMaximumAlive + (Definition.EnemyMaximumAliveIncreasePerEscalation * EscalationLevel));
         }
 
-        public SurvivorsEnemyProfile ResolveSwarmProfile(SurvivorsTemplateTuning tuning)
+        public SurvivorsEnemyRole ResolveNextSwarmRole(float elapsedTimeSeconds, long spawnSequence)
+        {
+            if (Definition == null || Definition.SwarmProfiles.Count == 0)
+            {
+                return SurvivorsEnemyRole.Swarm;
+            }
+
+            int totalWeight = 0;
+            SurvivorsEnemyRole[] roles = new SurvivorsEnemyRole[5];
+            int[] weights = new int[5];
+            int candidateCount = 0;
+            AddCandidate(SurvivorsEnemyRole.Swarm, 60, ref candidateCount, roles, weights, ref totalWeight);
+            if (elapsedTimeSeconds >= 35f)
+            {
+                AddCandidate(SurvivorsEnemyRole.Runner, 18 + Math.Min(18, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
+            }
+
+            if (elapsedTimeSeconds >= 90f)
+            {
+                AddCandidate(SurvivorsEnemyRole.Bruiser, 14 + Math.Min(16, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
+            }
+
+            if (elapsedTimeSeconds >= 150f)
+            {
+                AddCandidate(SurvivorsEnemyRole.Spitter, 10 + Math.Min(18, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
+            }
+
+            if (elapsedTimeSeconds >= 300f)
+            {
+                AddCandidate(SurvivorsEnemyRole.Elite, 4 + Math.Min(12, EscalationLevel), ref candidateCount, roles, weights, ref totalWeight);
+            }
+
+            if (totalWeight <= 0 || candidateCount <= 0)
+            {
+                return SurvivorsEnemyRole.Swarm;
+            }
+
+            uint hash = unchecked((uint)((spawnSequence * 1103515245L) + (EscalationLevel * 97L)));
+            int roll = (int)(hash % (uint)totalWeight);
+            for (int index = 0; index < candidateCount; index++)
+            {
+                roll -= weights[index];
+                if (roll < 0)
+                {
+                    return roles[index];
+                }
+            }
+
+            return SurvivorsEnemyRole.Swarm;
+        }
+
+        public SurvivorsEnemyProfile ResolveSwarmProfile(SurvivorsTemplateTuning tuning, float elapsedTimeSeconds = 0f, long spawnSequence = 0L)
+        {
+            SurvivorsEnemyRole role = ResolveNextSwarmRole(elapsedTimeSeconds, spawnSequence);
+            return ResolveSwarmProfile(tuning, role);
+        }
+
+        public SurvivorsEnemyProfile ResolveSwarmProfile(SurvivorsTemplateTuning tuning, SurvivorsEnemyRole role)
         {
             SurvivorsTemplateTuning resolved = tuning ?? BasicSurvivorsGame.CreateDefaultTuning();
             float healthMultiplier = ResolveLinearMultiplier(Definition == null ? 0f : Definition.EnemyHealthMultiplierPerEscalation);
             float speedMultiplier = ResolveLinearMultiplier(Definition == null ? 0f : Definition.EnemyMoveSpeedMultiplierPerEscalation);
             float experienceMultiplier = ResolveLinearMultiplier(Definition == null ? 0f : Definition.EnemyExperienceMultiplierPerEscalation);
+            SurvivorsEnemyProfile baseProfile = FindSwarmProfile(role);
             return new SurvivorsEnemyProfile(
-                SurvivorsEnemyRole.Swarm,
-                BasicSurvivorsGame.SwarmEnemySpawnableId.Value,
-                "Swarm Thrall",
-                resolved.EnemyMaxHealth * healthMultiplier,
-                resolved.EnemyMoveSpeed * speedMultiplier,
-                resolved.EnemyRadius,
-                resolved.EnemyContactDamage,
-                resolved.EnemyContactIntervalSeconds,
-                Mathf.Max(1, Mathf.RoundToInt(resolved.EnemyExperienceReward * experienceMultiplier)),
-                new Color(0.88f, 0.22f, 0.32f));
+                baseProfile.Role,
+                baseProfile.Id,
+                baseProfile.DisplayName,
+                baseProfile.MaxHealth * healthMultiplier,
+                baseProfile.MoveSpeed * speedMultiplier,
+                baseProfile.Radius,
+                baseProfile.ContactDamage,
+                baseProfile.ContactIntervalSeconds,
+                Mathf.Max(1, Mathf.RoundToInt(baseProfile.ExperienceReward * experienceMultiplier)),
+                baseProfile.Tint,
+                baseProfile.RangedAttackRange,
+                baseProfile.RangedAttackDamage * healthMultiplier,
+                baseProfile.RangedAttackIntervalSeconds,
+                baseProfile.PreferredRange);
+        }
+
+        private SurvivorsEnemyProfile FindSwarmProfile(SurvivorsEnemyRole role)
+        {
+            if (Definition != null)
+            {
+                for (int index = 0; index < Definition.SwarmProfiles.Count; index++)
+                {
+                    SurvivorsEnemyProfile candidate = Definition.SwarmProfiles[index];
+                    if (candidate.Role == role)
+                    {
+                        return candidate;
+                    }
+                }
+            }
+
+            return BasicSurvivorsGame.CreateEnemyProfile(role);
         }
 
         private float ResolveLinearMultiplier(float step)
         {
             return Mathf.Max(0.1f, 1f + (step * EscalationLevel));
+        }
+
+        private static void AddCandidate(
+            SurvivorsEnemyRole role,
+            int weight,
+            ref int candidateCount,
+            SurvivorsEnemyRole[] roles,
+            int[] weights,
+            ref int totalWeight)
+        {
+            if (candidateCount >= roles.Length || weight <= 0)
+            {
+                return;
+            }
+
+            roles[candidateCount] = role;
+            weights[candidateCount] = weight;
+            totalWeight += weight;
+            candidateCount++;
         }
     }
 }

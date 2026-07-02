@@ -33,7 +33,8 @@ namespace Deucarian.TemplateGameSurvivors
             SurvivorsMetaProgressionDefinition metaProgression = null,
             IReadOnlyList<SurvivorsRelicDefinition> relics = null,
             SurvivorsClassLibraryDefinition classes = null,
-            IReadOnlyList<SurvivorsClassUpgradeGateDefinition> classUpgradeGates = null)
+            IReadOnlyList<SurvivorsClassUpgradeGateDefinition> classUpgradeGates = null,
+            IReadOnlyList<SurvivorsProgressionTrackDefinition> progressionTracks = null)
         {
             var result = new SurvivorsContentValidationResult();
             ValidateWeaponDefinitions(weapons, result);
@@ -63,6 +64,11 @@ namespace Deucarian.TemplateGameSurvivors
                 ValidateClassUpgradeGates(classUpgradeGates, upgrades, classes, result);
             }
 
+            if (progressionTracks != null)
+            {
+                ValidateProgressionTracks(progressionTracks, upgrades, classes, BuildKnownWeaponIds(weapons), result);
+            }
+
             return result;
         }
 
@@ -73,7 +79,14 @@ namespace Deucarian.TemplateGameSurvivors
             return result;
         }
 
-        public static SurvivorsContentValidationResult ValidateSampleJson(string weaponJson, string upgradeJson, string enemyJson = null, string rewardJson = null, string relicJson = null, string classJson = null)
+        public static SurvivorsContentValidationResult ValidateSampleJson(
+            string weaponJson,
+            string upgradeJson,
+            string enemyJson = null,
+            string rewardJson = null,
+            string relicJson = null,
+            string classJson = null,
+            string progressionJson = null)
         {
             var result = new SurvivorsContentValidationResult();
             WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
@@ -90,12 +103,16 @@ namespace Deucarian.TemplateGameSurvivors
             ClassLibraryJson classLibrary = string.IsNullOrWhiteSpace(classJson)
                 ? null
                 : ParseJson<ClassLibraryJson>(classJson, "class library", result);
+            ProgressionLibraryJson progressionLibrary = string.IsNullOrWhiteSpace(progressionJson)
+                ? null
+                : ParseJson<ProgressionLibraryJson>(progressionJson, "progression library", result);
             ValidateWeaponLibrary(weaponLibrary, result);
             ValidateUpgradeLibrary(upgradeLibrary, classLibrary, result);
             ValidateEnemyLibrary(enemyLibrary, result);
             ValidateRewardLibrary(rewardLibrary, result);
             ValidateRelicLibrary(relicLibrary, result);
             ValidateClassLibraryJson(classLibrary, result);
+            ValidateProgressionLibrary(progressionLibrary, upgradeLibrary, classLibrary, result);
             return result;
         }
 
@@ -407,6 +424,95 @@ namespace Deucarian.TemplateGameSurvivors
                 if (!string.IsNullOrWhiteSpace(gate.UpgradeId) && !gatedUpgradeIds.Add(gate.UpgradeId))
                 {
                     result.AddError($"Duplicate class upgrade gate id: {gate.UpgradeId}");
+                }
+            }
+        }
+
+        private static void ValidateProgressionTracks(
+            IReadOnlyList<SurvivorsProgressionTrackDefinition> tracks,
+            RunUpgradeCatalog upgrades,
+            SurvivorsClassLibraryDefinition classes,
+            HashSet<string> knownWeaponIds,
+            SurvivorsContentValidationResult result)
+        {
+            if (tracks == null || tracks.Count == 0)
+            {
+                result.AddError("At least one progression track definition is required.");
+                return;
+            }
+
+            Dictionary<string, int> knownUpgradeMaxRanks = BuildKnownUpgradeMaxRanks(upgrades);
+            HashSet<string> knownClassIds = BuildKnownClassIds(classes);
+            var trackIds = new HashSet<string>(StringComparer.Ordinal);
+            var nodeIds = new HashSet<string>(StringComparer.Ordinal);
+            var passiveAtlasClassIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                SurvivorsProgressionTrackDefinition track = tracks[i];
+                if (track == null)
+                {
+                    result.AddError($"Progression track at index {i} is null.");
+                    continue;
+                }
+
+                string resolvedTrackId = string.IsNullOrWhiteSpace(track.Id) ? "unknown progression track" : track.Id;
+                if (string.IsNullOrWhiteSpace(track.Id))
+                {
+                    result.AddError("Progression track is missing an id.");
+                }
+                else if (!trackIds.Add(track.Id))
+                {
+                    result.AddError($"Duplicate progression track id: {track.Id}");
+                }
+
+                ValidateProgressionTrackOwnership(
+                    resolvedTrackId,
+                    track.Kind.ToString(),
+                    track.ClassId,
+                    track.TargetWeaponId,
+                    knownClassIds,
+                    knownWeaponIds,
+                    passiveAtlasClassIds,
+                    result);
+
+                if (track.Nodes == null || track.Nodes.Count == 0)
+                {
+                    result.AddError($"Progression track {resolvedTrackId} requires at least one node.");
+                    continue;
+                }
+
+                for (int nodeIndex = 0; nodeIndex < track.Nodes.Count; nodeIndex++)
+                {
+                    SurvivorsProgressionNodeDefinition node = track.Nodes[nodeIndex];
+                    if (node == null)
+                    {
+                        result.AddError($"Progression track {resolvedTrackId} node at index {nodeIndex} is null.");
+                        continue;
+                    }
+
+                    ValidateProgressionNodeRecord(
+                        resolvedTrackId,
+                        node.Id,
+                        node.UpgradeId,
+                        node.Kind.ToString(),
+                        node.Tier,
+                        node.PointCost,
+                        node.MaxRank,
+                        knownUpgradeMaxRanks,
+                        nodeIds,
+                        result);
+                }
+            }
+
+            if (classes != null)
+            {
+                for (int i = 0; i < classes.Classes.Count; i++)
+                {
+                    SurvivorsClassDefinition playerClass = classes.Classes[i];
+                    if (playerClass != null && !string.IsNullOrWhiteSpace(playerClass.Id) && !passiveAtlasClassIds.Contains(playerClass.Id))
+                    {
+                        result.AddError($"Class {playerClass.Id} requires a passive atlas progression track.");
+                    }
                 }
             }
         }
@@ -1007,6 +1113,100 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static void ValidateProgressionLibrary(
+            ProgressionLibraryJson library,
+            UpgradeLibraryJson upgradeLibrary,
+            ClassLibraryJson classLibrary,
+            SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            if (library.tracks == null || library.tracks.Length == 0)
+            {
+                result.AddError("Sample progression library must contain at least one track.");
+                return;
+            }
+
+            HashSet<string> knownUpgradeIds = BuildKnownUpgradeIds(upgradeLibrary);
+            HashSet<string> knownClassIds = BuildKnownClassIds(classLibrary);
+            HashSet<string> knownWeaponIds = BuildKnownWeaponIds(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions());
+            var trackIds = new HashSet<string>(StringComparer.Ordinal);
+            var nodeIds = new HashSet<string>(StringComparer.Ordinal);
+            var passiveAtlasClassIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < library.tracks.Length; i++)
+            {
+                ProgressionTrackRecordJson track = library.tracks[i];
+                if (track == null)
+                {
+                    result.AddError($"Progression track record at index {i} is null.");
+                    continue;
+                }
+
+                string resolvedTrackId = string.IsNullOrWhiteSpace(track.id) ? "unknown progression track" : track.id;
+                if (string.IsNullOrWhiteSpace(track.id))
+                {
+                    result.AddError("Progression track record is missing an id.");
+                }
+                else if (!trackIds.Add(track.id))
+                {
+                    result.AddError($"Duplicate progression track id: {track.id}");
+                }
+
+                ValidateProgressionTrackOwnership(
+                    resolvedTrackId,
+                    track.kind,
+                    track.classId,
+                    track.targetWeaponId,
+                    knownClassIds,
+                    knownWeaponIds,
+                    passiveAtlasClassIds,
+                    result);
+
+                if (track.nodes == null || track.nodes.Length == 0)
+                {
+                    result.AddError($"Progression track {resolvedTrackId} requires at least one node.");
+                    continue;
+                }
+
+                for (int nodeIndex = 0; nodeIndex < track.nodes.Length; nodeIndex++)
+                {
+                    ProgressionNodeRecordJson node = track.nodes[nodeIndex];
+                    if (node == null)
+                    {
+                        result.AddError($"Progression track {resolvedTrackId} node at index {nodeIndex} is null.");
+                        continue;
+                    }
+
+                    ValidateProgressionNodeRecord(
+                        resolvedTrackId,
+                        node.id,
+                        node.upgradeId,
+                        node.kind,
+                        node.tier,
+                        node.pointCost,
+                        node.maxRank,
+                        knownUpgradeIds,
+                        nodeIds,
+                        result);
+                }
+            }
+
+            if (classLibrary != null && classLibrary.classes != null)
+            {
+                for (int i = 0; i < classLibrary.classes.Length; i++)
+                {
+                    ClassRecordJson playerClass = classLibrary.classes[i];
+                    if (playerClass != null && !string.IsNullOrWhiteSpace(playerClass.id) && !passiveAtlasClassIds.Contains(playerClass.id))
+                    {
+                        result.AddError($"Class {playerClass.id} requires a passive atlas progression track.");
+                    }
+                }
+            }
+        }
+
         private static void ValidateEnemyLibrary(EnemyLibraryJson library, SurvivorsContentValidationResult result)
         {
             if (library == null)
@@ -1377,6 +1577,197 @@ namespace Deucarian.TemplateGameSurvivors
             return ids;
         }
 
+        private static Dictionary<string, int> BuildKnownUpgradeMaxRanks(RunUpgradeCatalog upgrades)
+        {
+            var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
+            if (upgrades == null)
+            {
+                return ranks;
+            }
+
+            for (int i = 0; i < upgrades.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = upgrades.Definitions[i];
+                if (definition != null && !string.IsNullOrWhiteSpace(definition.Id.Value))
+                {
+                    ranks[definition.Id.Value] = definition.MaxRank;
+                }
+            }
+
+            return ranks;
+        }
+
+        private static HashSet<string> BuildKnownUpgradeIds(UpgradeLibraryJson library)
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (library == null || library.upgrades == null)
+            {
+                return ids;
+            }
+
+            for (int i = 0; i < library.upgrades.Length; i++)
+            {
+                UpgradeRecordJson upgrade = library.upgrades[i];
+                if (upgrade != null && !string.IsNullOrWhiteSpace(upgrade.id))
+                {
+                    ids.Add(upgrade.id);
+                }
+            }
+
+            return ids;
+        }
+
+        private static void ValidateProgressionTrackOwnership(
+            string trackId,
+            string kind,
+            string classId,
+            string targetWeaponId,
+            HashSet<string> knownClassIds,
+            HashSet<string> knownWeaponIds,
+            HashSet<string> passiveAtlasClassIds,
+            SurvivorsContentValidationResult result)
+        {
+            if (string.IsNullOrWhiteSpace(kind) ||
+                !Enum.TryParse(kind, ignoreCase: true, out SurvivorsProgressionTrackKind parsedKind) ||
+                !Enum.IsDefined(typeof(SurvivorsProgressionTrackKind), parsedKind))
+            {
+                result.AddError($"Progression track {trackId} references unknown kind: {kind}");
+                return;
+            }
+
+            if (parsedKind == SurvivorsProgressionTrackKind.PassiveAtlas)
+            {
+                if (string.IsNullOrWhiteSpace(classId))
+                {
+                    result.AddError($"Passive atlas {trackId} requires a class id.");
+                }
+                else if (knownClassIds == null || !knownClassIds.Contains(classId))
+                {
+                    result.AddError($"Passive atlas {trackId} references unknown class id: {classId}");
+                }
+                else if (passiveAtlasClassIds != null && !passiveAtlasClassIds.Add(classId))
+                {
+                    result.AddError($"Class {classId} has more than one passive atlas progression track.");
+                }
+
+                if (!string.IsNullOrWhiteSpace(targetWeaponId))
+                {
+                    result.AddError($"Passive atlas {trackId} should not target a weapon.");
+                }
+
+                return;
+            }
+
+            if (parsedKind == SurvivorsProgressionTrackKind.WeaponSkillTrack)
+            {
+                if (string.IsNullOrWhiteSpace(targetWeaponId) || knownWeaponIds == null || !knownWeaponIds.Contains(targetWeaponId))
+                {
+                    result.AddError($"Weapon skill track {trackId} references unknown target weapon: {targetWeaponId}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(classId) && (knownClassIds == null || !knownClassIds.Contains(classId)))
+                {
+                    result.AddError($"Weapon skill track {trackId} references unknown class id: {classId}");
+                }
+            }
+        }
+
+        private static void ValidateProgressionNodeRecord(
+            string trackId,
+            string nodeId,
+            string upgradeId,
+            string kind,
+            int tier,
+            int pointCost,
+            int maxRank,
+            Dictionary<string, int> knownUpgradeMaxRanks,
+            HashSet<string> nodeIds,
+            SurvivorsContentValidationResult result)
+        {
+            ValidateProgressionNodeBasics(trackId, nodeId, upgradeId, kind, tier, pointCost, maxRank, nodeIds, result);
+            if (string.IsNullOrWhiteSpace(upgradeId))
+            {
+                return;
+            }
+
+            if (knownUpgradeMaxRanks == null || !knownUpgradeMaxRanks.TryGetValue(upgradeId, out int upgradeMaxRank))
+            {
+                result.AddError($"Progression node {nodeId} references unknown upgrade id: {upgradeId}");
+            }
+            else if (maxRank > upgradeMaxRank)
+            {
+                result.AddError($"Progression node {nodeId} max rank exceeds upgrade {upgradeId} max rank.");
+            }
+        }
+
+        private static void ValidateProgressionNodeRecord(
+            string trackId,
+            string nodeId,
+            string upgradeId,
+            string kind,
+            int tier,
+            int pointCost,
+            int maxRank,
+            HashSet<string> knownUpgradeIds,
+            HashSet<string> nodeIds,
+            SurvivorsContentValidationResult result)
+        {
+            ValidateProgressionNodeBasics(trackId, nodeId, upgradeId, kind, tier, pointCost, maxRank, nodeIds, result);
+            if (!string.IsNullOrWhiteSpace(upgradeId) && (knownUpgradeIds == null || !knownUpgradeIds.Contains(upgradeId)))
+            {
+                result.AddError($"Progression node {nodeId} references unknown upgrade id: {upgradeId}");
+            }
+        }
+
+        private static void ValidateProgressionNodeBasics(
+            string trackId,
+            string nodeId,
+            string upgradeId,
+            string kind,
+            int tier,
+            int pointCost,
+            int maxRank,
+            HashSet<string> nodeIds,
+            SurvivorsContentValidationResult result)
+        {
+            string resolvedNodeId = string.IsNullOrWhiteSpace(nodeId) ? "unknown progression node" : nodeId;
+            if (string.IsNullOrWhiteSpace(nodeId))
+            {
+                result.AddError($"Progression track {trackId} contains a node with no id.");
+            }
+            else if (nodeIds != null && !nodeIds.Add(nodeId))
+            {
+                result.AddError($"Duplicate progression node id: {nodeId}");
+            }
+
+            if (string.IsNullOrWhiteSpace(upgradeId))
+            {
+                result.AddError($"Progression node {resolvedNodeId} is missing an upgrade id.");
+            }
+
+            if (string.IsNullOrWhiteSpace(kind) ||
+                !Enum.TryParse(kind, ignoreCase: true, out SurvivorsProgressionNodeKind parsedKind) ||
+                !Enum.IsDefined(typeof(SurvivorsProgressionNodeKind), parsedKind))
+            {
+                result.AddError($"Progression node {resolvedNodeId} references unknown kind: {kind}");
+            }
+
+            if (tier < 0)
+            {
+                result.AddError($"Progression node {resolvedNodeId} cannot use a negative tier.");
+            }
+
+            if (pointCost <= 0)
+            {
+                result.AddError($"Progression node {resolvedNodeId} requires point cost above zero.");
+            }
+
+            if (maxRank <= 0)
+            {
+                result.AddError($"Progression node {resolvedNodeId} requires max rank above zero.");
+            }
+        }
+
         private static HashSet<string> BuildKnownClassIds(SurvivorsClassLibraryDefinition classes)
         {
             var ids = new HashSet<string>(StringComparer.Ordinal);
@@ -1633,6 +2024,35 @@ namespace Deucarian.TemplateGameSurvivors
         {
             public string stat;
             public float amount;
+        }
+
+        [Serializable]
+        private sealed class ProgressionLibraryJson
+        {
+            public ProgressionTrackRecordJson[] tracks;
+        }
+
+        [Serializable]
+        private sealed class ProgressionTrackRecordJson
+        {
+            public string id;
+            public string displayName;
+            public string kind;
+            public string classId;
+            public string targetWeaponId;
+            public ProgressionNodeRecordJson[] nodes;
+        }
+
+        [Serializable]
+        private sealed class ProgressionNodeRecordJson
+        {
+            public string id;
+            public string displayName;
+            public string upgradeId;
+            public string kind;
+            public int tier;
+            public int pointCost;
+            public int maxRank;
         }
     }
 }

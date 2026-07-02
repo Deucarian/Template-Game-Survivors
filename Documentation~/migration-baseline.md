@@ -20,7 +20,7 @@ Reference: the existing local Vampire Survivors clone repository used for Phase 
 - Choosing a draft item applies a run upgrade and resumes play.
 - Player death transitions to game over and restart is supported.
 - Boss/final-boss encounters spawn from authored schedules, recurring bosses can grant bonus rewards and boss relic choices, final boss death triggers victory, and run escalation increases pressure over elapsed time.
-- Class selection, passive trees, skill graphs, save migration, meta progression, and stress tooling exist in the reference but are deliberately outside the current template slices.
+- Class selection, passive trees, skill graphs, save migration, meta progression, and stress tooling exist in the reference. The template now ports compact local versions of class selection, meta progression, stress tooling, class passive atlases, and weapon skill tracks while leaving the reference product's full graph/editor ecosystem out of scope.
 
 ## Phase 2L Slice
 
@@ -150,4 +150,33 @@ The 2S template slice adds local template-kit implementations for:
 - sample JSON metadata for default class, class loadouts, and allowed upgrade classes
 - content validation for class loadouts, default class references, and class-gated upgrade references
 
-The richer reference behavior for passive skill trees, authored capability tags, class resource profiles, archetype/signature content packs, class starting upgrade graphs, and class-specific upgrade pools beyond simple allowed-class gates is deliberately deferred. These systems remain local to the Survivors template. No shared package extraction, publishing, or package registry work is performed in this phase.
+The richer reference behavior for authored capability tags, class resource profiles, archetype/signature content packs, class starting upgrade graphs, and class-specific upgrade pools beyond simple allowed-class gates is deliberately deferred in this phase. These systems remain local to the Survivors template. No shared package extraction, publishing, or package registry work is performed in this phase.
+
+## Phase 3G Compact Progression Atlas Slice
+
+The reference clone gives each class a passive atlas and gives weapons authored skill tracks. The full product version uses a larger authoring and graph workflow, but the useful template-sized behavior is that class and weapon upgrade routes are grouped, validated, and used to shape class-specific upgrade availability.
+
+The 3G template slice adds local template-kit implementations for:
+
+- compact passive atlas and weapon skill track descriptors
+- sample progression JSON under `Content/DefaultProgression`
+- class-specific upgrade gates derived from class-owned progression tracks
+- sample Arcane and Ember passive upgrade groups
+- core weapon skill track groups for Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst
+- validation for track IDs, class references, weapon references, upgrade references, node costs, node kinds, and max-rank promises
+
+The full reference passive graph UI, per-weapon graph editor, twelve-class content-pack ecosystem, element/resistance matrix, class resource economies, and production authoring workflow remain deliberately unported.
+
+## Phase 3H Reward Selection Timeout Slice
+
+The reference clone keeps long sessions moving by automatically resolving an open reward choice after a timeout. The template now applies the same behavior to both normal level-up drafts and boss relic drafts.
+
+The 3H template slice adds local template-kit implementations for:
+
+- reward-selection timeout tuning
+- countdown ticking while the run is paused in the reward state
+- first-choice auto-pick for level-up drafts
+- first-choice auto-pick for boss relic drafts
+- PlayMode coverage for both timed reward surfaces
+
+The timeout remains sample UI flow in `SurvivorsTemplateController`. No production UI framework or shared reward-selection package is introduced.

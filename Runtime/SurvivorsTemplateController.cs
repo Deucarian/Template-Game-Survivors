@@ -88,6 +88,7 @@ namespace Deucarian.TemplateGameSurvivors
         private SaveSlotId _metaSaveSlotId = new SaveSlotId("survivors-template");
         private float _enemySpawnTimer;
         private float _playerInvulnerabilityTimer;
+        private float _rewardSelectionTimer;
         private long _spawnSequence;
         private bool _runStarted;
         private bool _ownsMetaProgressionService;
@@ -127,6 +128,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int BossRewardGrantCount { get; private set; }
         public int BossRelicDraftOpenCount { get; private set; }
         public int SelectedRelicCount { get; private set; }
+        public int RewardAutoSelectCount { get; private set; }
         public int ClassUnlockRewardCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
@@ -145,9 +147,21 @@ namespace Deucarian.TemplateGameSurvivors
         public float RelicPickupRangeBonus { get; private set; }
         public float WeaponCooldownMultiplierBonus { get; private set; }
         public float PickupRangeBonus { get; private set; }
+        public float BarrierValue { get; private set; }
+        public float BarrierCapacityBonus { get; private set; }
+        public float BarrierRegenPerSecondBonus { get; private set; }
+        public float BarrierOnDamageRatio { get; private set; }
+        public float PoisonDamageRatio { get; private set; }
+        public float BleedDamageRatio { get; private set; }
+        public float ExecuteThresholdNormalized { get; private set; }
+        public float LifestealRatio { get; private set; }
+        public int ProjectileFanBonus { get; private set; }
         public int OrbitBladeBonus { get; private set; }
+        public float OrbitRadiusBonus { get; private set; }
         public int MeleeTargetBonus { get; private set; }
         public int BurstCountBonus { get; private set; }
+        public int BurstEchoBonus { get; private set; }
+        public int TargetedBurstSigilBonus { get; private set; }
         public int ProjectilePierceBonus { get; private set; }
         public int ProjectileChainBonus { get; private set; }
         public int ProjectileForkBonus { get; private set; }
@@ -157,6 +171,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float PayloadExplosionRadiusBonus { get; private set; }
         public float PayloadTriggerRadiusBonus { get; private set; }
         public int ActiveEnemyCount => _enemies.Count;
+        public int ActiveRunnerCount => CountEnemiesByRole(SurvivorsEnemyRole.Runner);
+        public int ActiveBruiserCount => CountEnemiesByRole(SurvivorsEnemyRole.Bruiser);
+        public int ActiveSpitterCount => CountEnemiesByRole(SurvivorsEnemyRole.Spitter);
+        public int ActiveEliteCount => CountEnemiesByRole(SurvivorsEnemyRole.Elite);
         public int ActiveMinibossCount => CountEnemiesByRole(SurvivorsEnemyRole.Miniboss);
         public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
         public int ActivePickupCount => _pickups.Count;
@@ -169,6 +187,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus));
         public float CurrentHealth => _playerHealth == null ? 0f : (float)_playerHealth.CurrentHealth;
         public float MaxHealth => _playerHealth == null ? 0f : (float)_playerHealth.MaximumHealth;
+        public float BarrierCapacity => Mathf.Max(0f, CurrentTuning.StartingBarrierCapacity + BarrierCapacityBonus);
         public Vector3 PlayerPosition => _playerObject == null ? transform.position : _playerObject.transform.position;
         public Vector3 PlayerForward => _playerObject == null ? Vector3.forward : _playerObject.transform.forward;
         public CombatCatalog CombatCatalog => _combatCatalog;
@@ -176,6 +195,7 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
         public IReadOnlyList<SurvivorsRelicDefinition> CurrentRelicChoices => _currentRelicDraft == null ? EmptyRelicChoices : _currentRelicDraft.Choices;
+        public float RewardSelectionRemainingSeconds => Mathf.Max(0f, _rewardSelectionTimer);
         public SurvivorsClassDefinition SelectedClass => _selectedClass;
         public string SelectedClassId => _selectedClass == null ? string.Empty : _selectedClass.Id;
         public long MetaBloodShards => _metaProgression == null ? 0 : _metaProgression.UnspentBloodShards;
@@ -219,6 +239,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (State == SurvivorsRunState.LevelUp)
             {
+                TickRewardSelectionTimeout(Time.deltaTime);
                 HandleLevelUpInput();
                 return;
             }
@@ -261,16 +282,17 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureHudStyles();
-            GUI.Box(new Rect(12, 12, 356, 240), string.Empty);
+            GUI.Box(new Rect(12, 12, 356, 264), string.Empty);
             GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
             DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
-            DrawHudBar(new Rect(24, 74, 318, 18), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
-            DrawHudBar(new Rect(24, 98, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
-            GUI.Label(new Rect(24, 124, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {RunPhase} +{RunEscalationLevel}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 146, 318, 22), $"Enemies {ActiveEnemyCount}/{ResolveEnemyMaximumAlive()}   Kills {KilledCount}   XP Gems {ActivePickupCount}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 168, 318, 22), $"Miniboss {ActiveMinibossCount}   Boss {ActiveBossCount}   Shards {MetaBloodShards}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 190, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
-            GUI.Label(new Rect(24, 214, 318, 22), "WASD/Arrows move   M magnet   1-3 choose   R restart", _hudSmallStyle);
+            DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
+            DrawHudBar(new Rect(24, 98, 318, 18), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
+            DrawHudBar(new Rect(24, 122, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
+            GUI.Label(new Rect(24, 148, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {RunPhase} +{RunEscalationLevel}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 170, 318, 22), $"Enemies {ActiveEnemyCount}/{ResolveEnemyMaximumAlive()}   Kills {KilledCount}   Elite {ActiveEliteCount}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 192, 318, 22), $"Miniboss {ActiveMinibossCount}   Boss {ActiveBossCount}   Shards {MetaBloodShards}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 214, 318, 22), $"Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 236, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -343,6 +365,7 @@ namespace Deucarian.TemplateGameSurvivors
             BossRewardGrantCount = 0;
             BossRelicDraftOpenCount = 0;
             SelectedRelicCount = 0;
+            RewardAutoSelectCount = 0;
             ClassUnlockRewardCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
@@ -359,9 +382,21 @@ namespace Deucarian.TemplateGameSurvivors
             RelicPickupRangeBonus = 0f;
             WeaponCooldownMultiplierBonus = 0f;
             PickupRangeBonus = 0f;
+            BarrierValue = 0f;
+            BarrierCapacityBonus = 0f;
+            BarrierRegenPerSecondBonus = 0f;
+            BarrierOnDamageRatio = 0f;
+            PoisonDamageRatio = 0f;
+            BleedDamageRatio = 0f;
+            ExecuteThresholdNormalized = 0f;
+            LifestealRatio = 0f;
+            ProjectileFanBonus = 0;
             OrbitBladeBonus = 0;
+            OrbitRadiusBonus = 0f;
             MeleeTargetBonus = 0;
             BurstCountBonus = 0;
+            BurstEchoBonus = 0;
+            TargetedBurstSigilBonus = 0;
             ProjectilePierceBonus = 0;
             ProjectileChainBonus = 0;
             ProjectileForkBonus = 0;
@@ -379,8 +414,10 @@ namespace Deucarian.TemplateGameSurvivors
             _currentDraft = null;
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
+            _rewardSelectionTimer = 0f;
             ApplyPersistentMetaBonuses();
             ApplySelectedClassBonuses();
+            BarrierValue = BarrierCapacity;
             BuildRuntimeWorld();
             _runFlow = new SurvivorsRunFlowRuntime(BasicSurvivorsGame.CreateRunFlowDefinition(resolved));
             _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved)));
@@ -395,12 +432,23 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void Simulate(float deltaTime, Vector2 movementInput = default)
         {
-            if (!_runStarted || State != SurvivorsRunState.Playing)
+            if (!_runStarted)
             {
                 return;
             }
 
             float dt = Mathf.Max(0f, deltaTime);
+            if (State == SurvivorsRunState.LevelUp)
+            {
+                TickRewardSelectionTimeout(dt);
+                return;
+            }
+
+            if (State != SurvivorsRunState.Playing)
+            {
+                return;
+            }
+
             RunTimeSeconds += dt;
             TickRunFlow();
             if (State != SurvivorsRunState.Playing)
@@ -409,6 +457,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _playerInvulnerabilityTimer = Mathf.Max(0f, _playerInvulnerabilityTimer - dt);
+            TickBarrier(dt);
             MovePlayer(movementInput, dt);
             TickEnemySpawning(dt);
             TickWeapon(dt);
@@ -421,6 +470,18 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureRunStartedForTest();
             SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, SurvivorsEnemyRole.Swarm);
+            if (enemy != null && healthOverride > 0f)
+            {
+                enemy.OverrideHealthForTest(healthOverride);
+            }
+
+            return enemy;
+        }
+
+        public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, SurvivorsEnemyRole role, float healthOverride = -1f)
+        {
+            EnsureRunStartedForTest();
+            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, role);
             if (enemy != null && healthOverride > 0f)
             {
                 enemy.OverrideHealthForTest(healthOverride);
@@ -482,6 +543,52 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureRunStartedForTest();
             PendingLevelUps++;
             OpenLevelUpDraft();
+        }
+
+        public void DebugGrantExperience(int amount)
+        {
+            EnsureRunStartedForTest();
+            GainExperience(Mathf.Max(1, amount));
+        }
+
+        public int DebugSpawnEnemyBurst(SurvivorsEnemyRole role, int count, float radius)
+        {
+            EnsureRunStartedForTest();
+            int spawned = 0;
+            int resolvedCount = Mathf.Clamp(count, 1, 256);
+            float resolvedRadius = Mathf.Max(0.5f, radius);
+            for (int index = 0; index < resolvedCount; index++)
+            {
+                float angle = (index / (float)resolvedCount) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * resolvedRadius;
+                if (SpawnEnemy(PlayerPosition + offset, explicitPosition: true, role) != null)
+                {
+                    spawned++;
+                }
+            }
+
+            return spawned;
+        }
+
+        public int DebugFillArenaToTarget(SurvivorsEnemyRole role, int targetAlive, float radius)
+        {
+            EnsureRunStartedForTest();
+            int target = Mathf.Clamp(targetAlive, 1, 512);
+            int needed = Mathf.Max(0, target - ActiveEnemyCount);
+            return needed <= 0 ? 0 : DebugSpawnEnemyBurst(role, needed, radius);
+        }
+
+        public void DebugApplyStressProfile(int targetAlive)
+        {
+            int target = Mathf.Clamp(targetAlive, 50, 512);
+            CurrentTuning.EnemyMaximumAlive = target;
+            CurrentTuning.EnemySpawnIntervalSeconds = Mathf.Min(CurrentTuning.EnemySpawnIntervalSeconds, target >= 250 ? 0.18f : 0.28f);
+            DebugFillArenaToTarget(SurvivorsEnemyRole.Swarm, Mathf.Min(target, 160), CurrentTuning.EnemySpawnRadius);
+        }
+
+        public void DebugResetMetaProgression()
+        {
+            ResetMetaProgressionForTest();
         }
 
         public void ForceLevelUpWithLockedChoiceForTest(string upgradeId)
@@ -627,9 +734,23 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            float incoming = Mathf.Max(0f, amount);
+            if (BarrierValue > 0f && incoming > 0f)
+            {
+                float absorbed = Mathf.Min(BarrierValue, incoming);
+                BarrierValue -= absorbed;
+                incoming -= absorbed;
+            }
+
+            if (incoming <= 0f)
+            {
+                PlayFeedback(_bossPulse, PlayerPosition, 8, _dangerClip);
+                return;
+            }
+
             DamageRequest request = new DamageRequest(
                 _playerHealth.Id,
-                new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, amount) },
+                new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, incoming) },
                 sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.enemy" : source),
                 preResolvedCritical: false);
             CombatDamageResolver.Resolve(_combatCatalog, _playerHealth, null, request);
@@ -670,6 +791,7 @@ namespace Deucarian.TemplateGameSurvivors
             PendingLevelUps = Mathf.Max(0, PendingLevelUps - 1);
             _currentDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
+            _rewardSelectionTimer = 0f;
             if (PendingLevelUps > 0)
             {
                 OpenLevelUpDraft();
@@ -692,6 +814,53 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     pickup.StartGlobalRecall(CurrentTuning.MagnetRecallSpeedMultiplier);
                 }
+            }
+        }
+
+        internal void ApplyDamageAugmentsToEnemy(SurvivorsEnemyActor enemy, DamageResult damage, string source)
+        {
+            if (enemy == null || damage == null || !enemy.IsAlive || !CanApplyDamageAugments(source))
+            {
+                return;
+            }
+
+            float dealt = Mathf.Max(0f, (float)damage.HealthDamage);
+            if (dealt <= 0f)
+            {
+                return;
+            }
+
+            if (LifestealRatio > 0f && _playerHealth != null)
+            {
+                _playerHealth.Heal(dealt * LifestealRatio);
+            }
+
+            if (BarrierOnDamageRatio > 0f)
+            {
+                RestoreBarrier(dealt * BarrierOnDamageRatio);
+            }
+
+            if (PoisonDamageRatio > 0f)
+            {
+                enemy.ApplyDamageOverTime(
+                    dealt * PoisonDamageRatio,
+                    CurrentTuning.StatusPoisonDurationSeconds,
+                    "status.survivors.poison",
+                    source);
+            }
+
+            if (BleedDamageRatio > 0f)
+            {
+                enemy.ApplyDamageOverTime(
+                    dealt * BleedDamageRatio,
+                    CurrentTuning.StatusBleedDurationSeconds,
+                    "status.survivors.bleed",
+                    source);
+            }
+
+            if (ExecuteThresholdNormalized > 0f && enemy.HealthFraction <= ExecuteThresholdNormalized)
+            {
+                enemy.ExecuteFromAugment(source);
             }
         }
 
@@ -1042,7 +1211,7 @@ namespace Deucarian.TemplateGameSurvivors
             _poseResolver = new SurvivorsSpawnPoseResolver(this);
             var spawnables = new[]
             {
-                new SpawnableDefinition(BasicSurvivorsGame.SwarmEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 8, CurrentTuning.EnemyMaximumAlive + 8, "survivors-enemy-pool"),
+                new SpawnableDefinition(BasicSurvivorsGame.SwarmEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 24, Mathf.Max(CurrentTuning.EnemyMaximumAlive + 96, 256), "survivors-enemy-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.MinibossEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 1, 8, "survivors-miniboss-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.BossEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 1, 4, "survivors-boss-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.ExperiencePickupSpawnableId, new GameObjectPrefabProvider(_experiencePickupPrefab), 16, 256, "survivors-xp-pool"),
@@ -1538,20 +1707,10 @@ namespace Deucarian.TemplateGameSurvivors
                     return _runFlow.Definition.Boss;
                 }
 
-                return _runFlow.ResolveSwarmProfile(CurrentTuning);
+                return _runFlow.ResolveSwarmProfile(CurrentTuning, role);
             }
 
-            return new SurvivorsEnemyProfile(
-                SurvivorsEnemyRole.Swarm,
-                BasicSurvivorsGame.SwarmEnemySpawnableId.Value,
-                "Swarm Thrall",
-                CurrentTuning.EnemyMaxHealth,
-                CurrentTuning.EnemyMoveSpeed,
-                CurrentTuning.EnemyRadius,
-                CurrentTuning.EnemyContactDamage,
-                CurrentTuning.EnemyContactIntervalSeconds,
-                CurrentTuning.EnemyExperienceReward,
-                new Color(0.88f, 0.22f, 0.32f));
+            return BasicSurvivorsGame.CreateEnemyProfile(role, CurrentTuning);
         }
 
         private static WorldSpawnableId ResolveEnemySpawnableId(SurvivorsEnemyRole role)
@@ -1571,6 +1730,26 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static string ResolveEnemyGroupId(SurvivorsEnemyRole role)
         {
+            if (role == SurvivorsEnemyRole.Runner)
+            {
+                return "group.survivors.runners";
+            }
+
+            if (role == SurvivorsEnemyRole.Bruiser)
+            {
+                return "group.survivors.bruisers";
+            }
+
+            if (role == SurvivorsEnemyRole.Spitter)
+            {
+                return "group.survivors.spitters";
+            }
+
+            if (role == SurvivorsEnemyRole.Elite)
+            {
+                return "group.survivors.elites";
+            }
+
             if (role == SurvivorsEnemyRole.Miniboss)
             {
                 return "group.survivors.miniboss";
@@ -1592,7 +1771,10 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Swarm);
+            SurvivorsEnemyRole role = _runFlow == null
+                ? SurvivorsEnemyRole.Swarm
+                : _runFlow.ResolveNextSwarmRole(RunTimeSeconds, _spawnSequence + 1);
+            SpawnEnemy(Vector3.zero, explicitPosition: false, role);
             _enemySpawnTimer = ResolveEnemySpawnIntervalSeconds();
         }
 
@@ -1716,6 +1898,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentDraft = null;
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
+            _rewardSelectionTimer = 0f;
         }
 
         private void GainExperience(int amount)
@@ -1749,6 +1932,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
+            BeginRewardSelectionTimeout();
             PlayFeedback(_levelUpPulse, PlayerPosition, 34, _levelUpClip);
         }
 
@@ -1774,8 +1958,49 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardSelectionKind = SurvivorsRewardSelectionKind.BossRelic;
             BossRelicDraftOpenCount++;
             State = SurvivorsRunState.LevelUp;
+            BeginRewardSelectionTimeout();
             PlayFeedback(_bossPulse, PlayerPosition, 44, _bossClip);
             return true;
+        }
+
+        private void BeginRewardSelectionTimeout()
+        {
+            float timeout = CurrentTuning.RewardSelectionTimeoutSeconds;
+            _rewardSelectionTimer = timeout > 0f ? timeout : 0f;
+        }
+
+        private void TickRewardSelectionTimeout(float deltaTime)
+        {
+            if (State != SurvivorsRunState.LevelUp || _rewardSelectionTimer <= 0f)
+            {
+                return;
+            }
+
+            _rewardSelectionTimer -= Mathf.Max(0f, deltaTime);
+            if (_rewardSelectionTimer <= 0f)
+            {
+                _rewardSelectionTimer = 0f;
+                AutoSelectRewardChoice();
+            }
+        }
+
+        private void AutoSelectRewardChoice()
+        {
+            if (State != SurvivorsRunState.LevelUp)
+            {
+                return;
+            }
+
+            if (_rewardSelectionKind == SurvivorsRewardSelectionKind.BossRelic && _currentRelicDraft != null && _currentRelicDraft.Choices.Count > 0)
+            {
+                RewardAutoSelectCount++;
+                SelectRelic(0);
+            }
+            else if (_rewardSelectionKind == SurvivorsRewardSelectionKind.LevelUp && _currentDraft != null && _currentDraft.Choices.Count > 0)
+            {
+                RewardAutoSelectCount++;
+                SelectUpgrade(0);
+            }
         }
 
         private bool SelectRelic(int index)
@@ -1789,6 +2014,7 @@ namespace Deucarian.TemplateGameSurvivors
             SelectedRelicCount++;
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
+            _rewardSelectionTimer = 0f;
             if (PendingLevelUps > 0)
             {
                 OpenLevelUpDraft();
@@ -1799,6 +2025,37 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return true;
+        }
+
+        private void TickBarrier(float deltaTime)
+        {
+            float regen = Mathf.Max(0f, CurrentTuning.BaseBarrierRegenPerSecond + BarrierRegenPerSecondBonus);
+            if (regen > 0f)
+            {
+                RestoreBarrier(regen * deltaTime);
+            }
+        }
+
+        private void RestoreBarrier(float amount)
+        {
+            if (amount <= 0f)
+            {
+                return;
+            }
+
+            BarrierValue = Mathf.Min(BarrierCapacity, BarrierValue + amount);
+        }
+
+        private static bool CanApplyDamageAugments(string source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                return true;
+            }
+
+            return source.IndexOf(".status.", StringComparison.Ordinal) < 0 &&
+                source.IndexOf(".augment.", StringComparison.Ordinal) < 0 &&
+                source.IndexOf("combatant.survivors.enemy", StringComparison.Ordinal) < 0;
         }
 
         private void ApplyRelic(SurvivorsRelicDefinition relic)
@@ -1854,6 +2111,11 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     OrbitBladeBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
                 }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitRadiusEffect))
+                {
+                    OrbitRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
+                    OrbitBladeBonus += 1;
+                }
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.MeleeTargetEffect))
                 {
                     MeleeTargetBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
@@ -1861,6 +2123,18 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.BurstCountEffect))
                 {
                     BurstCountBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.BurstEchoEffect))
+                {
+                    BurstEchoBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.TargetedBurstEffect))
+                {
+                    TargetedBurstSigilBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileFanEffect))
+                {
+                    ProjectileFanBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
                 }
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectilePierceEffect))
                 {
@@ -1894,6 +2168,35 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     PayloadTriggerRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
                 }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.PoisonEffect))
+                {
+                    PoisonDamageRatio += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.BleedEffect))
+                {
+                    BleedDamageRatio += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.ExecuteEffect))
+                {
+                    ExecuteThresholdNormalized = Mathf.Clamp01(ExecuteThresholdNormalized + (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect))
+                {
+                    LifestealRatio += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierCapacityEffect))
+                {
+                    BarrierCapacityBonus += Mathf.Max(0f, (float)effect.Amount);
+                    RestoreBarrier((float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierRegenEffect))
+                {
+                    BarrierRegenPerSecondBonus += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierOnDamageEffect))
+                {
+                    BarrierOnDamageRatio += Mathf.Max(0f, (float)effect.Amount);
+                }
             }
         }
 
@@ -1901,12 +2204,16 @@ namespace Deucarian.TemplateGameSurvivors
         {
             float width = 420f;
             int choiceCount = IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
-            float height = 84f + choiceCount * 48f;
+            float height = 112f + choiceCount * 48f;
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(rect, IsRelicChoiceOpen ? "Choose a Boss Relic" : "Level Up");
+            GUI.Label(
+                new Rect(rect.x + 24f, rect.y + 28f, width - 48f, 18f),
+                RewardSelectionRemainingSeconds > 0f ? $"Auto-pick in {RewardSelectionRemainingSeconds:0}s" : "Choose a reward",
+                _hudSmallStyle);
             for (int i = 0; i < choiceCount; i++)
             {
-                Rect buttonRect = new Rect(rect.x + 24f, rect.y + 44f + i * 48f, width - 48f, 34f);
+                Rect buttonRect = new Rect(rect.x + 24f, rect.y + 68f + i * 48f, width - 48f, 34f);
                 string label;
                 if (IsRelicChoiceOpen)
                 {
@@ -2069,6 +2376,15 @@ namespace Deucarian.TemplateGameSurvivors
         private float _contactDamage;
         private float _contactInterval;
         private float _contactCooldown;
+        private float _rangedAttackRange;
+        private float _rangedAttackDamage;
+        private float _rangedAttackInterval;
+        private float _preferredRange;
+        private float _rangedAttackCooldown;
+        private float _poisonDamagePerSecond;
+        private float _poisonRemainingSeconds;
+        private float _bleedDamagePerSecond;
+        private float _bleedRemainingSeconds;
 
         public SpawnInstanceId InstanceId { get; private set; }
         public bool IsAlive => _health != null && _health.IsAlive;
@@ -2077,6 +2393,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float Radius { get; private set; }
         public int ExperienceReward { get; private set; }
         public float CurrentHealth => _health == null ? 0f : (float)_health.CurrentHealth;
+        public float MaxHealth => _health == null ? 0f : (float)_health.MaximumHealth;
+        public float HealthFraction => MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth;
 
         public void Initialize(SurvivorsTemplateController controller, SurvivorsEnemyProfile profile)
         {
@@ -2088,6 +2406,15 @@ namespace Deucarian.TemplateGameSurvivors
             _contactDamage = Mathf.Max(0f, profile.ContactDamage);
             _contactInterval = Mathf.Max(0.05f, profile.ContactIntervalSeconds);
             _contactCooldown = 0f;
+            _rangedAttackRange = Mathf.Max(0f, profile.RangedAttackRange);
+            _rangedAttackDamage = Mathf.Max(0f, profile.RangedAttackDamage);
+            _rangedAttackInterval = Mathf.Max(0.05f, profile.RangedAttackIntervalSeconds);
+            _preferredRange = Mathf.Max(0f, profile.PreferredRange);
+            _rangedAttackCooldown = Mathf.Min(0.75f, _rangedAttackInterval);
+            _poisonDamagePerSecond = 0f;
+            _poisonRemainingSeconds = 0f;
+            _bleedDamagePerSecond = 0f;
+            _bleedRemainingSeconds = 0f;
             ExperienceReward = Mathf.Max(1, profile.ExperienceReward);
             string id = InstanceId.Value > 0 ? "combatant.survivors.enemy." + InstanceId.Value : "combatant.survivors.enemy.pending";
             float maxHealth = Mathf.Max(1f, profile.MaxHealth);
@@ -2103,16 +2430,31 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            TickDamageOverTime(deltaTime);
+            if (!IsAlive)
+            {
+                return;
+            }
+
             Vector3 direction = _controller.PlayerPosition - transform.position;
             direction.y = 0f;
             float distance = direction.magnitude;
             if (distance > 0.001f)
             {
                 Vector3 normalized = direction / distance;
-                transform.position += normalized * (_moveSpeed * deltaTime);
-                transform.forward = normalized;
+                Vector3 moveDirection = ResolveMoveDirection(normalized, distance);
+                if (moveDirection.sqrMagnitude > 0.001f)
+                {
+                    transform.position += moveDirection.normalized * (_moveSpeed * deltaTime);
+                    transform.forward = moveDirection.normalized;
+                }
+                else
+                {
+                    transform.forward = normalized;
+                }
             }
 
+            TickRangedAttack(deltaTime, distance);
             _contactCooldown -= deltaTime;
             if (_contactCooldown <= 0f && distance <= Radius + _controller.CurrentTuning.PlayerRadius)
             {
@@ -2122,6 +2464,42 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
         public DamageResult ApplyDamage(float amount, string source)
+        {
+            return ApplyDamageInternal(amount, source, applyAugments: true);
+        }
+
+        public void ApplyDamageOverTime(float totalDamage, float durationSeconds, string statusId, string source)
+        {
+            float duration = Mathf.Max(0.1f, durationSeconds);
+            float perSecond = Mathf.Max(0f, totalDamage) / duration;
+            if (perSecond <= 0f)
+            {
+                return;
+            }
+
+            if (string.Equals(statusId, "status.survivors.bleed", StringComparison.Ordinal))
+            {
+                _bleedDamagePerSecond += perSecond;
+                _bleedRemainingSeconds = Mathf.Max(_bleedRemainingSeconds, duration);
+            }
+            else
+            {
+                _poisonDamagePerSecond += perSecond;
+                _poisonRemainingSeconds = Mathf.Max(_poisonRemainingSeconds, duration);
+            }
+        }
+
+        public void ExecuteFromAugment(string source)
+        {
+            if (!IsAlive)
+            {
+                return;
+            }
+
+            ApplyDamageInternal(Mathf.Max(1f, CurrentHealth), (string.IsNullOrWhiteSpace(source) ? "survivors" : source) + ".augment.execute", applyAugments: false);
+        }
+
+        private DamageResult ApplyDamageInternal(float amount, string source, bool applyAugments)
         {
             if (_controller == null || _health == null || !IsAlive)
             {
@@ -2134,12 +2512,84 @@ namespace Deucarian.TemplateGameSurvivors
                 sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.player" : source),
                 preResolvedCritical: false);
             DamageResolutionResult result = CombatDamageResolver.Resolve(_controller.CombatCatalog, _health, null, request);
-            if (!_health.IsAlive)
+            if (applyAugments && result != null && result.Damage != null && IsAlive)
+            {
+                _controller.ApplyDamageAugmentsToEnemy(this, result.Damage, source);
+            }
+
+            if (_health != null && !_health.IsAlive)
             {
                 _controller.HandleEnemyKilled(this);
             }
 
             return result.Damage;
+        }
+
+        private Vector3 ResolveMoveDirection(Vector3 normalizedToPlayer, float distance)
+        {
+            if (_preferredRange <= 0f)
+            {
+                return normalizedToPlayer;
+            }
+
+            if (distance > _preferredRange * 1.12f)
+            {
+                return normalizedToPlayer;
+            }
+
+            if (distance < _preferredRange * 0.68f)
+            {
+                return -normalizedToPlayer;
+            }
+
+            return Vector3.zero;
+        }
+
+        private void TickRangedAttack(float deltaTime, float distance)
+        {
+            if (_controller == null || _rangedAttackRange <= 0f || _rangedAttackDamage <= 0f)
+            {
+                return;
+            }
+
+            _rangedAttackCooldown -= deltaTime;
+            if (_rangedAttackCooldown > 0f || distance > _rangedAttackRange)
+            {
+                return;
+            }
+
+            _controller.ApplyDamageToPlayer(_rangedAttackDamage, "combatant.survivors.enemy.ranged." + InstanceId.Value);
+            _rangedAttackCooldown = _rangedAttackInterval;
+        }
+
+        private void TickDamageOverTime(float deltaTime)
+        {
+            if (_poisonRemainingSeconds > 0f && _poisonDamagePerSecond > 0f)
+            {
+                float tick = _poisonDamagePerSecond * deltaTime;
+                _poisonRemainingSeconds = Mathf.Max(0f, _poisonRemainingSeconds - deltaTime);
+                ApplyDamageInternal(tick, "survivors.status.poison", applyAugments: false);
+                if (_poisonRemainingSeconds <= 0f)
+                {
+                    _poisonDamagePerSecond = 0f;
+                }
+            }
+
+            if (!IsAlive)
+            {
+                return;
+            }
+
+            if (_bleedRemainingSeconds > 0f && _bleedDamagePerSecond > 0f)
+            {
+                float tick = _bleedDamagePerSecond * deltaTime;
+                _bleedRemainingSeconds = Mathf.Max(0f, _bleedRemainingSeconds - deltaTime);
+                ApplyDamageInternal(tick, "survivors.status.bleed", applyAugments: false);
+                if (_bleedRemainingSeconds <= 0f)
+                {
+                    _bleedDamagePerSecond = 0f;
+                }
+            }
         }
 
         public void OverrideHealthForTest(float health)
@@ -2159,6 +2609,10 @@ namespace Deucarian.TemplateGameSurvivors
             _controller = null;
             _health = null;
             ProfileId = null;
+            _poisonDamagePerSecond = 0f;
+            _poisonRemainingSeconds = 0f;
+            _bleedDamagePerSecond = 0f;
+            _bleedRemainingSeconds = 0f;
         }
 
         public void ResetForWorldSpawn()
@@ -2166,6 +2620,15 @@ namespace Deucarian.TemplateGameSurvivors
             _controller = null;
             _health = null;
             _contactCooldown = 0f;
+            _rangedAttackRange = 0f;
+            _rangedAttackDamage = 0f;
+            _rangedAttackInterval = 0f;
+            _preferredRange = 0f;
+            _rangedAttackCooldown = 0f;
+            _poisonDamagePerSecond = 0f;
+            _poisonRemainingSeconds = 0f;
+            _bleedDamagePerSecond = 0f;
+            _bleedRemainingSeconds = 0f;
             Role = SurvivorsEnemyRole.Swarm;
             ProfileId = null;
             InstanceId = default;

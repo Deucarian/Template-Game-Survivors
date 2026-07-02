@@ -20,6 +20,24 @@
       "maxRank": 3,
       "rankCosts": [5, 8, 13],
       "damageBonusPerRank": 1.5
+    },
+    {
+      "id": "meta.survivors.battle-tempo",
+      "displayName": "Battle Tempo",
+      "target": "survivors.weapon.arcane-wand",
+      "effect": "survivors.meta.damage.flat",
+      "maxRank": 3,
+      "rankCosts": [6, 10, 16],
+      "damageBonusPerRank": 1
+    },
+    {
+      "id": "meta.survivors.boss-hunters-ledger",
+      "displayName": "Boss Hunter's Ledger",
+      "target": "survivors.weapon.arcane-wand",
+      "effect": "survivors.meta.damage.flat",
+      "maxRank": 2,
+      "rankCosts": [12, 20],
+      "damageBonusPerRank": 2.25
     }
   ],
   "rewards": [
@@ -36,6 +54,13 @@
       "currencyAmount": 18,
       "trackId": "track.survivors.legacy-xp",
       "trackAmount": 120
+    },
+    {
+      "id": "reward.survivors.elite-clear",
+      "currencyId": "currency.survivors.blood-shards",
+      "currencyAmount": 2,
+      "trackId": "track.survivors.legacy-xp",
+      "trackAmount": 12
     }
   ]
 }

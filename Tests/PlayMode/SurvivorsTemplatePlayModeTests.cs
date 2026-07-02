@@ -52,6 +52,54 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator LevelUpChoiceAutoSelectsAfterTimeout()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            controller.CurrentTuning.RewardSelectionTimeoutSeconds = 0.05f;
+            yield return null;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.That(controller.RewardSelectionRemainingSeconds, Is.GreaterThan(0f));
+
+            controller.Simulate(0.1f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.SelectedUpgradeCount);
+            Assert.AreEqual(1, controller.RewardAutoSelectCount);
+            Assert.AreEqual(0f, controller.RewardSelectionRemainingSeconds);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator BossRelicChoiceAutoSelectsAfterTimeout()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            controller.CurrentTuning.RewardSelectionTimeoutSeconds = 0.05f;
+            yield return null;
+
+            Assert.IsTrue(controller.OpenBossRelicDraftForTest());
+            yield return null;
+
+            Assert.IsTrue(controller.IsRelicChoiceOpen);
+            Assert.That(controller.RewardSelectionRemainingSeconds, Is.GreaterThan(0f));
+
+            controller.Simulate(0.1f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.SelectedRelicCount);
+            Assert.AreEqual(1, controller.RewardAutoSelectCount);
+            Assert.AreEqual(0f, controller.RewardSelectionRemainingSeconds);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RuntimePresentationCreatesFeedbackParticlesAudioAndProjectileTrails()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -103,10 +151,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, controller.SelectedClassId);
-            Assert.That(controller.ActiveWeaponCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(controller.ActiveWeaponCount, Is.GreaterThanOrEqualTo(5));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.FrostFanWeaponContentId));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.OrbitWardWeaponContentId));
-            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.MoonSlashWeaponContentId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ThornHaloWeaponContentId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarNovaWeaponContentId));
             Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
             Assert.IsFalse(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
 
@@ -294,18 +344,23 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator TrapPayloadCanArmTriggerAndKillEnemy()
         {
-            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureTrapOnlyTuning(controller.CurrentTuning);
+            Assert.IsTrue(controller.UnlockClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            Assert.IsTrue(controller.TrySelectClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            controller.StartRun();
             yield return null;
 
-            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.1f, 0f, 0f), 30f);
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(6f, 0f, 0f), SurvivorsEnemyRole.Bruiser, 6.5f);
 
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Trap));
             yield return SimulateFrames(controller, 80);
 
-            Assert.That(controller.PayloadPlacedCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(controller.PayloadExplosionHitCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
+            string payloadState = $"placed={controller.PayloadPlacedCount}, detonations={controller.PayloadDetonationCount}, hits={controller.PayloadExplosionHitCount}, kills={controller.KilledCount}, activeEnemies={controller.ActiveEnemyCount}, enemyHealth={(enemy == null ? -1f : enemy.CurrentHealth)}";
+            Assert.That(controller.PayloadPlacedCount, Is.GreaterThanOrEqualTo(1), payloadState);
+            Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1), payloadState);
+            Assert.That(controller.PayloadExplosionHitCount, Is.GreaterThanOrEqualTo(1), payloadState);
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1), payloadState);
 
             Object.Destroy(controller.gameObject);
         }
@@ -533,6 +588,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            Assert.IsTrue(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId));
             Assert.AreEqual(-1, IndexOfDraftChoice(defaultController, BasicSurvivorsGame.PrismaticBeamUpgradeId));
             Object.Destroy(defaultController.gameObject);
             yield return null;
@@ -545,6 +602,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             int gatedChoiceIndex = IndexOfDraftChoice(emberController, BasicSurvivorsGame.PrismaticBeamUpgradeId);
             Assert.That(gatedChoiceIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.IsFalse(emberController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.IsTrue(emberController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId));
             Assert.IsTrue(emberController.SelectUpgrade(gatedChoiceIndex));
             Assert.That(emberController.HitscanPierceBonus, Is.GreaterThanOrEqualTo(1));
 
@@ -623,6 +682,18 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.TrySelectClassForTest(classId));
             controller.StartRun();
             return controller;
+        }
+
+        private static void ConfigureTrapOnlyTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.EnemySpawnIntervalSeconds = 999f;
+            tuning.ProjectileDamage = 0f;
+            tuning.OrbitDamage = 0f;
+            tuning.MeleeDamage = 0f;
+            tuning.BurstDamage = 0f;
+            tuning.HitscanDamage = 0f;
+            tuning.GrenadeDamage = 0f;
+            tuning.PlacedPayloadDamage = 6.8f;
         }
 
         private static int IndexOfDraftChoice(SurvivorsTemplateController controller, string upgradeId)

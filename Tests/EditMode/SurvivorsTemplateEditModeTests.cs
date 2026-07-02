@@ -23,36 +23,41 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             SurvivorsMetaProgressionDefinition meta = BasicSurvivorsGame.CreateMetaProgressionDefinition();
             var relics = BasicSurvivorsGame.CreateRelicDefinitions();
             SurvivorsClassLibraryDefinition classes = BasicSurvivorsGame.CreateClassLibraryDefinition();
+            var progressionTracks = BasicSurvivorsGame.CreateProgressionTrackDefinitions();
 
             Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponId, weapon.Id);
             Assert.AreEqual(WeaponFireMode.Projectile, weapon.FireMode);
             Assert.AreEqual(BasicSurvivorsGame.ArcaneBoltProjectileId, projectile.Id);
             Assert.AreEqual(BasicSurvivorsGame.ProjectileSpawnableId, projectile.SpawnableId);
-            Assert.That(upgrades.Definitions.Count, Is.GreaterThanOrEqualTo(16));
-            Assert.That(archetypes.Count, Is.EqualTo(8));
+            Assert.That(upgrades.Definitions.Count, Is.GreaterThanOrEqualTo(30));
+            Assert.That(archetypes.Count, Is.GreaterThanOrEqualTo(10));
             Assert.That(archetypes[0].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Projectile));
-            Assert.That(archetypes[1].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Orbit));
-            Assert.That(archetypes[2].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Melee));
-            Assert.That(archetypes[3].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Burst));
-            Assert.That(archetypes[4].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Hitscan));
-            Assert.That(archetypes[5].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Grenade));
-            Assert.That(archetypes[6].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Trap));
-            Assert.That(archetypes[7].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Mine));
+            Assert.That(archetypes[1].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Projectile));
+            Assert.That(archetypes[2].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Orbit));
+            Assert.That(archetypes[3].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Orbit));
+            Assert.That(archetypes[4].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Melee));
+            Assert.That(archetypes[5].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Burst));
             Assert.AreEqual(BasicSurvivorsGame.BloodShardsCurrencyId, meta.BloodShardsCurrencyId);
             Assert.AreEqual(BasicSurvivorsGame.LegacyExperienceTrackId, meta.LegacyExperienceTrackId);
-            Assert.AreEqual(1, meta.PersistentUpgrades.Count);
-            Assert.AreEqual(2, meta.Rewards.Count);
-            Assert.AreEqual(3, relics.Count);
+            Assert.AreEqual(3, meta.PersistentUpgrades.Count);
+            Assert.That(meta.Rewards.Count, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(6, relics.Count);
             Assert.AreEqual(2, classes.Classes.Count);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, classes.DefaultClassId);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, classes.Classes[0].Id);
-            Assert.That(classes.Classes[0].StartingWeaponIds.Count, Is.GreaterThanOrEqualTo(3));
+            Assert.That(classes.Classes[0].StartingWeaponIds.Count, Is.GreaterThanOrEqualTo(5));
             Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponContentId, classes.Classes[0].StartingWeaponIds[0]);
+            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.FrostFanWeaponContentId));
             Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.OrbitWardWeaponContentId));
-            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.MoonSlashWeaponContentId));
+            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.ThornHaloWeaponContentId));
+            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.StarNovaWeaponContentId));
             Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, classes.Classes[1].Id);
             Assert.That(classes.Classes[1].StartingWeaponIds.Count, Is.GreaterThan(classes.Classes[0].StartingWeaponIds.Count));
-            Assert.AreEqual(7, BasicSurvivorsGame.CreateClassUpgradeGates().Count);
+            Assert.That(progressionTracks.Count, Is.GreaterThanOrEqualTo(10));
+            Assert.AreEqual(SurvivorsProgressionTrackKind.PassiveAtlas, progressionTracks[0].Kind);
+            Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, progressionTracks[0].ClassId);
+            Assert.That(progressionTracks[0].Nodes.Count, Is.GreaterThanOrEqualTo(4));
+            Assert.That(BasicSurvivorsGame.CreateClassUpgradeGates().Count, Is.GreaterThanOrEqualTo(13));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
 
@@ -67,7 +72,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 BasicSurvivorsGame.CreateMetaProgressionDefinition(),
                 BasicSurvivorsGame.CreateRelicDefinitions(),
                 BasicSurvivorsGame.CreateClassLibraryDefinition(),
-                BasicSurvivorsGame.CreateClassUpgradeGates());
+                BasicSurvivorsGame.CreateClassUpgradeGates(),
+                BasicSurvivorsGame.CreateProgressionTrackDefinitions());
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -82,8 +88,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
             string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
             string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
 
-            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson);
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson);
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -200,6 +207,76 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("unknown upgrade id", errors);
             StringAssert.Contains("unknown class id", errors);
             StringAssert.Contains("Duplicate class upgrade gate id", errors);
+        }
+
+        [Test]
+        public void InvalidRuntimeProgressionTracksReportErrors()
+        {
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateRuntimeContent(
+                BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(),
+                BasicSurvivorsGame.CreateRunUpgradeCatalog(),
+                BasicSurvivorsGame.CreateKnownUpgradeTargets(),
+                classes: BasicSurvivorsGame.CreateClassLibraryDefinition(),
+                progressionTracks: new[]
+                {
+                    new SurvivorsProgressionTrackDefinition(
+                        "progression.dup",
+                        "Duplicate",
+                        SurvivorsProgressionTrackKind.PassiveAtlas,
+                        "class.survivors.missing",
+                        string.Empty,
+                        new[]
+                        {
+                            new SurvivorsProgressionNodeDefinition("node.dup", "Missing Upgrade", "upgrade.survivors.missing", SurvivorsProgressionNodeKind.Passive, 0, 1, 1)
+                        }),
+                    new SurvivorsProgressionTrackDefinition(
+                        "progression.dup",
+                        "Bad Weapon",
+                        SurvivorsProgressionTrackKind.WeaponSkillTrack,
+                        BasicSurvivorsGame.DefaultClassId,
+                        "weapon.survivors.missing",
+                        new[]
+                        {
+                            new SurvivorsProgressionNodeDefinition("node.dup", "Too Many Ranks", "upgrade.survivors.arcane-damage", SurvivorsProgressionNodeKind.WeaponRank, -1, 0, 999)
+                        })
+                });
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("Duplicate progression track id", errors);
+            StringAssert.Contains("unknown class id", errors);
+            StringAssert.Contains("unknown target weapon", errors);
+            StringAssert.Contains("unknown upgrade id", errors);
+            StringAssert.Contains("Duplicate progression node id", errors);
+            StringAssert.Contains("negative tier", errors);
+            StringAssert.Contains("point cost above zero", errors);
+            StringAssert.Contains("max rank exceeds", errors);
+            StringAssert.Contains("requires a passive atlas", errors);
+        }
+
+        [Test]
+        public void InvalidSampleProgressionReportsReferenceErrors()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\",\"hitscanCount\":1,\"hitscanWidth\":1}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
+            string classJson = "{\"defaultClassId\":\"class.valid\",\"classes\":[{\"id\":\"class.valid\",\"startingWeaponId\":\"weapon.valid\",\"startingWeaponIds\":[\"weapon.valid\"],\"unlockedByDefault\":true,\"unlockRewardId\":\"\",\"statModifiers\":[]}]}";
+            string progressionJson = "{\"tracks\":[{\"id\":\"progression.dup\",\"kind\":\"PassiveAtlas\",\"classId\":\"class.missing\",\"targetWeaponId\":\"weapon.valid\",\"nodes\":[{\"id\":\"node.dup\",\"upgradeId\":\"upgrade.missing\",\"kind\":\"NoSuchNode\",\"tier\":-1,\"pointCost\":0,\"maxRank\":0}]},{\"id\":\"progression.dup\",\"kind\":\"WeaponSkillTrack\",\"classId\":\"class.valid\",\"targetWeaponId\":\"weapon.missing\",\"nodes\":[{\"id\":\"node.dup\",\"upgradeId\":\"upgrade.valid\",\"kind\":\"WeaponRank\",\"tier\":0,\"pointCost\":1,\"maxRank\":1}]}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, classJson: classJson, progressionJson: progressionJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("Duplicate progression track id", errors);
+            StringAssert.Contains("unknown class id", errors);
+            StringAssert.Contains("should not target a weapon", errors);
+            StringAssert.Contains("unknown target weapon", errors);
+            StringAssert.Contains("unknown upgrade id", errors);
+            StringAssert.Contains("Duplicate progression node id", errors);
+            StringAssert.Contains("unknown kind", errors);
+            StringAssert.Contains("negative tier", errors);
+            StringAssert.Contains("point cost above zero", errors);
+            StringAssert.Contains("max rank above zero", errors);
+            StringAssert.Contains("requires a passive atlas", errors);
         }
 
         [Test]
@@ -495,6 +572,17 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 int previousPayloadCount = controller.PayloadCountBonus;
                 float previousPayloadRadius = controller.PayloadExplosionRadiusBonus;
                 float previousPayloadTriggerRadius = controller.PayloadTriggerRadiusBonus;
+                int previousProjectileFan = controller.ProjectileFanBonus;
+                float previousOrbitRadius = controller.OrbitRadiusBonus;
+                int previousBurstEcho = controller.BurstEchoBonus;
+                int previousTargetedBurst = controller.TargetedBurstSigilBonus;
+                float previousPoison = controller.PoisonDamageRatio;
+                float previousBleed = controller.BleedDamageRatio;
+                float previousExecute = controller.ExecuteThresholdNormalized;
+                float previousLifesteal = controller.LifestealRatio;
+                float previousBarrierCapacity = controller.BarrierCapacityBonus;
+                float previousBarrierRegen = controller.BarrierRegenPerSecondBonus;
+                float previousBarrierOnDamage = controller.BarrierOnDamageRatio;
 
                 Assert.IsTrue(controller.SelectUpgrade(0));
 
@@ -512,7 +600,18 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     controller.HitscanPierceBonus > previousHitscanPierce ||
                     controller.PayloadCountBonus > previousPayloadCount ||
                     controller.PayloadExplosionRadiusBonus > previousPayloadRadius ||
-                    controller.PayloadTriggerRadiusBonus > previousPayloadTriggerRadius;
+                    controller.PayloadTriggerRadiusBonus > previousPayloadTriggerRadius ||
+                    controller.ProjectileFanBonus > previousProjectileFan ||
+                    controller.OrbitRadiusBonus > previousOrbitRadius ||
+                    controller.BurstEchoBonus > previousBurstEcho ||
+                    controller.TargetedBurstSigilBonus > previousTargetedBurst ||
+                    controller.PoisonDamageRatio > previousPoison ||
+                    controller.BleedDamageRatio > previousBleed ||
+                    controller.ExecuteThresholdNormalized > previousExecute ||
+                    controller.LifestealRatio > previousLifesteal ||
+                    controller.BarrierCapacityBonus > previousBarrierCapacity ||
+                    controller.BarrierRegenPerSecondBonus > previousBarrierRegen ||
+                    controller.BarrierOnDamageRatio > previousBarrierOnDamage;
                 Assert.IsTrue(changed);
             }
             finally
@@ -575,6 +674,60 @@ namespace Deucarian.TemplateGameSurvivors.Tests
 
                 Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(0f));
                 Assert.AreEqual(1, controller.SelectedUpgradeCount);
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void ExpandedEnemyCatalogIncludesPressureRoles()
+        {
+            var profiles = BasicSurvivorsGame.CreateEnemyProfileDefinitions();
+
+            Assert.That(profiles.Count, Is.GreaterThanOrEqualTo(7));
+            Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Runner).MoveSpeed, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Swarm).MoveSpeed));
+            Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Bruiser).MaxHealth, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Swarm).MaxHealth));
+            Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Spitter).RangedAttackRange, Is.GreaterThan(0f));
+            Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Elite).ExperienceReward, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Bruiser).ExperienceReward));
+        }
+
+        [Test]
+        public void BarrierAbsorbsDamageBeforeHealth()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            try
+            {
+                float previousHealth = controller.CurrentHealth;
+                float previousBarrier = controller.BarrierValue;
+
+                controller.ApplyDamageToPlayer(3f, "test.enemy");
+
+                Assert.AreEqual(previousHealth, controller.CurrentHealth);
+                Assert.That(controller.BarrierValue, Is.LessThan(previousBarrier));
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void PoisonUpgradeAddsDamageOverTimeToWeaponHits()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            try
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.distilled-poison"));
+                SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2f, 0f, 0f), 30f);
+
+                enemy.ApplyDamage(10f, "weapon.survivors.arcane-wand");
+                float afterHit = enemy.CurrentHealth;
+                Step(controller, 30, 0.1f);
+
+                Assert.That(controller.PoisonDamageRatio, Is.GreaterThan(0f));
+                Assert.That(enemy.CurrentHealth, Is.LessThan(afterHit));
             }
             finally
             {

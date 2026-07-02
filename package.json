@@ -2,7 +2,7 @@
   "name": "com.deucarian.template.game.survivors",
   "version": "0.1.0",
   "displayName": "Deucarian Template Game - Survivors",
-  "description": "Starter Unity game template for a Survivors-style horde roguelite loop built on Deucarian packages with local genre-kit adapters.",
+  "description": "Playable Unity game template for a Survivors-style horde roguelite loop with package-based genre-kit adapters, pressure enemies, build mutations, and a 30-minute sample arc.",
   "unity": "6000.3",
   "author": {
     "name": "Deucarian"
@@ -37,7 +37,7 @@
   "samples": [
     {
       "displayName": "Basic Survivors Game",
-      "description": "A playable Survivors-style slice with top-down movement, radial enemy spawning, projectile/orbit/melee/burst/hitscan/payload weapons, XP gems, level-up choices, relic choices, class loadouts, class-gated upgrades, boss/victory flow, rewards, meta progression, persistence, and restart flow.",
+      "description": "A playable Survivors-style slice with five default weapons, pressure enemy roles, projectile/orbit/melee/burst/hitscan/payload options, status and barrier upgrades, XP gems, timed relic/level-up choices, class loadouts, passive atlases, weapon tracks, boss/victory flow, rewards, meta progression, persistence, and restart flow.",
       "path": "Samples~/BasicSurvivorsGame"
     }
   ]

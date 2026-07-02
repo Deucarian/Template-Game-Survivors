@@ -12,28 +12,82 @@
       "experienceDrop": 2
     },
     {
+      "id": "enemy.survivors.runner",
+      "displayName": "Ghoul Runner",
+      "role": "Runner",
+      "health": 7.2,
+      "moveSpeed": 3.55,
+      "radius": 0.41,
+      "contactDamage": 4.5,
+      "contactIntervalSeconds": 0.57,
+      "experienceDrop": 2,
+      "spawnTimeSeconds": 35
+    },
+    {
+      "id": "enemy.survivors.bruiser",
+      "displayName": "Grave Bruiser",
+      "role": "Bruiser",
+      "health": 28,
+      "moveSpeed": 1.65,
+      "radius": 0.63,
+      "contactDamage": 8.7,
+      "contactIntervalSeconds": 0.82,
+      "experienceDrop": 5,
+      "spawnTimeSeconds": 90
+    },
+    {
+      "id": "enemy.survivors.spitter",
+      "displayName": "Cult Spitter",
+      "role": "Spitter",
+      "health": 12.5,
+      "moveSpeed": 2.1,
+      "radius": 0.48,
+      "contactDamage": 3.9,
+      "contactIntervalSeconds": 0.7,
+      "experienceDrop": 3,
+      "spawnTimeSeconds": 150,
+      "rangedAttackRange": 5.8,
+      "rangedAttackDamage": 3.7,
+      "preferredRange": 4.2
+    },
+    {
+      "id": "enemy.survivors.elite",
+      "displayName": "Blood Warden Elite",
+      "role": "Elite",
+      "health": 62,
+      "moveSpeed": 2.4,
+      "radius": 0.73,
+      "contactDamage": 10.5,
+      "contactIntervalSeconds": 0.63,
+      "experienceDrop": 13,
+      "spawnTimeSeconds": 300,
+      "rangedAttackRange": 4.6,
+      "rangedAttackDamage": 3,
+      "preferredRange": 2.8
+    },
+    {
       "id": "enemy.survivors.miniboss",
       "displayName": "Bloodbound Miniboss",
       "role": "Miniboss",
-      "health": 46,
+      "health": 220,
       "moveSpeed": 2.15,
       "radius": 0.82,
       "contactDamage": 10,
       "contactIntervalSeconds": 0.85,
-      "experienceDrop": 9,
-      "spawnTimeSeconds": 30
+      "experienceDrop": 34,
+      "spawnTimeSeconds": 300
     },
     {
       "id": "enemy.survivors.boss",
       "displayName": "Eclipse Boss",
       "role": "Boss",
-      "health": 150,
+      "health": 1200,
       "moveSpeed": 1.85,
       "radius": 1.18,
       "contactDamage": 16,
       "contactIntervalSeconds": 0.95,
-      "experienceDrop": 24,
-      "spawnTimeSeconds": 90,
+      "experienceDrop": 120,
+      "spawnTimeSeconds": 1200,
       "finalBoss": true
     }
   ]

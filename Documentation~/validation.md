@@ -113,3 +113,32 @@ Phase 3E adds editor-side validation adoption:
 - EditMode coverage checks that the editor runner builds a report, valid sample content has no errors, invalid sample content appears through the shared authoring report path, and the runtime asmdef has no editor-only authoring references.
 
 No gameplay behavior changes, shared package extraction, package publishing, Idle template mutation, or Movement-FPS migration is part of Phase 3E validation.
+
+Phase 3F adds reference-parity gameplay validation:
+
+- Default runtime content includes five starting weapons, ten local weapon archetypes, seven enemy roles, six relics, and three persistent upgrades.
+- Run flow validation covers timed swarm, runner, bruiser, spitter, elite, miniboss, and boss pressure over a 30-minute sample arc.
+- EditMode coverage checks expanded enemy profiles plus barrier absorption and poison damage-over-time behavior.
+- PlayMode coverage checks the expanded default loadout while preserving class-gated advanced weapon availability.
+- `Tools > Deucarian > Templates > Survivors > Runtime Debugger` provides Play Mode controls for forced XP, level-ups, enemy bursts, arena fill, stress profiles, magnet recall, and meta reset.
+
+Full graph-editor passive skill trees, production class content packs, production UI, monetization, networking, and shared package extraction remain deferred.
+
+Phase 3G adds compact progression-atlas validation:
+
+- runtime progression tracks for class passive atlases and weapon skill tracks
+- sample `Content/DefaultProgression/progression.json` validation through the editor menu
+- clear validation failures for duplicate progression track/node IDs, unknown class IDs, unknown weapon targets, unknown upgrade IDs, invalid node kinds, bad point costs, negative tiers, missing passive atlases, and node max ranks above the underlying upgrade rank
+- class-specific upgrade gates derived from class-owned progression tracks instead of a separate hand-written list
+- default Arcane passive upgrades and unlockable Ember passive/weapon upgrades appearing only for the selected class
+
+The Phase 3G atlas is intentionally compact local template-kit data. It is not the reference clone's full passive graph UI, per-weapon graph editor, class resource economy, or twelve-class content-pack ecosystem.
+
+Phase 3H adds reward-selection timeout validation:
+
+- default tuning includes a reward-selection countdown for level-up and boss relic drafts
+- `Simulate` continues ticking the paused reward state so automated tests and gameplay both resolve choices
+- PlayMode coverage checks level-up auto-pick and boss relic auto-pick after a short timeout
+- manual choice selection still clears the timer and resumes the run
+
+The timeout remains local template UI/runtime behavior. No production UI framework or shared reward-surface package is introduced.

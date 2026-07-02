@@ -2,17 +2,34 @@
   "weapons": [
     {
       "id": "weapon.survivors.arcane-wand",
+      "displayName": "Arc Bolt",
       "fireMode": "Projectile",
       "projectileId": "projectile.survivors.arcane-bolt",
-      "cooldownSeconds": 0.62,
+      "cooldownSeconds": 0.52,
+      "damage": 7,
       "range": 14,
       "pierceCount": 0,
       "chainCount": 0,
       "forkCount": 0,
-      "returnCount": 0
+      "returnCount": 0,
+      "fanCount": 1,
+      "spreadDegrees": 0
+    },
+    {
+      "id": "weapon.survivors.frost-fan",
+      "displayName": "Frost Fan",
+      "fireMode": "Projectile",
+      "projectileId": "projectile.survivors.arcane-bolt",
+      "cooldownSeconds": 1.05,
+      "damage": 5,
+      "range": 11.5,
+      "pierceCount": 1,
+      "fanCount": 5,
+      "spreadDegrees": 68
     },
     {
       "id": "weapon.survivors.orbit-ward",
+      "displayName": "Blood Ring",
       "fireMode": "Orbit",
       "cooldownSeconds": 0.05,
       "damage": 2.5,
@@ -21,16 +38,18 @@
       "contactTickIntervalSeconds": 0.34
     },
     {
-      "id": "weapon.survivors.moon-slash",
-      "fireMode": "Melee",
-      "cooldownSeconds": 1.15,
-      "damage": 5.5,
-      "range": 2.65,
-      "arcDegrees": 120,
-      "hitCount": 2
+      "id": "weapon.survivors.thorn-halo",
+      "displayName": "Thorn Halo",
+      "fireMode": "Orbit",
+      "cooldownSeconds": 0.05,
+      "damage": 2,
+      "orbitCount": 2,
+      "orbitRadius": 3.35,
+      "contactTickIntervalSeconds": 0.31
     },
     {
       "id": "weapon.survivors.star-nova",
+      "displayName": "Cinder Burst",
       "fireMode": "Burst",
       "cooldownSeconds": 2.8,
       "damage": 4.2,
@@ -39,7 +58,18 @@
       "repeatIntervalSeconds": 0.18
     },
     {
+      "id": "weapon.survivors.moon-slash",
+      "displayName": "Moon Slash",
+      "fireMode": "Melee",
+      "cooldownSeconds": 1.15,
+      "damage": 5.5,
+      "range": 2.65,
+      "arcDegrees": 120,
+      "hitCount": 2
+    },
+    {
       "id": "weapon.survivors.star-beam",
+      "displayName": "Star Beam",
       "fireMode": "Hitscan",
       "cooldownSeconds": 1.35,
       "damage": 6.5,
@@ -51,6 +81,7 @@
     },
     {
       "id": "weapon.survivors.gravity-grenade",
+      "displayName": "Gravity Grenade",
       "fireMode": "Grenade",
       "cooldownSeconds": 2.4,
       "damage": 8.5,
@@ -68,6 +99,7 @@
     },
     {
       "id": "weapon.survivors.rune-trap",
+      "displayName": "Rune Trap",
       "fireMode": "Trap",
       "cooldownSeconds": 2.75,
       "damage": 6.8,
@@ -85,6 +117,7 @@
     },
     {
       "id": "weapon.survivors.aether-mine",
+      "displayName": "Aether Mine",
       "fireMode": "Mine",
       "cooldownSeconds": 3.15,
       "damage": 6.8,

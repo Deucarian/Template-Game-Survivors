@@ -2,6 +2,8 @@
 
 Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, level-up choices, miniboss and boss pressure, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
 
+The `Basic Survivors Game` sample is tuned as a small complete template game rather than a toy package demo: the default class starts with five distinct weapons, the horde grows through seven enemy roles, the level-up pool includes 30+ authored choices with behavior mutations and status effects, class passive atlases group class identity, weapon skill tracks group upgrade routes, and the run paces toward a 30-minute clear with continuing escalation.
+
 The template is intentionally a game slice, not a reusable Survivors framework. Genre-specific systems stay local until a second concrete game proves a shared package boundary.
 
 ## When To Use This
@@ -10,7 +12,7 @@ Use this package when you want:
 
 - A Deucarian-shaped Survivors starter scene that can be opened and played quickly.
 - A reference for composing Combat, World Spawning, Weapon Systems, Projectiles, Attacks, Encounters, Run Upgrades, Progression, Persistence, Game Content Authoring, Gameplay Foundation, and Common in a template game.
-- Local examples of projectile, orbit, melee, burst, hitscan, grenade, trap, mine, relic, class, meta, and boss-flow adapters that are safe to customize per game.
+- Local examples of projectile, projectile fan, orbit, melee, burst, hitscan, grenade, trap, mine, status, barrier, relic, class, passive-atlas, weapon-track, meta, and boss-flow adapters that are safe to customize per game.
 
 Do not use this as a generic Survivors framework, reusable combat rules package, shared projectile package, registry source of truth, or package installer surface. Those capabilities belong to lower reusable packages or other Deucarian owners.
 
@@ -50,20 +52,49 @@ The scene contains a tiny bootstrap object. At runtime it creates the arena, pla
 
 Weapons auto-fire toward nearby targets. XP gems pull toward the player when close; magnet pickups and the debug recall pull XP from farther away.
 
+The default playable kit recreates the spirit of the reference clone's Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst weapons while keeping stable Deucarian template IDs. Upgrade choices can add poison, bleed, execute, lifesteal, barrier, fan spread, pierce, chain, fork, return, orbit wall, targeted burst, burst echo, and payload mutations. Level-up and boss relic choices auto-pick the first option when their countdown expires.
+
 ## What To Customize First
 
 - Weapon and projectile feel: edit `Samples~/BasicSurvivorsGame/Content/DefaultWeapons/weapons.json`, then compare with `Runtime/BasicSurvivorsGame.cs` and `CreateWeaponArchetypeDefinitions`.
-- Upgrades and class gates: edit `Samples~/BasicSurvivorsGame/Content/DefaultUpgrades/upgrades.json` and `CreateClassUpgradeGates`.
+- Upgrades, class gates, passive atlases, and weapon tracks: edit `Samples~/BasicSurvivorsGame/Content/DefaultUpgrades/upgrades.json`, `Samples~/BasicSurvivorsGame/Content/DefaultProgression/progression.json`, and `CreateProgressionTrackDefinitions`. Class gates are derived from class-specific progression tracks.
 - Enemies, miniboss, boss, and rewards: edit `Samples~/BasicSurvivorsGame/Content/DefaultEnemies/enemies.json`, `Samples~/BasicSurvivorsGame/Content/DefaultRewards/rewards.json`, and `CreateRunFlowDefinition`.
 - Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
 - Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.
-- Run tuning: start with `CreateDefaultTuning` before changing controller internals.
+- Run tuning and reward timeout: start with `CreateDefaultTuning` before changing controller internals.
+- Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP, force level-ups, spawn bursts, fill the arena, apply stress profiles, inspect live build stats, trigger magnet recall, or reset meta progression.
+
+## Asset Flip Shape
+
+Future games should mostly change sample content and template-local catalog defaults:
+
+- weapons, weapon names, projectile fan/spread values, orbit radius/count, payload tuning, and burst behavior
+- enemies, role timing, pressure profiles, boss stats, and reward values
+- upgrades, status/sustain/barrier/mutation effects, class gates, and draft weights
+- classes, starting loadouts, passive atlases, weapon skill tracks, stat modifiers, unlock rewards, relics, and meta upgrade costs
+- visuals, colors, audio clips, arena primitives, and authored sample docs
+
+The template keeps this data split between `Runtime/BasicSurvivorsGame.cs` for playable defaults and `Samples~/BasicSurvivorsGame/Content` JSON for asset-flip authoring examples. The JSON is validated by the editor tool and is intended to become the first place future content authors look.
+
+## Gameplay Parity With Reference Clone
+
+The reference clone has a much larger authored project: class-owned content packs, passive atlases, per-weapon skill trees, boss relic pools, damage augments, enemy variety, exponential run bloat, save tooling, and runtime debug controls. This package now brings over the template-sized parts that matter most for pressing Play:
+
+- five immediately active clone-spirit weapons instead of a single starter wand
+- six-plus enemy pressure types and long-run escalation instead of one swarm profile
+- 30+ meaningful upgrade choices with visible behavior changes and status/sustain hooks
+- boss relic choices, multiple persistent meta upgrades, class loadouts, compact passive atlases, weapon skill tracks, and class-gated advanced tools
+- reward-choice timeout behavior so long sessions keep moving if a choice is left open
+- runtime debug controls under Deucarian menu conventions
+
+Intentionally not ported wholesale: the clone's twelve-class content-pack ecosystem, Odin authoring workflow, full passive graph UI, per-weapon graph editor, element/resistance matrix, and class resource economies. The template keeps a compact local atlas/track shape instead of the product-specific graph tooling until another template/game proves the reusable boundary.
 
 ## Sample And API Map
 
 - Sample scene: `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`
 - Sample bootstrap: `Samples~/BasicSurvivorsGame/Scripts/BasicSurvivorsGameBootstrap.cs`
 - Main runtime catalog: `Runtime/BasicSurvivorsGame.cs`
+- Local progression atlas model: `Runtime/SurvivorsProgressionAtlas.cs`
 - Runtime controller: `Runtime/SurvivorsTemplateController.cs`
 - Local content validation: `Runtime/SurvivorsContentValidation.cs`
 - Editor validation menu: `Editor/SurvivorsEditorContentValidation.cs`
@@ -91,6 +122,7 @@ Keep these systems local to this template until reuse is proven across another S
 
 - Player movement, camera feel, radial spawn pose rules, run timing, escalation, boss/miniboss scheduling, and victory state.
 - Boss reward rules, boss relic choice rules, class selection/unlock rules, class starting loadouts, class stat modifiers, and class upgrade gates.
+- Class passive atlas and weapon skill track grouping rules that derive class-specific upgrade availability.
 - Run summary data, meta upgrade effects, XP magnet behavior, level-up/relic HUD, and concrete projectile behavior.
 - Hitscan targeting, beam visuals, projectile modifier rules, payload placement, detonation, hazard rules, orbit motion, melee arc overlap, and burst nova timing.
 - Survivors-specific content validation rules for sample JSON and runtime catalogs.
@@ -103,7 +135,7 @@ From the Unity editor, run:
 
 `Tools > Deucarian > Templates > Survivors > Validate Content`
 
-The menu validates sample JSON and runtime catalogs for IDs, archetype references, projectile references, upgrade targets, boss/miniboss enemy definitions, relic effects, class IDs, starting weapons, and unlock requirements. The report is written to the Unity console for template developer visibility.
+The menu validates sample JSON and runtime catalogs for IDs, archetype references, projectile references, upgrade targets, boss/miniboss enemy definitions, relic effects, class IDs, starting weapons, passive atlases, weapon skill tracks, and unlock requirements. The report is written to the Unity console for template developer visibility.
 
 Before committing package changes, run:
 
@@ -113,6 +145,12 @@ git diff --check
 ```
 
 Run existing Unity EditMode and PlayMode tests when changing code, asmdefs, package dependencies, sample JSON, or sample behavior.
+
+During Play Mode, run:
+
+`Tools > Deucarian > Templates > Survivors > Runtime Debugger`
+
+Use it to force XP, force level-up, spawn enemy bursts, fill the arena, apply stress targets, inspect live counts/build stats, trigger magnet recall, and reset the local meta profile.
 
 ## Screenshots And GIFs
 
@@ -129,7 +167,7 @@ No screenshot or GIF assets are committed yet. Add `Documentation~/media/` captu
 
 ## Deferred
 
-Passive skill trees, richer class-specific upgrade pools, content-pack gates, reward-selection timeout behavior, production UI, monetization, networking, and shared package extraction are deferred.
+Full graph-editor passive skill trees, per-weapon graph editors, the clone's full class content-pack ecosystem, production UI, monetization, networking, and shared package extraction are deferred.
 
 ## License
 

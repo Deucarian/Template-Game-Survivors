@@ -16,11 +16,13 @@
 - `SurvivorsProjectileActor`
 - `SurvivorsPickupActor`
 - `SurvivorsSpawnPoseResolver`
+- timed reward draft behavior for level-up and boss relic choices
 
 `Runtime/SurvivorsRunFlow.cs` contains local Survivors run-structure logic:
 
 - elapsed-time phase progression
 - escalation multipliers for swarm pressure
+- timed enemy role selection for swarm, runner, bruiser, spitter, elite, miniboss, and boss pressure
 - miniboss and boss profile definitions
 - scheduled miniboss/boss spawn events
 - boss-defeat and survival-duration victory triggers
@@ -28,10 +30,12 @@
 `Runtime/SurvivorsWeaponArchetypes.cs` contains the local Survivors weapon-kit runtimes:
 
 - projectile auto-fire adapter
+- projectile fan/spread adapter for Frost Fan-style weapons
 - hitscan beam adapter
 - orbit blade contact runtime
 - melee slash arc runtime
 - burst nova sequence runtime
+- targeted burst and burst-echo hooks for Cinder Burst-style mutation routes
 - local projectile modifier behavior for pierce, chain, fork/split, and return/boomerang
 - short-lived primitive visuals for sample-only feedback
 
@@ -48,7 +52,7 @@
 - reference-shaped blood shard and legacy XP reward calculation
 - boss/miniboss reward bonus definitions
 - persisted meta profile document and v1-to-v3 migration
-- one sample ranked persistent upgrade that adds arcane wand damage to later runs
+- three sample ranked persistent upgrades that add later-run damage
 - selected class and unlocked class persistence
 
 `Runtime/SurvivorsRelicsAndClasses.cs` contains local Survivors reward/class definitions:
@@ -59,6 +63,13 @@
 - starting stat modifiers
 - class-gated run-upgrade availability rules
 - selected/unlocked class library helpers
+
+`Runtime/SurvivorsProgressionAtlas.cs` contains local Survivors progression grouping definitions:
+
+- compact class passive atlas descriptors
+- compact weapon skill track descriptors
+- atlas/track nodes that point at real run-upgrade IDs
+- class-specific track metadata used by `BasicSurvivorsGame.CreateClassUpgradeGates`
 
 `Runtime/SurvivorsContentValidation.cs` contains package-local validation for authored sample libraries and runtime catalogs:
 
@@ -71,6 +82,7 @@
 - valid reward currency, legacy XP, persistent upgrade, rank cost, and target references
 - valid relic IDs, effect kinds, targets, weights, and amounts
 - valid class IDs, default class references, starting weapon/loadout references, class-gated upgrade references, unlock reward IDs, and starting stat modifiers
+- valid progression track IDs, passive atlas ownership, weapon-track targets, progression node references, point costs, and max-rank promises
 
 This is reusable Survivors template-kit code, not concrete product content.
 
@@ -87,10 +99,11 @@ This is reusable Survivors template-kit code, not concrete product content.
 - `Content/DefaultRewards/rewards.json`
 - `Content/DefaultRelics/relics.json`
 - `Content/DefaultClasses/classes.json`
+- `Content/DefaultProgression/progression.json`
 
-The sample includes a swarm enemy, one scheduled miniboss, one final boss, blood shards, legacy XP, one persistent upgrade, boss/final-boss reward definitions, three boss relics, a default class with a basic loadout, one unlockable class with an advanced loadout/stat profile, and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
+The sample includes basic swarm, runner, bruiser, ranged spitter, elite, scheduled miniboss, and final boss entries; blood shards; legacy XP; three persistent upgrades; boss/final-boss reward definitions; six boss relics; a default class with five core weapons; one unlockable class with an advanced loadout/stat profile; compact passive atlases; weapon skill tracks; and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
 
 ## Tests
 
-- `Tests/EditMode` covers descriptors, archetype config, content validation, reward/meta validation, class unlock persistence, locked/missing class fallback, class loadout/gate validation, save migration, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
-- `Tests/PlayMode` covers first playable runtime boot, death/restart, default and selected class loadouts, class-gated upgrade availability, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, timed miniboss/boss spawning, boss/miniboss death, relic choice/application, victory, reward grants, class unlock persistence, save/load persistence, persistent upgrade effects, and run upgrades affecting new archetypes/modifiers.
+- `Tests/EditMode` covers descriptors, archetype config, expanded enemy profiles, barrier/status behavior, content validation, reward/meta validation, class unlock persistence, locked/missing class fallback, class loadout/gate validation, progression atlas validation, save migration, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
+- `Tests/PlayMode` covers first playable runtime boot, death/restart, default and selected class loadouts, atlas-derived class-gated upgrade availability, timed level-up/relic auto-pick, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, timed miniboss/boss spawning, boss/miniboss death, relic choice/application, victory, reward grants, class unlock persistence, save/load persistence, persistent upgrade effects, and run upgrades affecting new archetypes/modifiers.

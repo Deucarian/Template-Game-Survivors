@@ -49,13 +49,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string rewardJson = ReadRequiredText(sampleRoot, "Content/DefaultRewards/rewards.json", report);
             string relicJson = ReadRequiredText(sampleRoot, "Content/DefaultRelics/relics.json", report);
             string classJson = ReadRequiredText(sampleRoot, "Content/DefaultClasses/classes.json", report);
+            string progressionJson = ReadRequiredText(sampleRoot, "Content/DefaultProgression/progression.json", report);
 
             if (report.ErrorCount > 0)
             {
                 return report;
             }
 
-            Merge(report, ValidateJsonContent(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson));
+            Merge(report, ValidateJsonContent(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson));
             return report;
         }
 
@@ -65,7 +66,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string enemyJson = null,
             string rewardJson = null,
             string relicJson = null,
-            string classJson = null)
+            string classJson = null,
+            string progressionJson = null)
         {
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(
                 weaponJson,
@@ -73,7 +75,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 enemyJson,
                 rewardJson,
                 relicJson,
-                classJson);
+                classJson,
+                progressionJson);
 
             var report = new ContentValidationReport();
             for (int index = 0; index < result.Errors.Count; index++)

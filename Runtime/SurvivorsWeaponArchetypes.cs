@@ -34,6 +34,8 @@ namespace Deucarian.TemplateGameSurvivors
             int projectileChainCount = 0,
             int projectileForkCount = 0,
             int projectileReturnCount = 0,
+            int projectileFanCount = 1,
+            float projectileSpreadDegrees = 0f,
             int orbitCount = 1,
             float orbitRadius = 0f,
             float orbitDegreesPerSecond = 0f,
@@ -80,6 +82,8 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileChainCount = Mathf.Max(0, projectileChainCount);
             ProjectileForkCount = Mathf.Max(0, projectileForkCount);
             ProjectileReturnCount = Mathf.Max(0, projectileReturnCount);
+            ProjectileFanCount = Mathf.Max(1, projectileFanCount);
+            ProjectileSpreadDegrees = Mathf.Max(0f, projectileSpreadDegrees);
             OrbitCount = Mathf.Max(1, orbitCount);
             OrbitRadius = Mathf.Max(0.1f, orbitRadius);
             OrbitDegreesPerSecond = Mathf.Max(0f, orbitDegreesPerSecond);
@@ -122,6 +126,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ProjectileChainCount { get; }
         public int ProjectileForkCount { get; }
         public int ProjectileReturnCount { get; }
+        public int ProjectileFanCount { get; }
+        public float ProjectileSpreadDegrees { get; }
         public int OrbitCount { get; }
         public float OrbitRadius { get; }
         public float OrbitDegreesPerSecond { get; }
@@ -361,7 +367,20 @@ namespace Deucarian.TemplateGameSurvivors
                 direction = Vector3.forward;
             }
 
-            return Controller.LaunchProjectile(Definition, direction.normalized);
+            int projectileCount = Mathf.Max(1, Definition.ProjectileFanCount + Controller.ProjectileFanBonus);
+            float spreadDegrees = projectileCount <= 1
+                ? 0f
+                : Mathf.Max(Definition.ProjectileSpreadDegrees, 12f * (projectileCount - 1));
+            bool fired = false;
+            for (int index = 0; index < projectileCount; index++)
+            {
+                float normalizedIndex = projectileCount <= 1 ? 0.5f : index / (float)(projectileCount - 1);
+                float angle = Mathf.Lerp(-spreadDegrees * 0.5f, spreadDegrees * 0.5f, normalizedIndex);
+                Vector3 resolvedDirection = Quaternion.Euler(0f, angle, 0f) * direction.normalized;
+                fired |= Controller.LaunchProjectile(Definition, resolvedDirection);
+            }
+
+            return fired;
         }
     }
 
@@ -585,7 +604,7 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureBladeCount(desiredCount);
             _rotationDegrees += Definition.OrbitDegreesPerSecond * deltaTime;
 
-            float radius = Definition.OrbitRadius;
+            float radius = Definition.OrbitRadius + Controller.OrbitRadiusBonus;
             float hitRadius = Mathf.Max(0.18f, Definition.Range);
             float damage = Controller.ResolveWeaponDamage(Definition);
             for (int i = 0; i < _blades.Count; i++)
@@ -808,13 +827,14 @@ namespace Deucarian.TemplateGameSurvivors
 
         private bool TryStartBurstSequence()
         {
-            if (Controller.FindNearestEnemy(Controller.PlayerPosition, Definition.Range) == null)
+            SurvivorsEnemyActor anchor = Controller.FindNearestEnemy(Controller.PlayerPosition, Definition.Range);
+            if (anchor == null)
             {
                 return false;
             }
 
-            _sequenceOrigin = Controller.PlayerPosition;
-            _pendingBursts = Mathf.Max(1, Definition.BurstCount + Controller.BurstCountBonus);
+            _sequenceOrigin = Controller.TargetedBurstSigilBonus > 0 ? anchor.transform.position : Controller.PlayerPosition;
+            _pendingBursts = Mathf.Max(1, Definition.BurstCount + Controller.BurstCountBonus + Controller.BurstEchoBonus);
             _timeUntilNextBurst = 0f;
             return true;
         }
