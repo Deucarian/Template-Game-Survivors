@@ -29,116 +29,117 @@ namespace Deucarian.TemplateGameSurvivors
 
     public enum SurvivorsPacingProfile
     {
-        Normal = 0,
-        DebugFast = 1,
-        Showcase = 2
+        HumanPlaytest = 0,
+        Normal = 1,
+        DebugFast = 2,
+        Showcase = 3
     }
 
     [Serializable]
     public sealed class SurvivorsTemplateTuning
     {
-        public SurvivorsPacingProfile PacingProfile = SurvivorsPacingProfile.Normal;
+        public SurvivorsPacingProfile PacingProfile = SurvivorsPacingProfile.HumanPlaytest;
         public float PlayerMoveSpeed = 5.4f;
         public float PlayerRadius = 0.55f;
-        public float PlayerMaxHealth = 36f;
+        public float PlayerMaxHealth = 42f;
         public float PlayerContactInvulnerabilitySeconds = 0.35f;
-        public float EnemySpawnRadius = 13.5f;
-        public float EnemySpawnIntervalSeconds = 1.35f;
-        public int EnemyMaximumAlive = 36;
-        public float EnemyMaxHealth = 12f;
-        public float EnemyMoveSpeed = 1.45f;
+        public float EnemySpawnRadius = 14.5f;
+        public float EnemySpawnIntervalSeconds = 3.35f;
+        public int EnemyMaximumAlive = 10;
+        public float EnemyMaxHealth = 18f;
+        public float EnemyMoveSpeed = 1f;
         public float EnemyRadius = 0.48f;
-        public float EnemyContactDamage = 5f;
+        public float EnemyContactDamage = 3.5f;
         public float EnemyContactIntervalSeconds = 0.7f;
         public int EnemyExperienceReward = 1;
-        public float RunEscalationIntervalSeconds = 90f;
-        public float MinimumEnemySpawnIntervalSeconds = 0.38f;
-        public float EnemySpawnIntervalReductionPerEscalation = 0.045f;
-        public int EnemyMaximumAliveIncreasePerEscalation = 6;
-        public float EnemyHealthMultiplierPerEscalation = 0.16f;
-        public float EnemyMoveSpeedMultiplierPerEscalation = 0.018f;
-        public float EnemyExperienceMultiplierPerEscalation = 0.08f;
-        public float MinibossSpawnTimeSeconds = 300f;
+        public float RunEscalationIntervalSeconds = 60f;
+        public float MinimumEnemySpawnIntervalSeconds = 1.25f;
+        public float EnemySpawnIntervalReductionPerEscalation = 0.14f;
+        public int EnemyMaximumAliveIncreasePerEscalation = 4;
+        public float EnemyHealthMultiplierPerEscalation = 0.1f;
+        public float EnemyMoveSpeedMultiplierPerEscalation = 0.015f;
+        public float EnemyExperienceMultiplierPerEscalation = 0.04f;
+        public float MinibossSpawnTimeSeconds = 420f;
         public float MinibossMaxHealth = 260f;
-        public float MinibossMoveSpeed = 1.65f;
+        public float MinibossMoveSpeed = 1.35f;
         public float MinibossRadius = 0.82f;
-        public float MinibossContactDamage = 10f;
+        public float MinibossContactDamage = 8f;
         public float MinibossContactIntervalSeconds = 0.85f;
         public int MinibossExperienceReward = 40;
         public float BossSpawnTimeSeconds = 1200f;
         public float BossMaxHealth = 1400f;
-        public float BossMoveSpeed = 1.45f;
+        public float BossMoveSpeed = 1.25f;
         public float BossRadius = 1.18f;
         public float BossContactDamage = 16f;
         public float BossContactIntervalSeconds = 0.95f;
         public int BossExperienceReward = 140;
         public float SurvivalVictoryTimeSeconds = 1800f;
-        public float WeaponCooldownSeconds = 0.82f;
-        public float WeaponRange = 11f;
-        public float ProjectileDamage = 6.2f;
-        public float ProjectileSpeed = 8.25f;
+        public float WeaponCooldownSeconds = 1.15f;
+        public float WeaponRange = 9.5f;
+        public float ProjectileDamage = 4.8f;
+        public float ProjectileSpeed = 6.6f;
         public float ProjectileRadius = 0.22f;
-        public float ProjectileLifetimeSeconds = 2.1f;
+        public float ProjectileLifetimeSeconds = 2f;
         public int ProjectilePierceCount = 0;
         public int ProjectileChainCount = 0;
         public int ProjectileForkCount = 0;
         public int ProjectileReturnCount = 0;
-        public float OrbitDamage = 2f;
+        public float OrbitDamage = 1.2f;
         public int OrbitBladeCount = 1;
         public float OrbitRadius = 2.1f;
         public float OrbitBladeHitRadius = 0.38f;
-        public float OrbitDegreesPerSecond = 145f;
-        public float OrbitContactTickIntervalSeconds = 0.34f;
-        public float MeleeDamage = 4.8f;
-        public float MeleeCooldownSeconds = 1.4f;
-        public float MeleeRange = 2.65f;
+        public float OrbitDegreesPerSecond = 95f;
+        public float OrbitContactTickIntervalSeconds = 0.46f;
+        public float MeleeDamage = 3.2f;
+        public float MeleeCooldownSeconds = 1.8f;
+        public float MeleeRange = 2.5f;
         public float MeleeArcDegrees = 120f;
         public int MeleeHitCount = 2;
         public float MeleeVisualDurationSeconds = 0.16f;
-        public float BurstDamage = 3.6f;
-        public float BurstCooldownSeconds = 3.4f;
-        public float BurstRadius = 2.8f;
+        public float BurstDamage = 2.4f;
+        public float BurstCooldownSeconds = 4.2f;
+        public float BurstRadius = 2.55f;
         public int BurstCount = 1;
         public float BurstRepeatIntervalSeconds = 0.18f;
         public float BurstVisualDurationSeconds = 0.22f;
-        public float HitscanDamage = 5.8f;
-        public float HitscanCooldownSeconds = 1.6f;
+        public float HitscanDamage = 3.5f;
+        public float HitscanCooldownSeconds = 2.2f;
         public float HitscanRange = 9.5f;
         public int HitscanCount = 1;
         public float HitscanWidth = 0.24f;
         public float HitscanVisualDurationSeconds = 0.08f;
         public bool HitscanPierces = false;
-        public float GrenadeDamage = 7.2f;
-        public float GrenadeCooldownSeconds = 2.9f;
-        public float GrenadeRange = 7.4f;
+        public float GrenadeDamage = 4.5f;
+        public float GrenadeCooldownSeconds = 4.2f;
+        public float GrenadeRange = 7f;
         public int GrenadePayloadCount = 1;
-        public float GrenadePayloadTravelSpeed = 6.5f;
-        public float GrenadePayloadArmingSeconds = 0.9f;
-        public float GrenadePayloadExplosionRadius = 2.35f;
-        public float PlacedPayloadDamage = 5.8f;
-        public float TrapCooldownSeconds = 3.25f;
-        public float MineCooldownSeconds = 3.8f;
-        public float PlacedPayloadRange = 6.2f;
+        public float GrenadePayloadTravelSpeed = 5.4f;
+        public float GrenadePayloadArmingSeconds = 1f;
+        public float GrenadePayloadExplosionRadius = 2.1f;
+        public float PlacedPayloadDamage = 4.2f;
+        public float TrapCooldownSeconds = 4.4f;
+        public float MineCooldownSeconds = 4.8f;
+        public float PlacedPayloadRange = 5.8f;
         public int PlacedPayloadCount = 1;
-        public float PlacedPayloadArmingSeconds = 0.9f;
-        public float PlacedPayloadLifetimeSeconds = 4.4f;
-        public float PlacedPayloadTriggerRadius = 1.35f;
-        public float PlacedPayloadExplosionRadius = 2.15f;
+        public float PlacedPayloadArmingSeconds = 1f;
+        public float PlacedPayloadLifetimeSeconds = 4.2f;
+        public float PlacedPayloadTriggerRadius = 1.2f;
+        public float PlacedPayloadExplosionRadius = 1.95f;
         public float PayloadHazardDurationSeconds = 1.6f;
         public float PayloadHazardTickIntervalSeconds = 0.45f;
         public float PayloadHazardDamageRatio = 0.18f;
-        public float PickupAttractRange = 2.35f;
-        public float PickupAttractionSpeed = 4.6f;
-        public float PickupCollectRadius = 0.72f;
-        public float MagnetRecallSpeedMultiplier = 2f;
-        public int ExperienceRequiredBase = 8;
-        public int ExperienceRequiredPerLevel = 5;
+        public float PickupAttractRange = 1.7f;
+        public float PickupAttractionSpeed = 3f;
+        public float PickupCollectRadius = 0.68f;
+        public float MagnetRecallSpeedMultiplier = 1.65f;
+        public int ExperienceRequiredBase = 14;
+        public int ExperienceRequiredPerLevel = 8;
         public float StatusPoisonDurationSeconds = 4.5f;
         public float StatusBleedDurationSeconds = 5.5f;
         public float StartingBarrierCapacity = 8f;
         public float BaseBarrierRegenPerSecond = 0.12f;
         public int DraftChoiceCount = 3;
-        public float RewardSelectionTimeoutSeconds = 45f;
+        public float RewardSelectionTimeoutSeconds = 0f;
         public int RunSeed = 20260624;
 
         public SurvivorsTemplateTuning Clone()
@@ -251,7 +252,24 @@ namespace Deucarian.TemplateGameSurvivors
 
         public static SurvivorsTemplateTuning CreateDefaultTuning()
         {
-            return CreateTuning(SurvivorsPacingProfile.Normal);
+            return CreateTuning(SurvivorsPacingProfile.HumanPlaytest);
+        }
+
+        public static string GetPacingProfileDisplayName(SurvivorsPacingProfile profile)
+        {
+            switch (profile)
+            {
+                case SurvivorsPacingProfile.HumanPlaytest:
+                    return "Human Playtest";
+                case SurvivorsPacingProfile.DebugFast:
+                    return "Debug Fast";
+                case SurvivorsPacingProfile.Showcase:
+                    return "Showcase";
+                case SurvivorsPacingProfile.Normal:
+                    return "Normal";
+                default:
+                    return profile.ToString();
+            }
         }
 
         public static SurvivorsTemplateTuning CreateTuning(SurvivorsPacingProfile profile)
@@ -263,6 +281,9 @@ namespace Deucarian.TemplateGameSurvivors
 
             switch (profile)
             {
+                case SurvivorsPacingProfile.Normal:
+                    ApplyNormalTuning(tuning);
+                    break;
                 case SurvivorsPacingProfile.DebugFast:
                     ApplyDebugFastTuning(tuning);
                     break;
@@ -270,11 +291,71 @@ namespace Deucarian.TemplateGameSurvivors
                     ApplyShowcaseTuning(tuning);
                     break;
                 default:
-                    tuning.PacingProfile = SurvivorsPacingProfile.Normal;
+                    tuning.PacingProfile = SurvivorsPacingProfile.HumanPlaytest;
                     break;
             }
 
             return tuning;
+        }
+
+        private static void ApplyNormalTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.PacingProfile = SurvivorsPacingProfile.Normal;
+            tuning.PlayerMaxHealth = 36f;
+            tuning.EnemySpawnRadius = 13.5f;
+            tuning.EnemySpawnIntervalSeconds = 1.35f;
+            tuning.EnemyMaximumAlive = 36;
+            tuning.EnemyMaxHealth = 12f;
+            tuning.EnemyMoveSpeed = 1.45f;
+            tuning.EnemyContactDamage = 5f;
+            tuning.RunEscalationIntervalSeconds = 90f;
+            tuning.MinimumEnemySpawnIntervalSeconds = 0.38f;
+            tuning.EnemySpawnIntervalReductionPerEscalation = 0.045f;
+            tuning.EnemyMaximumAliveIncreasePerEscalation = 6;
+            tuning.EnemyHealthMultiplierPerEscalation = 0.16f;
+            tuning.EnemyMoveSpeedMultiplierPerEscalation = 0.018f;
+            tuning.EnemyExperienceMultiplierPerEscalation = 0.08f;
+            tuning.MinibossSpawnTimeSeconds = 300f;
+            tuning.MinibossMoveSpeed = 1.65f;
+            tuning.MinibossContactDamage = 10f;
+            tuning.BossMoveSpeed = 1.45f;
+            tuning.WeaponCooldownSeconds = 0.82f;
+            tuning.WeaponRange = 11f;
+            tuning.ProjectileDamage = 6.2f;
+            tuning.ProjectileSpeed = 8.25f;
+            tuning.ProjectileLifetimeSeconds = 2.1f;
+            tuning.OrbitDamage = 2f;
+            tuning.OrbitDegreesPerSecond = 145f;
+            tuning.OrbitContactTickIntervalSeconds = 0.34f;
+            tuning.MeleeDamage = 4.8f;
+            tuning.MeleeCooldownSeconds = 1.4f;
+            tuning.MeleeRange = 2.65f;
+            tuning.BurstDamage = 3.6f;
+            tuning.BurstCooldownSeconds = 3.4f;
+            tuning.BurstRadius = 2.8f;
+            tuning.HitscanDamage = 5.8f;
+            tuning.HitscanCooldownSeconds = 1.6f;
+            tuning.GrenadeDamage = 7.2f;
+            tuning.GrenadeCooldownSeconds = 2.9f;
+            tuning.GrenadeRange = 7.4f;
+            tuning.GrenadePayloadTravelSpeed = 6.5f;
+            tuning.GrenadePayloadArmingSeconds = 0.9f;
+            tuning.GrenadePayloadExplosionRadius = 2.35f;
+            tuning.PlacedPayloadDamage = 5.8f;
+            tuning.TrapCooldownSeconds = 3.25f;
+            tuning.MineCooldownSeconds = 3.8f;
+            tuning.PlacedPayloadRange = 6.2f;
+            tuning.PlacedPayloadArmingSeconds = 0.9f;
+            tuning.PlacedPayloadLifetimeSeconds = 4.4f;
+            tuning.PlacedPayloadTriggerRadius = 1.35f;
+            tuning.PlacedPayloadExplosionRadius = 2.15f;
+            tuning.PickupAttractRange = 2.35f;
+            tuning.PickupAttractionSpeed = 4.6f;
+            tuning.PickupCollectRadius = 0.72f;
+            tuning.MagnetRecallSpeedMultiplier = 2f;
+            tuning.ExperienceRequiredBase = 8;
+            tuning.ExperienceRequiredPerLevel = 5;
+            tuning.RewardSelectionTimeoutSeconds = 45f;
         }
 
         private static void ApplyDebugFastTuning(SurvivorsTemplateTuning tuning)

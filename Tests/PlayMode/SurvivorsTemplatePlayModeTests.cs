@@ -52,15 +52,19 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator ControllerUsesNormalPacingByDefault()
+        public IEnumerator ControllerUsesHumanPlaytestPacingByDefault()
         {
             SurvivorsTemplateController controller = CreateController();
             yield return null;
 
-            Assert.AreEqual(SurvivorsPacingProfile.Normal, controller.CurrentPacingProfile);
+            Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
+            Assert.IsTrue(controller.IsHumanPlaytestPacing);
             Assert.IsFalse(controller.IsDebugFastPacing);
             Assert.AreEqual(1f, Time.timeScale);
-            Assert.That(controller.CurrentTuning.RewardSelectionTimeoutSeconds, Is.GreaterThanOrEqualTo(30f));
+            Assert.That(controller.CurrentTuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
+            Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(2.75f, 4f));
+            Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(8, 12));
+            Assert.AreEqual(1f, controller.CurrentEnemySpeedMultiplier);
 
             Object.Destroy(controller.gameObject);
         }
@@ -69,17 +73,39 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         public IEnumerator DebugFastPacingRequiresExplicitProfileSwitch()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
-            Assert.AreEqual(SurvivorsPacingProfile.Normal, controller.CurrentPacingProfile);
+            Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
 
             controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.DebugFast);
             controller.StartRun();
             yield return null;
 
-            SurvivorsTemplateTuning normal = BasicSurvivorsGame.CreateDefaultTuning();
+            SurvivorsTemplateTuning human = BasicSurvivorsGame.CreateDefaultTuning();
             Assert.AreEqual(SurvivorsPacingProfile.DebugFast, controller.CurrentPacingProfile);
             Assert.IsTrue(controller.IsDebugFastPacing);
-            Assert.That(controller.CurrentTuning.EnemySpawnIntervalSeconds, Is.LessThan(normal.EnemySpawnIntervalSeconds));
-            Assert.That(controller.CurrentTuning.RewardSelectionTimeoutSeconds, Is.LessThan(normal.RewardSelectionTimeoutSeconds));
+            Assert.That(controller.CurrentTuning.EnemySpawnIntervalSeconds, Is.LessThan(human.EnemySpawnIntervalSeconds));
+            Assert.That(controller.CurrentTuning.RewardSelectionTimeoutSeconds, Is.GreaterThan(human.RewardSelectionTimeoutSeconds));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator HumanPlaytestRewardChoicesWaitForPlayer()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(0f, controller.RewardSelectionRemainingSeconds);
+
+            controller.Simulate(120f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(0, controller.SelectedUpgradeCount);
+            Assert.AreEqual(0, controller.RewardAutoSelectCount);
 
             Object.Destroy(controller.gameObject);
         }
@@ -593,6 +619,130 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator NormalPlayModeStartDoesNotWipeMetaProgression()
+        {
+            var storage = new InMemoryTextStorage();
+            const string slot = "play-no-reset-start";
+            SurvivorsTemplateController first = CreateController(storage, slot);
+            yield return null;
+
+            SurvivorsEnemyActor boss = first.SpawnBossForTest(first.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+
+            long savedBloodShards = first.MetaBloodShards;
+            long lifetimeBloodShards = first.LifetimeBloodShards;
+            int completedRuns = first.MetaCompletedRuns;
+            int bossVictories = first.MetaBossVictories;
+            Assert.That(savedBloodShards, Is.GreaterThan(0));
+            Assert.That(lifetimeBloodShards, Is.GreaterThan(0));
+            Assert.That(completedRuns, Is.GreaterThan(0));
+
+            Object.Destroy(first.gameObject);
+            yield return null;
+
+            SurvivorsTemplateController second = CreateController(storage, slot);
+            yield return null;
+
+            Assert.AreEqual(savedBloodShards, second.MetaBloodShards);
+            Assert.AreEqual(lifetimeBloodShards, second.LifetimeBloodShards);
+            Assert.AreEqual(completedRuns, second.MetaCompletedRuns);
+            Assert.AreEqual(bossVictories, second.MetaBossVictories);
+
+            Object.Destroy(second.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ApplyingNormalPacingDoesNotWipeMetaProgression()
+        {
+            var storage = new InMemoryTextStorage();
+            SurvivorsTemplateController controller = CreateController(storage, "play-no-reset-normal-profile");
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+
+            long savedBloodShards = controller.MetaBloodShards;
+            long lifetimeBloodShards = controller.LifetimeBloodShards;
+            int completedRuns = controller.MetaCompletedRuns;
+            int bossVictories = controller.MetaBossVictories;
+            bool emberUnlocked = controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId);
+
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.Normal, restartRun: true);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsPacingProfile.Normal, controller.CurrentPacingProfile);
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(savedBloodShards, controller.MetaBloodShards);
+            Assert.AreEqual(lifetimeBloodShards, controller.LifetimeBloodShards);
+            Assert.AreEqual(completedRuns, controller.MetaCompletedRuns);
+            Assert.AreEqual(bossVictories, controller.MetaBossVictories);
+            Assert.AreEqual(emberUnlocked, controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator RestartingRunDoesNotWipeMetaProgression()
+        {
+            var storage = new InMemoryTextStorage();
+            SurvivorsTemplateController controller = CreateController(storage, "play-no-reset-restart");
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+
+            long savedBloodShards = controller.MetaBloodShards;
+            long lifetimeBloodShards = controller.LifetimeBloodShards;
+            int completedRuns = controller.MetaCompletedRuns;
+            int bossVictories = controller.MetaBossVictories;
+            bool emberUnlocked = controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId);
+
+            controller.RestartRun();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(savedBloodShards, controller.MetaBloodShards);
+            Assert.AreEqual(lifetimeBloodShards, controller.LifetimeBloodShards);
+            Assert.AreEqual(completedRuns, controller.MetaCompletedRuns);
+            Assert.AreEqual(bossVictories, controller.MetaBossVictories);
+            Assert.AreEqual(emberUnlocked, controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ExplicitResetClearsPersistentMetaProgression()
+        {
+            var storage = new InMemoryTextStorage();
+            SurvivorsTemplateController controller = CreateController(storage, "play-explicit-reset");
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+
+            Assert.That(controller.MetaBloodShards, Is.GreaterThan(0));
+            Assert.That(controller.LifetimeBloodShards, Is.GreaterThan(0));
+            Assert.That(controller.MetaCompletedRuns, Is.GreaterThan(0));
+            Assert.IsTrue(controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
+
+            controller.DebugResetMetaProgression();
+            yield return null;
+
+            Assert.AreEqual(0, controller.MetaBloodShards);
+            Assert.AreEqual(0, controller.LifetimeBloodShards);
+            Assert.AreEqual(0, controller.LifetimeLegacyExperience);
+            Assert.AreEqual(0, controller.MetaCompletedRuns);
+            Assert.AreEqual(0, controller.MetaBossVictories);
+            Assert.IsFalse(controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator SelectedClassAffectsStartingState()
         {
             var storage = new InMemoryTextStorage();
@@ -724,6 +874,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         private static void ConfigureTrapOnlyTuning(SurvivorsTemplateTuning tuning)
         {
             tuning.EnemySpawnIntervalSeconds = 999f;
+            tuning.EnemyMoveSpeed = 1.45f;
             tuning.ProjectileDamage = 0f;
             tuning.OrbitDamage = 0f;
             tuning.MeleeDamage = 0f;
@@ -731,6 +882,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             tuning.HitscanDamage = 0f;
             tuning.GrenadeDamage = 0f;
             tuning.PlacedPayloadDamage = 6.8f;
+            tuning.PlacedPayloadRange = 6.2f;
+            tuning.PlacedPayloadArmingSeconds = 0.7f;
+            tuning.PlacedPayloadLifetimeSeconds = 4.4f;
+            tuning.PlacedPayloadTriggerRadius = 1.35f;
+            tuning.PlacedPayloadExplosionRadius = 2.15f;
         }
 
         private static void ConfigureProjectileModifierOnlyTuning(SurvivorsTemplateTuning tuning)

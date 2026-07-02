@@ -5,7 +5,7 @@ Phase 2L validation should cover:
 - Unity compile in a fresh validation project.
 - EditMode tests for descriptor creation, draft determinism, spawn, weapon damage/death, XP collection, upgrade selection, and magnet recall.
 - PlayMode tests for first playable boot, run continuation after upgrade, player death, and restart.
-- Manual sample scene open/play check from `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`.
+- Manual sample scene open/play check from `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity` in `C:\Repositories\Template-Game-Survivors-Playtest`.
 
 The reference Vampire clone has local working-tree edits in UI files during this phase and is treated as read-only input.
 
@@ -136,7 +136,7 @@ The Phase 3G atlas is intentionally compact local template-kit data. It is not t
 
 Phase 3H adds reward-selection timeout validation:
 
-- default tuning includes a reward-selection countdown for level-up and boss relic drafts
+- non-default validation profiles can include a reward-selection countdown for level-up and boss relic drafts
 - `Simulate` continues ticking the paused reward state so automated tests and gameplay both resolve choices
 - PlayMode coverage checks level-up auto-pick and boss relic auto-pick after a short timeout
 - manual choice selection still clears the timer and resumes the run
@@ -145,11 +145,13 @@ The timeout remains local template UI/runtime behavior. No production UI framewo
 
 Phase 3I adds human-readable pacing validation:
 
-- `SurvivorsPacingProfile.Normal` is the default profile and keeps `Time.timeScale` at `1`.
-- Normal opening spawns use a `1.35` second interval, `36` maximum alive enemies, slower basic enemies, readable projectile speed, modest pickup magnet range, and a `45` second reward timeout.
-- `SurvivorsPacingProfile.DebugFast` and `SurvivorsPacingProfile.Showcase` are explicit profiles for validation and demo work, not sample defaults.
-- EditMode coverage checks Normal readability thresholds and Debug Fast acceleration as opt-in tuning.
-- PlayMode coverage checks the controller starts in Normal and only enters Debug Fast through an explicit profile switch.
-- `Documentation~/playtesting.md` documents the local playtest host project, imported sample scene, timing expectations, save reset, and Debug Fast workflow.
+- `SurvivorsPacingProfile.HumanPlaytest` is the default profile and keeps `Time.timeScale` at `1`.
+- Human Playtest opening spawns use a `3.35` second interval, `10` maximum alive enemies, `1.0` basic enemy speed against `5.4` player speed, readable `6.6` projectile speed, `1.7` pickup magnet range, and no reward timeout.
+- Human Playtest max alive rises by `4` per minute, the spawn interval drops by `0.14` seconds per minute, and the miniboss waits until `420` seconds.
+- `SurvivorsPacingProfile.Normal`, `SurvivorsPacingProfile.DebugFast`, and `SurvivorsPacingProfile.Showcase` are explicit profiles for validation and demo work, not sample defaults.
+- EditMode coverage checks Human Playtest readability thresholds and Debug Fast acceleration as opt-in tuning.
+- PlayMode coverage checks the controller starts in Human Playtest, reward choices wait for the player by default, and Debug Fast only appears through an explicit profile switch.
+- PlayMode persistence coverage uses isolated in-memory save slots to prove normal start, Normal profile application, and run restart do not wipe meta progression, while explicit reset does wipe it.
+- `Documentation~/playtesting.md` documents the local playtest host project, renamed imported sample scene, timing expectations, explicit save reset, and Debug Fast workflow.
 
 The pacing profiles remain local template tuning. No package extraction or shared pacing framework is introduced.

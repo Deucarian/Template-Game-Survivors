@@ -19,8 +19,6 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
             {
                 controller = gameObject.AddComponent<SurvivorsTemplateController>();
             }
-
-            controller.StartRun();
         }
     }
 }

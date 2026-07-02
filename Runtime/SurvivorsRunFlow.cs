@@ -243,6 +243,11 @@ namespace Deucarian.TemplateGameSurvivors
             return Mathf.Max(1, baseMaximumAlive + (Definition.EnemyMaximumAliveIncreasePerEscalation * EscalationLevel));
         }
 
+        public float ResolveEnemySpeedMultiplier()
+        {
+            return ResolveLinearMultiplier(Definition == null ? 0f : Definition.EnemyMoveSpeedMultiplierPerEscalation);
+        }
+
         public SurvivorsEnemyRole ResolveNextSwarmRole(float elapsedTimeSeconds, long spawnSequence)
         {
             if (Definition == null || Definition.SwarmProfiles.Count == 0)

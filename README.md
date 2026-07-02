@@ -36,11 +36,11 @@ Use `#main` for stable package consumption and `#develop` when testing active pa
 
 1. Add the package through Package Manager.
 2. Import the `Basic Survivors Game` sample.
-3. Open the imported sample scene, or in this repository open `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`.
+3. Open the imported sample scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
 4. Press Play.
 5. Move through the horde, collect XP gems, choose level-up options, take a relic after the miniboss, then defeat the final boss or reach the survival-duration clear condition.
 
-For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/BasicSurvivorsGame.unity`. More detail lives in `Documentation~/playtesting.md`.
+For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. More detail lives in `Documentation~/playtesting.md`.
 
 The scene contains a tiny bootstrap object. At runtime it creates the arena, player, enemy/pickup/projectile pools, camera, run timer, HUD, draft UI, relic UI, meta profile service, victory state, defeat state, and restart flow.
 
@@ -54,9 +54,9 @@ The scene contains a tiny bootstrap object. At runtime it creates the arena, pla
 
 Weapons auto-fire toward nearby targets. XP gems pull toward the player when close; magnet pickups and the debug recall pull XP from farther away.
 
-The default playable kit recreates the spirit of the reference clone's Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst weapons while keeping stable Deucarian template IDs. Upgrade choices can add poison, bleed, execute, lifesteal, barrier, fan spread, pierce, chain, fork, return, orbit wall, targeted burst, burst echo, and payload mutations. Level-up and boss relic choices auto-pick the first option when their countdown expires.
+The default playable kit recreates the spirit of the reference clone's Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst weapons while keeping stable Deucarian template IDs. Upgrade choices can add poison, bleed, execute, lifesteal, barrier, fan spread, pierce, chain, fork, return, orbit wall, targeted burst, burst echo, and payload mutations. Human Playtest leaves level-up and boss relic choices open until the player chooses; faster validation profiles can use timed auto-pick.
 
-Default play uses `SurvivorsPacingProfile.Normal`: `Time.timeScale` stays at `1`, opening enemy spawns are slow enough to read, reward choices stay open for `45` seconds, and boss timings target a 30-minute run. `DebugFast` and `Showcase` profiles exist for validation and demos, but must be selected deliberately through the runtime debugger.
+Default play uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` is reset to `1`, opening enemy spawns use a `3.35` second interval, the opening max-alive cap is `10`, basic enemy speed is `1.0` versus player speed `5.4`, reward auto-pick is off, and the miniboss waits until `420` seconds. `Normal`, `DebugFast`, and `Showcase` profiles exist for validation and demos, but must be selected deliberately through the runtime debugger.
 
 ## What To Customize First
 
@@ -95,7 +95,8 @@ Intentionally not ported wholesale: the clone's twelve-class content-pack ecosys
 
 ## Sample And API Map
 
-- Sample scene: `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`
+- Manual playtest scene: `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`
+- Package source scene, not the branch manual-test target: `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`
 - Sample bootstrap: `Samples~/BasicSurvivorsGame/Scripts/BasicSurvivorsGameBootstrap.cs`
 - Main runtime catalog: `Runtime/BasicSurvivorsGame.cs`
 - Local progression atlas model: `Runtime/SurvivorsProgressionAtlas.cs`
@@ -163,7 +164,7 @@ No screenshot or GIF assets are committed yet. Add `Documentation~/media/` captu
 
 ## Troubleshooting
 
-- Sample scene is missing: import `Basic Survivors Game` from Package Manager, or open the repository copy under `Samples~`.
+- Sample scene is missing: import `Basic Survivors Game` from Package Manager, then open the imported playtest scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
 - Weapons do not fire: enemies must be in range; move near the horde and wait for auto-fire cadence.
 - Draft choices do not appear: collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
 - Relic choices do not appear: defeat the miniboss first.

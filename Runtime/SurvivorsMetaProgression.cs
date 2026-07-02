@@ -308,7 +308,9 @@ namespace Deucarian.TemplateGameSurvivors
             ThrowIfDisposed();
             _profile = new SurvivorsMetaProfileDocument();
             _state = BuildState(_profile);
-            return _persistence.DeleteAsync(new DocumentLocation(ProfileDocumentId, _slotId)).GetAwaiter().GetResult();
+            WriteResult deleteResult = _persistence.DeleteAsync(new DocumentLocation(ProfileDocumentId, _slotId)).GetAwaiter().GetResult();
+            WriteResult saveResult = Save();
+            return saveResult.Succeeded ? saveResult : deleteResult;
         }
 
         public ProgressionResult GrantRunRewards(SurvivorsRunRewardSummary summary)

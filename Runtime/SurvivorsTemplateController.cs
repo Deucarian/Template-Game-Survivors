@@ -34,7 +34,7 @@ namespace Deucarian.TemplateGameSurvivors
         private bool buildVisualsOnAwake = true;
 
         [SerializeField]
-        private SurvivorsPacingProfile pacingProfile = SurvivorsPacingProfile.Normal;
+        private SurvivorsPacingProfile pacingProfile = SurvivorsPacingProfile.HumanPlaytest;
 
         [SerializeField]
         private SurvivorsTemplateTuning tuning;
@@ -195,9 +195,13 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 PlayerForward => _playerObject == null ? Vector3.forward : _playerObject.transform.forward;
         public CombatCatalog CombatCatalog => _combatCatalog;
         public SurvivorsPacingProfile CurrentPacingProfile => CurrentTuning.PacingProfile;
+        public bool IsHumanPlaytestPacing => CurrentPacingProfile == SurvivorsPacingProfile.HumanPlaytest;
         public bool IsDebugFastPacing => CurrentPacingProfile == SurvivorsPacingProfile.DebugFast;
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateTuning(pacingProfile));
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
+        public float CurrentEnemySpawnIntervalSeconds => ResolveEnemySpawnIntervalSeconds();
+        public int CurrentEnemyMaximumAlive => ResolveEnemyMaximumAlive();
+        public float CurrentEnemySpeedMultiplier => _runFlow == null ? 1f : _runFlow.ResolveEnemySpeedMultiplier();
         public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
         public IReadOnlyList<SurvivorsRelicDefinition> CurrentRelicChoices => _currentRelicDraft == null ? EmptyRelicChoices : _currentRelicDraft.Choices;
         public float RewardSelectionRemainingSeconds => Mathf.Max(0f, _rewardSelectionTimer);
@@ -291,17 +295,20 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureHudStyles();
-            GUI.Box(new Rect(12, 12, 356, 264), string.Empty);
+            GUI.Box(new Rect(12, 12, 356, 330), string.Empty);
             GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
             DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
             DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
             DrawHudBar(new Rect(24, 98, 318, 18), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
             DrawHudBar(new Rect(24, 122, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
             GUI.Label(new Rect(24, 148, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {RunPhase} +{RunEscalationLevel}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 170, 318, 22), $"Enemies {ActiveEnemyCount}/{ResolveEnemyMaximumAlive()}   Kills {KilledCount}   Elite {ActiveEliteCount}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 170, 318, 22), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}   Elite {ActiveEliteCount}", _hudLabelStyle);
             GUI.Label(new Rect(24, 192, 318, 22), $"Miniboss {ActiveMinibossCount}   Boss {ActiveBossCount}   Shards {MetaBloodShards}", _hudLabelStyle);
             GUI.Label(new Rect(24, 214, 318, 22), $"Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
             GUI.Label(new Rect(24, 236, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(24, 258, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 280, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 302, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}", _hudSmallStyle);
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -330,6 +337,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void StartRun()
         {
+            Time.timeScale = 1f;
             ClearRun();
             SurvivorsTemplateTuning resolved = CurrentTuning;
             _combatCatalog = BasicSurvivorsGame.CreateCombatCatalog();
@@ -2344,6 +2352,11 @@ namespace Deucarian.TemplateGameSurvivors
         {
             int total = Mathf.Max(0, Mathf.FloorToInt(seconds));
             return (total / 60).ToString("00") + ":" + (total % 60).ToString("00");
+        }
+
+        private static string FormatRewardTimeout(float seconds)
+        {
+            return seconds > 0f ? seconds.ToString("0.#") + "s" : "Off";
         }
 
         private void HandleLevelUpInput()

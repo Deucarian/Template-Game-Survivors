@@ -11,7 +11,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         private int _fillTarget = 120;
         private int _stressTarget = 250;
         private float _spawnRadius = 10f;
-        private SurvivorsPacingProfile _pacingProfile = SurvivorsPacingProfile.DebugFast;
+        private SurvivorsPacingProfile _pacingProfile = SurvivorsPacingProfile.HumanPlaytest;
 
         [MenuItem("Tools/Deucarian/Templates/Survivors/Runtime Debugger", priority = 340)]
         public static void Open()
@@ -72,7 +72,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
             EditorGUILayout.Space(8f);
             _pacingProfile = (SurvivorsPacingProfile)EditorGUILayout.EnumPopup("Pacing Profile", _pacingProfile);
-            if (GUILayout.Button("Apply Pacing Profile And Restart"))
+            if (GUILayout.Button("Apply Pacing Profile And Restart Current Run"))
             {
                 controller.DebugApplyPacingProfile(_pacingProfile);
             }
@@ -82,7 +82,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 controller.TriggerMagnetRecall();
             }
 
-            if (GUILayout.Button("Reset Save / Meta Progression"))
+            if (GUILayout.Button("Explicitly Reset Save / Progress"))
             {
                 controller.DebugResetMetaProgression();
             }
@@ -90,7 +90,17 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
         private static void DrawSnapshot(SurvivorsTemplateController controller)
         {
-            EditorGUILayout.LabelField("Run", $"{controller.State}  {controller.RunTimeSeconds:0}s  Level {controller.Level}  {controller.CurrentPacingProfile}");
+            string rewardTimeout = controller.CurrentTuning.RewardSelectionTimeoutSeconds > 0f
+                ? controller.CurrentTuning.RewardSelectionTimeoutSeconds.ToString("0.#") + "s"
+                : "Off";
+            EditorGUILayout.LabelField("Pacing Profile", BasicSurvivorsGame.GetPacingProfileDisplayName(controller.CurrentPacingProfile));
+            EditorGUILayout.LabelField("Time Scale", Time.timeScale.ToString("0.##"));
+            EditorGUILayout.LabelField("Run Timer", $"{controller.State}  {controller.RunTimeSeconds:0}s  Level {controller.Level}");
+            EditorGUILayout.LabelField("Spawn Interval", controller.CurrentEnemySpawnIntervalSeconds.ToString("0.00") + "s");
+            EditorGUILayout.LabelField("Max Alive", controller.CurrentEnemyMaximumAlive.ToString());
+            EditorGUILayout.LabelField("Alive Count", controller.ActiveEnemyCount.ToString());
+            EditorGUILayout.LabelField("Enemy Speed Multiplier", controller.CurrentEnemySpeedMultiplier.ToString("0.##"));
+            EditorGUILayout.LabelField("Reward Timeout", rewardTimeout);
             EditorGUILayout.LabelField("Enemies", $"{controller.ActiveEnemyCount} alive, {controller.KilledCount} killed, {controller.ActiveEliteCount} elites");
             EditorGUILayout.LabelField("Build", $"Weapons {controller.ActiveWeaponCount}, Upgrades {controller.SelectedUpgradeCount}, Relics {controller.SelectedRelicCount}");
             EditorGUILayout.LabelField("Survivability", $"Health {controller.CurrentHealth:0}/{controller.MaxHealth:0}, Barrier {controller.BarrierValue:0}/{controller.BarrierCapacity:0}");
