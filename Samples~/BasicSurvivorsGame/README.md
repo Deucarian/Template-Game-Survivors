@@ -4,6 +4,8 @@ Small sample for the Deucarian Survivors template.
 
 Open `Scenes/BasicSurvivorsGame.unity` and enter Play Mode. The bootstrap object builds the arena, player, horde loop, pooled enemies, pickups, projectiles, HUD, draft UI, relic UI, meta profile service, victory, defeat, and restart flow at runtime.
 
+The runtime-built presentation loads curated Kenney CC0 sample assets from `Resources/Kenney` for player/enemy sprites, pickups, projectiles, UI accents, and feedback audio.
+
 - Move with WASD or arrow keys.
 - The default Arcane Initiate class starts with the basic arcane wand.
 - The unlockable Ember Vanguard class starts with a broader loadout, different starting stats, and access to advanced class-gated upgrades.

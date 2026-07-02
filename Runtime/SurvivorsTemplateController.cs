@@ -63,6 +63,9 @@ namespace Deucarian.TemplateGameSurvivors
         private AudioClip _levelUpClip;
         private AudioClip _bossClip;
         private AudioClip _dangerClip;
+        private Texture2D _hudButtonTexture;
+        private Texture2D _hudStarIcon;
+        private Texture2D _hudTrophyIcon;
         private GUIStyle _hudTitleStyle;
         private GUIStyle _hudLabelStyle;
         private GUIStyle _hudSmallStyle;
@@ -1033,11 +1036,12 @@ namespace Deucarian.TemplateGameSurvivors
             _playerObject.transform.localScale = new Vector3(0.85f, 1f, 0.85f);
             _playerRenderer = _playerObject.GetComponentInChildren<Renderer>();
             ApplyColor(_playerRenderer, new Color(0.78f, 0.91f, 1f));
+            AttachTopDownSprite(_playerObject, "Actors/player_survivor_stand", new Vector2(1.18f, 1.18f), 0.58f, Color.white, hideSourceRenderer: true);
 
-            _enemyPrefab = CreatePrimitivePrefab("Survivors Swarm Enemy Prefab", PrimitiveType.Capsule, new Color(0.88f, 0.22f, 0.32f), typeof(SurvivorsEnemyActor));
-            _experiencePickupPrefab = CreatePrimitivePrefab("Survivors XP Gem Prefab", PrimitiveType.Sphere, new Color(0.22f, 0.83f, 1f), typeof(SurvivorsPickupActor));
-            _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, new Color(1f, 0.86f, 0.18f), typeof(SurvivorsPickupActor));
-            _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, new Color(0.78f, 0.42f, 1f), typeof(SurvivorsProjectileActor));
+            _enemyPrefab = CreatePrimitivePrefab("Survivors Swarm Enemy Prefab", PrimitiveType.Capsule, new Color(0.88f, 0.22f, 0.32f), typeof(SurvivorsEnemyActor), null, Vector2.one);
+            _experiencePickupPrefab = CreatePrimitivePrefab("Survivors XP Gem Prefab", PrimitiveType.Sphere, new Color(0.22f, 0.83f, 1f), typeof(SurvivorsPickupActor), "Pickups/xp_gem_blue", new Vector2(0.72f, 0.72f));
+            _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, new Color(1f, 0.86f, 0.18f), typeof(SurvivorsPickupActor), "Pickups/magnet_green", new Vector2(0.76f, 0.76f));
+            _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, new Color(0.78f, 0.42f, 1f), typeof(SurvivorsProjectileActor), "Weapons/projectile_rocket", new Vector2(0.58f, 0.58f));
 
             _poseResolver = new SurvivorsSpawnPoseResolver(this);
             var spawnables = new[]
@@ -1061,13 +1065,18 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureCamera();
         }
 
-        private GameObject CreatePrimitivePrefab(string name, PrimitiveType primitive, Color color, Type actorType)
+        private GameObject CreatePrimitivePrefab(string name, PrimitiveType primitive, Color color, Type actorType, string texturePath, Vector2 textureSize)
         {
             GameObject prefab = GameObject.CreatePrimitive(primitive);
             prefab.name = name;
             prefab.transform.SetParent(_prefabRoot, false);
             prefab.transform.localScale = Vector3.one;
             ApplyColor(prefab.GetComponentInChildren<Renderer>(), color);
+            if (!string.IsNullOrWhiteSpace(texturePath))
+            {
+                AttachTopDownSprite(prefab, texturePath, textureSize, 0.52f, Color.white, hideSourceRenderer: true);
+            }
+
             prefab.AddComponent(actorType);
             if (actorType == typeof(SurvivorsProjectileActor))
             {
@@ -1086,6 +1095,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void BuildArenaVisuals()
         {
+            CreateTexturedPlane("Kenney Survivors Grass Field", "Arena/grass_tile", Vector3.down * 0.04f, new Vector2(24f, 24f), Color.white);
+            CreateTexturedPlane("Kenney Survivors Center Marker", "Arena/floor_marker", new Vector3(0f, 0.02f, 0f), new Vector2(4.8f, 4.8f), new Color(1f, 1f, 1f, 0.86f));
             CreateArenaPrimitive("Survivors Arena Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(17.5f, 0.035f, 17.5f), new Color(0.07f, 0.09f, 0.12f));
             CreateArenaPrimitive("Inner XP Magnet Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(6.4f, 0.04f, 6.4f), new Color(0.09f, 0.16f, 0.2f));
             CreateArenaPrimitive("Player Safe Readability Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(2.1f, 0.05f, 2.1f), new Color(0.12f, 0.19f, 0.28f));
@@ -1139,13 +1150,13 @@ namespace Deucarian.TemplateGameSurvivors
             _feedbackAudio.playOnAwake = false;
             _feedbackAudio.spatialBlend = 0f;
             _feedbackAudio.volume = 0.28f;
-            _spawnClip = CreateTone("survivors-spawn", 170f, 0.12f, 0.16f);
-            _fireClip = CreateTone("survivors-fire", 540f, 0.07f, 0.13f);
-            _killClip = CreateTone("survivors-kill", 760f, 0.1f, 0.18f);
-            _pickupClip = CreateTone("survivors-pickup", 1040f, 0.07f, 0.16f);
-            _levelUpClip = CreateTone("survivors-level-up", 880f, 0.2f, 0.2f);
-            _bossClip = CreateTone("survivors-boss", 92f, 0.28f, 0.24f);
-            _dangerClip = CreateTone("survivors-danger", 130f, 0.16f, 0.2f);
+            _spawnClip = LoadAudio("impactMetal_001") ?? CreateTone("survivors-spawn", 170f, 0.12f, 0.16f);
+            _fireClip = LoadAudio("laserRetro_000") ?? CreateTone("survivors-fire", 540f, 0.07f, 0.13f);
+            _killClip = LoadAudio("explosionCrunch_001") ?? CreateTone("survivors-kill", 760f, 0.1f, 0.18f);
+            _pickupClip = LoadAudio("select_002") ?? CreateTone("survivors-pickup", 1040f, 0.07f, 0.16f);
+            _levelUpClip = LoadAudio("confirmation_002") ?? CreateTone("survivors-level-up", 880f, 0.2f, 0.2f);
+            _bossClip = LoadAudio("explosionCrunch_001") ?? CreateTone("survivors-boss", 92f, 0.28f, 0.24f);
+            _dangerClip = LoadAudio("impactMetal_001") ?? CreateTone("survivors-danger", 130f, 0.16f, 0.2f);
         }
 
         private ParticleSystem CreateFeedbackPulse(string name, Color color, float startSize, float startSpeed, float lifetime)
@@ -1904,9 +1915,20 @@ namespace Deucarian.TemplateGameSurvivors
             float height = 84f + choiceCount * 48f;
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(rect, IsRelicChoiceOpen ? "Choose a Boss Relic" : "Level Up");
+            Texture2D icon = IsRelicChoiceOpen ? _hudTrophyIcon : _hudStarIcon;
+            if (icon != null)
+            {
+                GUI.DrawTexture(new Rect(rect.x + rect.width - 54f, rect.y + 10f, 32f, 32f), icon, ScaleMode.ScaleToFit, true);
+            }
+
             for (int i = 0; i < choiceCount; i++)
             {
                 Rect buttonRect = new Rect(rect.x + 24f, rect.y + 44f + i * 48f, width - 48f, 34f);
+                if (_hudButtonTexture != null)
+                {
+                    GUI.DrawTexture(buttonRect, _hudButtonTexture, ScaleMode.StretchToFill, true);
+                }
+
                 string label;
                 if (IsRelicChoiceOpen)
                 {
@@ -1933,6 +1955,9 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            _hudButtonTexture = LoadTexture("UI/button_rectangle_depth_gloss");
+            _hudStarIcon = LoadTexture("UI/icon_star");
+            _hudTrophyIcon = LoadTexture("UI/icon_trophy");
             _hudTitleStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 17,
@@ -2049,6 +2074,111 @@ namespace Deucarian.TemplateGameSurvivors
             renderer.sharedMaterial.color = color;
         }
 
+        internal void ApplyEnemyPresentation(SurvivorsEnemyActor enemy, SurvivorsEnemyProfile profile)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            string texturePath = "Actors/enemy_zombie_stand";
+            Vector2 size = new Vector2(1.0f, 1.0f);
+            if (profile.Role == SurvivorsEnemyRole.Miniboss)
+            {
+                texturePath = "Actors/enemy_soldier_stand";
+                size = new Vector2(1.18f, 1.18f);
+            }
+            else if (profile.Role == SurvivorsEnemyRole.Boss)
+            {
+                texturePath = "Actors/enemy_robot_stand";
+                size = new Vector2(1.45f, 1.45f);
+            }
+
+            AttachTopDownSprite(enemy.gameObject, texturePath, size, 0.58f, Color.white, hideSourceRenderer: true);
+        }
+
+        private void CreateTexturedPlane(string name, string texturePath, Vector3 position, Vector2 size, Color tint)
+        {
+            Texture2D texture = LoadTexture(texturePath);
+            if (texture == null || _worldRoot == null)
+            {
+                return;
+            }
+
+            GameObject plane = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            plane.name = name;
+            plane.transform.SetParent(_worldRoot, false);
+            plane.transform.localPosition = position;
+            plane.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            plane.transform.localScale = new Vector3(size.x, size.y, 1f);
+            Renderer renderer = plane.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                renderer.sharedMaterial = CreateTextureMaterial(texture, tint);
+            }
+
+            Collider collider = plane.GetComponent<Collider>();
+            if (collider != null)
+            {
+                ReleaseTemplateObject(collider);
+            }
+        }
+
+        private static bool AttachTopDownSprite(GameObject target, string texturePath, Vector2 size, float yOffset, Color tint, bool hideSourceRenderer)
+        {
+            Texture2D texture = LoadTexture(texturePath);
+            if (target == null || texture == null)
+            {
+                return false;
+            }
+
+            Transform existing = target.transform.Find("Kenney Sprite");
+            GameObject sprite = existing == null ? GameObject.CreatePrimitive(PrimitiveType.Quad) : existing.gameObject;
+            sprite.name = "Kenney Sprite";
+            sprite.transform.SetParent(target.transform, false);
+            sprite.transform.localPosition = Vector3.up * yOffset;
+            sprite.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            sprite.transform.localScale = new Vector3(size.x, size.y, 1f);
+            Renderer spriteRenderer = sprite.GetComponent<Renderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sharedMaterial = CreateTextureMaterial(texture, tint);
+            }
+
+            Collider spriteCollider = sprite.GetComponent<Collider>();
+            if (spriteCollider != null)
+            {
+                ReleaseTemplateObject(spriteCollider);
+            }
+
+            Renderer sourceRenderer = target.GetComponent<Renderer>();
+            if (hideSourceRenderer && sourceRenderer != null)
+            {
+                sourceRenderer.enabled = false;
+            }
+
+            return true;
+        }
+
+        private static Texture2D LoadTexture(string path)
+        {
+            return Resources.Load<Texture2D>("Kenney/Survivors/" + path);
+        }
+
+        private static AudioClip LoadAudio(string name)
+        {
+            return Resources.Load<AudioClip>("Kenney/Survivors/Audio/" + name);
+        }
+
+        private static Material CreateTextureMaterial(Texture2D texture, Color tint)
+        {
+            Shader shader = Shader.Find("Unlit/Transparent") ?? Shader.Find("Sprites/Default") ?? Shader.Find("Standard");
+            var material = new Material(shader);
+            material.mainTexture = texture;
+            material.color = tint;
+            return material;
+        }
+
         private static void ReleaseTemplateObject(UnityEngine.Object target)
         {
             UnityObjectUtility.DestroySafely(target);
@@ -2094,6 +2224,7 @@ namespace Deucarian.TemplateGameSurvivors
             _health = new HealthState(new CombatantId(id), maxHealth, maxHealth);
             transform.localScale = Vector3.one * (Radius * 2f);
             ApplyTint(profile.Tint);
+            _controller?.ApplyEnemyPresentation(this, profile);
         }
 
         public void Simulate(float deltaTime)
