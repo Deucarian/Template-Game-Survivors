@@ -260,22 +260,22 @@ namespace Deucarian.TemplateGameSurvivors
             int[] weights = new int[5];
             int candidateCount = 0;
             AddCandidate(SurvivorsEnemyRole.Swarm, 60, ref candidateCount, roles, weights, ref totalWeight);
-            if (elapsedTimeSeconds >= 35f)
+            if (elapsedTimeSeconds >= 20f)
             {
                 AddCandidate(SurvivorsEnemyRole.Runner, 18 + Math.Min(18, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 90f)
+            if (elapsedTimeSeconds >= 55f)
             {
                 AddCandidate(SurvivorsEnemyRole.Bruiser, 14 + Math.Min(16, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 150f)
+            if (elapsedTimeSeconds >= 95f)
             {
                 AddCandidate(SurvivorsEnemyRole.Spitter, 10 + Math.Min(18, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 300f)
+            if (elapsedTimeSeconds >= 160f)
             {
                 AddCandidate(SurvivorsEnemyRole.Elite, 4 + Math.Min(12, EscalationLevel), ref candidateCount, roles, weights, ref totalWeight);
             }

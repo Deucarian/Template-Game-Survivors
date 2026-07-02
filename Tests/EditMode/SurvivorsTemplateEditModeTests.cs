@@ -88,30 +88,30 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             var runtime = new SurvivorsRunFlowRuntime(flow);
 
             Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, tuning.PacingProfile);
-            Assert.That(tuning.EnemySpawnIntervalSeconds, Is.InRange(2.75f, 4f));
-            Assert.That(tuning.MinimumEnemySpawnIntervalSeconds, Is.GreaterThanOrEqualTo(1f));
-            Assert.That(tuning.EnemyMaximumAlive, Is.InRange(8, 12));
-            Assert.That(swarm.MoveSpeed, Is.InRange(0.8f, 1.2f));
+            Assert.That(tuning.EnemySpawnIntervalSeconds, Is.InRange(0.9f, 1.4f));
+            Assert.That(tuning.MinimumEnemySpawnIntervalSeconds, Is.GreaterThanOrEqualTo(0.3f));
+            Assert.That(tuning.EnemyMaximumAlive, Is.InRange(24, 40));
+            Assert.That(swarm.MoveSpeed, Is.InRange(1.1f, 1.6f));
             Assert.That(swarm.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
             Assert.That(runner.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
-            Assert.That(tuning.ProjectileSpeed, Is.LessThanOrEqualTo(7f));
-            Assert.That(tuning.PickupAttractRange, Is.LessThanOrEqualTo(2f));
+            Assert.That(tuning.ProjectileSpeed, Is.LessThanOrEqualTo(9f));
+            Assert.That(tuning.PickupAttractRange, Is.InRange(2f, 3f));
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
-            Assert.That(tuning.ExperienceRequiredBase, Is.InRange(12, 18));
-            Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(45f, 90f));
-            Assert.That(tuning.MinibossSpawnTimeSeconds, Is.InRange(360f, 480f));
-            Assert.That(tuning.BossSpawnTimeSeconds, Is.GreaterThanOrEqualTo(1200f));
-            Assert.That(tuning.SurvivalVictoryTimeSeconds, Is.GreaterThanOrEqualTo(1800f));
+            Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
+            Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
+            Assert.That(tuning.MinibossSpawnTimeSeconds, Is.InRange(150f, 240f));
+            Assert.That(tuning.BossSpawnTimeSeconds, Is.InRange(600f, 900f));
+            Assert.That(tuning.SurvivalVictoryTimeSeconds, Is.GreaterThanOrEqualTo(900f));
 
             runtime.Tick(30f);
             Assert.AreEqual(SurvivorsRunPhase.Opening, runtime.Phase);
             Assert.AreEqual(SurvivorsEnemyRole.Swarm, runtime.ResolveNextSwarmRole(30f, 0L));
 
             runtime.Tick(60f);
-            Assert.That(runtime.ResolveMaximumAlive(tuning.EnemyMaximumAlive), Is.InRange(14, 22));
+            Assert.That(runtime.ResolveMaximumAlive(tuning.EnemyMaximumAlive), Is.InRange(36, 48));
 
             runtime.Tick(240f);
-            Assert.That(runtime.ResolveMaximumAlive(tuning.EnemyMaximumAlive), Is.InRange(24, 32));
+            Assert.That(runtime.ResolveMaximumAlive(tuning.EnemyMaximumAlive), Is.InRange(64, 84));
         }
 
         [Test]

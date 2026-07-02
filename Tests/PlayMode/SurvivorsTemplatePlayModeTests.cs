@@ -63,8 +63,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsFalse(controller.IsDebugFastPacing);
             Assert.AreEqual(1f, Time.timeScale);
             Assert.That(controller.CurrentTuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
-            Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(2.75f, 4f));
-            Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(8, 12));
+            Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(0.9f, 1.4f));
+            Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(24, 40));
             Assert.AreEqual(1f, controller.CurrentEnemySpeedMultiplier);
 
             Object.Destroy(controller.gameObject);
@@ -97,8 +97,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
             Assert.AreEqual(1f, Time.timeScale);
-            Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(2.75f, 4f));
-            Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(8, 12));
+            Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(0.9f, 1.4f));
+            Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(24, 40));
 
             Object.Destroy(controller.gameObject);
         }
@@ -214,6 +214,52 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.That(Object.FindObjectsByType<TrailRenderer>(FindObjectsSortMode.None).Length, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator InfiniteArenaTilesFollowLongPlayerTravel()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.That(controller.InfiniteArenaTileCountForTest, Is.GreaterThanOrEqualTo(25));
+            Vector3 firstTileBefore = controller.FirstInfiniteArenaTilePositionForTest;
+
+            yield return SimulateFrames(controller, 240, Vector2.right);
+
+            Assert.That(controller.PlayerPosition.x, Is.GreaterThan(18f));
+            Assert.That(controller.ArenaPresentationCenterForTest.x, Is.EqualTo(controller.PlayerPosition.x).Within(0.05f));
+            Assert.That(Mathf.Abs(controller.FirstInfiniteArenaTilePositionForTest.x - firstTileBefore.x), Is.GreaterThan(0.5f));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator RapidKillsCreateStreakBonusDropsAndMagnet()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            yield return null;
+
+            for (int i = 0; i < 24; i++)
+            {
+                SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(7f + i * 0.08f, 0f, 0f), 1f);
+                Assert.NotNull(enemy);
+                enemy.ApplyDamage(100f, "test.streak");
+            }
+
+            Assert.AreEqual(24, controller.CurrentKillStreak);
+            Assert.AreEqual(24, controller.BestKillStreak);
+            Assert.That(controller.StreakBonusDropCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(controller.StreakMagnetDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(28));
+
+            controller.Simulate(4.5f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.CurrentKillStreak);
 
             Object.Destroy(controller.gameObject);
         }

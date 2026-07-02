@@ -22,6 +22,11 @@ namespace Deucarian.TemplateGameSurvivors
         private const string LevelUpPulseName = "Survivors Level Up Pulse";
         private const string BossPulseName = "Survivors Boss Cue Pulse";
         private const string FeedbackAudioName = "Survivors Feedback Audio";
+        private const float InfiniteArenaTileSize = 12f;
+        private const int InfiniteArenaGridRadius = 2;
+        private const float KillStreakWindowSeconds = 3.8f;
+        private const int KillStreakExperienceInterval = 8;
+        private const int KillStreakMagnetInterval = 24;
 
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
@@ -42,8 +47,11 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsEnemyActor> _enemies = new List<SurvivorsEnemyActor>(64);
         private readonly List<SurvivorsPickupActor> _pickups = new List<SurvivorsPickupActor>(128);
         private readonly List<SurvivorsProjectileActor> _projectiles = new List<SurvivorsProjectileActor>(64);
+        private readonly List<Transform> _arenaTiles = new List<Transform>(25);
         private Transform _worldRoot;
         private Transform _prefabRoot;
+        private Transform _arenaTileRoot;
+        private Transform _arenaFollowRoot;
         private GameObject _playerObject;
         private Renderer _playerRenderer;
         private Camera _camera;
@@ -92,7 +100,9 @@ namespace Deucarian.TemplateGameSurvivors
         private float _enemySpawnTimer;
         private float _playerInvulnerabilityTimer;
         private float _rewardSelectionTimer;
+        private float _killStreakTimer;
         private long _spawnSequence;
+        private int _killStreakCount;
         private bool _runStarted;
         private bool _ownsMetaProgressionService;
         private bool _metaProfileLoaded;
@@ -136,6 +146,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
+        public int BestKillStreak { get; private set; }
+        public int StreakBonusDropCount { get; private set; }
+        public int StreakMagnetDropCount { get; private set; }
+        public int CurrentKillStreak => _killStreakTimer > 0f ? _killStreakCount : 0;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
         public int BloodShardsEarnedThisRun { get; private set; }
@@ -183,6 +197,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActivePickupCount => _pickups.Count;
         public int ActiveProjectileCount => _projectiles.Count;
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
+        public int InfiniteArenaTileCountForTest => _arenaTiles.Count;
+        public Vector3 ArenaPresentationCenterForTest => _arenaFollowRoot == null ? Vector3.zero : _arenaFollowRoot.position;
+        public Vector3 FirstInfiniteArenaTilePositionForTest => _arenaTiles.Count == 0 || _arenaTiles[0] == null ? Vector3.zero : _arenaTiles[0].position;
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus;
@@ -277,6 +294,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void LateUpdate()
         {
+            UpdateArenaPresentation();
             if (_camera == null || _playerObject == null)
             {
                 return;
@@ -295,7 +313,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureHudStyles();
-            GUI.Box(new Rect(12, 12, 356, 330), string.Empty);
+            GUI.Box(new Rect(12, 12, 356, 352), string.Empty);
             GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
             DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
             DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
@@ -308,7 +326,8 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 236, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
             GUI.Label(new Rect(24, 258, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
             GUI.Label(new Rect(24, 280, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 302, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}", _hudSmallStyle);
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -387,6 +406,9 @@ namespace Deucarian.TemplateGameSurvivors
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
+            BestKillStreak = 0;
+            StreakBonusDropCount = 0;
+            StreakMagnetDropCount = 0;
             BloodShardsEarnedThisRun = 0;
             LegacyExperienceEarnedThisRun = 0;
             LastRunResult = null;
@@ -427,6 +449,8 @@ namespace Deucarian.TemplateGameSurvivors
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
             _playerInvulnerabilityTimer = 0f;
+            _killStreakTimer = 0f;
+            _killStreakCount = 0;
             _spawnSequence = 0;
             _currentDraft = null;
             _currentRelicDraft = null;
@@ -474,8 +498,10 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _playerInvulnerabilityTimer = Mathf.Max(0f, _playerInvulnerabilityTimer - dt);
+            TickKillStreak(dt);
             TickBarrier(dt);
             MovePlayer(movementInput, dt);
+            UpdateArenaPresentation();
             TickEnemySpawning(dt);
             TickWeapon(dt);
             TickEnemies(dt);
@@ -909,6 +935,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
+            RegisterKillStreak(position);
             PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip);
             if (role == SurvivorsEnemyRole.Miniboss)
             {
@@ -1282,29 +1309,94 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void BuildArenaVisuals()
         {
-            CreateArenaPrimitive("Survivors Arena Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(17.5f, 0.035f, 17.5f), new Color(0.07f, 0.09f, 0.12f));
-            CreateArenaPrimitive("Inner XP Magnet Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(6.4f, 0.04f, 6.4f), new Color(0.09f, 0.16f, 0.2f));
-            CreateArenaPrimitive("Player Safe Readability Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(2.1f, 0.05f, 2.1f), new Color(0.12f, 0.19f, 0.28f));
+            _arenaTiles.Clear();
 
-            CreateArenaPrimitive("North Spawn Warning", PrimitiveType.Cube, new Vector3(0f, 0.09f, 8.8f), new Vector3(4.4f, 0.08f, 0.28f), new Color(0.62f, 0.12f, 0.18f));
-            CreateArenaPrimitive("East Spawn Warning", PrimitiveType.Cube, new Vector3(8.8f, 0.09f, 0f), new Vector3(0.28f, 0.08f, 4.4f), new Color(0.62f, 0.12f, 0.18f));
-            CreateArenaPrimitive("South Spawn Warning", PrimitiveType.Cube, new Vector3(0f, 0.09f, -8.8f), new Vector3(4.4f, 0.08f, 0.28f), new Color(0.62f, 0.12f, 0.18f));
-            CreateArenaPrimitive("West Spawn Warning", PrimitiveType.Cube, new Vector3(-8.8f, 0.09f, 0f), new Vector3(0.28f, 0.08f, 4.4f), new Color(0.62f, 0.12f, 0.18f));
+            GameObject tileRoot = new GameObject("Survivors Infinite Arena Tiles");
+            tileRoot.transform.SetParent(_worldRoot, false);
+            _arenaTileRoot = tileRoot.transform;
+            BuildInfiniteArenaTiles();
+
+            GameObject followRoot = new GameObject("Survivors Moving Arena Readability");
+            followRoot.transform.SetParent(_worldRoot, false);
+            _arenaFollowRoot = followRoot.transform;
+
+            CreateArenaPrimitive("Survivors Local Arena Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(17.5f, 0.035f, 17.5f), new Color(0.07f, 0.09f, 0.12f), _arenaFollowRoot);
+            CreateArenaPrimitive("Inner XP Magnet Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(6.4f, 0.04f, 6.4f), new Color(0.09f, 0.16f, 0.2f), _arenaFollowRoot);
+            CreateArenaPrimitive("Player Safe Readability Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(2.1f, 0.05f, 2.1f), new Color(0.12f, 0.19f, 0.28f), _arenaFollowRoot);
+
+            float warningOffset = Mathf.Max(7.5f, CurrentTuning.EnemySpawnRadius * 0.68f);
+            CreateArenaPrimitive("North Spawn Warning", PrimitiveType.Cube, new Vector3(0f, 0.09f, warningOffset), new Vector3(4.4f, 0.08f, 0.28f), new Color(0.62f, 0.12f, 0.18f), _arenaFollowRoot);
+            CreateArenaPrimitive("East Spawn Warning", PrimitiveType.Cube, new Vector3(warningOffset, 0.09f, 0f), new Vector3(0.28f, 0.08f, 4.4f), new Color(0.62f, 0.12f, 0.18f), _arenaFollowRoot);
+            CreateArenaPrimitive("South Spawn Warning", PrimitiveType.Cube, new Vector3(0f, 0.09f, -warningOffset), new Vector3(4.4f, 0.08f, 0.28f), new Color(0.62f, 0.12f, 0.18f), _arenaFollowRoot);
+            CreateArenaPrimitive("West Spawn Warning", PrimitiveType.Cube, new Vector3(-warningOffset, 0.09f, 0f), new Vector3(0.28f, 0.08f, 4.4f), new Color(0.62f, 0.12f, 0.18f), _arenaFollowRoot);
 
             for (int i = 0; i < 12; i++)
             {
                 float angle = i * 30f * Mathf.Deg2Rad;
                 Vector3 position = new Vector3(Mathf.Cos(angle) * 5.4f, 0.12f, Mathf.Sin(angle) * 5.4f);
                 Vector3 scale = i % 2 == 0 ? new Vector3(0.9f, 0.18f, 0.32f) : new Vector3(0.32f, 0.18f, 0.9f);
-                CreateArenaPrimitive("Rune Lane Marker " + (i + 1).ToString(), PrimitiveType.Cube, position, scale, new Color(0.18f, 0.2f, 0.32f));
+                CreateArenaPrimitive("Rune Lane Marker " + (i + 1).ToString(), PrimitiveType.Cube, position, scale, new Color(0.18f, 0.2f, 0.32f), _arenaFollowRoot);
+            }
+
+            UpdateArenaPresentation();
+        }
+
+        private void BuildInfiniteArenaTiles()
+        {
+            for (int x = -InfiniteArenaGridRadius; x <= InfiniteArenaGridRadius; x++)
+            {
+                for (int z = -InfiniteArenaGridRadius; z <= InfiniteArenaGridRadius; z++)
+                {
+                    bool alternate = ((x + z) & 1) == 0;
+                    Color tileColor = alternate ? new Color(0.045f, 0.055f, 0.058f) : new Color(0.055f, 0.065f, 0.05f);
+                    GameObject tile = CreateArenaPrimitive(
+                        "Infinite Arena Tile " + x.ToString() + "," + z.ToString(),
+                        PrimitiveType.Cube,
+                        new Vector3(x * InfiniteArenaTileSize, -0.08f, z * InfiniteArenaTileSize),
+                        new Vector3(InfiniteArenaTileSize, 0.035f, InfiniteArenaTileSize),
+                        tileColor,
+                        _arenaTileRoot);
+                    _arenaTiles.Add(tile.transform);
+                }
+            }
+        }
+
+        private void RegisterKillStreak(Vector3 position)
+        {
+            _killStreakCount = _killStreakTimer > 0f ? _killStreakCount + 1 : 1;
+            _killStreakTimer = KillStreakWindowSeconds;
+            BestKillStreak = Mathf.Max(BestKillStreak, _killStreakCount);
+
+            if (_killStreakCount % KillStreakExperienceInterval == 0)
+            {
+                int amount = Mathf.Max(2, Mathf.CeilToInt(CurrentTuning.EnemyExperienceReward * (2f + _killStreakCount * 0.15f)));
+                Vector3 offset = new Vector3(Mathf.Sin(_killStreakCount) * 0.55f, 0f, Mathf.Cos(_killStreakCount) * 0.55f);
+                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, amount) != null)
+                {
+                    StreakBonusDropCount++;
+                }
+            }
+
+            if (_killStreakCount % KillStreakMagnetInterval == 0)
+            {
+                Vector3 offset = new Vector3(Mathf.Cos(_killStreakCount) * 0.75f, 0f, Mathf.Sin(_killStreakCount) * 0.75f);
+                if (SpawnPickup(SurvivorsPickupKind.Magnet, position + offset, 1) != null)
+                {
+                    StreakMagnetDropCount++;
+                }
             }
         }
 
         private GameObject CreateArenaPrimitive(string name, PrimitiveType primitive, Vector3 position, Vector3 scale, Color color)
         {
+            return CreateArenaPrimitive(name, primitive, position, scale, color, _worldRoot);
+        }
+
+        private GameObject CreateArenaPrimitive(string name, PrimitiveType primitive, Vector3 position, Vector3 scale, Color color, Transform parent)
+        {
             GameObject instance = GameObject.CreatePrimitive(primitive);
             instance.name = name;
-            instance.transform.SetParent(_worldRoot, false);
+            instance.transform.SetParent(parent == null ? _worldRoot : parent, false);
             instance.transform.localPosition = position;
             instance.transform.localScale = scale;
             ApplyColor(instance.GetComponentInChildren<Renderer>(), color);
@@ -1430,6 +1522,9 @@ namespace Deucarian.TemplateGameSurvivors
             _enemies.Clear();
             _pickups.Clear();
             _projectiles.Clear();
+            _arenaTiles.Clear();
+            _arenaTileRoot = null;
+            _arenaFollowRoot = null;
             if (_spawnService != null)
             {
                 _spawnService.Dispose();
@@ -1661,6 +1756,46 @@ namespace Deucarian.TemplateGameSurvivors
             if (delta.sqrMagnitude > 0.0001f)
             {
                 _playerObject.transform.forward = delta.normalized;
+            }
+        }
+
+        private void UpdateArenaPresentation()
+        {
+            if (_playerObject == null)
+            {
+                return;
+            }
+
+            Vector3 player = PlayerPosition;
+            Vector3 playerGround = new Vector3(player.x, 0f, player.z);
+            if (_arenaFollowRoot != null)
+            {
+                _arenaFollowRoot.position = playerGround;
+            }
+
+            if (_arenaTiles.Count == 0)
+            {
+                return;
+            }
+
+            float anchorX = Mathf.Floor(player.x / InfiniteArenaTileSize) * InfiniteArenaTileSize;
+            float anchorZ = Mathf.Floor(player.z / InfiniteArenaTileSize) * InfiniteArenaTileSize;
+            int tileIndex = 0;
+            for (int x = -InfiniteArenaGridRadius; x <= InfiniteArenaGridRadius; x++)
+            {
+                for (int z = -InfiniteArenaGridRadius; z <= InfiniteArenaGridRadius; z++)
+                {
+                    if (tileIndex >= _arenaTiles.Count)
+                    {
+                        return;
+                    }
+
+                    Transform tile = _arenaTiles[tileIndex++];
+                    if (tile != null)
+                    {
+                        tile.position = new Vector3(anchorX + x * InfiniteArenaTileSize, -0.08f, anchorZ + z * InfiniteArenaTileSize);
+                    }
+                }
             }
         }
 
@@ -2062,6 +2197,20 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return true;
+        }
+
+        private void TickKillStreak(float deltaTime)
+        {
+            if (_killStreakTimer <= 0f || _killStreakCount <= 0)
+            {
+                return;
+            }
+
+            _killStreakTimer = Mathf.Max(0f, _killStreakTimer - Mathf.Max(0f, deltaTime));
+            if (_killStreakTimer <= 0f)
+            {
+                _killStreakCount = 0;
+            }
         }
 
         private void TickBarrier(float deltaTime)
