@@ -672,6 +672,27 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator DraftChoiceCardsShowCurrentAndNextRank()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            controller.ForceLevelUpWithLockedChoiceForTest("upgrade.survivors.arcane-damage");
+            yield return null;
+
+            int choiceIndex = IndexOfDraftChoice(controller, "upgrade.survivors.arcane-damage");
+            Assert.That(choiceIndex, Is.GreaterThanOrEqualTo(0));
+            string label = controller.GetCurrentDraftChoiceLabelForTest(choiceIndex);
+            Assert.That(label, Does.Contain("Arcane Damage"));
+            Assert.That(label, Does.Contain("Weapon Upgrade"));
+            Assert.That(label, Does.Contain("Rank 1->2/8"));
+            Assert.That(label, Does.Contain("Affects Wand"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DraftBanishRemovesChoiceFromFutureDrafts()
         {
             SurvivorsTemplateController controller = CreateController();

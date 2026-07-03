@@ -33,7 +33,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Vital shards can drop from streaks or major foes while wounded and restore health on pickup; streak drops briefly announce themselves on the HUD, and every sustained streak milestone can start a Tempo Surge for temporary damage, cooldown, movement, and pickup-range pressure.
 - Blood shards can drop from longer streaks and add bonus run currency that is included in the end-of-run meta rewards.
 - Press `M` to trigger a debug magnet recall.
-- Pick a level-up or reward choice with the mouse or number keys; cards show rarity, category, affected build piece, rank, and description.
+- Pick a level-up or reward choice with the mouse or number keys; cards show rarity, category, affected build piece, current-to-next rank, and description.
 - Press `R` during an upgrade draft to reroll while charges remain.
 - Press `S` during an upgrade draft to skip for a small blood shard bonus.
 - Press `Shift+1`, `Shift+2`, or `Shift+3` during an upgrade draft to banish a choice while charges remain.

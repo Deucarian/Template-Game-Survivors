@@ -69,7 +69,7 @@ Default play uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` is re
 - Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
 - Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.
 - Run tuning, pacing profiles, horde pack sizes, timed horde-rush events and clear caches, evolution-surge damage/radius, major-threat support call-in thresholds/counts, kill-streak reward/surge pacing, pickup heal/currency amounts, endless major-threat intervals, reward timeout, draft rarity weights, draft rerolls, draft banishes, and skip rewards: start with `CreateDefaultTuning` and `CreateTuning(SurvivorsPacingProfile)` before changing controller internals.
-- Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP or blood shards, force level-ups, trigger or clear horde rushes, force elite/miniboss/boss spawns, spawn bursts, fill the arena, switch pacing profiles with a restart, apply stress profiles, inspect live build ranks/evolutions/drafts, trigger magnet recall, or reset meta progression.
+- Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP or blood shards, force level-ups, trigger or clear horde rushes, force elite/miniboss/boss spawns, spawn bursts, fill the arena, switch pacing profiles with a restart, apply stress profiles, inspect live build ranks/evolutions/drafts with current-to-next rank labels, trigger magnet recall, or reset meta progression.
 
 ## Asset Flip Shape
 

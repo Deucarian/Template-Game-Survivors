@@ -1254,6 +1254,17 @@ namespace Deucarian.TemplateGameSurvivors
                 : BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(upgradeId));
         }
 
+        public string GetCurrentDraftChoiceLabelForTest(int index)
+        {
+            EnsureRunStartedForTest();
+            if (_currentDraft == null || index < 0 || index >= _currentDraft.Choices.Count)
+            {
+                return string.Empty;
+            }
+
+            return FormatUpgradeChoiceLabel(index, _currentDraft.Choices[index]);
+        }
+
         public int GetRunUpgradeRankForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
@@ -5616,7 +5627,7 @@ namespace Deucarian.TemplateGameSurvivors
                 ? metadata.Description
                 : name;
             string affected = metadata == null ? "Build" : ShortWeaponName(metadata.AffectedContentId);
-            return $"{prefix}{name} [{category}/{definition.Rarity}] rank {currentRank}->{nextRank}/{definition.MaxRank} - {affected}: {description}";
+            return $"{prefix}{name} [{FormatUpgradeCategoryLabel(category)}/{definition.Rarity}] rank {currentRank}->{nextRank}/{definition.MaxRank} - {affected}: {description}";
         }
 
         private string FormatUpgradeChoiceLabel(int index, RunUpgradeDefinition choice)
@@ -5634,7 +5645,28 @@ namespace Deucarian.TemplateGameSurvivors
                 : name;
             int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(choice.Id);
             int nextRank = Mathf.Min(choice.MaxRank, currentRank + 1);
-            return $"{index + 1}. {choice.Rarity} {category}: {name}\n{affected}  Rank {nextRank}/{choice.MaxRank} - {description}";
+            return $"{index + 1}. {choice.Rarity} {FormatUpgradeCategoryLabel(category)}: {name}\n{affected}  Rank {currentRank}->{nextRank}/{choice.MaxRank} - {description}";
+        }
+
+        private static string FormatUpgradeCategoryLabel(SurvivorsRunUpgradeCategory category)
+        {
+            switch (category)
+            {
+                case SurvivorsRunUpgradeCategory.Weapon:
+                    return "Weapon";
+                case SurvivorsRunUpgradeCategory.WeaponUpgrade:
+                    return "Weapon Upgrade";
+                case SurvivorsRunUpgradeCategory.Passive:
+                    return "Passive";
+                case SurvivorsRunUpgradeCategory.PassiveUpgrade:
+                    return "Passive Upgrade";
+                case SurvivorsRunUpgradeCategory.Mutation:
+                    return "Mutation";
+                case SurvivorsRunUpgradeCategory.Evolution:
+                    return "Evolution";
+                default:
+                    return category.ToString();
+            }
         }
 
         private string FormatRelicChoiceLabel(int index, SurvivorsRelicDefinition relic)

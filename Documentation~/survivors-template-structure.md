@@ -19,6 +19,7 @@
 - `SurvivorsSpawnPoseResolver`
 - Human Playtest, Normal, Debug Fast, and Showcase pacing profile selection
 - timed reward draft behavior for level-up and boss relic choices
+- current-to-next rank labels for live draft cards and debug draft inspection
 - empty level-up draft fallback that grants the skip reward and resumes play
 - victory/defeat summary lines shared by tests and the IMGUI result panels
 - weapon-evolution surge feedback and nearby non-major enemy damage
