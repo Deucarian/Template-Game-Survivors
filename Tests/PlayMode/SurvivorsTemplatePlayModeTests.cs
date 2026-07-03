@@ -506,6 +506,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.HordeRushMaxEnemyCount = 10;
             controller.CurrentTuning.HordeRushExtraAliveAllowance = 12;
             controller.CurrentTuning.HordeRushSpawnRadius = 5.5f;
+            controller.CurrentTuning.HordeRushClearExperienceGemCount = 4;
+            controller.CurrentTuning.HordeRushClearMagnetEveryRush = 1;
+            controller.CurrentTuning.HordeRushClearBloodShardEveryRush = 1;
             controller.StartRun();
 
             Assert.AreEqual(0, controller.HordeRushSpawnCount);
@@ -527,10 +530,24 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.HordeRushSpawnCount);
             Assert.AreEqual(6, controller.HordeRushEnemySpawnCount);
             Assert.AreEqual(activeBeforeRush + 6, controller.ActiveEnemyCount);
+            Assert.AreEqual(6, controller.ActiveHordeRushEnemyCount);
             Assert.That(controller.ActiveRunnerCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.LastHordeRushFeedbackLabel, Does.Contain("Horde Rush"));
             Assert.That(controller.LastStreakRewardFeedbackLabel, Does.Contain("Horde Rush"));
             Assert.That(controller.NextHordeRushTimeSecondsForTest, Is.GreaterThan(controller.RunTimeSeconds));
+
+            int pickupCountBeforeClear = controller.ActivePickupCount;
+            Assert.AreEqual(6, controller.KillActiveHordeRushEnemiesForTest());
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveHordeRushEnemyCount);
+            Assert.AreEqual(activeBeforeRush, controller.ActiveEnemyCount);
+            Assert.AreEqual(1, controller.HordeRushClearRewardCount);
+            Assert.AreEqual(4, controller.HordeRushClearExperienceGemDropCount);
+            Assert.AreEqual(2, controller.HordeRushClearSpecialDropCount);
+            Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(pickupCountBeforeClear + 12));
+            Assert.That(controller.LastHordeRushClearFeedbackLabel, Does.Contain("Cleared"));
+            Assert.That(controller.LastHordeRushFeedbackLabel, Does.Contain("Cleared"));
 
             Object.Destroy(controller.gameObject);
         }

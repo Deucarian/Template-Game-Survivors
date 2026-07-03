@@ -20,7 +20,7 @@ The sample defaults to `SurvivorsPacingProfile.HumanPlaytest`.
 
 Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `1.15` seconds, an opening maximum of `34` alive enemies, basic enemy speed of `1.35` versus player speed of `5.4`, projectile speed of `8.5`, pickup attract range of `2.5`, center-screen horde-rush and major-threat warnings, and no reward-choice auto-pick timeout.
 
-Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, horde-rush rings begin before the first elite, the first elite arrives around `180` seconds, the dread elite arrives around `300` seconds, and the miniboss waits until `420` seconds.
+Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, horde-rush rings begin before the first elite and pay out when cleared, the first elite arrives around `180` seconds, the dread elite arrives around `300` seconds, and the miniboss waits until `420` seconds.
 
 ## What To Check
 
@@ -52,7 +52,7 @@ After 5 minutes:
 - Spitters should have joined the enemy mix, and their ranged hits should show quick hostile shot cues.
 - The first elite should have arrived around 3 minutes and the dread elite should be arriving around 5 minutes; killing either one should open an elite reward draft and scatter a visible XP/special-pickup reward cache.
 - Each scheduled elite should show a short incoming warning before it appears.
-- At least one horde rush should have warned, spawned a mixed enemy ring around the player, and briefly announced the rush on the HUD.
+- At least one horde rush should have warned, spawned a mixed enemy ring around the player, briefly announced the rush on the HUD, and dropped a bonus cache after the tracked rush enemies were cleared.
 - The game should feel busier than the first minute without becoming immediate visual noise.
 
 After 7 minutes:

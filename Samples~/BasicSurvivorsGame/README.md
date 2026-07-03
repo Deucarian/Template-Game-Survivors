@@ -17,14 +17,14 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Status and sustain upgrades can add poison, bleed, execute, lifesteal, barrier capacity, barrier recovery, and barrier-on-damage loops.
 - Enemies escalate from basic swarm pressure into fast runners, bruisers, ranged spitters, splitters that burst into smaller enemies, Blood Warden and Dread Lantern elite variants, minibosses, and a final boss.
 - Payload upgrades can add extra payloads, bigger explosions, wider trigger radii, and satellite hazard fields.
-- The run escalates over a 30-minute arc, adds timed horde-rush rings between steady spawn waves, adds a first elite around 3 minutes and a dread elite around 5 minutes, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
+- The run escalates over a 30-minute arc, adds timed horde-rush rings between steady spawn waves, rewards clearing each ring with a small cache, adds a first elite around 3 minutes and a dread elite around 5 minutes, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
 - Long movement through the endless arena drops small roaming XP caches, and every few caches can add a magnet recall pickup so repositioning has a reward beat.
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary, then drop visible reward caches so the kill moment pays out in the arena too.
 - Elite and miniboss defeat open stronger upgrade reward drafts.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
-- After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes, and recurring elite, miniboss, and boss reward threats.
+- After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes with clear caches, and recurring elite, miniboss, and boss reward threats.
 - Defeating the final boss unlocks the Ember Vanguard sample class.
 - Victory or defeat persists the run summary to a local meta profile.
 - The sample includes seven persistent meta upgrades for later-run damage, max health, pickup range, XP gain, and extra rerolls.
@@ -46,7 +46,7 @@ First run target:
 - Move through the opening horde and let the wand auto-fire.
 - Keep moving across the arena long enough to see roaming XP caches appear.
 - Collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
-- Survive a horde-rush warning and verify the mixed enemy ring arrives around the player.
+- Survive a horde-rush warning, clear the mixed enemy ring, and collect its bonus cache.
 - Pick Star Beam when it appears, rank Star Focus five times, branch into Prismatic Beam or Star Pulse, and take Twin Charm to build toward Tempest Prism side beams; or pick Gravity Grenade, rank Extra Payload and Bigger Booms, then take Giant Rune to build toward Gravefield Engine.
 - For a default-class evolution, rank Arcane Damage five times and take Arcane Thesis to build Arc Bolt toward Arcane Storm, rank Frost Fan five times and take Frost Needlework, rank Orbiting Focus five times and take Blood Ring Canticle, or rank Nova Echo five times and take Cinder Script.
 - After unlocking Ember Vanguard, rank Moonlit Edge five times and take Moon Oath to build Moon Slash toward Eclipse Waltz.

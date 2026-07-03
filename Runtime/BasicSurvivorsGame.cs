@@ -73,6 +73,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int HordeRushMaxEnemyCount = 28;
         public int HordeRushExtraAliveAllowance = 16;
         public float HordeRushSpawnRadius = 8.5f;
+        public int HordeRushClearExperienceGemCount = 4;
+        public float HordeRushClearExperienceMultiplier = 2.2f;
+        public int HordeRushClearMagnetEveryRush = 2;
+        public int HordeRushClearBloodShardEveryRush = 3;
         public float FirstEliteSpawnTimeSeconds = 180f;
         public float FirstDreadEliteSpawnTimeSeconds = 300f;
         public float MinibossSpawnTimeSeconds = 420f;

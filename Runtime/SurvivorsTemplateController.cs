@@ -97,6 +97,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
         private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
+        private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -249,7 +250,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int HordeRushSpawnCount { get; private set; }
         public int HordeRushEnemySpawnCount { get; private set; }
         public int HordeRushWarningCount { get; private set; }
+        public int HordeRushClearRewardCount { get; private set; }
+        public int HordeRushClearExperienceGemDropCount { get; private set; }
+        public int HordeRushClearSpecialDropCount { get; private set; }
         public string LastHordeRushFeedbackLabel { get; private set; } = string.Empty;
+        public string LastHordeRushClearFeedbackLabel { get; private set; } = string.Empty;
         public int DraftRerollCount { get; private set; }
         public int DraftBanishCount { get; private set; }
         public int DraftSkipCount { get; private set; }
@@ -358,6 +363,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveMinibossCount => CountEnemiesByRole(SurvivorsEnemyRole.Miniboss);
         public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
         public int ActivePickupCount => _pickups.Count;
+        public int ActiveHordeRushEnemyCount => _activeHordeRushEnemies.Count;
         public int ActiveProjectileCount => _projectiles.Count;
         public int ActiveDamagePopupCount => _damagePopups.Count;
         public int ActiveEnemyDeathEffectCount => _worldFeedbackEffects.Count;
@@ -652,7 +658,11 @@ namespace Deucarian.TemplateGameSurvivors
             HordeRushSpawnCount = 0;
             HordeRushEnemySpawnCount = 0;
             HordeRushWarningCount = 0;
+            HordeRushClearRewardCount = 0;
+            HordeRushClearExperienceGemDropCount = 0;
+            HordeRushClearSpecialDropCount = 0;
             LastHordeRushFeedbackLabel = string.Empty;
+            LastHordeRushClearFeedbackLabel = string.Empty;
             DraftRerollCount = 0;
             DraftBanishCount = 0;
             DraftSkipCount = 0;
@@ -907,6 +917,31 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return enemy;
+        }
+
+        public int KillActiveHordeRushEnemiesForTest()
+        {
+            EnsureRunStartedForTest();
+            if (_activeHordeRushEnemies.Count == 0)
+            {
+                return 0;
+            }
+
+            var enemies = new List<SurvivorsEnemyActor>(_activeHordeRushEnemies);
+            int killed = 0;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                enemy.ApplyDamage(10000f, "test.horde-rush-clear");
+                killed++;
+            }
+
+            return killed;
         }
 
         public SurvivorsPickupActor SpawnExperienceForTest(Vector3 position, int amount)
@@ -1565,6 +1600,7 @@ namespace Deucarian.TemplateGameSurvivors
             int xp = Mathf.Max(1, enemy.ExperienceReward);
             float radius = enemy.Radius;
             _enemies.Remove(enemy);
+            bool clearedHordeRushEnemy = _activeHordeRushEnemies.Remove(enemy) && _activeHordeRushEnemies.Count == 0;
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
                 _spawnService.Despawn(enemy.InstanceId, DespawnReason.Killed);
@@ -1609,6 +1645,11 @@ namespace Deucarian.TemplateGameSurvivors
                     EnterVictory();
                 }
             }
+
+            if (clearedHordeRushEnemy)
+            {
+                SpawnHordeRushClearReward(position);
+            }
         }
 
         internal void ReleaseEnemy(SurvivorsEnemyActor enemy, DespawnReason reason)
@@ -1619,6 +1660,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _enemies.Remove(enemy);
+            _activeHordeRushEnemies.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
                 _spawnService.Despawn(enemy.InstanceId, reason);
@@ -2802,6 +2844,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             _runFlow = null;
             _enemies.Clear();
+            _activeHordeRushEnemies.Clear();
             _pickups.Clear();
             _projectiles.Clear();
             while (_worldFeedbackEffects.Count > 0)
@@ -4069,13 +4112,76 @@ namespace Deucarian.TemplateGameSurvivors
                 float laneRadius = radius + ((i & 1) == 0 ? 0f : 1.35f);
                 Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * laneRadius;
                 SurvivorsEnemyRole role = ResolveHordeRushRole(i);
-                if (SpawnEnemy(PlayerPosition + offset, explicitPosition: true, role) != null)
+                SurvivorsEnemyActor enemy = SpawnEnemy(PlayerPosition + offset, explicitPosition: true, role);
+                if (enemy != null)
                 {
+                    _activeHordeRushEnemies.Add(enemy);
                     spawned++;
                 }
             }
 
             return spawned;
+        }
+
+        private void SpawnHordeRushClearReward(Vector3 position)
+        {
+            int gemCount = Mathf.Max(1, CurrentTuning.HordeRushClearExperienceGemCount);
+            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(
+                CurrentTuning.EnemyExperienceReward *
+                Mathf.Max(0.1f, CurrentTuning.HordeRushClearExperienceMultiplier) *
+                (1f + RunEscalationLevel * 0.08f)));
+            float radius = 0.85f + Mathf.Min(1.1f, gemCount * 0.08f);
+            int spawnedExperience = 0;
+            for (int i = 0; i < gemCount; i++)
+            {
+                float angle = ((i + 0.1f) / gemCount) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
+                {
+                    spawnedExperience += xpPerGem;
+                    HordeRushClearExperienceGemDropCount++;
+                }
+            }
+
+            int specialDropCount = 0;
+            int nextClearNumber = HordeRushClearRewardCount + 1;
+            if (ShouldDropHordeRushSpecial(nextClearNumber, CurrentTuning.HordeRushClearMagnetEveryRush))
+            {
+                Vector3 magnetPosition = position + new Vector3(radius * 0.7f, 0f, -radius * 0.35f);
+                if (SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1) != null)
+                {
+                    specialDropCount++;
+                }
+            }
+
+            if (ShouldDropHordeRushSpecial(nextClearNumber, CurrentTuning.HordeRushClearBloodShardEveryRush))
+            {
+                int shardAmount = Mathf.Max(1, CurrentTuning.BloodShardPickupAmount);
+                Vector3 shardPosition = position + new Vector3(-radius * 0.55f, 0f, radius * 0.48f);
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount) != null)
+                {
+                    specialDropCount++;
+                }
+            }
+
+            if (spawnedExperience <= 0 && specialDropCount <= 0)
+            {
+                return;
+            }
+
+            HordeRushClearRewardCount++;
+            HordeRushClearSpecialDropCount += specialDropCount;
+            string specialLabel = specialDropCount > 0 ? $" + {specialDropCount} special" : string.Empty;
+            string label = $"Horde Rush Cleared: +{spawnedExperience} XP{specialLabel}";
+            LastHordeRushClearFeedbackLabel = label;
+            LastHordeRushFeedbackLabel = label;
+            RecordStreakRewardFeedback(label, new Color(1f, 0.74f, 0.24f));
+            PlayFeedback(_levelUpPulse, position, 24, _pickupClip);
+        }
+
+        private static bool ShouldDropHordeRushSpecial(int clearNumber, int cadence)
+        {
+            return cadence > 0 && clearNumber > 0 && clearNumber % cadence == 0;
         }
 
         private int ResolveHordeRushEnemyCount()
