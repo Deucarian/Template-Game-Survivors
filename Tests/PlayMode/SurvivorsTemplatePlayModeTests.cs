@@ -1570,6 +1570,14 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(4));
             Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(1, controller.MajorRewardDropFeedbackCount);
+            Assert.AreEqual(1, controller.ActiveMajorRewardDropFeedbackCount);
+            Assert.That(controller.LastMajorRewardDropFeedbackLabel, Does.Contain("Miniboss"));
+
+            controller.Simulate(1.4f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveMajorRewardDropFeedbackCount);
 
             Object.Destroy(controller.gameObject);
         }
@@ -1594,6 +1602,14 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
             Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3));
             Assert.That(controller.LastRewardCardPresentationLabel, Does.Contain("Elite Reward"));
+            Assert.AreEqual(1, controller.MajorRewardDropFeedbackCount);
+            Assert.AreEqual(1, controller.ActiveMajorRewardDropFeedbackCount);
+            Assert.That(controller.LastMajorRewardDropFeedbackLabel, Does.Contain("Elite"));
+
+            controller.Simulate(1.4f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveMajorRewardDropFeedbackCount);
             Assert.IsTrue(controller.SkipCurrentDraft());
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Elite Reward"));
@@ -1624,6 +1640,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.EliteRewardGrantCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.EliteUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.AreEqual(1, controller.MajorRewardDropFeedbackCount);
+            Assert.That(controller.LastMajorRewardDropFeedbackLabel, Does.Contain("Dread Elite"));
 
             Object.Destroy(controller.gameObject);
         }
@@ -1700,6 +1718,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
             Assert.IsFalse(controller.IsVictory);
             Assert.That(controller.BossUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(1, controller.MajorRewardDropFeedbackCount);
+            Assert.AreEqual(1, controller.ActiveMajorRewardDropFeedbackCount);
+            Assert.That(controller.LastMajorRewardDropFeedbackLabel, Does.Contain("Boss"));
             int evolutionChoiceIndex = IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId);
             Assert.That(evolutionChoiceIndex, Is.GreaterThanOrEqualTo(0));
 
@@ -1735,6 +1756,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
             Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
             Assert.That(controller.BossUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(1, controller.MajorRewardDropFeedbackCount);
+            Assert.That(controller.LastMajorRewardDropFeedbackLabel, Does.Contain("Boss"));
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
             Assert.AreEqual(-1, IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)

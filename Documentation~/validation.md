@@ -50,6 +50,7 @@ Phase 2P adds validation for:
 - clear validation failures for invalid boss/miniboss role, timing, health, move speed, radius, contact interval, contact damage, XP, and duplicate enemy IDs
 - timed miniboss and boss spawn smoke
 - miniboss death and XP drop smoke
+- major reward drop feedback for elite, miniboss, dread elite, and boss kills
 - boss death and victory trigger smoke
 - survival-duration victory smoke
 - existing defeat/restart flow

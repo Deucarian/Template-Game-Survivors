@@ -39,6 +39,8 @@ namespace Deucarian.TemplateGameSurvivors
         private const float EnemyHitFlashSeconds = 0.13f;
         private const float EnemyDeathEffectLifetimeSeconds = 0.42f;
         private const int EnemyDeathEffectLimit = 56;
+        private const float MajorRewardDropLifetimeSeconds = 1.25f;
+        private const int MajorRewardDropEffectLimit = 8;
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
         private const int EndlessEnemyAliveBonus = 24;
 
@@ -73,6 +75,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<Transform> _arenaTiles = new List<Transform>(25);
         private readonly List<SurvivorsDamagePopup> _damagePopups = new List<SurvivorsDamagePopup>(DamagePopupLimit);
         private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
+        private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -202,6 +205,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int PlayerDamageFeedbackCount { get; private set; }
         public int EnemyHitFlashFeedbackCount { get; private set; }
         public int EnemyDeathEffectCount { get; private set; }
+        public int MajorRewardDropFeedbackCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int MajorThreatWarningCount { get; private set; }
         public int ExperiencePickupFeedbackCount { get; private set; }
@@ -211,6 +215,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int RewardSelectionFeedbackCount { get; private set; }
         public string LastRewardCardPresentationLabel { get; private set; } = string.Empty;
         public string LastRewardSelectionFeedbackLabel { get; private set; } = string.Empty;
+        public string LastMajorRewardDropFeedbackLabel { get; private set; } = string.Empty;
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -274,6 +279,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveProjectileCount => _projectiles.Count;
         public int ActiveDamagePopupCount => _damagePopups.Count;
         public int ActiveEnemyDeathEffectCount => _worldFeedbackEffects.Count;
+        public int ActiveMajorRewardDropFeedbackCount => _rewardDropFeedbackEffects.Count;
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
         public int ActivePassiveCount => _ownedPassiveUpgradeIds.Count;
         public int EvolvedWeaponCount => _ownedEvolutionUpgradeIds.Count;
@@ -366,6 +372,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 TickDamagePopups(Time.deltaTime);
                 TickWorldFeedbackEffects(Time.deltaTime);
+                TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
                 HandleLevelUpInput();
@@ -376,6 +383,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 TickDamagePopups(Time.deltaTime);
                 TickWorldFeedbackEffects(Time.deltaTime);
+                TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
                 {
@@ -536,6 +544,7 @@ namespace Deucarian.TemplateGameSurvivors
             PlayerDamageFeedbackCount = 0;
             EnemyHitFlashFeedbackCount = 0;
             EnemyDeathEffectCount = 0;
+            MajorRewardDropFeedbackCount = 0;
             MajorThreatWarningCount = 0;
             ExperiencePickupFeedbackCount = 0;
             PickupAttractionFeedbackCount = 0;
@@ -544,6 +553,7 @@ namespace Deucarian.TemplateGameSurvivors
             RewardSelectionFeedbackCount = 0;
             LastRewardCardPresentationLabel = string.Empty;
             LastRewardSelectionFeedbackLabel = string.Empty;
+            LastMajorRewardDropFeedbackLabel = string.Empty;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -657,6 +667,7 @@ namespace Deucarian.TemplateGameSurvivors
             float dt = Mathf.Max(0f, deltaTime);
             TickDamagePopups(dt);
             TickWorldFeedbackEffects(dt);
+            TickMajorRewardDropFeedbackEffects(dt);
             TickRewardFeedback(dt);
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -1392,6 +1403,11 @@ namespace Deucarian.TemplateGameSurvivors
             SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
             RegisterKillStreak(position);
             RecordEnemyDeathEffect(position, role, radius);
+            if (IsMajorRewardRole(role))
+            {
+                RecordMajorRewardDropFeedback(position, role, radius);
+            }
+
             PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip);
             if (role == SurvivorsEnemyRole.Splitter)
             {
@@ -1739,6 +1755,11 @@ namespace Deucarian.TemplateGameSurvivors
             return role == SurvivorsEnemyRole.Elite || role == SurvivorsEnemyRole.DreadElite;
         }
 
+        private static bool IsMajorRewardRole(SurvivorsEnemyRole role)
+        {
+            return IsEliteRole(role) || role == SurvivorsEnemyRole.Miniboss || role == SurvivorsEnemyRole.Boss;
+        }
+
         private static SurvivorsEnemyRole ResolveDebugMajorEnemyRole(SurvivorsEnemyRole role)
         {
             if (IsEliteRole(role) || role == SurvivorsEnemyRole.Miniboss || role == SurvivorsEnemyRole.Boss)
@@ -2084,6 +2105,129 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void RecordMajorRewardDropFeedback(Vector3 position, SurvivorsEnemyRole role, float radius)
+        {
+            if (_feedbackRoot == null)
+            {
+                return;
+            }
+
+            while (_rewardDropFeedbackEffects.Count >= MajorRewardDropEffectLimit)
+            {
+                ReleaseMajorRewardDropFeedbackEffect(0);
+            }
+
+            string label = ResolveMajorRewardDropLabel(role);
+            Color color = ResolveMajorRewardDropColor(role);
+            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            instance.name = "Survivors " + label;
+            instance.transform.SetParent(_feedbackRoot, false);
+            Vector3 basePosition = position + Vector3.up * Mathf.Max(0.56f, radius * 1.1f);
+            instance.transform.position = basePosition;
+            instance.transform.rotation = Quaternion.Euler(12f, 45f, 18f);
+            float size = role == SurvivorsEnemyRole.Boss
+                ? Mathf.Max(0.9f, radius * 0.95f)
+                : Mathf.Max(0.56f, radius * 0.82f);
+            Vector3 baseScale = new Vector3(size, size, size);
+            instance.transform.localScale = baseScale;
+
+            Collider collider = instance.GetComponent<Collider>();
+            if (collider != null)
+            {
+                ReleaseTemplateObject(collider);
+            }
+
+            Renderer renderer = instance.GetComponentInChildren<Renderer>();
+            Material material = ApplyColor(renderer, color);
+            _rewardDropFeedbackEffects.Add(new SurvivorsRewardDropFeedbackEffect(instance, material, color, basePosition, baseScale));
+            MajorRewardDropFeedbackCount++;
+            LastMajorRewardDropFeedbackLabel = label;
+        }
+
+        private void TickMajorRewardDropFeedbackEffects(float deltaTime)
+        {
+            if (_rewardDropFeedbackEffects.Count == 0)
+            {
+                return;
+            }
+
+            float dt = Mathf.Max(0f, deltaTime);
+            for (int i = _rewardDropFeedbackEffects.Count - 1; i >= 0; i--)
+            {
+                SurvivorsRewardDropFeedbackEffect effect = _rewardDropFeedbackEffects[i];
+                effect.ElapsedSeconds += dt;
+                if (effect.Instance == null || effect.ElapsedSeconds >= MajorRewardDropLifetimeSeconds)
+                {
+                    ReleaseMajorRewardDropFeedbackEffect(i);
+                    continue;
+                }
+
+                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / MajorRewardDropLifetimeSeconds);
+                float pulse = Mathf.Sin(normalizedAge * Mathf.PI);
+                effect.Instance.transform.position = effect.BasePosition + Vector3.up * (0.58f * pulse);
+                effect.Instance.transform.localScale = effect.BaseScale * Mathf.Lerp(1f, 1.48f, pulse);
+                effect.Instance.transform.Rotate(0f, 260f * dt, 0f, Space.World);
+                if (effect.Material != null)
+                {
+                    Color color = effect.Color;
+                    color.a = Mathf.Lerp(0.95f, 0.1f, normalizedAge);
+                    effect.Material.color = color;
+                }
+
+                _rewardDropFeedbackEffects[i] = effect;
+            }
+        }
+
+        private void ReleaseMajorRewardDropFeedbackEffect(int index)
+        {
+            if (index < 0 || index >= _rewardDropFeedbackEffects.Count)
+            {
+                return;
+            }
+
+            SurvivorsRewardDropFeedbackEffect effect = _rewardDropFeedbackEffects[index];
+            _rewardDropFeedbackEffects.RemoveAt(index);
+            if (effect.Material != null)
+            {
+                ReleaseTemplateObject(effect.Material);
+            }
+
+            if (effect.Instance != null)
+            {
+                ReleaseTemplateObject(effect.Instance);
+            }
+        }
+
+        private static Color ResolveMajorRewardDropColor(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return new Color(1f, 0.2f, 0.45f, 0.95f);
+                case SurvivorsEnemyRole.Miniboss:
+                    return new Color(0.78f, 0.35f, 1f, 0.95f);
+                case SurvivorsEnemyRole.DreadElite:
+                    return new Color(0.38f, 0.9f, 1f, 0.92f);
+                default:
+                    return new Color(1f, 0.76f, 0.2f, 0.92f);
+            }
+        }
+
+        private static string ResolveMajorRewardDropLabel(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return "Boss Reward Cache";
+                case SurvivorsEnemyRole.Miniboss:
+                    return "Miniboss Reward Cache";
+                case SurvivorsEnemyRole.DreadElite:
+                    return "Dread Elite Reward Cache";
+                default:
+                    return "Elite Reward Cache";
+            }
+        }
+
         private static Color ResolveEnemyDeathEffectColor(SurvivorsEnemyRole role)
         {
             switch (role)
@@ -2151,7 +2295,16 @@ namespace Deucarian.TemplateGameSurvivors
             _enemies.Clear();
             _pickups.Clear();
             _projectiles.Clear();
-            _worldFeedbackEffects.Clear();
+            while (_worldFeedbackEffects.Count > 0)
+            {
+                ReleaseWorldFeedbackEffect(_worldFeedbackEffects.Count - 1);
+            }
+
+            while (_rewardDropFeedbackEffects.Count > 0)
+            {
+                ReleaseMajorRewardDropFeedbackEffect(_rewardDropFeedbackEffects.Count - 1);
+            }
+
             _arenaTiles.Clear();
             _ownedPassiveUpgradeIds.Clear();
             _ownedEvolutionUpgradeIds.Clear();
@@ -4647,6 +4800,26 @@ namespace Deucarian.TemplateGameSurvivors
             public Renderer Renderer { get; }
             public Material Material { get; }
             public Color Color { get; }
+            public Vector3 BaseScale { get; }
+            public float ElapsedSeconds;
+        }
+
+        private struct SurvivorsRewardDropFeedbackEffect
+        {
+            public SurvivorsRewardDropFeedbackEffect(GameObject instance, Material material, Color color, Vector3 basePosition, Vector3 baseScale)
+            {
+                Instance = instance;
+                Material = material;
+                Color = color;
+                BasePosition = basePosition;
+                BaseScale = baseScale;
+                ElapsedSeconds = 0f;
+            }
+
+            public GameObject Instance { get; }
+            public Material Material { get; }
+            public Color Color { get; }
+            public Vector3 BasePosition { get; }
             public Vector3 BaseScale { get; }
             public float ElapsedSeconds;
         }
