@@ -212,7 +212,15 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly CurrencyId BloodShardsCurrencyId = new CurrencyId("currency.survivors.blood-shards");
         public static readonly TrackId LegacyExperienceTrackId = new TrackId("track.survivors.legacy-xp");
         public static readonly ResearchNodeId ArcaneLegacyMetaUpgradeId = new ResearchNodeId("meta.survivors.arcane-legacy");
+        public static readonly ResearchNodeId VitalWardMetaUpgradeId = new ResearchNodeId("meta.survivors.vital-ward");
+        public static readonly ResearchNodeId GemheartLegacyMetaUpgradeId = new ResearchNodeId("meta.survivors.gemheart-legacy");
+        public static readonly ResearchNodeId ScholarIndexMetaUpgradeId = new ResearchNodeId("meta.survivors.scholar-index");
+        public static readonly ResearchNodeId PreparedDraftMetaUpgradeId = new ResearchNodeId("meta.survivors.prepared-draft");
         public const string MetaDamageEffectId = "survivors.meta.damage.flat";
+        public const string MetaMaxHealthEffectId = "survivors.meta.player.max_health";
+        public const string MetaPickupRangeEffectId = "survivors.meta.pickup.range";
+        public const string MetaExperienceGainEffectId = "survivors.meta.experience.gain_multiplier";
+        public const string MetaDraftRerollEffectId = "survivors.meta.draft.reroll_charge";
         public const string EliteRewardId = "reward.survivors.elite-clear";
         public const string MinibossRewardId = "reward.survivors.miniboss";
         public const string BossRewardId = "reward.survivors.final-boss";
@@ -1442,7 +1450,7 @@ namespace Deucarian.TemplateGameSurvivors
                         MetaDamageEffectId,
                         maxRank: 3,
                         rankCosts: new[] { 5, 8, 13 },
-                        damageBonusPerRank: 1.5f),
+                        amountPerRank: 1.5f),
                     new SurvivorsPersistentUpgradeDefinition(
                         new ResearchNodeId("meta.survivors.battle-tempo"),
                         "Battle Tempo",
@@ -1450,7 +1458,7 @@ namespace Deucarian.TemplateGameSurvivors
                         MetaDamageEffectId,
                         maxRank: 3,
                         rankCosts: new[] { 6, 10, 16 },
-                        damageBonusPerRank: 1.0f),
+                        amountPerRank: 1.0f),
                     new SurvivorsPersistentUpgradeDefinition(
                         new ResearchNodeId("meta.survivors.boss-hunters-ledger"),
                         "Boss Hunter's Ledger",
@@ -1458,7 +1466,39 @@ namespace Deucarian.TemplateGameSurvivors
                         MetaDamageEffectId,
                         maxRank: 2,
                         rankCosts: new[] { 12, 20 },
-                        damageBonusPerRank: 2.25f)
+                        amountPerRank: 2.25f),
+                    new SurvivorsPersistentUpgradeDefinition(
+                        VitalWardMetaUpgradeId,
+                        "Vital Ward",
+                        PlayerTarget.Value,
+                        MetaMaxHealthEffectId,
+                        maxRank: 3,
+                        rankCosts: new[] { 4, 8, 12 },
+                        amountPerRank: 6f),
+                    new SurvivorsPersistentUpgradeDefinition(
+                        GemheartLegacyMetaUpgradeId,
+                        "Gemheart Legacy",
+                        PickupTarget.Value,
+                        MetaPickupRangeEffectId,
+                        maxRank: 3,
+                        rankCosts: new[] { 4, 7, 11 },
+                        amountPerRank: 0.75f),
+                    new SurvivorsPersistentUpgradeDefinition(
+                        ScholarIndexMetaUpgradeId,
+                        "Scholar Index",
+                        ExperienceTarget.Value,
+                        MetaExperienceGainEffectId,
+                        maxRank: 3,
+                        rankCosts: new[] { 6, 10, 15 },
+                        amountPerRank: 0.08f),
+                    new SurvivorsPersistentUpgradeDefinition(
+                        PreparedDraftMetaUpgradeId,
+                        "Prepared Draft",
+                        PlayerTarget.Value,
+                        MetaDraftRerollEffectId,
+                        maxRank: 2,
+                        rankCosts: new[] { 10, 18 },
+                        amountPerRank: 1f)
                 },
                 new[]
                 {

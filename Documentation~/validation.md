@@ -66,9 +66,9 @@ Phase 2Q adds validation for:
 - miniboss reward grant when a run ends in defeat
 - final boss reward grant and victory reward persistence
 - save/load persistence across controller instances
-- persistent meta upgrade affecting a later run's projectile damage
+- persistent meta upgrades affecting a later run's projectile damage, max health, pickup range, XP gain, and reroll charges
 
-The Phase 2Q save path uses `com.deucarian.persistence` and `com.deucarian.progression` from local Survivors kit code. Boss relic drafts, class unlocks, skill trees, richer meta upgrade graphs, and concrete-product reward economies are deliberately deferred.
+The Phase 2Q save path uses `com.deucarian.persistence` and `com.deucarian.progression` from local Survivors kit code. Boss relic drafts, class unlocks, skill trees, and concrete-product reward economies are handled by later local slices rather than shared package extraction.
 
 No package extraction, package publishing, Survivors template registration, Idle template mutation, or Movement-FPS migration is part of Phase 2Q validation.
 
@@ -116,7 +116,7 @@ No gameplay behavior changes, shared package extraction, package publishing, Idl
 
 Phase 3F adds reference-parity gameplay validation:
 
-- Default runtime content includes five starting weapons, ten local weapon archetypes, nine enemy roles, six relics, and three persistent upgrades.
+- Default runtime content includes five starting weapons, ten local weapon archetypes, nine enemy roles, six relics, and seven persistent upgrades.
 - Run flow validation covers timed swarm, runner, bruiser, spitter, elite, miniboss, and boss pressure over a 30-minute sample arc.
 - EditMode coverage checks expanded enemy profiles plus barrier absorption and poison damage-over-time behavior.
 - PlayMode coverage checks the expanded default loadout, draftable weapon unlocks, XP-gain and area-scaling passives, early/boss rarity weighting, weapon-owned mutation availability, and class-gated advanced passive availability.

@@ -111,7 +111,7 @@ The 2Q template slice adds local template-kit implementations for:
 - miniboss and final-boss reward bonuses
 - persisted meta profile with lifetime/unspent blood shards, legacy XP, best run data, completed runs, boss victories, and ranked persistent upgrade records
 - v1-to-v2 meta profile migration
-- one sample persistent Arcane Legacy upgrade that increases arcane wand damage in later runs
+- sample persistent upgrades that increase later-run damage, max health, pickup range, XP gain, and reroll capacity
 - sample reward/meta JSON content and validation
 - reset/debug persistence hooks for tests and future editor tooling
 

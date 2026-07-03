@@ -149,7 +149,7 @@ namespace Deucarian.TemplateGameSurvivors
             string effectId,
             int maxRank,
             IReadOnlyList<int> rankCosts,
-            float damageBonusPerRank)
+            float amountPerRank)
         {
             Id = id;
             DisplayName = string.IsNullOrWhiteSpace(displayName) ? id.Value : displayName;
@@ -157,7 +157,7 @@ namespace Deucarian.TemplateGameSurvivors
             EffectId = effectId ?? string.Empty;
             MaxRank = Math.Max(1, maxRank);
             RankCosts = rankCosts == null ? Array.Empty<int>() : Copy(rankCosts);
-            DamageBonusPerRank = Math.Max(0f, damageBonusPerRank);
+            AmountPerRank = Math.Max(0f, amountPerRank);
         }
 
         public ResearchNodeId Id { get; }
@@ -166,7 +166,8 @@ namespace Deucarian.TemplateGameSurvivors
         public string EffectId { get; }
         public int MaxRank { get; }
         public IReadOnlyList<int> RankCosts { get; }
-        public float DamageBonusPerRank { get; }
+        public float AmountPerRank { get; }
+        public float DamageBonusPerRank => string.Equals(EffectId, BasicSurvivorsGame.MetaDamageEffectId, StringComparison.Ordinal) ? AmountPerRank : 0f;
 
         public ResearchNodeDefinition CreateResearchDefinition(CurrencyId currencyId)
         {
@@ -423,6 +424,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         public float GetPersistentDamageBonus(string targetId)
         {
+            return GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaDamageEffectId, targetId);
+        }
+
+        public float GetPersistentUpgradeBonus(string effectId, string targetId)
+        {
             if (_profile == null)
             {
                 return 0f;
@@ -432,12 +438,14 @@ namespace Deucarian.TemplateGameSurvivors
             for (int i = 0; i < _definition.PersistentUpgrades.Count; i++)
             {
                 SurvivorsPersistentUpgradeDefinition upgrade = _definition.PersistentUpgrades[i];
-                if (upgrade == null || !string.Equals(upgrade.TargetId, targetId, StringComparison.Ordinal))
+                if (upgrade == null ||
+                    !string.Equals(upgrade.EffectId, effectId, StringComparison.Ordinal) ||
+                    !string.Equals(upgrade.TargetId, targetId, StringComparison.Ordinal))
                 {
                     continue;
                 }
 
-                bonus += GetPersistentUpgradeRank(upgrade.Id.Value) * upgrade.DamageBonusPerRank;
+                bonus += GetPersistentUpgradeRank(upgrade.Id.Value) * upgrade.AmountPerRank;
             }
 
             return bonus;

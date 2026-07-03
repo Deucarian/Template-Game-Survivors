@@ -269,6 +269,11 @@ namespace Deucarian.TemplateGameSurvivors
                         result.AddError($"Persistent upgrade {upgrade.Id.Value} rank cost must be above zero.");
                     }
                 }
+
+                if (upgrade.AmountPerRank <= 0f)
+                {
+                    result.AddError($"Persistent upgrade {upgrade.Id.Value} amount per rank must be above zero.");
+                }
             }
 
             var rewardIds = new HashSet<string>(StringComparer.Ordinal);
@@ -964,6 +969,12 @@ namespace Deucarian.TemplateGameSurvivors
                                 result.AddError($"Persistent upgrade {upgrade.id} rank cost must be above zero.");
                             }
                         }
+                    }
+
+                    float amountPerRank = upgrade.amountPerRank != 0f ? upgrade.amountPerRank : upgrade.damageBonusPerRank;
+                    if (amountPerRank <= 0f)
+                    {
+                        result.AddError($"Persistent upgrade {upgrade.id} amount per rank must be above zero.");
                     }
                 }
             }
@@ -1989,6 +2000,7 @@ namespace Deucarian.TemplateGameSurvivors
             public string effect;
             public int maxRank;
             public int[] rankCosts;
+            public float amountPerRank;
             public float damageBonusPerRank;
         }
 

@@ -41,7 +41,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(archetypes[5].Archetype, Is.EqualTo(SurvivorsWeaponArchetype.Burst));
             Assert.AreEqual(BasicSurvivorsGame.BloodShardsCurrencyId, meta.BloodShardsCurrencyId);
             Assert.AreEqual(BasicSurvivorsGame.LegacyExperienceTrackId, meta.LegacyExperienceTrackId);
-            Assert.AreEqual(3, meta.PersistentUpgrades.Count);
+            Assert.That(meta.PersistentUpgrades.Count, Is.GreaterThanOrEqualTo(7));
+            Assert.IsTrue(meta.TryGetPersistentUpgrade(BasicSurvivorsGame.VitalWardMetaUpgradeId.Value, out SurvivorsPersistentUpgradeDefinition vitalWard));
+            Assert.AreEqual(BasicSurvivorsGame.MetaMaxHealthEffectId, vitalWard.EffectId);
+            Assert.IsTrue(meta.TryGetPersistentUpgrade(BasicSurvivorsGame.GemheartLegacyMetaUpgradeId.Value, out SurvivorsPersistentUpgradeDefinition gemheartLegacy));
+            Assert.AreEqual(BasicSurvivorsGame.MetaPickupRangeEffectId, gemheartLegacy.EffectId);
+            Assert.IsTrue(meta.TryGetPersistentUpgrade(BasicSurvivorsGame.ScholarIndexMetaUpgradeId.Value, out SurvivorsPersistentUpgradeDefinition scholarIndex));
+            Assert.AreEqual(BasicSurvivorsGame.MetaExperienceGainEffectId, scholarIndex.EffectId);
+            Assert.IsTrue(meta.TryGetPersistentUpgrade(BasicSurvivorsGame.PreparedDraftMetaUpgradeId.Value, out SurvivorsPersistentUpgradeDefinition preparedDraft));
+            Assert.AreEqual(BasicSurvivorsGame.MetaDraftRerollEffectId, preparedDraft.EffectId);
             Assert.That(meta.Rewards.Count, Is.GreaterThanOrEqualTo(2));
             Assert.AreEqual(6, relics.Count);
             Assert.AreEqual(2, classes.Classes.Count);
@@ -338,6 +346,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("missing an effect id", errors);
             StringAssert.Contains("rank cost count", errors);
             StringAssert.Contains("rank cost must be above zero", errors);
+            StringAssert.Contains("amount per rank", errors);
             StringAssert.Contains("Duplicate reward id", errors);
             StringAssert.Contains("unknown currency", errors);
             StringAssert.Contains("unknown progression track", errors);

@@ -221,6 +221,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float MoveSpeedBonus { get; private set; }
         public float DamageBonus { get; private set; }
         public float PersistentDamageBonus { get; private set; }
+        public float PersistentMaxHealthBonus { get; private set; }
+        public float PersistentPickupRangeBonus { get; private set; }
+        public float PersistentExperienceGainMultiplierBonus { get; private set; }
+        public int PersistentDraftRerollBonus { get; private set; }
         public float RelicDamageBonus { get; private set; }
         public float RelicCooldownMultiplierBonus { get; private set; }
         public float RelicPickupRangeBonus { get; private set; }
@@ -319,7 +323,8 @@ namespace Deucarian.TemplateGameSurvivors
         public string ActiveRewardFeedbackLabel => _rewardFeedbackTimer > 0f ? _rewardFeedbackLabel : string.Empty;
         public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
-        public int DraftRerollsRemaining => Mathf.Max(0, CurrentTuning.DraftRerollCharges - DraftRerollCount);
+        public int TotalDraftRerollCharges => Mathf.Max(0, CurrentTuning.DraftRerollCharges + PersistentDraftRerollBonus);
+        public int DraftRerollsRemaining => Mathf.Max(0, TotalDraftRerollCharges - DraftRerollCount);
         public int DraftBanishesRemaining => Mathf.Max(0, CurrentTuning.DraftBanishCharges - DraftBanishCount);
         public int DraftSkipBloodShards => Mathf.Max(0, CurrentTuning.DraftSkipBloodShards);
 
@@ -541,6 +546,10 @@ namespace Deucarian.TemplateGameSurvivors
             MoveSpeedBonus = 0f;
             DamageBonus = 0f;
             PersistentDamageBonus = 0f;
+            PersistentMaxHealthBonus = 0f;
+            PersistentPickupRangeBonus = 0f;
+            PersistentExperienceGainMultiplierBonus = 0f;
+            PersistentDraftRerollBonus = 0;
             RelicDamageBonus = 0f;
             RelicCooldownMultiplierBonus = 0f;
             RelicPickupRangeBonus = 0f;
@@ -2678,9 +2687,28 @@ namespace Deucarian.TemplateGameSurvivors
         private void ApplyPersistentMetaBonuses()
         {
             EnsureMetaProgressionLoaded();
-            float previousBonus = PersistentDamageBonus;
+            float previousDamageBonus = PersistentDamageBonus;
+            float previousMaxHealthBonus = PersistentMaxHealthBonus;
+            float previousPickupRangeBonus = PersistentPickupRangeBonus;
+            float previousExperienceGainBonus = PersistentExperienceGainMultiplierBonus;
+
             PersistentDamageBonus = _metaProgression.GetPersistentDamageBonus(BasicSurvivorsGame.WeaponTarget.Value);
-            DamageBonus += PersistentDamageBonus - previousBonus;
+            PersistentMaxHealthBonus = _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaMaxHealthEffectId, BasicSurvivorsGame.PlayerTarget.Value);
+            PersistentPickupRangeBonus = _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaPickupRangeEffectId, BasicSurvivorsGame.PickupTarget.Value);
+            PersistentExperienceGainMultiplierBonus = _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaExperienceGainEffectId, BasicSurvivorsGame.ExperienceTarget.Value);
+            PersistentDraftRerollBonus = Mathf.Max(0, Mathf.RoundToInt(_metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaDraftRerollEffectId, BasicSurvivorsGame.PlayerTarget.Value)));
+
+            DamageBonus += PersistentDamageBonus - previousDamageBonus;
+            PickupRangeBonus += PersistentPickupRangeBonus - previousPickupRangeBonus;
+            ExperienceGainMultiplierBonus += PersistentExperienceGainMultiplierBonus - previousExperienceGainBonus;
+            if (_playerHealth != null)
+            {
+                float maxHealthDelta = PersistentMaxHealthBonus - previousMaxHealthBonus;
+                if (Mathf.Abs(maxHealthDelta) > 0.001f)
+                {
+                    _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + maxHealthDelta, MaximumChangePolicy.FillToMaximum);
+                }
+            }
         }
 
         private void ApplySelectedClassBonuses()

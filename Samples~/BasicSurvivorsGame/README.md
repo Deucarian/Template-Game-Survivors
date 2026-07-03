@@ -26,7 +26,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure.
 - Defeating the final boss unlocks the Ember Vanguard sample class.
 - Victory or defeat persists the run summary to a local meta profile.
-- The sample includes three persistent meta upgrades that increase later-run damage.
+- The sample includes seven persistent meta upgrades for later-run damage, max health, pickup range, XP gain, and extra rerolls.
 - The sample includes a default Arcane Initiate class, one unlockable class, class-owned loadouts, passive atlases, weapon skill tracks, and six boss relics.
 - XP gems pull into the player when close.
 - Press `M` to trigger a debug magnet recall.

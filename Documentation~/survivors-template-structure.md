@@ -54,7 +54,7 @@
 - reference-shaped blood shard and legacy XP reward calculation
 - boss/miniboss reward bonus definitions
 - persisted meta profile document and v1-to-v3 migration
-- three sample ranked persistent upgrades that add later-run damage
+- seven sample ranked persistent upgrades for later-run damage, max health, pickup range, XP gain, and reroll capacity
 - selected class and unlocked class persistence
 
 `Runtime/SurvivorsRelicsAndClasses.cs` contains local Survivors reward/class definitions:
@@ -103,7 +103,7 @@ This is reusable Survivors template-kit code, not concrete product content.
 - `Content/DefaultClasses/classes.json`
 - `Content/DefaultProgression/progression.json`
 
-The sample includes basic swarm, runner, bruiser, ranged spitter, elite, scheduled miniboss, and final boss entries; blood shards; legacy XP; three persistent upgrades; boss/final-boss reward definitions; six boss relics; a default class with five core weapons; deeper Frost Fan, Blood Ring, Thorn Halo, Cinder Burst, and Star Beam rank/mutation/evolution paths; draftable Star Beam and Gravity Grenade weapon unlocks; public Star Beam and Gravity Grenade rank/mutation/evolution paths; one unlockable class with an advanced loadout/stat profile, class-gated Moon Slash rank/mutation/evolution path, and class-gated Rune Trap/Aether Mine rank/mutation/evolution path; draftable XP-gain and area-scaling passives; Epic upgrade spikes; normal/elite/boss rarity-weight tables; compact passive atlases; weapon skill tracks; and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
+The sample includes basic swarm, runner, bruiser, ranged spitter, elite, scheduled miniboss, and final boss entries; blood shards; legacy XP; seven persistent upgrades; boss/final-boss reward definitions; six boss relics; a default class with five core weapons; deeper Frost Fan, Blood Ring, Thorn Halo, Cinder Burst, and Star Beam rank/mutation/evolution paths; draftable Star Beam and Gravity Grenade weapon unlocks; public Star Beam and Gravity Grenade rank/mutation/evolution paths; one unlockable class with an advanced loadout/stat profile, class-gated Moon Slash rank/mutation/evolution path, and class-gated Rune Trap/Aether Mine rank/mutation/evolution path; draftable XP-gain and area-scaling passives; Epic upgrade spikes; normal/elite/boss rarity-weight tables; compact passive atlases; weapon skill tracks; and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
 
 ## Tests
 

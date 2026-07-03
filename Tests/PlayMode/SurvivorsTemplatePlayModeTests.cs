@@ -2087,22 +2087,39 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator PersistentUpgradeAffectsNewRunDamage()
+        public IEnumerator PersistentUpgradesAffectNewRunStats()
         {
             var storage = new InMemoryTextStorage();
             SurvivorsTemplateController controller = CreateController(storage, "play-meta-upgrade");
             yield return null;
 
             yield return DefeatBossAndResolveReward(controller);
+            Assert.IsTrue(controller.DebugGrantBloodShards(40));
 
             Assert.IsTrue(controller.TryPurchasePersistentUpgradeForTest(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
             Assert.AreEqual(1, controller.GetPersistentUpgradeRankForTest(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
+            Assert.IsTrue(controller.TryPurchasePersistentUpgradeForTest(BasicSurvivorsGame.VitalWardMetaUpgradeId.Value));
+            Assert.AreEqual(1, controller.GetPersistentUpgradeRankForTest(BasicSurvivorsGame.VitalWardMetaUpgradeId.Value));
+            Assert.IsTrue(controller.TryPurchasePersistentUpgradeForTest(BasicSurvivorsGame.GemheartLegacyMetaUpgradeId.Value));
+            Assert.AreEqual(1, controller.GetPersistentUpgradeRankForTest(BasicSurvivorsGame.GemheartLegacyMetaUpgradeId.Value));
+            Assert.IsTrue(controller.TryPurchasePersistentUpgradeForTest(BasicSurvivorsGame.ScholarIndexMetaUpgradeId.Value));
+            Assert.AreEqual(1, controller.GetPersistentUpgradeRankForTest(BasicSurvivorsGame.ScholarIndexMetaUpgradeId.Value));
+            Assert.IsTrue(controller.TryPurchasePersistentUpgradeForTest(BasicSurvivorsGame.PreparedDraftMetaUpgradeId.Value));
+            Assert.AreEqual(1, controller.GetPersistentUpgradeRankForTest(BasicSurvivorsGame.PreparedDraftMetaUpgradeId.Value));
 
             controller.RestartRun();
             yield return null;
 
             Assert.That(controller.PersistentDamageBonus, Is.GreaterThan(0f));
             Assert.That(controller.ProjectileDamage, Is.GreaterThan(controller.CurrentTuning.ProjectileDamage));
+            Assert.That(controller.PersistentMaxHealthBonus, Is.GreaterThan(0f));
+            Assert.That(controller.MaxHealth, Is.GreaterThan(controller.CurrentTuning.PlayerMaxHealth));
+            Assert.That(controller.PersistentPickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(controller.PickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(controller.PersistentExperienceGainMultiplierBonus, Is.GreaterThan(0f));
+            Assert.That(controller.ExperienceGainMultiplierBonus, Is.GreaterThan(0f));
+            Assert.That(controller.PersistentDraftRerollBonus, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.TotalDraftRerollCharges, Is.GreaterThan(controller.CurrentTuning.DraftRerollCharges));
 
             Object.Destroy(controller.gameObject);
         }

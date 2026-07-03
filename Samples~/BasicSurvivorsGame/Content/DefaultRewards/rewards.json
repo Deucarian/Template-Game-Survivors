@@ -19,7 +19,7 @@
       "effect": "survivors.meta.damage.flat",
       "maxRank": 3,
       "rankCosts": [5, 8, 13],
-      "damageBonusPerRank": 1.5
+      "amountPerRank": 1.5
     },
     {
       "id": "meta.survivors.battle-tempo",
@@ -28,7 +28,7 @@
       "effect": "survivors.meta.damage.flat",
       "maxRank": 3,
       "rankCosts": [6, 10, 16],
-      "damageBonusPerRank": 1
+      "amountPerRank": 1
     },
     {
       "id": "meta.survivors.boss-hunters-ledger",
@@ -37,7 +37,43 @@
       "effect": "survivors.meta.damage.flat",
       "maxRank": 2,
       "rankCosts": [12, 20],
-      "damageBonusPerRank": 2.25
+      "amountPerRank": 2.25
+    },
+    {
+      "id": "meta.survivors.vital-ward",
+      "displayName": "Vital Ward",
+      "target": "survivors.player",
+      "effect": "survivors.meta.player.max_health",
+      "maxRank": 3,
+      "rankCosts": [4, 8, 12],
+      "amountPerRank": 6
+    },
+    {
+      "id": "meta.survivors.gemheart-legacy",
+      "displayName": "Gemheart Legacy",
+      "target": "survivors.pickups",
+      "effect": "survivors.meta.pickup.range",
+      "maxRank": 3,
+      "rankCosts": [4, 7, 11],
+      "amountPerRank": 0.75
+    },
+    {
+      "id": "meta.survivors.scholar-index",
+      "displayName": "Scholar Index",
+      "target": "survivors.experience",
+      "effect": "survivors.meta.experience.gain_multiplier",
+      "maxRank": 3,
+      "rankCosts": [6, 10, 15],
+      "amountPerRank": 0.08
+    },
+    {
+      "id": "meta.survivors.prepared-draft",
+      "displayName": "Prepared Draft",
+      "target": "survivors.player",
+      "effect": "survivors.meta.draft.reroll_charge",
+      "maxRank": 2,
+      "rankCosts": [10, 18],
+      "amountPerRank": 1
     }
   ],
   "rewards": [
