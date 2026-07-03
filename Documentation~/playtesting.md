@@ -52,6 +52,7 @@ After 5 minutes:
 - Spitters should have joined the enemy mix, and their ranged hits should show quick hostile shot cues.
 - The first elite should have arrived around 3 minutes and the dread elite should be arriving around 5 minutes; active major threats should show a prioritized health bar, and killing either elite should open an elite reward draft and scatter a visible XP/special-pickup reward cache.
 - Each scheduled elite should show a short incoming warning before it appears.
+- Damaging an elite below its low-health threshold should trigger one visible support call-in, then further damage to that same elite should not repeatedly spawn extra rings.
 - At least one horde rush should have warned, spawned a mixed enemy ring around the player, briefly announced the rush on the HUD, and dropped a bonus cache after the tracked rush enemies were cleared.
 - The game should feel busier than the first minute without becoming immediate visual noise.
 
@@ -59,6 +60,7 @@ After 7 minutes:
 
 - The miniboss should have appeared, shown a health bar while alive, and may have opened an elite reward draft; its death should burst into a larger reward cache before the run resumes.
 - The miniboss warning should have appeared shortly before the miniboss entered.
+- The miniboss should call in a larger support ring near low health, making the fight briefly spike without hiding the health bar or reward flow.
 - The run should have a clear build direction from weapon ranks, passives, or branch mutations.
 - If a weapon path has reached its required rank and the matching passive is owned, the HUD should briefly announce Evolution Ready for that payoff.
 
@@ -66,7 +68,7 @@ After victory:
 
 - Press `C` or the Continue button to stay in the same build.
 - Endless escalation should keep increasing horde pressure and should schedule recurring elite, miniboss, and boss threats with incoming warnings.
-- Killing recurring major threats should keep producing the same stronger reward drafts and arena pickup caches without ending the run again.
+- Killing recurring major threats should keep producing the same stronger reward drafts and arena pickup caches without ending the run again, and each new recurring major threat can still trigger its own one-shot support call-in.
 
 ## Reset Save Data
 

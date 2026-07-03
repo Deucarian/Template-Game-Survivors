@@ -98,6 +98,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
+        private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -270,6 +271,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorRewardCacheSpecialDropCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int MajorThreatWarningCount { get; private set; }
+        public int MajorThreatEnrageCount { get; private set; }
+        public int MajorThreatEnrageSupportSpawnCount { get; private set; }
+        public string LastMajorThreatEnrageFeedbackLabel { get; private set; } = string.Empty;
         public int ExperiencePickupFeedbackCount { get; private set; }
         public int ExperienceComboFeedbackCount { get; private set; }
         public string LastExperienceComboFeedbackLabel { get; private set; } = string.Empty;
@@ -701,6 +705,9 @@ namespace Deucarian.TemplateGameSurvivors
             MajorRewardCacheExperienceGemDropCount = 0;
             MajorRewardCacheSpecialDropCount = 0;
             MajorThreatWarningCount = 0;
+            MajorThreatEnrageCount = 0;
+            MajorThreatEnrageSupportSpawnCount = 0;
+            LastMajorThreatEnrageFeedbackLabel = string.Empty;
             ExperiencePickupFeedbackCount = 0;
             ExperienceComboFeedbackCount = 0;
             LastExperienceComboFeedbackLabel = string.Empty;
@@ -1633,6 +1640,7 @@ namespace Deucarian.TemplateGameSurvivors
             RecordDamagePopup(enemy.transform.position, resolvedDamage, playerDamage: false, critical: damage.Critical.IsCritical);
             enemy.TriggerHitFlash(damage.Critical.IsCritical, EnemyHitFlashSeconds);
             EnemyHitFlashFeedbackCount++;
+            TryTriggerMajorThreatEnrage(enemy);
         }
 
         internal void HandleEnemyKilled(SurvivorsEnemyActor enemy)
@@ -1649,6 +1657,7 @@ namespace Deucarian.TemplateGameSurvivors
             float radius = enemy.Radius;
             _enemies.Remove(enemy);
             bool clearedHordeRushEnemy = _activeHordeRushEnemies.Remove(enemy) && _activeHordeRushEnemies.Count == 0;
+            _enragedMajorThreats.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
                 _spawnService.Despawn(enemy.InstanceId, DespawnReason.Killed);
@@ -1709,6 +1718,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             _enemies.Remove(enemy);
             _activeHordeRushEnemies.Remove(enemy);
+            _enragedMajorThreats.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
                 _spawnService.Despawn(enemy.InstanceId, reason);
@@ -2125,6 +2135,128 @@ namespace Deucarian.TemplateGameSurvivors
         private static bool IsMajorRewardRole(SurvivorsEnemyRole role)
         {
             return IsEliteRole(role) || role == SurvivorsEnemyRole.Miniboss || role == SurvivorsEnemyRole.Boss;
+        }
+
+        private void TryTriggerMajorThreatEnrage(SurvivorsEnemyActor enemy)
+        {
+            if (enemy == null ||
+                !enemy.IsAlive ||
+                State != SurvivorsRunState.Playing ||
+                !IsMajorRewardRole(enemy.Role) ||
+                _enragedMajorThreats.Contains(enemy))
+            {
+                return;
+            }
+
+            float threshold = Mathf.Clamp01(CurrentTuning.MajorThreatEnrageHealthThreshold);
+            if (threshold <= 0f || enemy.HealthFraction > threshold)
+            {
+                return;
+            }
+
+            _enragedMajorThreats.Add(enemy);
+            int spawned = SpawnMajorThreatEnrageSupport(enemy);
+            MajorThreatEnrageCount++;
+            MajorThreatEnrageSupportSpawnCount += spawned;
+
+            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
+                ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
+                : enemy.DisplayName;
+            LastMajorThreatEnrageFeedbackLabel = $"{name} enraged: +{spawned} support";
+            RecordStreakRewardFeedback(LastMajorThreatEnrageFeedbackLabel, ResolveMajorThreatEnrageFeedbackColor(enemy.Role));
+            PlayFeedback(_bossPulse, enemy.transform.position, enemy.Role == SurvivorsEnemyRole.Boss ? 64 : 42, _dangerClip);
+        }
+
+        private int SpawnMajorThreatEnrageSupport(SurvivorsEnemyActor enemy)
+        {
+            int requested = ResolveMajorThreatEnrageSupportCount(enemy.Role);
+            if (requested <= 0)
+            {
+                return 0;
+            }
+
+            int available = Mathf.Max(
+                0,
+                ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.MajorThreatEnrageExtraAliveAllowance) - _enemies.Count);
+            int targetCount = Mathf.Min(requested, available);
+            if (targetCount <= 0)
+            {
+                return 0;
+            }
+
+            Vector3 center = enemy.transform.position;
+            float radius = Mathf.Max(enemy.Radius + 1.35f, CurrentTuning.MajorThreatEnrageSupportRadius);
+            int spawned = 0;
+            for (int i = 0; i < targetCount; i++)
+            {
+                float angle = ((i + 0.29f + MajorThreatEnrageCount * 0.17f) / targetCount) * Mathf.PI * 2f;
+                float laneRadius = radius + ((i & 1) == 0 ? 0f : 1.15f);
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * laneRadius;
+                SurvivorsEnemyRole supportRole = ResolveMajorThreatEnrageSupportRole(enemy.Role, i);
+                if (SpawnEnemy(center + offset, explicitPosition: true, supportRole) != null)
+                {
+                    spawned++;
+                }
+            }
+
+            return spawned;
+        }
+
+        private int ResolveMajorThreatEnrageSupportCount(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return Mathf.Max(0, CurrentTuning.MajorThreatEnrageBossSupportCount);
+                case SurvivorsEnemyRole.Miniboss:
+                    return Mathf.Max(0, CurrentTuning.MajorThreatEnrageMinibossSupportCount);
+                case SurvivorsEnemyRole.DreadElite:
+                    return Mathf.Max(0, CurrentTuning.MajorThreatEnrageEliteSupportCount + 2);
+                default:
+                    return Mathf.Max(0, CurrentTuning.MajorThreatEnrageEliteSupportCount);
+            }
+        }
+
+        private static SurvivorsEnemyRole ResolveMajorThreatEnrageSupportRole(SurvivorsEnemyRole majorRole, int index)
+        {
+            if (majorRole == SurvivorsEnemyRole.Boss)
+            {
+                if (index % 6 == 0) return SurvivorsEnemyRole.Bruiser;
+                if (index % 5 == 0) return SurvivorsEnemyRole.Splitter;
+                if (index % 4 == 0) return SurvivorsEnemyRole.Spitter;
+                if (index % 2 == 0) return SurvivorsEnemyRole.Runner;
+                return SurvivorsEnemyRole.Swarm;
+            }
+
+            if (majorRole == SurvivorsEnemyRole.Miniboss)
+            {
+                if (index % 4 == 0) return SurvivorsEnemyRole.Bruiser;
+                if (index % 3 == 0) return SurvivorsEnemyRole.Spitter;
+                if (index % 2 == 0) return SurvivorsEnemyRole.Runner;
+                return SurvivorsEnemyRole.Swarm;
+            }
+
+            if (majorRole == SurvivorsEnemyRole.DreadElite && index % 4 == 0)
+            {
+                return SurvivorsEnemyRole.Spitter;
+            }
+
+            return index % 2 == 0 ? SurvivorsEnemyRole.Runner : SurvivorsEnemyRole.Swarm;
+        }
+
+        private static Color ResolveMajorThreatEnrageFeedbackColor(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return new Color(1f, 0.2f, 0.3f);
+                case SurvivorsEnemyRole.Miniboss:
+                    return new Color(0.95f, 0.36f, 1f);
+                case SurvivorsEnemyRole.DreadElite:
+                    return new Color(0.35f, 0.85f, 1f);
+                default:
+                    return new Color(1f, 0.68f, 0.2f);
+            }
         }
 
         private static SurvivorsEnemyRole ResolveDebugMajorEnemyRole(SurvivorsEnemyRole role)
@@ -2952,6 +3084,7 @@ namespace Deucarian.TemplateGameSurvivors
             _runFlow = null;
             _enemies.Clear();
             _activeHordeRushEnemies.Clear();
+            _enragedMajorThreats.Clear();
             _pickups.Clear();
             _projectiles.Clear();
             while (_worldFeedbackEffects.Count > 0)

@@ -1952,6 +1952,47 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator MajorThreatEnrageSpawnsOneSupportWaveAtLowHealth()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureProjectileModifierOnlyTuning(controller.CurrentTuning);
+            controller.CurrentTuning.MajorThreatEnrageHealthThreshold = 0.75f;
+            controller.CurrentTuning.MajorThreatEnrageBossSupportCount = 5;
+            controller.CurrentTuning.MajorThreatEnrageExtraAliveAllowance = 8;
+            controller.CurrentTuning.MajorThreatEnrageSupportRadius = 2.8f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(5f, 0f, 0f), 100f);
+            yield return null;
+
+            int aliveBeforeEnrage = controller.ActiveEnemyCount;
+            boss.ApplyDamage(20f, "test.major-threat-enrage");
+            yield return null;
+
+            Assert.AreEqual(0, controller.MajorThreatEnrageCount);
+            Assert.AreEqual(0, controller.MajorThreatEnrageSupportSpawnCount);
+            Assert.AreEqual(aliveBeforeEnrage, controller.ActiveEnemyCount);
+
+            boss.ApplyDamage(10f, "test.major-threat-enrage");
+            yield return null;
+
+            Assert.AreEqual(1, controller.MajorThreatEnrageCount);
+            Assert.AreEqual(5, controller.MajorThreatEnrageSupportSpawnCount);
+            Assert.AreEqual(aliveBeforeEnrage + 5, controller.ActiveEnemyCount);
+            Assert.That(controller.LastMajorThreatEnrageFeedbackLabel, Does.Contain("Eclipse Boss"));
+            Assert.That(controller.LastMajorThreatEnrageFeedbackLabel, Does.Contain("+5 support"));
+
+            boss.ApplyDamage(5f, "test.major-threat-enrage");
+            yield return null;
+
+            Assert.AreEqual(1, controller.MajorThreatEnrageCount);
+            Assert.AreEqual(5, controller.MajorThreatEnrageSupportSpawnCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MinibossCanDieAndDropExperience()
         {
             SurvivorsTemplateController controller = CreateController();

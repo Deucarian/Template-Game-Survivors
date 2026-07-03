@@ -161,6 +161,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             EditorGUILayout.LabelField("Major Threat", controller.IsMajorThreatHealthVisible
                 ? $"{controller.CurrentMajorThreatHealthLabel} {controller.CurrentMajorThreatHealthFraction:P0}"
                 : "None");
+            EditorGUILayout.LabelField("Threat Enrage", $"{controller.MajorThreatEnrageCount} events, {controller.MajorThreatEnrageSupportSpawnCount} support");
             EditorGUILayout.LabelField("Horde Rush", $"{controller.ActiveHordeRushEnemyCount} tracked, {controller.HordeRushSpawnCount} spawned, {controller.HordeRushClearRewardCount} cleared");
             EditorGUILayout.LabelField("Build", $"Weapons {controller.ActiveWeaponCount}, Upgrades {controller.SelectedUpgradeCount}, Relics {controller.SelectedRelicCount}");
             EditorGUILayout.LabelField("Survivability", $"Health {controller.CurrentHealth:0}/{controller.MaxHealth:0}, Barrier {controller.BarrierValue:0}/{controller.BarrierCapacity:0}");
