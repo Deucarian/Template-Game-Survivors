@@ -58,6 +58,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const int EnemyDeathEffectLimit = 56;
         private const float MajorRewardDropLifetimeSeconds = 1.25f;
         private const int MajorRewardDropEffectLimit = 8;
+        private const float MajorRewardPickupCacheRadiusPadding = 0.55f;
         private const float EnemyRangedAttackFeedbackLifetimeSeconds = 0.24f;
         private const int EnemyRangedAttackFeedbackLimit = 28;
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
@@ -250,6 +251,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int EnemyDeathEffectCount { get; private set; }
         public int EnemyRangedAttackFeedbackCount { get; private set; }
         public int MajorRewardDropFeedbackCount { get; private set; }
+        public int MajorRewardCacheDropCount { get; private set; }
+        public int MajorRewardCacheExperienceGemDropCount { get; private set; }
+        public int MajorRewardCacheSpecialDropCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int MajorThreatWarningCount { get; private set; }
         public int ExperiencePickupFeedbackCount { get; private set; }
@@ -268,6 +272,7 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastRewardCardPresentationLabel { get; private set; } = string.Empty;
         public string LastRewardSelectionFeedbackLabel { get; private set; } = string.Empty;
         public string LastMajorRewardDropFeedbackLabel { get; private set; } = string.Empty;
+        public string LastMajorRewardCacheFeedbackLabel { get; private set; } = string.Empty;
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -640,6 +645,9 @@ namespace Deucarian.TemplateGameSurvivors
             EnemyDeathEffectCount = 0;
             EnemyRangedAttackFeedbackCount = 0;
             MajorRewardDropFeedbackCount = 0;
+            MajorRewardCacheDropCount = 0;
+            MajorRewardCacheExperienceGemDropCount = 0;
+            MajorRewardCacheSpecialDropCount = 0;
             MajorThreatWarningCount = 0;
             ExperiencePickupFeedbackCount = 0;
             ExperienceComboFeedbackCount = 0;
@@ -655,6 +663,7 @@ namespace Deucarian.TemplateGameSurvivors
             LastRewardCardPresentationLabel = string.Empty;
             LastRewardSelectionFeedbackLabel = string.Empty;
             LastMajorRewardDropFeedbackLabel = string.Empty;
+            LastMajorRewardCacheFeedbackLabel = string.Empty;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -1546,6 +1555,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (IsMajorRewardRole(role))
             {
                 RecordMajorRewardDropFeedback(position, role, radius);
+                SpawnMajorRewardPickupCache(position, role, radius);
                 TryDropHealthPickup(position + new Vector3(radius * 0.7f, 0f, radius * 0.35f));
             }
 
@@ -2151,6 +2161,120 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             TryActivateStreakSurge();
+        }
+
+        private void SpawnMajorRewardPickupCache(Vector3 position, SurvivorsEnemyRole role, float radius)
+        {
+            if (!IsMajorRewardRole(role))
+            {
+                return;
+            }
+
+            int gemCount = ResolveMajorRewardCacheExperienceGemCount(role);
+            int xpPerGem = ResolveMajorRewardCacheExperiencePerGem(role);
+            float cacheRadius = Mathf.Max(0.9f, radius + MajorRewardPickupCacheRadiusPadding);
+            int spawnedExperience = 0;
+            for (int i = 0; i < gemCount; i++)
+            {
+                float angle = ((i + 0.18f) / gemCount) * Mathf.PI * 2f;
+                float ringOffset = 0.18f * (i % 2);
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (cacheRadius + ringOffset);
+                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
+                {
+                    spawnedExperience += xpPerGem;
+                    MajorRewardCacheExperienceGemDropCount++;
+                }
+            }
+
+            int specialDropCount = SpawnMajorRewardSpecialPickups(position, role, cacheRadius);
+            if (spawnedExperience <= 0 && specialDropCount <= 0)
+            {
+                return;
+            }
+
+            MajorRewardCacheDropCount++;
+            MajorRewardCacheSpecialDropCount += specialDropCount;
+            string rewardLabel = ResolveMajorRewardDropLabel(role);
+            string specialLabel = specialDropCount > 0 ? $" + {specialDropCount} special" : string.Empty;
+            string label = $"{rewardLabel}: Cache +{spawnedExperience} XP{specialLabel}";
+            LastMajorRewardCacheFeedbackLabel = label;
+            RecordStreakRewardFeedback(label, ResolveMajorRewardDropColor(role));
+        }
+
+        private int ResolveMajorRewardCacheExperienceGemCount(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return 12;
+                case SurvivorsEnemyRole.Miniboss:
+                    return 8;
+                case SurvivorsEnemyRole.DreadElite:
+                    return 7;
+                default:
+                    return 5;
+            }
+        }
+
+        private int ResolveMajorRewardCacheExperiencePerGem(SurvivorsEnemyRole role)
+        {
+            float multiplier;
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    multiplier = 5.5f;
+                    break;
+                case SurvivorsEnemyRole.Miniboss:
+                    multiplier = 3.25f;
+                    break;
+                case SurvivorsEnemyRole.DreadElite:
+                    multiplier = 2.35f;
+                    break;
+                default:
+                    multiplier = 1.85f;
+                    break;
+            }
+
+            float escalationMultiplier = 1f + RunEscalationLevel * 0.1f;
+            return Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * multiplier * escalationMultiplier));
+        }
+
+        private int SpawnMajorRewardSpecialPickups(Vector3 position, SurvivorsEnemyRole role, float cacheRadius)
+        {
+            int specialDropCount = 0;
+            Vector3 magnetPosition = position + new Vector3(cacheRadius * 0.62f, 0f, -cacheRadius * 0.36f);
+            if (SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1) != null)
+            {
+                specialDropCount++;
+            }
+
+            int shardAmount = ResolveMajorRewardCacheBloodShardAmount(role);
+            if (shardAmount > 0)
+            {
+                Vector3 shardPosition = position + new Vector3(-cacheRadius * 0.58f, 0f, cacheRadius * 0.42f);
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount) != null)
+                {
+                    specialDropCount++;
+                }
+            }
+
+            return specialDropCount;
+        }
+
+        private int ResolveMajorRewardCacheBloodShardAmount(SurvivorsEnemyRole role)
+        {
+            int baseAmount = Mathf.Max(1, CurrentTuning.BloodShardPickupAmount);
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return baseAmount + 4;
+                case SurvivorsEnemyRole.Miniboss:
+                    return baseAmount + 2;
+                case SurvivorsEnemyRole.DreadElite:
+                    return baseAmount + 1;
+                default:
+                    return 0;
+            }
         }
 
         private void TryActivateStreakSurge()

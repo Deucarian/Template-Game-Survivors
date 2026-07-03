@@ -50,13 +50,13 @@ After 2 minutes:
 After 5 minutes:
 
 - Spitters should have joined the enemy mix, and their ranged hits should show quick hostile shot cues.
-- The first elite should have arrived around 3 minutes and the dread elite should be arriving around 5 minutes; killing either one should open an elite reward draft.
+- The first elite should have arrived around 3 minutes and the dread elite should be arriving around 5 minutes; killing either one should open an elite reward draft and scatter a visible XP/special-pickup reward cache.
 - Each scheduled elite should show a short incoming warning before it appears.
 - The game should feel busier than the first minute without becoming immediate visual noise.
 
 After 7 minutes:
 
-- The miniboss should have appeared and may have opened an elite reward draft.
+- The miniboss should have appeared and may have opened an elite reward draft; its death should burst into a larger reward cache before the run resumes.
 - The miniboss warning should have appeared shortly before the miniboss entered.
 - The run should have a clear build direction from weapon ranks, passives, or branch mutations.
 - If a weapon path has reached its required rank and the matching passive is owned, the HUD should briefly announce Evolution Ready for that payoff.
@@ -65,7 +65,7 @@ After victory:
 
 - Press `C` or the Continue button to stay in the same build.
 - Endless escalation should keep increasing horde pressure and should schedule recurring elite, miniboss, and boss threats with incoming warnings.
-- Killing recurring major threats should keep producing the same stronger reward moments without ending the run again.
+- Killing recurring major threats should keep producing the same stronger reward drafts and arena pickup caches without ending the run again.
 
 ## Reset Save Data
 

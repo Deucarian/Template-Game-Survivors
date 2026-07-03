@@ -1892,6 +1892,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.MajorRewardDropFeedbackCount);
             Assert.AreEqual(1, controller.ActiveMajorRewardDropFeedbackCount);
             Assert.That(controller.LastMajorRewardDropFeedbackLabel, Does.Contain("Elite"));
+            Assert.AreEqual(1, controller.MajorRewardCacheDropCount);
+            Assert.That(controller.MajorRewardCacheExperienceGemDropCount, Is.GreaterThanOrEqualTo(5));
+            Assert.That(controller.MajorRewardCacheSpecialDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(7));
+            Assert.That(controller.LastMajorRewardCacheFeedbackLabel, Does.Contain("Elite"));
+            Assert.That(controller.LastMajorRewardCacheFeedbackLabel, Does.Contain("Cache"));
+            Assert.That(controller.LastStreakRewardFeedbackLabel, Does.Contain("Cache"));
 
             controller.Simulate(1.4f);
             yield return null;
@@ -2045,6 +2052,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.BossUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
             Assert.AreEqual(1, controller.MajorRewardDropFeedbackCount);
             Assert.That(controller.LastMajorRewardDropFeedbackLabel, Does.Contain("Boss"));
+            Assert.AreEqual(1, controller.MajorRewardCacheDropCount);
+            Assert.That(controller.MajorRewardCacheExperienceGemDropCount, Is.GreaterThanOrEqualTo(12));
+            Assert.That(controller.MajorRewardCacheSpecialDropCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.LastMajorRewardCacheFeedbackLabel, Does.Contain("Boss"));
+            Assert.That(controller.LastMajorRewardCacheFeedbackLabel, Does.Contain("Cache"));
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
             Assert.AreEqual(-1, IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
