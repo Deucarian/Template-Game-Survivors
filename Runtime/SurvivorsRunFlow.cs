@@ -93,7 +93,9 @@ namespace Deucarian.TemplateGameSurvivors
             float survivalVictoryTimeSeconds,
             IReadOnlyList<SurvivorsEnemyProfile> swarmProfiles = null,
             float firstEliteSpawnTimeSeconds = 180f,
-            float firstDreadEliteSpawnTimeSeconds = 300f)
+            float eliteSpawnIntervalSeconds = 0f,
+            float firstDreadEliteSpawnTimeSeconds = 300f,
+            float dreadEliteSpawnIntervalSeconds = 0f)
         {
             EscalationIntervalSeconds = escalationIntervalSeconds;
             MinimumEnemySpawnIntervalSeconds = minimumEnemySpawnIntervalSeconds;
@@ -110,6 +112,8 @@ namespace Deucarian.TemplateGameSurvivors
             Boss = boss;
             SurvivalVictoryTimeSeconds = survivalVictoryTimeSeconds;
             SwarmProfiles = swarmProfiles == null ? Array.Empty<SurvivorsEnemyProfile>() : CopyProfiles(swarmProfiles);
+            EliteSpawnIntervalSeconds = eliteSpawnIntervalSeconds;
+            DreadEliteSpawnIntervalSeconds = dreadEliteSpawnIntervalSeconds;
         }
 
         public float EscalationIntervalSeconds { get; }
@@ -120,7 +124,9 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemyMoveSpeedMultiplierPerEscalation { get; }
         public float EnemyExperienceMultiplierPerEscalation { get; }
         public float FirstEliteSpawnTimeSeconds { get; }
+        public float EliteSpawnIntervalSeconds { get; }
         public float FirstDreadEliteSpawnTimeSeconds { get; }
+        public float DreadEliteSpawnIntervalSeconds { get; }
         public float MinibossSpawnTimeSeconds { get; }
         public SurvivorsEnemyProfile Miniboss { get; }
         public float BossSpawnTimeSeconds { get; }
@@ -147,6 +153,8 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _victoryTriggered;
         private bool _firstEliteSpawned;
         private bool _firstDreadEliteSpawned;
+        private float _nextEliteSpawnTimeSeconds;
+        private float _nextDreadEliteSpawnTimeSeconds;
 
         public SurvivorsRunFlowRuntime(SurvivorsRunFlowDefinition definition)
         {
@@ -156,6 +164,8 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsRunFlowDefinition Definition { get; }
         public int EscalationLevel { get; private set; }
         public SurvivorsRunPhase Phase { get; private set; } = SurvivorsRunPhase.Opening;
+        public float NextEliteSpawnTimeSeconds => ResolveNextTimedSpawnTime(_firstEliteSpawned, _nextEliteSpawnTimeSeconds, Definition == null ? 0f : Definition.FirstEliteSpawnTimeSeconds);
+        public float NextDreadEliteSpawnTimeSeconds => ResolveNextTimedSpawnTime(_firstDreadEliteSpawned, _nextDreadEliteSpawnTimeSeconds, Definition == null ? 0f : Definition.FirstDreadEliteSpawnTimeSeconds);
 
         public void Tick(float elapsedTimeSeconds)
         {
@@ -204,25 +214,71 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
-            if (!_firstEliteSpawned &&
-                Definition.FirstEliteSpawnTimeSeconds > 0f &&
-                elapsedTimeSeconds >= Definition.FirstEliteSpawnTimeSeconds)
+            if (TryConsumeTimedSpawn(
+                elapsedTimeSeconds,
+                Definition.FirstEliteSpawnTimeSeconds,
+                Definition.EliteSpawnIntervalSeconds,
+                ref _firstEliteSpawned,
+                ref _nextEliteSpawnTimeSeconds))
             {
-                _firstEliteSpawned = true;
                 role = SurvivorsEnemyRole.Elite;
                 return true;
             }
 
-            if (!_firstDreadEliteSpawned &&
-                Definition.FirstDreadEliteSpawnTimeSeconds > 0f &&
-                elapsedTimeSeconds >= Definition.FirstDreadEliteSpawnTimeSeconds)
+            if (TryConsumeTimedSpawn(
+                elapsedTimeSeconds,
+                Definition.FirstDreadEliteSpawnTimeSeconds,
+                Definition.DreadEliteSpawnIntervalSeconds,
+                ref _firstDreadEliteSpawned,
+                ref _nextDreadEliteSpawnTimeSeconds))
             {
-                _firstDreadEliteSpawned = true;
                 role = SurvivorsEnemyRole.DreadElite;
                 return true;
             }
 
             return false;
+        }
+
+        private static bool TryConsumeTimedSpawn(
+            float elapsedTimeSeconds,
+            float firstTimeSeconds,
+            float intervalSeconds,
+            ref bool firstSpawned,
+            ref float nextSpawnTimeSeconds)
+        {
+            if (!firstSpawned)
+            {
+                if (firstTimeSeconds <= 0f || elapsedTimeSeconds < firstTimeSeconds)
+                {
+                    return false;
+                }
+
+                firstSpawned = true;
+                nextSpawnTimeSeconds = intervalSeconds <= 0f
+                    ? 0f
+                    : Mathf.Max(firstTimeSeconds, elapsedTimeSeconds) + Mathf.Max(0.1f, intervalSeconds);
+                return true;
+            }
+
+            if (nextSpawnTimeSeconds <= 0f || elapsedTimeSeconds < nextSpawnTimeSeconds)
+            {
+                return false;
+            }
+
+            nextSpawnTimeSeconds = intervalSeconds <= 0f
+                ? 0f
+                : elapsedTimeSeconds + Mathf.Max(0.1f, intervalSeconds);
+            return true;
+        }
+
+        private static float ResolveNextTimedSpawnTime(bool firstSpawned, float nextSpawnTimeSeconds, float firstTimeSeconds)
+        {
+            if (!firstSpawned)
+            {
+                return Mathf.Max(0f, firstTimeSeconds);
+            }
+
+            return Mathf.Max(0f, nextSpawnTimeSeconds);
         }
 
         public bool TryConsumeBossSpawn(float elapsedTimeSeconds)

@@ -2047,6 +2047,69 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator RecurringTimedElitesKeepMidRunRewardPressure()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMaximumAlive = 12;
+            controller.CurrentTuning.MajorThreatWarningLeadSeconds = 0.2f;
+            controller.CurrentTuning.FirstEliteSpawnTimeSeconds = 0.5f;
+            controller.CurrentTuning.EliteSpawnIntervalSeconds = 1.2f;
+            controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds = 2.6f;
+            controller.CurrentTuning.DreadEliteSpawnIntervalSeconds = 2f;
+            controller.CurrentTuning.MinibossSpawnTimeSeconds = 5f;
+            controller.CurrentTuning.BossSpawnTimeSeconds = 6f;
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 8f;
+            controller.StartRun();
+            yield return null;
+
+            controller.Simulate(0.31f);
+            yield return null;
+
+            Assert.IsTrue(controller.IsMajorThreatWarningActive);
+            Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("ELITE"));
+            Assert.AreEqual(1, controller.MajorThreatWarningCount);
+
+            controller.Simulate(0.25f);
+            yield return null;
+
+            Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(0, controller.ActiveDreadEliteCount);
+            Assert.IsFalse(controller.IsMajorThreatWarningActive);
+            int warningsAfterFirstElite = controller.MajorThreatWarningCount;
+
+            controller.Simulate(1.6f - controller.RunTimeSeconds);
+            yield return null;
+
+            Assert.IsTrue(controller.IsMajorThreatWarningActive);
+            Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("ELITE"));
+            Assert.That(controller.MajorThreatWarningCount, Is.GreaterThan(warningsAfterFirstElite));
+
+            controller.Simulate(1.82f - controller.RunTimeSeconds);
+            yield return null;
+
+            Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(0, controller.ActiveDreadEliteCount);
+            int warningsAfterRecurringElite = controller.MajorThreatWarningCount;
+
+            controller.Simulate(2.41f - controller.RunTimeSeconds);
+            yield return null;
+
+            Assert.IsTrue(controller.IsMajorThreatWarningActive);
+            Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("DREAD ELITE"));
+            Assert.That(controller.MajorThreatWarningCount, Is.GreaterThan(warningsAfterRecurringElite));
+
+            controller.Simulate(2.7f - controller.RunTimeSeconds);
+            yield return null;
+
+            Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(1, controller.ActiveDreadEliteCount);
+            Assert.IsFalse(controller.IsMajorThreatWarningActive);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MajorThreatHealthReadoutPrioritizesBossAndTracksDamage()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

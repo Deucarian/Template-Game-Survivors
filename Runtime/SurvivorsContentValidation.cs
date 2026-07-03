@@ -154,9 +154,19 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError("First elite spawn time must be above zero.");
             }
 
+            if (runFlow.EliteSpawnIntervalSeconds <= 0f)
+            {
+                result.AddError("Recurring elite spawn interval must be above zero.");
+            }
+
             if (runFlow.FirstDreadEliteSpawnTimeSeconds <= runFlow.FirstEliteSpawnTimeSeconds)
             {
                 result.AddError("First dread elite spawn time must be later than the first elite spawn time.");
+            }
+
+            if (runFlow.DreadEliteSpawnIntervalSeconds <= 0f)
+            {
+                result.AddError("Recurring dread elite spawn interval must be above zero.");
             }
 
             if (runFlow.MinibossSpawnTimeSeconds <= runFlow.FirstEliteSpawnTimeSeconds)

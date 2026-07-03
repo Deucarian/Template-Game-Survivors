@@ -176,6 +176,8 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _victoryClearedThisRun;
         private bool _firstEliteWarningShown;
         private bool _firstDreadEliteWarningShown;
+        private float _timedEliteWarningTargetTimeSeconds;
+        private float _timedDreadEliteWarningTargetTimeSeconds;
         private bool _minibossWarningShown;
         private bool _bossWarningShown;
         private bool _endlessEliteWarningShown;
@@ -789,6 +791,8 @@ namespace Deucarian.TemplateGameSurvivors
             _victoryClearedThisRun = false;
             _firstEliteWarningShown = false;
             _firstDreadEliteWarningShown = false;
+            _timedEliteWarningTargetTimeSeconds = 0f;
+            _timedDreadEliteWarningTargetTimeSeconds = 0f;
             _minibossWarningShown = false;
             _bossWarningShown = false;
             ResetEndlessThreatSchedule();
@@ -4336,8 +4340,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SurvivorsRunFlowDefinition definition = _runFlow.Definition;
-            TryBeginMajorThreatWarning(ref _firstEliteWarningShown, definition.FirstEliteSpawnTimeSeconds, SurvivorsEnemyRole.Elite);
-            TryBeginMajorThreatWarning(ref _firstDreadEliteWarningShown, definition.FirstDreadEliteSpawnTimeSeconds, SurvivorsEnemyRole.DreadElite);
+            TryBeginRecurringMajorThreatWarning(ref _firstEliteWarningShown, ref _timedEliteWarningTargetTimeSeconds, _runFlow.NextEliteSpawnTimeSeconds, SurvivorsEnemyRole.Elite);
+            TryBeginRecurringMajorThreatWarning(ref _firstDreadEliteWarningShown, ref _timedDreadEliteWarningTargetTimeSeconds, _runFlow.NextDreadEliteSpawnTimeSeconds, SurvivorsEnemyRole.DreadElite);
             TryBeginMajorThreatWarning(ref _minibossWarningShown, definition.MinibossSpawnTimeSeconds, SurvivorsEnemyRole.Miniboss);
             TryBeginMajorThreatWarning(ref _bossWarningShown, definition.BossSpawnTimeSeconds, SurvivorsEnemyRole.Boss);
             if (_victoryClearedThisRun && State == SurvivorsRunState.Playing)
@@ -4346,6 +4350,24 @@ namespace Deucarian.TemplateGameSurvivors
                 TryBeginMajorThreatWarning(ref _endlessMinibossWarningShown, _nextEndlessMinibossSpawnTimeSeconds, SurvivorsEnemyRole.Miniboss);
                 TryBeginMajorThreatWarning(ref _endlessBossWarningShown, _nextEndlessBossSpawnTimeSeconds, SurvivorsEnemyRole.Boss);
             }
+        }
+
+        private void TryBeginRecurringMajorThreatWarning(ref bool warningShown, ref float warningTargetTimeSeconds, float targetTimeSeconds, SurvivorsEnemyRole role)
+        {
+            if (targetTimeSeconds <= 0f)
+            {
+                warningShown = false;
+                warningTargetTimeSeconds = 0f;
+                return;
+            }
+
+            if (!Mathf.Approximately(warningTargetTimeSeconds, targetTimeSeconds))
+            {
+                warningShown = false;
+                warningTargetTimeSeconds = targetTimeSeconds;
+            }
+
+            TryBeginMajorThreatWarning(ref warningShown, targetTimeSeconds, role);
         }
 
         private void TryBeginMajorThreatWarning(ref bool warningShown, float targetTimeSeconds, SurvivorsEnemyRole role)

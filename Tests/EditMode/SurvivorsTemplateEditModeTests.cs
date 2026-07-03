@@ -321,7 +321,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.EvolutionSurgeRadius, Is.InRange(4f, 8f));
             Assert.That(tuning.MajorThreatWarningLeadSeconds, Is.InRange(5f, 12f));
             Assert.That(tuning.FirstEliteSpawnTimeSeconds, Is.InRange(120f, 240f));
+            Assert.That(tuning.EliteSpawnIntervalSeconds, Is.InRange(180f, 240f));
             Assert.That(tuning.FirstDreadEliteSpawnTimeSeconds, Is.InRange(240f, 360f));
+            Assert.That(tuning.DreadEliteSpawnIntervalSeconds, Is.InRange(360f, 480f));
             Assert.That(tuning.MinibossSpawnTimeSeconds, Is.InRange(300f, 480f));
             Assert.That(tuning.BossSpawnTimeSeconds, Is.InRange(1140f, 1260f));
             Assert.That(tuning.SurvivalVictoryTimeSeconds, Is.GreaterThanOrEqualTo(1800f));
@@ -332,6 +334,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(runtime.TryConsumeTimedEliteSpawn(tuning.FirstDreadEliteSpawnTimeSeconds, out SurvivorsEnemyRole firstDreadEliteRole));
             Assert.AreEqual(SurvivorsEnemyRole.DreadElite, firstDreadEliteRole);
             Assert.IsFalse(runtime.TryConsumeTimedEliteSpawn(tuning.FirstDreadEliteSpawnTimeSeconds + 1f, out _));
+            Assert.IsTrue(runtime.TryConsumeTimedEliteSpawn(tuning.FirstEliteSpawnTimeSeconds + tuning.EliteSpawnIntervalSeconds, out SurvivorsEnemyRole recurringEliteRole));
+            Assert.AreEqual(SurvivorsEnemyRole.Elite, recurringEliteRole);
+            Assert.IsFalse(runtime.TryConsumeTimedEliteSpawn(tuning.FirstEliteSpawnTimeSeconds + tuning.EliteSpawnIntervalSeconds + 1f, out _));
+            Assert.IsTrue(runtime.TryConsumeTimedEliteSpawn(tuning.FirstEliteSpawnTimeSeconds + tuning.EliteSpawnIntervalSeconds * 2f, out SurvivorsEnemyRole secondRecurringEliteRole));
+            Assert.AreEqual(SurvivorsEnemyRole.Elite, secondRecurringEliteRole);
+            Assert.IsTrue(runtime.TryConsumeTimedEliteSpawn(tuning.FirstDreadEliteSpawnTimeSeconds + tuning.DreadEliteSpawnIntervalSeconds, out SurvivorsEnemyRole recurringDreadEliteRole));
+            Assert.AreEqual(SurvivorsEnemyRole.DreadElite, recurringDreadEliteRole);
 
             runtime.Tick(30f);
             Assert.AreEqual(SurvivorsRunPhase.Opening, runtime.Phase);
@@ -368,10 +377,14 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.RoamingCacheAmbushStartCache, Is.LessThan(human.RoamingCacheAmbushStartCache));
             Assert.That(showcase.RoamingCacheTravelInterval, Is.LessThan(human.RoamingCacheTravelInterval));
             Assert.That(debugFast.FirstEliteSpawnTimeSeconds, Is.LessThan(human.FirstEliteSpawnTimeSeconds));
+            Assert.That(debugFast.EliteSpawnIntervalSeconds, Is.LessThan(human.EliteSpawnIntervalSeconds));
             Assert.That(debugFast.MinibossSpawnTimeSeconds, Is.LessThan(human.MinibossSpawnTimeSeconds));
             Assert.That(normal.FirstDreadEliteSpawnTimeSeconds, Is.LessThan(normal.MinibossSpawnTimeSeconds));
+            Assert.That(normal.DreadEliteSpawnIntervalSeconds, Is.LessThan(human.DreadEliteSpawnIntervalSeconds));
             Assert.That(debugFast.FirstDreadEliteSpawnTimeSeconds, Is.LessThan(debugFast.MinibossSpawnTimeSeconds));
+            Assert.That(debugFast.DreadEliteSpawnIntervalSeconds, Is.LessThan(human.DreadEliteSpawnIntervalSeconds));
             Assert.That(showcase.FirstDreadEliteSpawnTimeSeconds, Is.LessThan(showcase.MinibossSpawnTimeSeconds));
+            Assert.That(showcase.EliteSpawnIntervalSeconds, Is.LessThan(human.EliteSpawnIntervalSeconds));
             Assert.That(debugFast.RewardSelectionTimeoutSeconds, Is.GreaterThan(human.RewardSelectionTimeoutSeconds));
             Assert.That(showcase.EnemySpawnIntervalSeconds, Is.GreaterThan(debugFast.EnemySpawnIntervalSeconds));
             Assert.That(showcase.EnemySpawnIntervalSeconds, Is.LessThan(human.EnemySpawnIntervalSeconds));
@@ -751,7 +764,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 boss: new SurvivorsEnemyProfile(SurvivorsEnemyRole.Miniboss, "enemy.bad.boss", "", 0f, 0f, 0f, -1f, 0f, 0, Color.white),
                 survivalVictoryTimeSeconds: 8f,
                 firstEliteSpawnTimeSeconds: -1f,
-                firstDreadEliteSpawnTimeSeconds: -2f);
+                eliteSpawnIntervalSeconds: 0f,
+                firstDreadEliteSpawnTimeSeconds: -2f,
+                dreadEliteSpawnIntervalSeconds: 0f);
 
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateRunFlowContent(badRunFlow);
             string errors = string.Join(Environment.NewLine, result.Errors);
@@ -759,7 +774,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsFalse(result.Succeeded);
             StringAssert.Contains("escalation interval", errors);
             StringAssert.Contains("First elite spawn time", errors);
+            StringAssert.Contains("Recurring elite spawn interval", errors);
             StringAssert.Contains("First dread elite spawn time", errors);
+            StringAssert.Contains("Recurring dread elite spawn interval", errors);
             StringAssert.Contains("Boss spawn time", errors);
             StringAssert.Contains("Survival victory time", errors);
             StringAssert.Contains("miniboss profile", errors);
