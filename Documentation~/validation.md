@@ -123,7 +123,7 @@ Phase 3F adds reference-parity gameplay validation:
 - Run flow validation covers timed swarm, runner, bruiser, spitter, elite, miniboss, and boss pressure over a 30-minute sample arc.
 - EditMode coverage checks expanded enemy profiles plus barrier absorption and poison damage-over-time behavior.
 - PlayMode coverage checks the expanded default loadout, draftable weapon unlocks, XP-gain and area-scaling passives, early/boss rarity weighting, weapon-owned mutation availability, and class-gated advanced passive availability.
-- `Tools > Deucarian > Templates > Survivors > Runtime Debugger` provides Play Mode controls for forced XP, shard grants, level-ups, elite/miniboss/boss spawns, enemy bursts, arena fill, stress profiles, magnet recall, build/evolution/draft inspection, and meta reset.
+- `Tools > Deucarian > Templates > Survivors > Runtime Debugger` provides Play Mode controls for forced XP, shard grants, level-ups, horde-rush trigger/clear checks, elite/miniboss/boss spawns, enemy bursts, arena fill, stress profiles, magnet recall, build/evolution/draft inspection, and meta reset.
 
 Full graph-editor passive skill trees, production class content packs, production UI, monetization, networking, and shared package extraction remain deferred.
 

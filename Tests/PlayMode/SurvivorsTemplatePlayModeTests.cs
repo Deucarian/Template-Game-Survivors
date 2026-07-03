@@ -742,6 +742,17 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(2));
             Assert.AreEqual(1, controller.ActiveBossCount);
 
+            controller.CurrentTuning.HordeRushBaseEnemyCount = 3;
+            controller.CurrentTuning.HordeRushMaxEnemyCount = 3;
+            controller.CurrentTuning.HordeRushExtraAliveAllowance = 8;
+            Assert.AreEqual(3, controller.DebugTriggerHordeRush());
+            Assert.AreEqual(3, controller.ActiveHordeRushEnemyCount);
+            Assert.That(controller.LastHordeRushFeedbackLabel, Does.Contain("Horde Rush"));
+            Assert.AreEqual(3, controller.DebugClearActiveHordeRush());
+            yield return null;
+            Assert.AreEqual(0, controller.ActiveHordeRushEnemyCount);
+            Assert.AreEqual(1, controller.HordeRushClearRewardCount);
+
             var buildLines = controller.DebugDescribeCurrentBuild();
             string buildSummary = string.Join("\n", buildLines);
             Assert.That(buildSummary, Does.Contain("Weapons"));

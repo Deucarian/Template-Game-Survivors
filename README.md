@@ -69,7 +69,7 @@ Default play uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` is re
 - Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
 - Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.
 - Run tuning, pacing profiles, horde pack sizes, timed horde-rush events and clear caches, kill-streak reward/surge pacing, pickup heal/currency amounts, endless major-threat intervals, reward timeout, draft rarity weights, draft rerolls, draft banishes, and skip rewards: start with `CreateDefaultTuning` and `CreateTuning(SurvivorsPacingProfile)` before changing controller internals.
-- Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP or blood shards, force level-ups, force elite/miniboss/boss spawns, spawn bursts, fill the arena, switch pacing profiles with a restart, apply stress profiles, inspect live build ranks/evolutions/drafts, trigger magnet recall, or reset meta progression.
+- Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP or blood shards, force level-ups, trigger or clear horde rushes, force elite/miniboss/boss spawns, spawn bursts, fill the arena, switch pacing profiles with a restart, apply stress profiles, inspect live build ranks/evolutions/drafts, trigger magnet recall, or reset meta progression.
 
 ## Asset Flip Shape
 
@@ -160,7 +160,7 @@ During Play Mode, run:
 
 `Tools > Deucarian > Templates > Survivors > Runtime Debugger`
 
-Use it to force XP, grant blood shards, force level-up, force elite/miniboss/boss spawns, spawn enemy bursts, fill the arena, apply stress targets, switch pacing profiles with a restart, inspect live spawn interval/pack/counts, build ranks, eligible evolutions, and the current draft pool, trigger magnet recall, and reset the local meta profile.
+Use it to force XP, grant blood shards, force level-up, trigger or clear horde rushes, force elite/miniboss/boss spawns, spawn enemy bursts, fill the arena, apply stress targets, switch pacing profiles with a restart, inspect live spawn interval/pack/counts, horde-rush state, build ranks, eligible evolutions, and the current draft pool, trigger magnet recall, and reset the local meta profile.
 
 ## Screenshots And GIFs
 

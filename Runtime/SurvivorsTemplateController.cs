@@ -921,6 +921,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         public int KillActiveHordeRushEnemiesForTest()
         {
+            return DebugClearActiveHordeRush();
+        }
+
+        public int DebugClearActiveHordeRush()
+        {
             EnsureRunStartedForTest();
             if (_activeHordeRushEnemies.Count == 0)
             {
@@ -1064,6 +1069,25 @@ namespace Deucarian.TemplateGameSurvivors
             int target = Mathf.Clamp(targetAlive, 1, 512);
             int needed = Mathf.Max(0, target - ActiveEnemyCount);
             return needed <= 0 ? 0 : DebugSpawnEnemyBurst(role, needed, radius);
+        }
+
+        public int DebugTriggerHordeRush()
+        {
+            EnsureRunStartedForTest();
+            int spawned = SpawnHordeRushBurst();
+            _hordeRushSequence++;
+            ScheduleNextHordeRush(RunTimeSeconds, firstRush: false);
+            if (spawned <= 0)
+            {
+                return 0;
+            }
+
+            HordeRushSpawnCount++;
+            HordeRushEnemySpawnCount += spawned;
+            LastHordeRushFeedbackLabel = $"Horde Rush {HordeRushSpawnCount}: {spawned} enemies";
+            RecordStreakRewardFeedback(LastHordeRushFeedbackLabel, new Color(1f, 0.42f, 0.18f));
+            PlayFeedback(_bossPulse, PlayerPosition, 28, _dangerClip);
+            return spawned;
         }
 
         public void DebugApplyStressProfile(int targetAlive)

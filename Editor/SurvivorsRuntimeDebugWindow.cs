@@ -74,6 +74,18 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 controller.DebugFillArenaToTarget(_spawnRole, _fillTarget, _spawnRadius);
             }
 
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Trigger Horde Rush"))
+            {
+                controller.DebugTriggerHordeRush();
+            }
+
+            if (GUILayout.Button("Clear Horde Rush"))
+            {
+                controller.DebugClearActiveHordeRush();
+            }
+
+            EditorGUILayout.EndHorizontal();
             _majorEnemyRadius = EditorGUILayout.Slider("Major Enemy Radius", _majorEnemyRadius, 2f, 24f);
             EditorGUILayout.BeginHorizontal();
             if (GUILayout.Button("Force Elite"))
@@ -146,6 +158,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             EditorGUILayout.LabelField("Reward Timeout", rewardTimeout);
             EditorGUILayout.LabelField("Draft Tools", $"Rerolls {controller.DraftRerollsRemaining}, Banishes {controller.DraftBanishesRemaining}, Skips {controller.DraftSkipCount}");
             EditorGUILayout.LabelField("Enemies", $"{controller.ActiveEnemyCount} alive, {controller.KilledCount} killed, {controller.ActiveEliteCount} elites");
+            EditorGUILayout.LabelField("Horde Rush", $"{controller.ActiveHordeRushEnemyCount} tracked, {controller.HordeRushSpawnCount} spawned, {controller.HordeRushClearRewardCount} cleared");
             EditorGUILayout.LabelField("Build", $"Weapons {controller.ActiveWeaponCount}, Upgrades {controller.SelectedUpgradeCount}, Relics {controller.SelectedRelicCount}");
             EditorGUILayout.LabelField("Survivability", $"Health {controller.CurrentHealth:0}/{controller.MaxHealth:0}, Barrier {controller.BarrierValue:0}/{controller.BarrierCapacity:0}");
             EditorGUILayout.LabelField("Pools", $"Projectiles {controller.ActiveProjectileCount}, Pickups {controller.ActivePickupCount}");
