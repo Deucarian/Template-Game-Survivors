@@ -170,6 +170,83 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator DraftRerollRefreshesChoicesWithoutConsumingLevel()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(1, controller.PendingLevelUps);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            int startingRerolls = controller.DraftRerollsRemaining;
+
+            Assert.IsTrue(controller.RerollCurrentDraft());
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(1, controller.PendingLevelUps);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.AreEqual(1, controller.DraftRerollCount);
+            Assert.AreEqual(startingRerolls - 1, controller.DraftRerollsRemaining);
+            Assert.AreEqual(0, controller.SelectedUpgradeCount);
+            Assert.IsTrue(controller.SkipCurrentDraft());
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator DraftBanishRemovesChoiceFromFutureDrafts()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.ForceLevelUpWithLockedChoiceForTest("upgrade.survivors.arcane-damage");
+            yield return null;
+
+            int arcaneChoiceIndex = IndexOfDraftChoice(controller, "upgrade.survivors.arcane-damage");
+            Assert.That(arcaneChoiceIndex, Is.GreaterThanOrEqualTo(0));
+            int startingBanishes = controller.DraftBanishesRemaining;
+
+            Assert.IsTrue(controller.BanishDraftChoice(arcaneChoiceIndex));
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(1, controller.DraftBanishCount);
+            Assert.AreEqual(startingBanishes - 1, controller.DraftBanishesRemaining);
+            Assert.AreEqual(-1, IndexOfDraftChoice(controller, "upgrade.survivors.arcane-damage"));
+            Assert.IsFalse(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            Assert.IsTrue(controller.SkipCurrentDraft());
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator DraftSkipGrantsSmallRunRewardAndResumes()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            int skipReward = controller.DraftSkipBloodShards;
+            Assert.That(skipReward, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(controller.SkipCurrentDraft());
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(0, controller.PendingLevelUps);
+            Assert.AreEqual(0, controller.SelectedUpgradeCount);
+            Assert.AreEqual(1, controller.DraftSkipCount);
+            Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(skipReward));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator BossRelicChoiceAutoSelectsAfterTimeout()
         {
             SurvivorsTemplateController controller = CreateController();

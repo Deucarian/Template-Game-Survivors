@@ -109,6 +109,7 @@ namespace Deucarian.TemplateGameSurvivors
         private float _killStreakTimer;
         private long _spawnSequence;
         private int _killStreakCount;
+        private int _currentDraftRerollIndex;
         private bool _runStarted;
         private bool _ownsMetaProgressionService;
         private bool _metaProfileLoaded;
@@ -152,6 +153,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int SelectedRelicCount { get; private set; }
         public int SelectedRewardUpgradeCount { get; private set; }
         public int RewardAutoSelectCount { get; private set; }
+        public int DraftRerollCount { get; private set; }
+        public int DraftBanishCount { get; private set; }
+        public int DraftSkipCount { get; private set; }
         public int ClassUnlockRewardCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
@@ -254,6 +258,9 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsGameOver => State == SurvivorsRunState.GameOver;
         public bool IsVictory => State == SurvivorsRunState.Victory;
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
+        public int DraftRerollsRemaining => Mathf.Max(0, CurrentTuning.DraftRerollCharges - DraftRerollCount);
+        public int DraftBanishesRemaining => Mathf.Max(0, CurrentTuning.DraftBanishCharges - DraftBanishCount);
+        public int DraftSkipBloodShards => Mathf.Max(0, CurrentTuning.DraftSkipBloodShards);
 
         private void Awake()
         {
@@ -342,7 +349,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 258, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
             GUI.Label(new Rect(24, 280, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
             GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -423,6 +430,9 @@ namespace Deucarian.TemplateGameSurvivors
             SelectedRelicCount = 0;
             SelectedRewardUpgradeCount = 0;
             RewardAutoSelectCount = 0;
+            DraftRerollCount = 0;
+            DraftBanishCount = 0;
+            DraftSkipCount = 0;
             ClassUnlockRewardCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
@@ -478,6 +488,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             _rewardSelectionTimer = 0f;
+            _currentDraftRerollIndex = 0;
             ApplyPersistentMetaBonuses();
             ApplySelectedClassBonuses();
             BarrierValue = BarrierCapacity;
@@ -908,32 +919,85 @@ namespace Deucarian.TemplateGameSurvivors
 
             ApplyUpgrade(selected);
             SelectedUpgradeCount++;
-            if (selectionKind == SurvivorsRewardSelectionKind.LevelUp)
+            CompleteUpgradeDraftSelection(
+                selectionKind,
+                consumeLevelUp: selectionKind == SurvivorsRewardSelectionKind.LevelUp,
+                selectedRewardUpgrade: selectionKind != SurvivorsRewardSelectionKind.LevelUp);
+
+            return true;
+        }
+
+        public bool RerollCurrentDraft()
+        {
+            if (!CanRerollCurrentDraft())
             {
-                PendingLevelUps = Mathf.Max(0, PendingLevelUps - 1);
+                return false;
+            }
+
+            int nextRerollIndex = _currentDraftRerollIndex + 1;
+            if (!TryGenerateCurrentUpgradeDraft(_rewardSelectionKind, nextRerollIndex, lockedChoices: null, out RunUpgradeDraft rerolled))
+            {
+                return false;
+            }
+
+            _currentDraft = rerolled;
+            _currentRelicDraft = null;
+            _currentDraftRerollIndex = nextRerollIndex;
+            DraftRerollCount++;
+            BeginRewardSelectionTimeout();
+            PlayFeedback(_levelUpPulse, PlayerPosition, 18, _levelUpClip);
+            return true;
+        }
+
+        public bool SkipCurrentDraft()
+        {
+            if (!CanSkipCurrentDraft())
+            {
+                return false;
+            }
+
+            SurvivorsRewardSelectionKind selectionKind = _rewardSelectionKind;
+            DraftSkipCount++;
+            _bonusBloodShardsEarnedThisRun += DraftSkipBloodShards;
+            CompleteUpgradeDraftSelection(
+                selectionKind,
+                consumeLevelUp: selectionKind == SurvivorsRewardSelectionKind.LevelUp,
+                selectedRewardUpgrade: false);
+            return true;
+        }
+
+        public bool BanishDraftChoice(int index)
+        {
+            if (!CanBanishCurrentDraft() || _currentDraft == null || index < 0 || index >= _currentDraft.Choices.Count)
+            {
+                return false;
+            }
+
+            RunUpgradeDefinition banished = _currentDraft.Choices[index];
+            if (banished == null || !_upgradeState.Banish(banished.Id))
+            {
+                return false;
+            }
+
+            DraftBanishCount++;
+            SurvivorsRewardSelectionKind selectionKind = _rewardSelectionKind;
+            int nextRerollIndex = _currentDraftRerollIndex + 1;
+            if (TryGenerateCurrentUpgradeDraft(selectionKind, nextRerollIndex, lockedChoices: null, out RunUpgradeDraft rerolled))
+            {
+                _currentDraft = rerolled;
+                _currentRelicDraft = null;
+                _currentDraftRerollIndex = nextRerollIndex;
+                BeginRewardSelectionTimeout();
             }
             else
             {
-                SelectedRewardUpgradeCount++;
+                CompleteUpgradeDraftSelection(
+                    selectionKind,
+                    consumeLevelUp: selectionKind == SurvivorsRewardSelectionKind.LevelUp,
+                    selectedRewardUpgrade: false);
             }
 
-            _currentDraft = null;
-            _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
-            _rewardSelectionTimer = 0f;
-            if (selectionKind == SurvivorsRewardSelectionKind.BossUpgrade && _pendingVictoryAfterRewardDraft)
-            {
-                _pendingVictoryAfterRewardDraft = false;
-                EnterVictory();
-            }
-            else if (PendingLevelUps > 0)
-            {
-                OpenLevelUpDraft();
-            }
-            else
-            {
-                State = SurvivorsRunState.Playing;
-            }
-
+            PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip);
             return true;
         }
 
@@ -1810,6 +1874,77 @@ namespace Deucarian.TemplateGameSurvivors
             return draft != null && CountEvolutionChoices(draft.Choices) > 0;
         }
 
+        private bool TryGenerateCurrentUpgradeDraft(
+            SurvivorsRewardSelectionKind selectionKind,
+            int rerollIndex,
+            IReadOnlyList<RunUpgradeId> lockedChoices,
+            out RunUpgradeDraft draft)
+        {
+            draft = null;
+            RunUpgradeCatalog draftCatalog;
+            IReadOnlyList<RunUpgradeId> resolvedLocks = lockedChoices;
+            bool requireEvolutionChoice = false;
+            switch (selectionKind)
+            {
+                case SurvivorsRewardSelectionKind.LevelUp:
+                    draftCatalog = CreateEligibleDraftCatalog();
+                    break;
+                case SurvivorsRewardSelectionKind.EliteUpgrade:
+                    draftCatalog = CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole.Miniboss, requireEvolutionChoice: false);
+                    resolvedLocks = CreateEligibleEvolutionChoiceLocks(CurrentTuning.DraftChoiceCount);
+                    break;
+                case SurvivorsRewardSelectionKind.BossUpgrade:
+                    requireEvolutionChoice = true;
+                    draftCatalog = CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole.Boss, requireEvolutionChoice: true);
+                    resolvedLocks = CreateEligibleEvolutionChoiceLocks(CurrentTuning.DraftChoiceCount);
+                    break;
+                default:
+                    return false;
+            }
+
+            if (draftCatalog == null)
+            {
+                return false;
+            }
+
+            draft = RunUpgradeDraftService.Generate(
+                draftCatalog,
+                _upgradeState,
+                new RunUpgradeDraftRequest(
+                    CurrentTuning.DraftChoiceCount,
+                    ResolveDraftSeed(selectionKind),
+                    Mathf.Max(0, rerollIndex),
+                    resolvedLocks == null || resolvedLocks.Count == 0 ? null : resolvedLocks));
+            if (draft == null || draft.Choices.Count == 0)
+            {
+                draft = null;
+                return false;
+            }
+
+            if (requireEvolutionChoice && !DraftContainsEvolution(draft))
+            {
+                draft = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        private int ResolveDraftSeed(SurvivorsRewardSelectionKind selectionKind)
+        {
+            int seedSalt = 0;
+            if (selectionKind == SurvivorsRewardSelectionKind.EliteUpgrade)
+            {
+                seedSalt = 173;
+            }
+            else if (selectionKind == SurvivorsRewardSelectionKind.BossUpgrade)
+            {
+                seedSalt = 313;
+            }
+
+            return CurrentTuning.RunSeed + Level + SelectedUpgradeCount + MinibossKilledCount + (BossKilledCount * 11) + seedSalt;
+        }
+
         private bool TryGetRunUpgrade(string upgradeId, out RunUpgradeDefinition definition)
         {
             definition = null;
@@ -1822,6 +1957,30 @@ namespace Deucarian.TemplateGameSurvivors
         {
             metadata = null;
             return !string.IsNullOrWhiteSpace(upgradeId) && _upgradeMetadataById.TryGetValue(upgradeId, out metadata);
+        }
+
+        private bool CanRerollCurrentDraft()
+        {
+            return State == SurvivorsRunState.LevelUp &&
+                IsRunUpgradeSelectionKind(_rewardSelectionKind) &&
+                _currentDraft != null &&
+                DraftRerollsRemaining > 0;
+        }
+
+        private bool CanSkipCurrentDraft()
+        {
+            return State == SurvivorsRunState.LevelUp &&
+                IsRunUpgradeSelectionKind(_rewardSelectionKind) &&
+                _currentDraft != null;
+        }
+
+        private bool CanBanishCurrentDraft()
+        {
+            return State == SurvivorsRunState.LevelUp &&
+                _rewardSelectionKind != SurvivorsRewardSelectionKind.BossUpgrade &&
+                IsRunUpgradeSelectionKind(_rewardSelectionKind) &&
+                _currentDraft != null &&
+                DraftBanishesRemaining > 0;
         }
 
         private static bool IsRunUpgradeSelectionKind(SurvivorsRewardSelectionKind selectionKind)
@@ -2401,6 +2560,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             _rewardSelectionTimer = 0f;
+            _currentDraftRerollIndex = 0;
             _pendingVictoryAfterRewardDraft = false;
         }
 
@@ -2428,13 +2588,14 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            RunUpgradeCatalog draftCatalog = CreateEligibleDraftCatalog();
-            _currentDraft = draftCatalog == null
-                ? new RunUpgradeDraft(Array.Empty<RunUpgradeDefinition>())
-                : RunUpgradeDraftService.Generate(
-                    draftCatalog,
-                    _upgradeState,
-                    new RunUpgradeDraftRequest(CurrentTuning.DraftChoiceCount, CurrentTuning.RunSeed + Level + SelectedUpgradeCount, lockedChoices: lockedChoices));
+            _currentDraftRerollIndex = 0;
+            _currentDraft = TryGenerateCurrentUpgradeDraft(
+                SurvivorsRewardSelectionKind.LevelUp,
+                _currentDraftRerollIndex,
+                lockedChoices,
+                out RunUpgradeDraft draft)
+                ? draft
+                : new RunUpgradeDraft(Array.Empty<RunUpgradeDefinition>());
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
@@ -2455,28 +2616,19 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
-            RunUpgradeCatalog draftCatalog = CreateEligibleRewardDraftCatalog(role, requireEvolutionChoice);
-            if (draftCatalog == null)
-            {
-                return false;
-            }
-
-            int seedSalt = role == SurvivorsEnemyRole.Boss ? 313 : 173;
-            _currentDraft = RunUpgradeDraftService.Generate(
-                draftCatalog,
-                _upgradeState,
-                new RunUpgradeDraftRequest(
-                    CurrentTuning.DraftChoiceCount,
-                    CurrentTuning.RunSeed + Level + SelectedUpgradeCount + MinibossKilledCount + (BossKilledCount * 11) + seedSalt,
-                    lockedChoices: lockedChoices.Count == 0 ? null : lockedChoices));
-            if (_currentDraft == null || _currentDraft.Choices.Count == 0 || (requireEvolutionChoice && !DraftContainsEvolution(_currentDraft)))
+            SurvivorsRewardSelectionKind selectionKind = role == SurvivorsEnemyRole.Boss
+                ? SurvivorsRewardSelectionKind.BossUpgrade
+                : SurvivorsRewardSelectionKind.EliteUpgrade;
+            _currentDraftRerollIndex = 0;
+            if (!TryGenerateCurrentUpgradeDraft(selectionKind, _currentDraftRerollIndex, lockedChoices, out RunUpgradeDraft draft))
             {
                 _currentDraft = null;
                 return false;
             }
 
+            _currentDraft = draft;
             _currentRelicDraft = null;
-            _rewardSelectionKind = role == SurvivorsEnemyRole.Boss ? SurvivorsRewardSelectionKind.BossUpgrade : SurvivorsRewardSelectionKind.EliteUpgrade;
+            _rewardSelectionKind = selectionKind;
             _pendingVictoryAfterRewardDraft = role == SurvivorsEnemyRole.Boss;
             if (role == SurvivorsEnemyRole.Boss)
             {
@@ -2571,6 +2723,41 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void CompleteUpgradeDraftSelection(
+            SurvivorsRewardSelectionKind selectionKind,
+            bool consumeLevelUp,
+            bool selectedRewardUpgrade)
+        {
+            if (consumeLevelUp)
+            {
+                PendingLevelUps = Mathf.Max(0, PendingLevelUps - 1);
+            }
+
+            if (selectedRewardUpgrade)
+            {
+                SelectedRewardUpgradeCount++;
+            }
+
+            _currentDraft = null;
+            _currentRelicDraft = null;
+            _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
+            _rewardSelectionTimer = 0f;
+            _currentDraftRerollIndex = 0;
+            if (selectionKind == SurvivorsRewardSelectionKind.BossUpgrade && _pendingVictoryAfterRewardDraft)
+            {
+                _pendingVictoryAfterRewardDraft = false;
+                EnterVictory();
+            }
+            else if (PendingLevelUps > 0)
+            {
+                OpenLevelUpDraft();
+            }
+            else
+            {
+                State = SurvivorsRunState.Playing;
+            }
+        }
+
         private bool SelectRelic(int index)
         {
             if (State != SurvivorsRunState.LevelUp || _rewardSelectionKind != SurvivorsRewardSelectionKind.BossRelic || _currentRelicDraft == null || index < 0 || index >= _currentRelicDraft.Choices.Count)
@@ -2584,6 +2771,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             _rewardSelectionTimer = 0f;
             _pendingVictoryAfterRewardDraft = false;
+            _currentDraftRerollIndex = 0;
             if (PendingLevelUps > 0)
             {
                 OpenLevelUpDraft();
@@ -2787,10 +2975,12 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void DrawLevelUpOverlay()
         {
-            float width = 560f;
+            bool upgradeDraftOpen = !IsRelicChoiceOpen;
+            float width = upgradeDraftOpen ? 660f : 560f;
             int choiceCount = IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
-            float rowHeight = IsRelicChoiceOpen ? 48f : 68f;
-            float height = 112f + choiceCount * rowHeight;
+            float rowHeight = IsRelicChoiceOpen ? 48f : 72f;
+            float footerHeight = upgradeDraftOpen ? 48f : 0f;
+            float height = 112f + choiceCount * rowHeight + footerHeight;
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(rect, ResolveRewardOverlayTitle());
             GUI.Label(
@@ -2799,7 +2989,10 @@ namespace Deucarian.TemplateGameSurvivors
                 _hudSmallStyle);
             for (int i = 0; i < choiceCount; i++)
             {
-                Rect buttonRect = new Rect(rect.x + 24f, rect.y + 68f + i * rowHeight, width - 48f, rowHeight - 12f);
+                Rect rowRect = new Rect(rect.x + 24f, rect.y + 68f + i * rowHeight, width - 48f, rowHeight - 12f);
+                Rect buttonRect = upgradeDraftOpen
+                    ? new Rect(rowRect.x, rowRect.y, rowRect.width - 88f, rowRect.height)
+                    : rowRect;
                 string label;
                 if (IsRelicChoiceOpen)
                 {
@@ -2814,8 +3007,59 @@ namespace Deucarian.TemplateGameSurvivors
 
                 if (GUI.Button(buttonRect, label))
                 {
-                    SelectUpgrade(i);
+                    if (SelectUpgrade(i))
+                    {
+                        return;
+                    }
                 }
+
+                if (upgradeDraftOpen)
+                {
+                    bool previousEnabled = GUI.enabled;
+                    GUI.enabled = previousEnabled && CanBanishCurrentDraft();
+                    Rect banishRect = new Rect(rowRect.xMax - 76f, rowRect.y, 76f, rowRect.height);
+                    if (GUI.Button(banishRect, "Banish"))
+                    {
+                        if (BanishDraftChoice(i))
+                        {
+                            GUI.enabled = previousEnabled;
+                            return;
+                        }
+                    }
+
+                    GUI.enabled = previousEnabled;
+                }
+            }
+
+            if (upgradeDraftOpen)
+            {
+                float footerY = rect.y + 72f + choiceCount * rowHeight;
+                bool previousEnabled = GUI.enabled;
+                GUI.enabled = previousEnabled && CanRerollCurrentDraft();
+                if (GUI.Button(new Rect(rect.x + 24f, footerY, 160f, 30f), $"Reroll ({DraftRerollsRemaining})"))
+                {
+                    if (RerollCurrentDraft())
+                    {
+                        GUI.enabled = previousEnabled;
+                        return;
+                    }
+                }
+
+                GUI.enabled = previousEnabled && CanSkipCurrentDraft();
+                if (GUI.Button(new Rect(rect.x + 194f, footerY, 180f, 30f), $"Skip (+{DraftSkipBloodShards} shards)"))
+                {
+                    if (SkipCurrentDraft())
+                    {
+                        GUI.enabled = previousEnabled;
+                        return;
+                    }
+                }
+
+                GUI.enabled = previousEnabled;
+                GUI.Label(
+                    new Rect(rect.x + 390f, footerY + 6f, width - 414f, 18f),
+                    $"Banishes {DraftBanishesRemaining}",
+                    _hudSmallStyle);
             }
         }
 
@@ -2970,7 +3214,28 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void HandleLevelUpInput()
         {
-            if (Input.GetKeyDown(KeyCode.Alpha1))
+            bool banishModifier = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+            if (banishModifier && Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                BanishDraftChoice(0);
+            }
+            else if (banishModifier && Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                BanishDraftChoice(1);
+            }
+            else if (banishModifier && Input.GetKeyDown(KeyCode.Alpha3))
+            {
+                BanishDraftChoice(2);
+            }
+            else if (Input.GetKeyDown(KeyCode.R))
+            {
+                RerollCurrentDraft();
+            }
+            else if (Input.GetKeyDown(KeyCode.S))
+            {
+                SkipCurrentDraft();
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha1))
             {
                 SelectUpgrade(0);
             }

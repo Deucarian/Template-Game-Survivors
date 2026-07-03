@@ -139,6 +139,9 @@ namespace Deucarian.TemplateGameSurvivors
         public float StartingBarrierCapacity = 8f;
         public float BaseBarrierRegenPerSecond = 0.12f;
         public int DraftChoiceCount = 3;
+        public int DraftRerollCharges = 2;
+        public int DraftBanishCharges = 2;
+        public int DraftSkipBloodShards = 1;
         public float RewardSelectionTimeoutSeconds = 0f;
         public int RunSeed = 20260624;
 
@@ -361,6 +364,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MagnetRecallSpeedMultiplier = 2f;
             tuning.ExperienceRequiredBase = 8;
             tuning.ExperienceRequiredPerLevel = 5;
+            tuning.DraftRerollCharges = 3;
+            tuning.DraftBanishCharges = 3;
             tuning.RewardSelectionTimeoutSeconds = 45f;
         }
 
@@ -420,6 +425,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MagnetRecallSpeedMultiplier = 2.6f;
             tuning.ExperienceRequiredBase = 3;
             tuning.ExperienceRequiredPerLevel = 2;
+            tuning.DraftRerollCharges = 5;
+            tuning.DraftBanishCharges = 5;
             tuning.RewardSelectionTimeoutSeconds = 8f;
         }
 
@@ -461,6 +468,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MagnetRecallSpeedMultiplier = 2.25f;
             tuning.ExperienceRequiredBase = 5;
             tuning.ExperienceRequiredPerLevel = 3;
+            tuning.DraftRerollCharges = 3;
+            tuning.DraftBanishCharges = 3;
             tuning.RewardSelectionTimeoutSeconds = 30f;
         }
 

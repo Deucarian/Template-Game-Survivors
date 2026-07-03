@@ -1,8 +1,8 @@
 # Deucarian Template Game - Survivors
 
-Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, level-up choices, miniboss and boss pressure, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
+Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, level-up choices, miniboss and boss pressure, elite upgrade rewards, boss evolution rewards, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
 
-The `Basic Survivors Game` sample is tuned as a small complete template game rather than a toy package demo: the default class starts with five distinct weapons, the horde grows through seven enemy roles, the level-up pool includes 30+ authored choices with behavior mutations and status effects, class passive atlases group class identity, weapon skill tracks group upgrade routes, and the run paces toward a 30-minute clear with continuing escalation.
+The `Basic Survivors Game` sample is tuned as a small complete template game rather than a toy package demo: the default class starts with five distinct weapons, extra weapons can enter through the draft pool, the horde grows through seven enemy roles, the level-up pool includes 30+ authored choices with behavior mutations, passives, status effects, and six legendary evolutions, class passive atlases group class identity, weapon skill tracks group upgrade routes, and the run paces toward a 30-minute clear with continuing escalation.
 
 The template is intentionally a game slice, not a reusable Survivors framework. Genre-specific systems stay local until a second concrete game proves a shared package boundary.
 
@@ -38,7 +38,7 @@ Use `#main` for stable package consumption and `#develop` when testing active pa
 2. Import the `Basic Survivors Game` sample.
 3. Open the imported sample scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
 4. Press Play.
-5. Move through the horde, collect XP gems, choose level-up options, take a relic after the miniboss, then defeat the final boss or reach the survival-duration clear condition.
+5. Move through the horde, collect XP gems, choose level-up options, take the elite reward after the miniboss, then build toward a boss evolution reward before defeating the final boss or reaching the survival-duration clear condition.
 
 For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. More detail lives in `Documentation~/playtesting.md`.
 
@@ -47,25 +47,27 @@ The scene contains a tiny bootstrap object. At runtime it creates the arena, pla
 ## Controls
 
 - WASD or arrow keys: move
-- Mouse: choose level-up or boss relic buttons
-- 1/2/3: choose level-up or boss relic options
+- Mouse: choose level-up, elite reward, boss evolution, or boss relic buttons
+- 1/2/3: choose level-up, elite reward, boss evolution, or boss relic options
+- R: reroll the current upgrade draft while charges remain; after death or victory, restart
+- S: skip the current upgrade draft for a small blood shard bonus
+- Shift+1/2/3: banish an upgrade draft option while charges remain
 - M: trigger debug magnet recall
-- R: restart after death or victory
 
 Weapons auto-fire toward nearby targets. XP gems pull toward the player when close; magnet pickups and the debug recall pull XP from farther away.
 
-The default playable kit recreates the spirit of the reference clone's Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst weapons while keeping stable Deucarian template IDs. Upgrade choices can add poison, bleed, execute, lifesteal, barrier, fan spread, pierce, chain, fork, return, orbit wall, targeted burst, burst echo, and payload mutations. Human Playtest leaves level-up and boss relic choices open until the player chooses; faster validation profiles can use timed auto-pick.
+The default playable kit recreates the spirit of the reference clone's Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst weapons while keeping stable Deucarian template IDs. Upgrade choices can add poison, bleed, execute, lifesteal, barrier, fan spread, pierce, chain, fork, return, orbit wall, targeted burst, burst echo, payload mutations, passive build requirements, and legendary weapon evolutions. Human Playtest leaves level-up and reward choices open until the player chooses; faster validation profiles can use timed auto-pick.
 
 Default play uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` is reset to `1`, opening enemy spawns use a `3.35` second interval, the opening max-alive cap is `10`, basic enemy speed is `1.0` versus player speed `5.4`, reward auto-pick is off, and the miniboss waits until `420` seconds. `Normal`, `DebugFast`, and `Showcase` profiles exist for validation and demos, but must be selected deliberately through the runtime debugger.
 
 ## What To Customize First
 
 - Weapon and projectile feel: edit `Samples~/BasicSurvivorsGame/Content/DefaultWeapons/weapons.json`, then compare with `Runtime/BasicSurvivorsGame.cs` and `CreateWeaponArchetypeDefinitions`.
-- Upgrades, class gates, passive atlases, and weapon tracks: edit `Samples~/BasicSurvivorsGame/Content/DefaultUpgrades/upgrades.json`, `Samples~/BasicSurvivorsGame/Content/DefaultProgression/progression.json`, and `CreateProgressionTrackDefinitions`. Class gates are derived from class-specific progression tracks.
+- Upgrades, evolutions, class gates, passive atlases, and weapon tracks: edit `Samples~/BasicSurvivorsGame/Content/DefaultUpgrades/upgrades.json`, `Samples~/BasicSurvivorsGame/Content/DefaultProgression/progression.json`, `CreateRunUpgradeCatalog`, `CreateRunUpgradeMetadata`, and `CreateProgressionTrackDefinitions`. Class gates are derived from class-specific progression tracks.
 - Enemies, miniboss, boss, and rewards: edit `Samples~/BasicSurvivorsGame/Content/DefaultEnemies/enemies.json`, `Samples~/BasicSurvivorsGame/Content/DefaultRewards/rewards.json`, and `CreateRunFlowDefinition`.
 - Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
 - Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.
-- Run tuning, pacing profiles, and reward timeout: start with `CreateDefaultTuning` and `CreateTuning(SurvivorsPacingProfile)` before changing controller internals.
+- Run tuning, pacing profiles, reward timeout, draft rerolls, draft banishes, and skip rewards: start with `CreateDefaultTuning` and `CreateTuning(SurvivorsPacingProfile)` before changing controller internals.
 - Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP, force level-ups, spawn bursts, fill the arena, switch pacing profiles with a restart, apply stress profiles, inspect live build stats, trigger magnet recall, or reset meta progression.
 
 ## Asset Flip Shape
@@ -74,7 +76,7 @@ Future games should mostly change sample content and template-local catalog defa
 
 - weapons, weapon names, projectile fan/spread values, orbit radius/count, payload tuning, and burst behavior
 - enemies, role timing, pressure profiles, boss stats, and reward values
-- upgrades, status/sustain/barrier/mutation effects, class gates, and draft weights
+- upgrades, evolutions, status/sustain/barrier/mutation effects, class gates, draft weights, and draft quality-of-life tuning
 - classes, starting loadouts, passive atlases, weapon skill tracks, stat modifiers, unlock rewards, relics, and meta upgrade costs
 - visuals, colors, audio clips, arena primitives, and authored sample docs
 
@@ -86,8 +88,9 @@ The reference clone has a much larger authored project: class-owned content pack
 
 - five immediately active clone-spirit weapons instead of a single starter wand
 - six-plus enemy pressure types and long-run escalation instead of one swarm profile
-- 30+ meaningful upgrade choices with visible behavior changes and status/sustain hooks
-- boss relic choices, multiple persistent meta upgrades, class loadouts, compact passive atlases, weapon skill tracks, and class-gated advanced tools
+- 30+ meaningful upgrade choices with visible behavior changes, status/sustain hooks, passive requirements, and six legendary evolutions
+- elite upgrade rewards, boss evolution rewards, boss relic choices, multiple persistent meta upgrades, class loadouts, compact passive atlases, weapon skill tracks, and class-gated advanced tools
+- reroll, skip-for-shards, and banish controls for draft quality of life
 - reward-choice timeout behavior so long sessions keep moving if a choice is left open
 - runtime debug controls under Deucarian menu conventions
 
@@ -127,7 +130,7 @@ This slice uses:
 Keep these systems local to this template until reuse is proven across another Survivors-style game:
 
 - Player movement, camera feel, radial spawn pose rules, run timing, escalation, boss/miniboss scheduling, and victory state.
-- Boss reward rules, boss relic choice rules, class selection/unlock rules, class starting loadouts, class stat modifiers, and class upgrade gates.
+- Elite reward rules, boss evolution reward rules, boss relic choice rules, draft reroll/skip/banish rules, class selection/unlock rules, class starting loadouts, class stat modifiers, and class upgrade gates.
 - Class passive atlas and weapon skill track grouping rules that derive class-specific upgrade availability.
 - Run summary data, meta upgrade effects, XP magnet behavior, level-up/relic HUD, and concrete projectile behavior.
 - Hitscan targeting, beam visuals, projectile modifier rules, payload placement, detonation, hazard rules, orbit motion, melee arc overlap, and burst nova timing.

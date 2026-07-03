@@ -16,8 +16,9 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Payload upgrades can add extra payloads, bigger explosions, and wider trigger radii.
 - The run escalates over a 30-minute arc, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
 - Minibosses and bosses add blood shard and legacy XP reward bonuses to the run summary.
-- Miniboss defeat opens a simple boss relic choice.
-- Human Playtest level-up and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
+- Miniboss defeat opens a stronger elite upgrade reward draft.
+- Boss defeat strongly prefers an eligible legendary weapon evolution before resolving victory; if no evolution is ready, victory resolves normally.
+- Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - Defeating the final boss unlocks the Ember Vanguard sample class.
 - Victory or defeat persists the run summary to a local meta profile.
@@ -25,7 +26,10 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - The sample includes a default Arcane Initiate class, one unlockable class, class-owned loadouts, passive atlases, weapon skill tracks, and six boss relics.
 - XP gems pull into the player when close.
 - Press `M` to trigger a debug magnet recall.
-- Pick a level-up choice with the mouse or number keys.
+- Pick a level-up or reward choice with the mouse or number keys.
+- Press `R` during an upgrade draft to reroll while charges remain.
+- Press `S` during an upgrade draft to skip for a small blood shard bonus.
+- Press `Shift+1`, `Shift+2`, or `Shift+3` during an upgrade draft to banish a choice while charges remain.
 - Press `R` after death or victory to restart.
 - Use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to force XP, force level-up, spawn bursts, fill the arena, switch pacing profiles with a current-run restart, apply stress targets, trigger magnet recall, inspect live stats, or explicitly reset save/progress.
 
@@ -33,8 +37,9 @@ First run target:
 
 - Move through the opening horde and let the wand auto-fire.
 - Collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
-- Defeat the miniboss and pick a boss relic.
-- Defeat the final boss or survive until the clear condition. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile.
+- Defeat the miniboss and pick an elite upgrade reward.
+- Build toward an evolution by ranking a weapon path and taking the matching passive.
+- Defeat the final boss; if an evolution is eligible, pick the boss evolution reward, otherwise victory resolves normally. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile.
 
 For manual timing checks, use the host scene path above rather than the package source scene.
 
