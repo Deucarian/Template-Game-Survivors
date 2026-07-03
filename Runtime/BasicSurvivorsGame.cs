@@ -273,11 +273,13 @@ namespace Deucarian.TemplateGameSurvivors
         public const string EmberVanguardClassId = "class.survivors.ember-vanguard";
         public const string EmberVanguardUnlockRewardId = "reward.survivors.class.ember-vanguard";
         public const string OrbitingFocusUpgradeId = "upgrade.survivors.orbiting-focus";
+        public const string SerratedOrbitUpgradeId = "upgrade.survivors.serrated-orbit";
         public const string FrostFanUpgradeId = "upgrade.survivors.frost-fan";
         public const string FrostSplinterUpgradeId = "upgrade.survivors.frost-splinter";
         public const string FrostRicochetUpgradeId = "upgrade.survivors.frost-ricochet";
         public const string ThornHaloUpgradeId = "upgrade.survivors.thorn-halo-wall";
         public const string HaloSpiralUpgradeId = "upgrade.survivors.halo-spiral";
+        public const string BrambleGuardUpgradeId = "upgrade.survivors.bramble-guard";
         public const string MoonlitEdgeUpgradeId = "upgrade.survivors.moonlit-edge";
         public const string CrescentChainUpgradeId = "upgrade.survivors.crescent-chain";
         public const string LunarTempoUpgradeId = "upgrade.survivors.lunar-tempo";
@@ -1081,6 +1083,8 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade(FrostSplinterUpgradeId, RunUpgradeRarity.Rare, 24, 3, ProjectileForkEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(FrostRicochetUpgradeId, RunUpgradeRarity.Rare, 22, 2, ProjectileChainEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(OrbitingFocusUpgradeId, RunUpgradeRarity.Uncommon, 38, 5, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
+                Upgrade(SerratedOrbitUpgradeId, RunUpgradeRarity.Rare, 24, 2, OrbitRadiusEffect, OrbitWeaponTarget, 0.28d),
+                Upgrade(BrambleGuardUpgradeId, RunUpgradeRarity.Uncommon, 34, 5, OrbitBladeEffect, ThornHaloWeaponTarget, 1.0d),
                 Upgrade(ThornHaloUpgradeId, RunUpgradeRarity.Rare, 30, 3, OrbitRadiusEffect, ThornHaloWeaponTarget, 0.35d),
                 Upgrade(HaloSpiralUpgradeId, RunUpgradeRarity.Rare, 22, 2, OrbitRadiusEffect, ThornHaloWeaponTarget, 0.3d),
                 Upgrade(MoonlitEdgeUpgradeId, RunUpgradeRarity.Uncommon, 30, 5, DamageBonusEffect, MeleeWeaponTarget, 1.5d),
@@ -1234,8 +1238,10 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(FrostSplinterUpgradeId, "Frost Splinter", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Frost shards split into secondary shards after impact.", FrostFanWeaponContentId, FrostFanUpgradeId, 2),
                 UpgradeMetadata(FrostRicochetUpgradeId, "Frost Ricochet", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Frost shards jump between packed enemies.", FrostFanWeaponContentId, FrostFanUpgradeId, 3),
                 UpgradeMetadata(OrbitingFocusUpgradeId, "Orbiting Focus", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Add blades to the orbiting ward.", OrbitWardWeaponContentId),
-                UpgradeMetadata(ThornHaloUpgradeId, "Thorn Halo Wall", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Push the halo outward and add another guard blade.", ThornHaloWeaponContentId, OrbitingFocusUpgradeId, 2),
-                UpgradeMetadata(HaloSpiralUpgradeId, "Halo Spiral", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Thorn Halo widens into a denser spiral.", ThornHaloWeaponContentId, OrbitingFocusUpgradeId, 3),
+                UpgradeMetadata(SerratedOrbitUpgradeId, "Serrated Orbit", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Blood Ring widens and adds another cutting edge.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 3),
+                UpgradeMetadata(BrambleGuardUpgradeId, "Bramble Guard", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Thorn Halo adds denser guard blades.", ThornHaloWeaponContentId),
+                UpgradeMetadata(ThornHaloUpgradeId, "Thorn Halo Wall", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Push the halo outward and add another guard blade.", ThornHaloWeaponContentId, BrambleGuardUpgradeId, 2),
+                UpgradeMetadata(HaloSpiralUpgradeId, "Halo Spiral", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Thorn Halo widens into a denser spiral.", ThornHaloWeaponContentId, BrambleGuardUpgradeId, 3),
                 UpgradeMetadata(MoonlitEdgeUpgradeId, "Moonlit Edge", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Moon Slash cuts harder.", MoonSlashWeaponContentId),
                 UpgradeMetadata(CrescentChainUpgradeId, "Crescent Chain", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Let Moon Slash cut through more targets.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 2),
                 UpgradeMetadata(LunarTempoUpgradeId, "Lunar Tempo", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Moon Slash recovers faster between cuts.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 3),
@@ -1473,6 +1479,7 @@ namespace Deucarian.TemplateGameSurvivors
                     OrbitWardWeaponContentId,
                     Node("node.survivors.blood-ring.unlock", "Blood Ring", OrbitWardUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
                     Node("node.survivors.blood-ring.focus", "Orbiting Focus", OrbitingFocusUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
+                    Node("node.survivors.blood-ring.serrated-orbit", "Serrated Orbit", SerratedOrbitUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 2),
                     Node("node.survivors.blood-ring.canticle", "Blood Ring Canticle", BloodRingCanticleUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 3)),
                 Track(
                     "progression.survivors.thorn-halo.weapon",
@@ -1481,8 +1488,9 @@ namespace Deucarian.TemplateGameSurvivors
                     string.Empty,
                     ThornHaloWeaponContentId,
                     Node("node.survivors.thorn-halo.unlock", "Thorn Halo", ThornHaloUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
-                    Node("node.survivors.thorn-halo.wall", "Thorn Halo Wall", ThornHaloUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 3),
-                    Node("node.survivors.thorn-halo.spiral", "Halo Spiral", HaloSpiralUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 2)),
+                    Node("node.survivors.thorn-halo.bramble-guard", "Bramble Guard", BrambleGuardUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
+                    Node("node.survivors.thorn-halo.wall", "Thorn Halo Wall", ThornHaloUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 3),
+                    Node("node.survivors.thorn-halo.spiral", "Halo Spiral", HaloSpiralUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2)),
                 Track(
                     "progression.survivors.cinder-burst.weapon",
                     "Cinder Burst Skill Track",
@@ -1677,6 +1685,8 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == FrostSplinterUpgradeId) return "Frost Splinter";
             if (value == FrostRicochetUpgradeId) return "Frost Ricochet";
             if (value == "upgrade.survivors.orbiting-focus") return "Orbiting Focus";
+            if (value == SerratedOrbitUpgradeId) return "Serrated Orbit";
+            if (value == BrambleGuardUpgradeId) return "Bramble Guard";
             if (value == "upgrade.survivors.thorn-halo-wall") return "Thorn Halo Wall";
             if (value == HaloSpiralUpgradeId) return "Halo Spiral";
             if (value == MoonlitEdgeUpgradeId) return "Moonlit Edge";

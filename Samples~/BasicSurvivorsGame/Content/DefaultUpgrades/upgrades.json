@@ -23,6 +23,8 @@
     { "id": "upgrade.survivors.frost-splinter", "rarity": "Rare", "effect": "survivors.projectile.fork_count", "target": "survivors.weapon.frost-fan" },
     { "id": "upgrade.survivors.frost-ricochet", "rarity": "Rare", "effect": "survivors.projectile.chain_count", "target": "survivors.weapon.frost-fan" },
     { "id": "upgrade.survivors.orbiting-focus", "rarity": "Uncommon", "effect": "survivors.orbit.blade_count", "target": "survivors.weapon.orbit-ward" },
+    { "id": "upgrade.survivors.serrated-orbit", "rarity": "Rare", "effect": "survivors.orbit.radius", "target": "survivors.weapon.orbit-ward" },
+    { "id": "upgrade.survivors.bramble-guard", "rarity": "Uncommon", "effect": "survivors.orbit.blade_count", "target": "survivors.weapon.thorn-halo" },
     { "id": "upgrade.survivors.thorn-halo-wall", "rarity": "Rare", "effect": "survivors.orbit.radius", "target": "survivors.weapon.thorn-halo" },
     { "id": "upgrade.survivors.halo-spiral", "rarity": "Rare", "effect": "survivors.orbit.radius", "target": "survivors.weapon.thorn-halo" },
     { "id": "upgrade.survivors.moonlit-edge", "rarity": "Uncommon", "effect": "survivors.damage.flat", "target": "survivors.weapon.moon-slash", "allowedClasses": [ "class.survivors.ember-vanguard" ] },

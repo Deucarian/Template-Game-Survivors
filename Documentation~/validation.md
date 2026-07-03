@@ -130,6 +130,7 @@ Full graph-editor passive skill trees, production class content packs, productio
 Phase 3G adds compact progression-atlas validation:
 
 - runtime progression tracks for class passive atlases and weapon skill tracks
+- EditMode coverage checks Blood Ring's Serrated Orbit branch and Thorn Halo's Bramble Guard rank path stay wired into their weapon tracks.
 - sample `Content/DefaultProgression/progression.json` validation through the editor menu
 - clear validation failures for duplicate progression track/node IDs, unknown class IDs, unknown weapon targets, unknown upgrade IDs, invalid node kinds, bad point costs, negative tiers, missing passive atlases, and node max ranks above the underlying upgrade rank
 - class-specific upgrade gates derived from class-owned progression tracks instead of a separate hand-written list

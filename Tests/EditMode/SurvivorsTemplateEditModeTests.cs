@@ -89,6 +89,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.AetherMineUnlockUpgradeId, BasicSurvivorsGame.AetherMineWeaponContentId);
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FrostSplinterUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FrostRicochetUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.SerratedOrbitUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.BrambleGuardUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.HaloSpiralUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.MoonlitEdgeUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.LunarTempoUpgradeId));
@@ -100,13 +102,45 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.FrostFanUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.OrbitingFocusUpgradeId), Is.GreaterThanOrEqualTo(5));
+            Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.BrambleGuardUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.MoonlitEdgeUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.RuneLatticeUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.NovaEchoUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.StarFocusUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.ExtraPayloadUpgradeId), Is.GreaterThanOrEqualTo(5));
+            AssertProgressionTrackContains(progressionTracks, "progression.survivors.blood-ring.weapon", BasicSurvivorsGame.SerratedOrbitUpgradeId);
+            AssertProgressionTrackContains(progressionTracks, "progression.survivors.thorn-halo.weapon", BasicSurvivorsGame.BrambleGuardUpgradeId);
             Assert.That(CountUpgradesByRarity(upgrades, RunUpgradeRarity.Epic), Is.GreaterThanOrEqualTo(2));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
+        }
+
+        private static void AssertProgressionTrackContains(
+            IReadOnlyList<SurvivorsProgressionTrackDefinition> tracks,
+            string trackId,
+            string upgradeId)
+        {
+            Assert.NotNull(tracks);
+            for (int trackIndex = 0; trackIndex < tracks.Count; trackIndex++)
+            {
+                SurvivorsProgressionTrackDefinition track = tracks[trackIndex];
+                if (track == null || !string.Equals(track.Id, trackId, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                for (int nodeIndex = 0; nodeIndex < track.Nodes.Count; nodeIndex++)
+                {
+                    SurvivorsProgressionNodeDefinition node = track.Nodes[nodeIndex];
+                    if (node != null && string.Equals(node.UpgradeId, upgradeId, StringComparison.Ordinal))
+                    {
+                        return;
+                    }
+                }
+
+                Assert.Fail("Track " + trackId + " is missing upgrade " + upgradeId);
+            }
+
+            Assert.Fail("Missing progression track " + trackId);
         }
 
         private static bool ContainsUpgrade(RunUpgradeCatalog catalog, string upgradeId)
