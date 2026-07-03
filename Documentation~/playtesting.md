@@ -29,6 +29,7 @@ First 30 seconds:
 - The scene starts in Human Playtest, not Debug Fast.
 - Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
 - XP gems should pulse while being pulled in; magnet pickups or `M` should make distant XP gems spin and surge toward the player.
+- Sustained kill streaks should briefly announce bonus XP, vital-shard, magnet, and blood-shard drops when they trigger.
 - When wounded, sustained kill streaks or major-enemy kills can leave vital shards; collecting one should restore health and clear the low-health warning if enough health returns.
 - Longer kill streaks can leave blood shards; collecting one should increase the bonus blood shards counted in the run summary.
 - Opening spawns should arrive as small packs, while runners should not appear until about 35 seconds.

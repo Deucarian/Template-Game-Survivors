@@ -38,6 +38,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const int DamagePopupLimit = 72;
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
+        private const float StreakRewardFeedbackDurationSeconds = 1.8f;
         private const float EnemyHitFlashSeconds = 0.13f;
         private const float EnemyDeathEffectLifetimeSeconds = 0.42f;
         private const int EnemyDeathEffectLimit = 56;
@@ -170,6 +171,9 @@ namespace Deucarian.TemplateGameSurvivors
         private string _rewardFeedbackLabel = string.Empty;
         private Color _rewardFeedbackColor = Color.white;
         private float _rewardFeedbackTimer;
+        private string _streakRewardFeedbackLabel = string.Empty;
+        private Color _streakRewardFeedbackColor = Color.white;
+        private float _streakRewardFeedbackTimer;
         private int _bonusBloodShardsEarnedThisRun;
         private int _bonusLegacyExperienceEarnedThisRun;
 
@@ -244,6 +248,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int StreakHealthDropCount { get; private set; }
         public int StreakMagnetDropCount { get; private set; }
         public int StreakBloodShardDropCount { get; private set; }
+        public int StreakRewardFeedbackCount { get; private set; }
+        public string LastStreakRewardFeedbackLabel { get; private set; } = string.Empty;
         public int CurrentKillStreak => _killStreakTimer > 0f ? _killStreakCount : 0;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
@@ -359,6 +365,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float MajorThreatWarningRemainingSeconds => IsMajorThreatWarningActive ? Mathf.Max(0f, _majorThreatWarningTargetTimeSeconds - RunTimeSeconds) : 0f;
         public string ActiveRewardFeedbackLabel => _rewardFeedbackTimer > 0f ? _rewardFeedbackLabel : string.Empty;
         public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
+        public string ActiveStreakRewardFeedbackLabel => _streakRewardFeedbackTimer > 0f ? _streakRewardFeedbackLabel : string.Empty;
+        public float StreakRewardFeedbackRemainingSeconds => Mathf.Max(0f, _streakRewardFeedbackTimer);
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
         public int TotalDraftRerollCharges => Mathf.Max(0, CurrentTuning.DraftRerollCharges + PersistentDraftRerollBonus);
         public int DraftRerollsRemaining => Mathf.Max(0, TotalDraftRerollCharges - DraftRerollCount);
@@ -399,6 +407,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickEnemyRangedAttackFeedbackEffects(Time.deltaTime);
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
+                TickStreakRewardFeedback(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
                 HandleLevelUpInput();
                 return;
@@ -411,6 +420,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickEnemyRangedAttackFeedbackEffects(Time.deltaTime);
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
+                TickStreakRewardFeedback(Time.deltaTime);
                 if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
                 {
                     ContinueAfterVictory();
@@ -472,6 +482,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawRewardSelectionFeedback();
+            DrawStreakRewardFeedback();
             DrawDamagePopups();
 
             if (State == SurvivorsRunState.LevelUp)
@@ -594,6 +605,8 @@ namespace Deucarian.TemplateGameSurvivors
             StreakHealthDropCount = 0;
             StreakMagnetDropCount = 0;
             StreakBloodShardDropCount = 0;
+            StreakRewardFeedbackCount = 0;
+            LastStreakRewardFeedbackLabel = string.Empty;
             BloodShardsEarnedThisRun = 0;
             LegacyExperienceEarnedThisRun = 0;
             LastRunResult = null;
@@ -648,6 +661,9 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardFeedbackLabel = string.Empty;
             _rewardFeedbackTimer = 0f;
             _rewardFeedbackColor = Color.white;
+            _streakRewardFeedbackLabel = string.Empty;
+            _streakRewardFeedbackTimer = 0f;
+            _streakRewardFeedbackColor = Color.white;
             _bonusBloodShardsEarnedThisRun = 0;
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
@@ -706,6 +722,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickEnemyRangedAttackFeedbackEffects(dt);
             TickMajorRewardDropFeedbackEffects(dt);
             TickRewardFeedback(dt);
+            TickStreakRewardFeedback(dt);
             if (State == SurvivorsRunState.LevelUp)
             {
                 TickRewardSelectionTimeout(dt);
@@ -2023,6 +2040,7 @@ namespace Deucarian.TemplateGameSurvivors
                 if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, amount) != null)
                 {
                     StreakBonusDropCount++;
+                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: Bonus XP +{amount}", new Color(0.28f, 0.86f, 1f));
                 }
             }
 
@@ -2032,6 +2050,7 @@ namespace Deucarian.TemplateGameSurvivors
                 if (TryDropHealthPickup(position + offset))
                 {
                     StreakHealthDropCount++;
+                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: Vital Shard", new Color(0.42f, 1f, 0.56f));
                 }
             }
 
@@ -2041,6 +2060,7 @@ namespace Deucarian.TemplateGameSurvivors
                 if (SpawnPickup(SurvivorsPickupKind.Magnet, position + offset, 1) != null)
                 {
                     StreakMagnetDropCount++;
+                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: Magnet Recall", new Color(0.55f, 0.78f, 1f));
                 }
             }
 
@@ -2051,8 +2071,23 @@ namespace Deucarian.TemplateGameSurvivors
                 if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + offset, amount) != null)
                 {
                     StreakBloodShardDropCount++;
+                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: Blood Shards +{amount}", new Color(1f, 0.34f, 0.42f));
                 }
             }
+        }
+
+        private void RecordStreakRewardFeedback(string label, Color color)
+        {
+            if (string.IsNullOrWhiteSpace(label))
+            {
+                return;
+            }
+
+            StreakRewardFeedbackCount++;
+            LastStreakRewardFeedbackLabel = label;
+            _streakRewardFeedbackLabel = label;
+            _streakRewardFeedbackColor = color;
+            _streakRewardFeedbackTimer = StreakRewardFeedbackDurationSeconds;
         }
 
         private bool TryDropHealthPickup(Vector3 position)
@@ -4876,6 +4911,35 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
         }
 
+        private void DrawStreakRewardFeedback()
+        {
+            if (_streakRewardFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_streakRewardFeedbackLabel))
+            {
+                return;
+            }
+
+            float width = Mathf.Min(360f, Mathf.Max(0f, Screen.width - 32f));
+            if (width <= 0f)
+            {
+                return;
+            }
+
+            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 10f) * 0.28f;
+            float x = Mathf.Max(16f, Screen.width - width - 18f);
+            float y = Mathf.Min(144f, Mathf.Max(16f, Screen.height - 58f));
+            Rect panel = new Rect(x, y, width, 44f);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.02f, 0.018f, 0.024f, 0.72f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(_streakRewardFeedbackColor.r, _streakRewardFeedbackColor.g, _streakRewardFeedbackColor.b, 0.22f + 0.12f * pulse);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(_streakRewardFeedbackColor.r, _streakRewardFeedbackColor.g, _streakRewardFeedbackColor.b, 0.95f);
+            GUI.DrawTexture(new Rect(panel.x, panel.y, 5f, panel.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 6f, panel.width - 24f, panel.height - 12f), _streakRewardFeedbackLabel, _rewardFeedbackStyle);
+            GUI.color = oldColor;
+        }
+
         private void DrawDamagePopups()
         {
             if (_damagePopups.Count == 0)
@@ -4943,6 +5007,20 @@ namespace Deucarian.TemplateGameSurvivors
             if (_rewardFeedbackTimer <= 0f)
             {
                 _rewardFeedbackLabel = string.Empty;
+            }
+        }
+
+        private void TickStreakRewardFeedback(float deltaTime)
+        {
+            if (_streakRewardFeedbackTimer <= 0f)
+            {
+                return;
+            }
+
+            _streakRewardFeedbackTimer = Mathf.Max(0f, _streakRewardFeedbackTimer - Mathf.Max(0f, deltaTime));
+            if (_streakRewardFeedbackTimer <= 0f)
+            {
+                _streakRewardFeedbackLabel = string.Empty;
             }
         }
 

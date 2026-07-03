@@ -705,12 +705,17 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.StreakHealthDropCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.StreakMagnetDropCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.StreakBloodShardDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.StreakRewardFeedbackCount, Is.GreaterThanOrEqualTo(4));
+            Assert.That(controller.LastStreakRewardFeedbackLabel, Does.Contain("Blood Shards"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Blood Shards"));
+            Assert.That(controller.StreakRewardFeedbackRemainingSeconds, Is.GreaterThan(0f));
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(37));
 
             controller.Simulate(4.5f);
             yield return null;
 
             Assert.AreEqual(0, controller.CurrentKillStreak);
+            Assert.IsEmpty(controller.ActiveStreakRewardFeedbackLabel);
 
             Object.Destroy(controller.gameObject);
         }
