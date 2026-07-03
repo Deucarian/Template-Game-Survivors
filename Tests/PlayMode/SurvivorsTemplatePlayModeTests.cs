@@ -19,6 +19,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         private const string LevelUpPulseName = "Survivors Level Up Pulse";
         private const string BossPulseName = "Survivors Boss Cue Pulse";
         private const string FeedbackAudioName = "Survivors Feedback Audio";
+        private const string DirectionalLightName = "Survivors Directional Light";
 
         [UnityTest]
         public IEnumerator FirstPlayableSliceBootsSpawnsKillsAndLevels()
@@ -206,8 +207,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsNotNull(GameObject.Find(LevelUpPulseName));
             Assert.IsNotNull(GameObject.Find(BossPulseName));
             Assert.IsNotNull(GameObject.Find(FeedbackAudioName));
+            Assert.IsNotNull(GameObject.Find(DirectionalLightName));
             Assert.That(Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None).Length, Is.GreaterThanOrEqualTo(6));
             Assert.That(Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None).Length, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(Array.Exists(Object.FindObjectsByType<Light>(FindObjectsSortMode.None), light => light.type == LightType.Directional && light.name == DirectionalLightName));
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 20f);
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));

@@ -22,6 +22,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const string LevelUpPulseName = "Survivors Level Up Pulse";
         private const string BossPulseName = "Survivors Boss Cue Pulse";
         private const string FeedbackAudioName = "Survivors Feedback Audio";
+        private const string DirectionalLightName = "Survivors Directional Light";
         private const float InfiniteArenaTileSize = 12f;
         private const int InfiniteArenaGridRadius = 2;
         private const float KillStreakWindowSeconds = 3.8f;
@@ -1262,6 +1263,8 @@ namespace Deucarian.TemplateGameSurvivors
             _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, new Color(1f, 0.86f, 0.18f), typeof(SurvivorsPickupActor));
             _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, new Color(0.78f, 0.42f, 1f), typeof(SurvivorsProjectileActor));
 
+            BuildSceneLighting();
+
             _poseResolver = new SurvivorsSpawnPoseResolver(this);
             var spawnables = new[]
             {
@@ -1305,6 +1308,19 @@ namespace Deucarian.TemplateGameSurvivors
 
             prefab.SetActive(false);
             return prefab;
+        }
+
+        private void BuildSceneLighting()
+        {
+            GameObject lightObject = new GameObject(DirectionalLightName);
+            lightObject.transform.SetParent(_worldRoot, false);
+            lightObject.transform.localRotation = Quaternion.Euler(52f, -34f, 0f);
+
+            Light directionalLight = lightObject.AddComponent<Light>();
+            directionalLight.type = LightType.Directional;
+            directionalLight.color = new Color(1f, 0.96f, 0.86f);
+            directionalLight.intensity = 1.15f;
+            directionalLight.shadows = LightShadows.Soft;
         }
 
         private void BuildArenaVisuals()
