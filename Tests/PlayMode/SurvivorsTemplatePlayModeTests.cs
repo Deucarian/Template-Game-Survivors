@@ -967,6 +967,65 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator EmberPayloadHazardPathRequiresRanksBeforeEvolution()
+        {
+            SurvivorsTemplateController defaultController = CreateController();
+            yield return null;
+
+            Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.SnaringRunesUpgradeId));
+            Object.Destroy(defaultController.gameObject);
+            yield return null;
+
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
+            yield return null;
+
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.RuneTrapWeaponContentId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.AetherMineWeaponContentId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.SnaringRunesUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.AetherBloomUpgradeId));
+
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            }
+
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.SnaringRunesUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.AetherBloomUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.AetherBloomUpgradeId));
+
+            Assert.That(controller.PayloadCountBonus, Is.GreaterThanOrEqualTo(3));
+            float previousTrigger = controller.PayloadTriggerRadiusBonus;
+            float previousRadius = controller.PayloadExplosionRadiusBonus;
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.SnaringRunesUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.AetherBloomUpgradeId));
+            Assert.That(controller.PayloadTriggerRadiusBonus, Is.GreaterThan(previousTrigger));
+            Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(previousRadius));
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            Assert.AreEqual(5, controller.GetRunUpgradeRankForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.SiegePayloadsUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
+
+            int previousPayloads = controller.PayloadCountBonus;
+            previousTrigger = controller.PayloadTriggerRadiusBonus;
+            previousRadius = controller.PayloadExplosionRadiusBonus;
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
+            Assert.That(controller.PayloadCountBonus, Is.GreaterThan(previousPayloads));
+            Assert.That(controller.PayloadTriggerRadiusBonus, Is.GreaterThan(previousTrigger));
+            Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(previousRadius));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ExperienceAndAreaPassivesCreateReadablePowerGains()
         {
             SurvivorsTemplateController controller = CreateController();

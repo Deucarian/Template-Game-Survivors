@@ -130,9 +130,12 @@
       "displayName": "Ember Vanguard Payload Track",
       "kind": "WeaponSkillTrack",
       "classId": "class.survivors.ember-vanguard",
-      "targetWeaponId": "weapon.survivors.gravity-grenade",
+      "targetWeaponId": "weapon.survivors.rune-trap",
       "nodes": [
-        { "id": "node.survivors.ember-vanguard.payloads.siege", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "WeaponRank", "tier": 1, "pointCost": 2, "maxRank": 2 }
+        { "id": "node.survivors.ember-vanguard.payloads.rune-lattice", "displayName": "Rune Lattice", "upgradeId": "upgrade.survivors.rune-lattice", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 5 },
+        { "id": "node.survivors.ember-vanguard.payloads.snaring-runes", "displayName": "Snaring Runes", "upgradeId": "upgrade.survivors.snaring-runes", "kind": "WeaponMutation", "tier": 1, "pointCost": 1, "maxRank": 3 },
+        { "id": "node.survivors.ember-vanguard.payloads.aether-bloom", "displayName": "Aether Bloom", "upgradeId": "upgrade.survivors.aether-bloom", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 3 },
+        { "id": "node.survivors.ember-vanguard.payloads.siege", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "WeaponRank", "tier": 3, "pointCost": 2, "maxRank": 2 }
       ]
     }
   ]

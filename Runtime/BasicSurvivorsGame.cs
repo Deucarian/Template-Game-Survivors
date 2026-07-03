@@ -237,6 +237,9 @@ namespace Deucarian.TemplateGameSurvivors
         public const string ExtraPayloadUpgradeId = "upgrade.survivors.extra-payload";
         public const string BiggerBoomsUpgradeId = "upgrade.survivors.bigger-booms";
         public const string WiderTriggersUpgradeId = "upgrade.survivors.wider-triggers";
+        public const string RuneLatticeUpgradeId = "upgrade.survivors.rune-lattice";
+        public const string SnaringRunesUpgradeId = "upgrade.survivors.snaring-runes";
+        public const string AetherBloomUpgradeId = "upgrade.survivors.aether-bloom";
         public const string ArcaneThesisUpgradeId = "upgrade.survivors.arcane-thesis";
         public const string FrostNeedleworkUpgradeId = "upgrade.survivors.frost-needlework";
         public const string BloodRingCanticleUpgradeId = "upgrade.survivors.blood-ring-canticle";
@@ -259,6 +262,7 @@ namespace Deucarian.TemplateGameSurvivors
         public const string TempestPrismEvolutionUpgradeId = "upgrade.survivors.evolution.tempest-prism";
         public const string GravefieldEngineEvolutionUpgradeId = "upgrade.survivors.evolution.gravefield-engine";
         public const string EclipseWaltzEvolutionUpgradeId = "upgrade.survivors.evolution.eclipse-waltz";
+        public const string AetherfieldMatrixEvolutionUpgradeId = "upgrade.survivors.evolution.aetherfield-matrix";
         public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
@@ -961,6 +965,9 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade(ExtraPayloadUpgradeId, RunUpgradeRarity.Rare, 22, 5, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
                 Upgrade(BiggerBoomsUpgradeId, RunUpgradeRarity.Uncommon, 32, 4, PayloadRadiusEffect, PayloadWeaponTarget, 0.45d),
                 Upgrade(WiderTriggersUpgradeId, RunUpgradeRarity.Uncommon, 28, 4, PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.35d),
+                Upgrade(RuneLatticeUpgradeId, RunUpgradeRarity.Uncommon, 28, 5, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
+                Upgrade(SnaringRunesUpgradeId, RunUpgradeRarity.Rare, 22, 3, PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.35d),
+                Upgrade(AetherBloomUpgradeId, RunUpgradeRarity.Rare, 22, 3, PayloadRadiusEffect, PayloadWeaponTarget, 0.45d),
                 UpgradeMulti(
                     ArcaneStormEvolutionUpgradeId,
                     RunUpgradeRarity.Legendary,
@@ -1013,7 +1020,15 @@ namespace Deucarian.TemplateGameSurvivors
                     1,
                     new RunUpgradeEffectDescriptor(MeleeTargetEffect, MeleeWeaponTarget, 3.0d),
                     new RunUpgradeEffectDescriptor(FireRateEffect, MeleeWeaponTarget, -0.1d),
-                    new RunUpgradeEffectDescriptor(DamageBonusEffect, MeleeWeaponTarget, 4.0d))
+                    new RunUpgradeEffectDescriptor(DamageBonusEffect, MeleeWeaponTarget, 4.0d)),
+                UpgradeMulti(
+                    AetherfieldMatrixEvolutionUpgradeId,
+                    RunUpgradeRarity.Legendary,
+                    10,
+                    1,
+                    new RunUpgradeEffectDescriptor(PayloadCountEffect, PayloadWeaponTarget, 2.0d),
+                    new RunUpgradeEffectDescriptor(PayloadRadiusEffect, PayloadWeaponTarget, 0.75d),
+                    new RunUpgradeEffectDescriptor(PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.65d))
             });
         }
 
@@ -1094,13 +1109,17 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(ExtraPayloadUpgradeId, "Extra Payload", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Throw or place additional payloads.", GravityGrenadeWeaponContentId),
                 UpgradeMetadata(BiggerBoomsUpgradeId, "Bigger Booms", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Payload explosions cover a wider area.", GravityGrenadeWeaponContentId, ExtraPayloadUpgradeId, 2),
                 UpgradeMetadata(WiderTriggersUpgradeId, "Wider Triggers", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Payloads trigger from farther away.", GravityGrenadeWeaponContentId, ExtraPayloadUpgradeId, 2),
+                UpgradeMetadata(RuneLatticeUpgradeId, "Rune Lattice", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, RuneTrapWeaponContentId, "Rune Trap and Aether Mine deploy more hazards.", RuneTrapWeaponContentId),
+                UpgradeMetadata(SnaringRunesUpgradeId, "Snaring Runes", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, RuneTrapWeaponContentId, "Placed hazards trigger from farther away.", RuneTrapWeaponContentId, RuneLatticeUpgradeId, 2),
+                UpgradeMetadata(AetherBloomUpgradeId, "Aether Bloom", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, AetherMineWeaponContentId, "Placed hazard detonations cover a wider area.", AetherMineWeaponContentId, RuneLatticeUpgradeId, 3),
                 UpgradeMetadata(ArcaneStormEvolutionUpgradeId, "Arcane Storm", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Evolution: Arc Bolt becomes a storm of chaining, forking bolts.", ArcaneWandWeaponContentId, "upgrade.survivors.arcane-damage", 5, ArcaneThesisUpgradeId),
                 UpgradeMetadata(BlizzardCrownEvolutionUpgradeId, "Blizzard Crown", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Evolution: Frost Fan expands into a piercing crown of shards.", FrostFanWeaponContentId, FrostFanUpgradeId, 5, FrostNeedleworkUpgradeId),
                 UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo become a dense orbit shield.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 5, BloodRingCanticleUpgradeId),
                 UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 5, CinderScriptUpgradeId),
                 UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam turns into a rapid piercing prism.", StarBeamWeaponContentId, StarFocusUpgradeId, 5, TwinCharmUpgradeId),
                 UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload weapons flood the arena with larger danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, GiantRuneUpgradeId),
-                UpgradeMetadata(EclipseWaltzEvolutionUpgradeId, "Eclipse Waltz", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Evolution: Moon Slash becomes a rapid sweeping dance.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 5, MoonOathUpgradeId)
+                UpgradeMetadata(EclipseWaltzEvolutionUpgradeId, "Eclipse Waltz", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Evolution: Moon Slash becomes a rapid sweeping dance.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 5, MoonOathUpgradeId),
+                UpgradeMetadata(AetherfieldMatrixEvolutionUpgradeId, "Aetherfield Matrix", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, RuneTrapWeaponContentId, "Evolution: Rune Trap and Aether Mine seed a dense hazard field.", RuneTrapWeaponContentId, RuneLatticeUpgradeId, 5, SiegePayloadsUpgradeId)
             };
         }
 
@@ -1335,8 +1354,11 @@ namespace Deucarian.TemplateGameSurvivors
                     "Ember Vanguard Payload Track",
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     EmberVanguardClassId,
-                    GravityGrenadeWeaponContentId,
-                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 2, 2))
+                    RuneTrapWeaponContentId,
+                    Node("node.survivors.ember-vanguard.payloads.rune-lattice", "Rune Lattice", RuneLatticeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 5),
+                    Node("node.survivors.ember-vanguard.payloads.snaring-runes", "Snaring Runes", SnaringRunesUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 3),
+                    Node("node.survivors.ember-vanguard.payloads.aether-bloom", "Aether Bloom", AetherBloomUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 3),
+                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 3, 2, 2))
             };
         }
 
@@ -1487,6 +1509,9 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.extra-payload") return "Extra Payload";
             if (value == "upgrade.survivors.bigger-booms") return "Bigger Booms";
             if (value == "upgrade.survivors.wider-triggers") return "Wider Triggers";
+            if (value == RuneLatticeUpgradeId) return "Rune Lattice";
+            if (value == SnaringRunesUpgradeId) return "Snaring Runes";
+            if (value == AetherBloomUpgradeId) return "Aether Bloom";
             if (value == ArcaneStormEvolutionUpgradeId) return "Arcane Storm";
             if (value == BlizzardCrownEvolutionUpgradeId) return "Blizzard Crown";
             if (value == CrimsonAegisEvolutionUpgradeId) return "Crimson Aegis";
@@ -1494,6 +1519,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == TempestPrismEvolutionUpgradeId) return "Tempest Prism";
             if (value == GravefieldEngineEvolutionUpgradeId) return "Gravefield Engine";
             if (value == EclipseWaltzEvolutionUpgradeId) return "Eclipse Waltz";
+            if (value == AetherfieldMatrixEvolutionUpgradeId) return "Aetherfield Matrix";
             return value;
         }
 

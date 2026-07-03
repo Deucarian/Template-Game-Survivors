@@ -48,6 +48,9 @@
     { "id": "upgrade.survivors.prismatic-beam", "rarity": "Uncommon", "effect": "survivors.hitscan.pierce", "target": "survivors.weapon.star-beam" },
     { "id": "upgrade.survivors.extra-payload", "rarity": "Rare", "effect": "survivors.payload.count", "target": "survivors.weapon.payloads" },
     { "id": "upgrade.survivors.bigger-booms", "rarity": "Uncommon", "effect": "survivors.payload.radius", "target": "survivors.weapon.payloads" },
-    { "id": "upgrade.survivors.wider-triggers", "rarity": "Uncommon", "effect": "survivors.payload.trigger_radius", "target": "survivors.weapon.payloads" }
+    { "id": "upgrade.survivors.wider-triggers", "rarity": "Uncommon", "effect": "survivors.payload.trigger_radius", "target": "survivors.weapon.payloads" },
+    { "id": "upgrade.survivors.rune-lattice", "rarity": "Uncommon", "effect": "survivors.payload.count", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.snaring-runes", "rarity": "Rare", "effect": "survivors.payload.trigger_radius", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.aether-bloom", "rarity": "Rare", "effect": "survivors.payload.radius", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] }
   ]
 }
