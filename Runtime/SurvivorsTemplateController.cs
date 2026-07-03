@@ -2788,6 +2788,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _runFlow.Tick(RunTimeSeconds);
+            while (_runFlow.TryConsumeTimedEliteSpawn(RunTimeSeconds, out SurvivorsEnemyRole timedEliteRole))
+            {
+                SpawnEnemy(Vector3.zero, explicitPosition: false, timedEliteRole);
+            }
+
             if (_runFlow.TryConsumeMinibossSpawn(RunTimeSeconds))
             {
                 SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Miniboss);
@@ -2967,6 +2972,10 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 BossSpawnCount++;
                 PlayFeedback(_bossPulse, enemy.transform.position, 58, _bossClip);
+            }
+            else if (IsEliteRole(role))
+            {
+                PlayFeedback(_bossPulse, enemy.transform.position, 30, _bossClip);
             }
             else
             {

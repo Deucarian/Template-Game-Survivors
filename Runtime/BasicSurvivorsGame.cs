@@ -59,21 +59,23 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemyHealthMultiplierPerEscalation = 0.12f;
         public float EnemyMoveSpeedMultiplierPerEscalation = 0.02f;
         public float EnemyExperienceMultiplierPerEscalation = 0.08f;
-        public float MinibossSpawnTimeSeconds = 180f;
+        public float FirstEliteSpawnTimeSeconds = 180f;
+        public float FirstDreadEliteSpawnTimeSeconds = 300f;
+        public float MinibossSpawnTimeSeconds = 420f;
         public float MinibossMaxHealth = 260f;
         public float MinibossMoveSpeed = 1.35f;
         public float MinibossRadius = 0.82f;
         public float MinibossContactDamage = 8f;
         public float MinibossContactIntervalSeconds = 0.85f;
         public int MinibossExperienceReward = 40;
-        public float BossSpawnTimeSeconds = 720f;
+        public float BossSpawnTimeSeconds = 1200f;
         public float BossMaxHealth = 1400f;
         public float BossMoveSpeed = 1.25f;
         public float BossRadius = 1.18f;
         public float BossContactDamage = 16f;
         public float BossContactIntervalSeconds = 0.95f;
         public int BossExperienceReward = 140;
-        public float SurvivalVictoryTimeSeconds = 900f;
+        public float SurvivalVictoryTimeSeconds = 1800f;
         public float WeaponCooldownSeconds = 0.85f;
         public float WeaponRange = 11.5f;
         public float ProjectileDamage = 5.8f;
@@ -376,6 +378,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemyHealthMultiplierPerEscalation = 0.16f;
             tuning.EnemyMoveSpeedMultiplierPerEscalation = 0.018f;
             tuning.EnemyExperienceMultiplierPerEscalation = 0.08f;
+            tuning.FirstEliteSpawnTimeSeconds = 120f;
+            tuning.FirstDreadEliteSpawnTimeSeconds = 210f;
             tuning.MinibossSpawnTimeSeconds = 300f;
             tuning.MinibossMoveSpeed = 1.65f;
             tuning.MinibossContactDamage = 10f;
@@ -438,6 +442,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemyHealthMultiplierPerEscalation = 0.24f;
             tuning.EnemyMoveSpeedMultiplierPerEscalation = 0.04f;
             tuning.EnemyExperienceMultiplierPerEscalation = 0.18f;
+            tuning.FirstEliteSpawnTimeSeconds = 20f;
+            tuning.FirstDreadEliteSpawnTimeSeconds = 40f;
             tuning.MinibossSpawnTimeSeconds = 60f;
             tuning.MinibossMaxHealth = 180f;
             tuning.MinibossMoveSpeed = 2.35f;
@@ -498,6 +504,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemyHealthMultiplierPerEscalation = 0.18f;
             tuning.EnemyMoveSpeedMultiplierPerEscalation = 0.025f;
             tuning.EnemyExperienceMultiplierPerEscalation = 0.12f;
+            tuning.FirstEliteSpawnTimeSeconds = 60f;
+            tuning.FirstDreadEliteSpawnTimeSeconds = 105f;
             tuning.MinibossSpawnTimeSeconds = 150f;
             tuning.MinibossMaxHealth = 220f;
             tuning.MinibossMoveSpeed = 2.05f;
@@ -573,7 +581,9 @@ namespace Deucarian.TemplateGameSurvivors
                 resolved.BossSpawnTimeSeconds,
                 CreateEnemyProfile(SurvivorsEnemyRole.Boss, resolved),
                 resolved.SurvivalVictoryTimeSeconds,
-                CreateEnemyProfileDefinitions(resolved));
+                CreateEnemyProfileDefinitions(resolved),
+                firstEliteSpawnTimeSeconds: resolved.FirstEliteSpawnTimeSeconds,
+                firstDreadEliteSpawnTimeSeconds: resolved.FirstDreadEliteSpawnTimeSeconds);
         }
 
         public static IReadOnlyList<SurvivorsEnemyProfile> CreateEnemyProfileDefinitions(SurvivorsTemplateTuning tuning = null)

@@ -17,7 +17,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Status and sustain upgrades can add poison, bleed, execute, lifesteal, barrier capacity, barrier recovery, and barrier-on-damage loops.
 - Enemies escalate from basic swarm pressure into fast runners, bruisers, ranged spitters, splitters that burst into smaller enemies, Blood Warden and Dread Lantern elite variants, minibosses, and a final boss.
 - Payload upgrades can add extra payloads, bigger explosions, wider trigger radii, and satellite hazard fields.
-- The run escalates over a 30-minute arc, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
+- The run escalates over a 30-minute arc, adds a first elite around 3 minutes and a dread elite around 5 minutes, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary.
 - Elite and miniboss defeat open stronger upgrade reward drafts.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.

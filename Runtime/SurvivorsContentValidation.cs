@@ -144,6 +144,26 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError("Run flow max-alive increase cannot be negative.");
             }
 
+            if (runFlow.FirstEliteSpawnTimeSeconds <= 0f)
+            {
+                result.AddError("First elite spawn time must be above zero.");
+            }
+
+            if (runFlow.FirstDreadEliteSpawnTimeSeconds <= runFlow.FirstEliteSpawnTimeSeconds)
+            {
+                result.AddError("First dread elite spawn time must be later than the first elite spawn time.");
+            }
+
+            if (runFlow.MinibossSpawnTimeSeconds <= runFlow.FirstEliteSpawnTimeSeconds)
+            {
+                result.AddError("Miniboss spawn time must be later than the first elite spawn time.");
+            }
+
+            if (runFlow.MinibossSpawnTimeSeconds <= runFlow.FirstDreadEliteSpawnTimeSeconds)
+            {
+                result.AddError("Miniboss spawn time must be later than the first dread elite spawn time.");
+            }
+
             if (runFlow.MinibossSpawnTimeSeconds <= 0f)
             {
                 result.AddError("Miniboss spawn time must be above zero.");

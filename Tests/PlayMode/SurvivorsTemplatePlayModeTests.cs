@@ -1418,12 +1418,32 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator RunFlowCanSpawnMinibossAndBossOverTime()
+        public IEnumerator RunFlowCanSpawnTimedElitesMinibossAndBossOverTime()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.FirstEliteSpawnTimeSeconds = 2f;
+            controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds = 4f;
+            controller.CurrentTuning.MinibossSpawnTimeSeconds = 6f;
+            controller.CurrentTuning.BossSpawnTimeSeconds = 8f;
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 12f;
+            controller.StartRun();
             yield return null;
 
-            controller.Simulate(controller.CurrentTuning.MinibossSpawnTimeSeconds + 0.1f);
+            controller.Simulate(controller.CurrentTuning.FirstEliteSpawnTimeSeconds + 0.1f);
+            yield return null;
+
+            Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(0, controller.ActiveDreadEliteCount);
+            Assert.AreEqual(0, controller.MinibossSpawnCount);
+
+            controller.Simulate(controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f);
+            yield return null;
+
+            Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(1, controller.ActiveDreadEliteCount);
+
+            controller.Simulate(controller.CurrentTuning.MinibossSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f);
             yield return null;
 
             Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
@@ -1635,7 +1655,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator SurvivalDurationCanTriggerVictory()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 0.5f;
+            controller.StartRun();
             yield return null;
 
             controller.Simulate(controller.CurrentTuning.SurvivalVictoryTimeSeconds + 0.1f);

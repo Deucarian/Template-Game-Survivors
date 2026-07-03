@@ -91,7 +91,9 @@ namespace Deucarian.TemplateGameSurvivors
             float bossSpawnTimeSeconds,
             SurvivorsEnemyProfile boss,
             float survivalVictoryTimeSeconds,
-            IReadOnlyList<SurvivorsEnemyProfile> swarmProfiles = null)
+            IReadOnlyList<SurvivorsEnemyProfile> swarmProfiles = null,
+            float firstEliteSpawnTimeSeconds = 180f,
+            float firstDreadEliteSpawnTimeSeconds = 300f)
         {
             EscalationIntervalSeconds = escalationIntervalSeconds;
             MinimumEnemySpawnIntervalSeconds = minimumEnemySpawnIntervalSeconds;
@@ -100,6 +102,8 @@ namespace Deucarian.TemplateGameSurvivors
             EnemyHealthMultiplierPerEscalation = enemyHealthMultiplierPerEscalation;
             EnemyMoveSpeedMultiplierPerEscalation = enemyMoveSpeedMultiplierPerEscalation;
             EnemyExperienceMultiplierPerEscalation = enemyExperienceMultiplierPerEscalation;
+            FirstEliteSpawnTimeSeconds = firstEliteSpawnTimeSeconds;
+            FirstDreadEliteSpawnTimeSeconds = firstDreadEliteSpawnTimeSeconds;
             MinibossSpawnTimeSeconds = minibossSpawnTimeSeconds;
             Miniboss = miniboss;
             BossSpawnTimeSeconds = bossSpawnTimeSeconds;
@@ -115,6 +119,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemyHealthMultiplierPerEscalation { get; }
         public float EnemyMoveSpeedMultiplierPerEscalation { get; }
         public float EnemyExperienceMultiplierPerEscalation { get; }
+        public float FirstEliteSpawnTimeSeconds { get; }
+        public float FirstDreadEliteSpawnTimeSeconds { get; }
         public float MinibossSpawnTimeSeconds { get; }
         public SurvivorsEnemyProfile Miniboss { get; }
         public float BossSpawnTimeSeconds { get; }
@@ -139,6 +145,8 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _minibossSpawned;
         private bool _bossSpawned;
         private bool _victoryTriggered;
+        private bool _firstEliteSpawned;
+        private bool _firstDreadEliteSpawned;
 
         public SurvivorsRunFlowRuntime(SurvivorsRunFlowDefinition definition)
         {
@@ -186,6 +194,35 @@ namespace Deucarian.TemplateGameSurvivors
             _minibossSpawned = true;
             Phase = SurvivorsRunPhase.Miniboss;
             return true;
+        }
+
+        public bool TryConsumeTimedEliteSpawn(float elapsedTimeSeconds, out SurvivorsEnemyRole role)
+        {
+            role = SurvivorsEnemyRole.Swarm;
+            if (Definition == null)
+            {
+                return false;
+            }
+
+            if (!_firstEliteSpawned &&
+                Definition.FirstEliteSpawnTimeSeconds > 0f &&
+                elapsedTimeSeconds >= Definition.FirstEliteSpawnTimeSeconds)
+            {
+                _firstEliteSpawned = true;
+                role = SurvivorsEnemyRole.Elite;
+                return true;
+            }
+
+            if (!_firstDreadEliteSpawned &&
+                Definition.FirstDreadEliteSpawnTimeSeconds > 0f &&
+                elapsedTimeSeconds >= Definition.FirstDreadEliteSpawnTimeSeconds)
+            {
+                _firstDreadEliteSpawned = true;
+                role = SurvivorsEnemyRole.DreadElite;
+                return true;
+            }
+
+            return false;
         }
 
         public bool TryConsumeBossSpawn(float elapsedTimeSeconds)

@@ -72,7 +72,7 @@
       "contactDamage": 10.5,
       "contactIntervalSeconds": 0.63,
       "experienceDrop": 13,
-      "spawnTimeSeconds": 300,
+      "spawnTimeSeconds": 180,
       "rangedAttackRange": 4.6,
       "rangedAttackDamage": 3,
       "preferredRange": 2.8
@@ -87,7 +87,7 @@
       "contactDamage": 4.4,
       "contactIntervalSeconds": 0.7,
       "experienceDrop": 12,
-      "spawnTimeSeconds": 360,
+      "spawnTimeSeconds": 300,
       "rangedAttackRange": 7.4,
       "rangedAttackDamage": 4.9,
       "preferredRange": 5.4
@@ -102,7 +102,7 @@
       "contactDamage": 10,
       "contactIntervalSeconds": 0.85,
       "experienceDrop": 34,
-      "spawnTimeSeconds": 300
+      "spawnTimeSeconds": 420
     },
     {
       "id": "enemy.survivors.boss",

@@ -20,7 +20,7 @@ The sample defaults to `SurvivorsPacingProfile.HumanPlaytest`.
 
 Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `1.15` seconds, an opening maximum of `34` alive enemies, basic enemy speed of `1.35` versus player speed of `5.4`, projectile speed of `8.5`, pickup attract range of `2.5`, and no reward-choice auto-pick timeout.
 
-Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, elites after about `300` seconds, and the miniboss waits until `180` seconds.
+Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, the first elite arrives around `180` seconds, the dread elite arrives around `300` seconds, and the miniboss waits until `420` seconds.
 
 ## What To Check
 
@@ -42,8 +42,13 @@ After 2 minutes:
 After 5 minutes:
 
 - Spitters should have joined the enemy mix.
-- The first miniboss should have appeared around 3 minutes and may have opened an elite reward draft.
+- The first elite should have arrived around 3 minutes and the dread elite should be arriving around 5 minutes; killing either one should open an elite reward draft.
 - The game should feel busier than the first minute without becoming immediate visual noise.
+
+After 7 minutes:
+
+- The miniboss should have appeared and may have opened an elite reward draft.
+- The run should have a clear build direction from weapon ranks, passives, or branch mutations.
 
 ## Reset Save Data
 

@@ -213,9 +213,18 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
             Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
-            Assert.That(tuning.MinibossSpawnTimeSeconds, Is.InRange(150f, 240f));
-            Assert.That(tuning.BossSpawnTimeSeconds, Is.InRange(600f, 900f));
-            Assert.That(tuning.SurvivalVictoryTimeSeconds, Is.GreaterThanOrEqualTo(900f));
+            Assert.That(tuning.FirstEliteSpawnTimeSeconds, Is.InRange(120f, 240f));
+            Assert.That(tuning.FirstDreadEliteSpawnTimeSeconds, Is.InRange(240f, 360f));
+            Assert.That(tuning.MinibossSpawnTimeSeconds, Is.InRange(300f, 480f));
+            Assert.That(tuning.BossSpawnTimeSeconds, Is.InRange(1140f, 1260f));
+            Assert.That(tuning.SurvivalVictoryTimeSeconds, Is.GreaterThanOrEqualTo(1800f));
+
+            Assert.IsFalse(runtime.TryConsumeTimedEliteSpawn(tuning.FirstEliteSpawnTimeSeconds - 0.1f, out _));
+            Assert.IsTrue(runtime.TryConsumeTimedEliteSpawn(tuning.FirstEliteSpawnTimeSeconds, out SurvivorsEnemyRole firstEliteRole));
+            Assert.AreEqual(SurvivorsEnemyRole.Elite, firstEliteRole);
+            Assert.IsTrue(runtime.TryConsumeTimedEliteSpawn(tuning.FirstDreadEliteSpawnTimeSeconds, out SurvivorsEnemyRole firstDreadEliteRole));
+            Assert.AreEqual(SurvivorsEnemyRole.DreadElite, firstDreadEliteRole);
+            Assert.IsFalse(runtime.TryConsumeTimedEliteSpawn(tuning.FirstDreadEliteSpawnTimeSeconds + 1f, out _));
 
             runtime.Tick(30f);
             Assert.AreEqual(SurvivorsRunPhase.Opening, runtime.Phase);
@@ -246,7 +255,11 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.MinimumEnemySpawnIntervalSeconds, Is.LessThan(human.MinimumEnemySpawnIntervalSeconds));
             Assert.That(debugFast.EnemyMaximumAlive, Is.GreaterThan(human.EnemyMaximumAlive));
             Assert.That(debugFast.ExperienceRequiredBase, Is.LessThan(human.ExperienceRequiredBase));
+            Assert.That(debugFast.FirstEliteSpawnTimeSeconds, Is.LessThan(human.FirstEliteSpawnTimeSeconds));
             Assert.That(debugFast.MinibossSpawnTimeSeconds, Is.LessThan(human.MinibossSpawnTimeSeconds));
+            Assert.That(normal.FirstDreadEliteSpawnTimeSeconds, Is.LessThan(normal.MinibossSpawnTimeSeconds));
+            Assert.That(debugFast.FirstDreadEliteSpawnTimeSeconds, Is.LessThan(debugFast.MinibossSpawnTimeSeconds));
+            Assert.That(showcase.FirstDreadEliteSpawnTimeSeconds, Is.LessThan(showcase.MinibossSpawnTimeSeconds));
             Assert.That(debugFast.RewardSelectionTimeoutSeconds, Is.GreaterThan(human.RewardSelectionTimeoutSeconds));
             Assert.That(showcase.EnemySpawnIntervalSeconds, Is.GreaterThan(debugFast.EnemySpawnIntervalSeconds));
             Assert.That(showcase.EnemySpawnIntervalSeconds, Is.LessThan(human.EnemySpawnIntervalSeconds));
@@ -603,13 +616,17 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 miniboss: new SurvivorsEnemyProfile(SurvivorsEnemyRole.Boss, "", "", 0f, 0f, 0f, -1f, 0f, 0, Color.white),
                 bossSpawnTimeSeconds: 10f,
                 boss: new SurvivorsEnemyProfile(SurvivorsEnemyRole.Miniboss, "enemy.bad.boss", "", 0f, 0f, 0f, -1f, 0f, 0, Color.white),
-                survivalVictoryTimeSeconds: 8f);
+                survivalVictoryTimeSeconds: 8f,
+                firstEliteSpawnTimeSeconds: -1f,
+                firstDreadEliteSpawnTimeSeconds: -2f);
 
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateRunFlowContent(badRunFlow);
             string errors = string.Join(Environment.NewLine, result.Errors);
 
             Assert.IsFalse(result.Succeeded);
             StringAssert.Contains("escalation interval", errors);
+            StringAssert.Contains("First elite spawn time", errors);
+            StringAssert.Contains("First dread elite spawn time", errors);
             StringAssert.Contains("Boss spawn time", errors);
             StringAssert.Contains("Survival victory time", errors);
             StringAssert.Contains("miniboss profile", errors);
