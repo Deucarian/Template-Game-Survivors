@@ -6102,8 +6102,55 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            transform.position += _direction * (_speed * deltaTime);
+            Vector3 previousPosition = transform.position;
+            Vector3 currentPosition = previousPosition + _direction * (_speed * deltaTime);
+            transform.position = currentPosition;
+            if (TryFindSegmentHit(previousPosition, currentPosition, out SurvivorsEnemyActor hitEnemy, out float hitRange, out Vector3 hitPosition))
+            {
+                transform.position = hitPosition;
+                int enemyId = hitEnemy.GetInstanceID();
+                _hitEnemyIds.Add(enemyId);
+                hitEnemy.ApplyDamage(_damage, _definition == null ? "combatant.survivors.player" : _definition.Id);
+                SpawnForkProjectiles(hitEnemy);
+                if (_remainingPierces > 0)
+                {
+                    _remainingPierces--;
+                    _controller.RecordProjectilePierceHit();
+                    transform.position += _direction * Mathf.Max(0.08f, hitRange);
+                    return;
+                }
+
+                if (_remainingChains > 0 && TryRetargetFrom(hitEnemy))
+                {
+                    _remainingChains--;
+                    _controller.RecordProjectileChainHit();
+                    return;
+                }
+
+                if (!TryStartReturnToPlayer())
+                {
+                    Release(DespawnReason.Completed);
+                }
+
+                return;
+            }
+        }
+
+        private bool TryFindSegmentHit(Vector3 start, Vector3 end, out SurvivorsEnemyActor hitEnemy, out float hitRange, out Vector3 hitPosition)
+        {
+            hitEnemy = null;
+            hitRange = 0f;
+            hitPosition = end;
+            if (_controller == null)
+            {
+                return false;
+            }
+
             IReadOnlyList<SurvivorsEnemyActor> enemies = _controller.ActiveEnemies;
+            Vector3 segment = end - start;
+            segment.y = 0f;
+            float segmentLengthSquared = segment.sqrMagnitude;
+            float bestSegmentT = float.MaxValue;
             for (int i = 0; i < enemies.Count; i++)
             {
                 SurvivorsEnemyActor enemy = enemies[i];
@@ -6118,35 +6165,32 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
-                float hitRange = _radius + enemy.Radius;
-                if ((enemy.transform.position - transform.position).sqrMagnitude <= hitRange * hitRange)
+                float candidateHitRange = _radius + enemy.Radius;
+                Vector3 enemyPosition = enemy.transform.position;
+                Vector3 closestPoint = end;
+                float segmentT = 1f;
+                if (segmentLengthSquared > 0.0001f)
                 {
-                    _hitEnemyIds.Add(enemyId);
-                    enemy.ApplyDamage(_damage, _definition == null ? "combatant.survivors.player" : _definition.Id);
-                    SpawnForkProjectiles(enemy);
-                    if (_remainingPierces > 0)
-                    {
-                        _remainingPierces--;
-                        _controller.RecordProjectilePierceHit();
-                        transform.position += _direction * Mathf.Max(0.08f, hitRange);
-                        return;
-                    }
-
-                    if (_remainingChains > 0 && TryRetargetFrom(enemy))
-                    {
-                        _remainingChains--;
-                        _controller.RecordProjectileChainHit();
-                        return;
-                    }
-
-                    if (!TryStartReturnToPlayer())
-                    {
-                        Release(DespawnReason.Completed);
-                    }
-
-                    return;
+                    Vector3 enemyOffset = enemyPosition - start;
+                    enemyOffset.y = 0f;
+                    segmentT = Mathf.Clamp01(Vector3.Dot(enemyOffset, segment) / segmentLengthSquared);
+                    closestPoint = start + segment * segmentT;
                 }
+
+                Vector3 missOffset = enemyPosition - closestPoint;
+                missOffset.y = 0f;
+                if (missOffset.sqrMagnitude > candidateHitRange * candidateHitRange || segmentT >= bestSegmentT)
+                {
+                    continue;
+                }
+
+                bestSegmentT = segmentT;
+                hitEnemy = enemy;
+                hitRange = candidateHitRange;
+                hitPosition = closestPoint;
             }
+
+            return hitEnemy != null;
         }
 
         private void SpawnForkProjectiles(SurvivorsEnemyActor lastHitEnemy)

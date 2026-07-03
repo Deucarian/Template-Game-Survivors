@@ -1451,6 +1451,28 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator FastProjectileDamagesEnemyCrossedBetweenFrames()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.ProjectileSpeed = 80f;
+            controller.CurrentTuning.ProjectileRadius = 0.12f;
+            controller.StartRun();
+            yield return null;
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4f, 0f, 0f), 1f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            controller.Simulate(0.1f);
+            yield return null;
+
+            Assert.That(controller.ProjectileLaunchCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ChainedProjectileCanRetargetNearbyEnemy()
         {
             SurvivorsTemplateController controller = CreateController();

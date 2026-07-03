@@ -28,6 +28,7 @@ First 30 seconds:
 
 - The scene starts in Human Playtest, not Debug Fast.
 - Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
+- Fast projectile shots should still damage enemies they visibly cross, even during single-frame speed spikes.
 - XP gems should pulse while being pulled in; rapid clusters should show a Gem Rush banner, pickup-range upgrades should affect gems already on the ground, and magnet pickups or `M` should make distant XP gems spin and surge toward the player.
 - Sustained movement through the endless arena should drop small roaming XP caches; longer travel should eventually add a magnet recall pickup to a cache.
 - Sustained kill streaks should briefly announce bonus XP, vital-shard, magnet, and blood-shard drops when they trigger.
