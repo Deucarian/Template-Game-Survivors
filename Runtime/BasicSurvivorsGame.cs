@@ -80,6 +80,9 @@ namespace Deucarian.TemplateGameSurvivors
         public float BossContactIntervalSeconds = 0.95f;
         public int BossExperienceReward = 140;
         public float SurvivalVictoryTimeSeconds = 1800f;
+        public float EndlessEliteSpawnIntervalSeconds = 90f;
+        public float EndlessMinibossSpawnIntervalSeconds = 180f;
+        public float EndlessBossSpawnIntervalSeconds = 300f;
         public float WeaponCooldownSeconds = 0.85f;
         public float WeaponRange = 11.5f;
         public float ProjectileDamage = 5.8f;
@@ -399,6 +402,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MinibossMoveSpeed = 1.65f;
             tuning.MinibossContactDamage = 10f;
             tuning.BossMoveSpeed = 1.45f;
+            tuning.EndlessEliteSpawnIntervalSeconds = 105f;
+            tuning.EndlessMinibossSpawnIntervalSeconds = 180f;
+            tuning.EndlessBossSpawnIntervalSeconds = 300f;
             tuning.WeaponCooldownSeconds = 0.82f;
             tuning.WeaponRange = 11f;
             tuning.ProjectileDamage = 6.2f;
@@ -471,6 +477,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.BossMoveSpeed = 2f;
             tuning.BossExperienceReward = 150;
             tuning.SurvivalVictoryTimeSeconds = 360f;
+            tuning.EndlessEliteSpawnIntervalSeconds = 35f;
+            tuning.EndlessMinibossSpawnIntervalSeconds = 70f;
+            tuning.EndlessBossSpawnIntervalSeconds = 120f;
             tuning.WeaponCooldownSeconds = 0.48f;
             tuning.WeaponRange = 14f;
             tuning.ProjectileDamage = 7f;
@@ -534,6 +543,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.BossMaxHealth = 1200f;
             tuning.BossMoveSpeed = 1.8f;
             tuning.SurvivalVictoryTimeSeconds = 900f;
+            tuning.EndlessEliteSpawnIntervalSeconds = 70f;
+            tuning.EndlessMinibossSpawnIntervalSeconds = 120f;
+            tuning.EndlessBossSpawnIntervalSeconds = 210f;
             tuning.WeaponCooldownSeconds = 0.62f;
             tuning.WeaponRange = 12f;
             tuning.ProjectileDamage = 6.5f;

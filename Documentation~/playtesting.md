@@ -53,6 +53,12 @@ After 7 minutes:
 - The miniboss warning should have appeared shortly before the miniboss entered.
 - The run should have a clear build direction from weapon ranks, passives, or branch mutations.
 
+After victory:
+
+- Press `C` or the Continue button to stay in the same build.
+- Endless escalation should keep increasing horde pressure and should schedule recurring elite, miniboss, and boss threats with incoming warnings.
+- Killing recurring major threats should keep producing the same stronger reward moments without ending the run again.
+
 ## Reset Save Data
 
 Enter Play Mode, then open:

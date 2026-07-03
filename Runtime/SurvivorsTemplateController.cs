@@ -154,6 +154,13 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _firstDreadEliteWarningShown;
         private bool _minibossWarningShown;
         private bool _bossWarningShown;
+        private bool _endlessEliteWarningShown;
+        private bool _endlessMinibossWarningShown;
+        private bool _endlessBossWarningShown;
+        private float _nextEndlessEliteSpawnTimeSeconds;
+        private float _nextEndlessMinibossSpawnTimeSeconds;
+        private float _nextEndlessBossSpawnTimeSeconds;
+        private int _endlessEliteSpawnSequence;
         private string _majorThreatWarningLabel = string.Empty;
         private float _majorThreatWarningTargetTimeSeconds;
         private string _rewardFeedbackLabel = string.Empty;
@@ -200,6 +207,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int SelectedRelicCount { get; private set; }
         public int SelectedRewardUpgradeCount { get; private set; }
         public int RewardAutoSelectCount { get; private set; }
+        public int EndlessThreatSpawnCount { get; private set; }
         public int DraftRerollCount { get; private set; }
         public int DraftBanishCount { get; private set; }
         public int DraftSkipCount { get; private set; }
@@ -544,6 +552,7 @@ namespace Deucarian.TemplateGameSurvivors
             SelectedRelicCount = 0;
             SelectedRewardUpgradeCount = 0;
             RewardAutoSelectCount = 0;
+            EndlessThreatSpawnCount = 0;
             DraftRerollCount = 0;
             DraftBanishCount = 0;
             DraftSkipCount = 0;
@@ -617,6 +626,7 @@ namespace Deucarian.TemplateGameSurvivors
             _firstDreadEliteWarningShown = false;
             _minibossWarningShown = false;
             _bossWarningShown = false;
+            ResetEndlessThreatSchedule();
             _majorThreatWarningLabel = string.Empty;
             _majorThreatWarningTargetTimeSeconds = 0f;
             _rewardFeedbackLabel = string.Empty;
@@ -662,6 +672,7 @@ namespace Deucarian.TemplateGameSurvivors
             ClearRewardDrafts();
             State = SurvivorsRunState.Playing;
             _enemySpawnTimer = 0f;
+            ScheduleEndlessThreats(RunTimeSeconds);
             PlayFeedback(_levelUpPulse, PlayerPosition, 32, _levelUpClip);
             return true;
         }
@@ -3302,6 +3313,8 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 EnterVictory();
             }
+
+            TickEndlessThreatSpawns();
         }
 
         private void TickMajorThreatWarnings()
@@ -3316,6 +3329,12 @@ namespace Deucarian.TemplateGameSurvivors
             TryBeginMajorThreatWarning(ref _firstDreadEliteWarningShown, definition.FirstDreadEliteSpawnTimeSeconds, SurvivorsEnemyRole.DreadElite);
             TryBeginMajorThreatWarning(ref _minibossWarningShown, definition.MinibossSpawnTimeSeconds, SurvivorsEnemyRole.Miniboss);
             TryBeginMajorThreatWarning(ref _bossWarningShown, definition.BossSpawnTimeSeconds, SurvivorsEnemyRole.Boss);
+            if (_victoryClearedThisRun && State == SurvivorsRunState.Playing)
+            {
+                TryBeginMajorThreatWarning(ref _endlessEliteWarningShown, _nextEndlessEliteSpawnTimeSeconds, ResolveNextEndlessEliteRole());
+                TryBeginMajorThreatWarning(ref _endlessMinibossWarningShown, _nextEndlessMinibossSpawnTimeSeconds, SurvivorsEnemyRole.Miniboss);
+                TryBeginMajorThreatWarning(ref _endlessBossWarningShown, _nextEndlessBossSpawnTimeSeconds, SurvivorsEnemyRole.Boss);
+            }
         }
 
         private void TryBeginMajorThreatWarning(ref bool warningShown, float targetTimeSeconds, SurvivorsEnemyRole role)
@@ -3352,6 +3371,109 @@ namespace Deucarian.TemplateGameSurvivors
                 default:
                     return "ELITE INCOMING";
             }
+        }
+
+        private void ResetEndlessThreatSchedule()
+        {
+            _endlessEliteWarningShown = false;
+            _endlessMinibossWarningShown = false;
+            _endlessBossWarningShown = false;
+            _nextEndlessEliteSpawnTimeSeconds = 0f;
+            _nextEndlessMinibossSpawnTimeSeconds = 0f;
+            _nextEndlessBossSpawnTimeSeconds = 0f;
+            _endlessEliteSpawnSequence = 0;
+        }
+
+        private void ScheduleEndlessThreats(float startTimeSeconds)
+        {
+            _endlessEliteSpawnSequence = 0;
+            ScheduleNextEndlessThreat(
+                ref _nextEndlessEliteSpawnTimeSeconds,
+                ref _endlessEliteWarningShown,
+                startTimeSeconds,
+                CurrentTuning.EndlessEliteSpawnIntervalSeconds);
+            ScheduleNextEndlessThreat(
+                ref _nextEndlessMinibossSpawnTimeSeconds,
+                ref _endlessMinibossWarningShown,
+                startTimeSeconds,
+                CurrentTuning.EndlessMinibossSpawnIntervalSeconds);
+            ScheduleNextEndlessThreat(
+                ref _nextEndlessBossSpawnTimeSeconds,
+                ref _endlessBossWarningShown,
+                startTimeSeconds,
+                CurrentTuning.EndlessBossSpawnIntervalSeconds);
+        }
+
+        private static void ScheduleNextEndlessThreat(
+            ref float targetTimeSeconds,
+            ref bool warningShown,
+            float startTimeSeconds,
+            float intervalSeconds)
+        {
+            warningShown = false;
+            targetTimeSeconds = intervalSeconds <= 0f
+                ? 0f
+                : Mathf.Max(0f, startTimeSeconds) + Mathf.Max(0.1f, intervalSeconds);
+        }
+
+        private void TickEndlessThreatSpawns()
+        {
+            if (!_victoryClearedThisRun || State != SurvivorsRunState.Playing)
+            {
+                return;
+            }
+
+            SurvivorsEnemyRole eliteRole = ResolveNextEndlessEliteRole();
+            if (TrySpawnEndlessThreat(eliteRole, _nextEndlessEliteSpawnTimeSeconds))
+            {
+                _endlessEliteSpawnSequence++;
+                ScheduleNextEndlessThreat(
+                    ref _nextEndlessEliteSpawnTimeSeconds,
+                    ref _endlessEliteWarningShown,
+                    RunTimeSeconds,
+                    CurrentTuning.EndlessEliteSpawnIntervalSeconds);
+            }
+
+            if (TrySpawnEndlessThreat(SurvivorsEnemyRole.Miniboss, _nextEndlessMinibossSpawnTimeSeconds))
+            {
+                ScheduleNextEndlessThreat(
+                    ref _nextEndlessMinibossSpawnTimeSeconds,
+                    ref _endlessMinibossWarningShown,
+                    RunTimeSeconds,
+                    CurrentTuning.EndlessMinibossSpawnIntervalSeconds);
+            }
+
+            if (TrySpawnEndlessThreat(SurvivorsEnemyRole.Boss, _nextEndlessBossSpawnTimeSeconds))
+            {
+                ScheduleNextEndlessThreat(
+                    ref _nextEndlessBossSpawnTimeSeconds,
+                    ref _endlessBossWarningShown,
+                    RunTimeSeconds,
+                    CurrentTuning.EndlessBossSpawnIntervalSeconds);
+            }
+        }
+
+        private bool TrySpawnEndlessThreat(SurvivorsEnemyRole role, float targetTimeSeconds)
+        {
+            if (targetTimeSeconds <= 0f || RunTimeSeconds < targetTimeSeconds)
+            {
+                return false;
+            }
+
+            if (SpawnEnemy(Vector3.zero, explicitPosition: false, role) == null)
+            {
+                return false;
+            }
+
+            EndlessThreatSpawnCount++;
+            return true;
+        }
+
+        private SurvivorsEnemyRole ResolveNextEndlessEliteRole()
+        {
+            return (_endlessEliteSpawnSequence % 2) == 0
+                ? SurvivorsEnemyRole.Elite
+                : SurvivorsEnemyRole.DreadElite;
         }
 
         private void EnterVictory()

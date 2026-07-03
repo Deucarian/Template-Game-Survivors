@@ -23,7 +23,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
-- After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure.
+- After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure and recurring elite, miniboss, and boss reward threats.
 - Defeating the final boss unlocks the Ember Vanguard sample class.
 - Victory or defeat persists the run summary to a local meta profile.
 - The sample includes seven persistent meta upgrades for later-run damage, max health, pickup range, XP gain, and extra rerolls.
@@ -48,7 +48,7 @@ First run target:
 - For the Ember Vanguard hazard build, rank Rune Lattice five times and take Siege Payloads to build Rune Trap and Aether Mine toward Aetherfield Matrix satellite hazards.
 - Defeat the miniboss and pick an elite upgrade reward.
 - Build toward an evolution by ranking a weapon path and taking the matching passive.
-- Defeat the final boss; if an evolution is eligible, pick the boss evolution reward, otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile, then `C` continues the same build into endless escalation.
+- Defeat the final boss; if an evolution is eligible, pick the boss evolution reward, otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile, then `C` continues the same build into endless escalation with recurring major-threat rewards.
 
 For manual timing checks, use the host scene path above rather than the package source scene.
 

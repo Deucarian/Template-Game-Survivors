@@ -1924,6 +1924,60 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator EndlessContinuationSpawnsRecurringMajorThreats()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.PlayerMaxHealth = 999f;
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMaximumAlive = 1;
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 0.4f;
+            controller.CurrentTuning.MajorThreatWarningLeadSeconds = 0.2f;
+            controller.CurrentTuning.EndlessEliteSpawnIntervalSeconds = 0.5f;
+            controller.CurrentTuning.EndlessMinibossSpawnIntervalSeconds = 0.8f;
+            controller.CurrentTuning.EndlessBossSpawnIntervalSeconds = 1.2f;
+            controller.StartRun();
+            yield return null;
+
+            controller.Simulate(0.45f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.IsTrue(controller.ContinueAfterVictory());
+            Assert.IsTrue(controller.IsEndlessRun);
+            Assert.AreEqual(0, controller.EndlessThreatSpawnCount);
+
+            int warningCount = controller.MajorThreatWarningCount;
+            controller.Simulate(0.31f);
+            yield return null;
+
+            Assert.That(controller.MajorThreatWarningCount, Is.GreaterThan(warningCount));
+            Assert.IsTrue(controller.IsMajorThreatWarningActive);
+            Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("ELITE"));
+            Assert.AreEqual(0, controller.EndlessThreatSpawnCount);
+
+            controller.Simulate(0.2f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.That(controller.EndlessThreatSpawnCount, Is.GreaterThanOrEqualTo(1));
+
+            controller.Simulate(0.35f);
+            yield return null;
+
+            Assert.That(controller.EndlessThreatSpawnCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
+
+            controller.Simulate(0.45f);
+            yield return null;
+
+            Assert.That(controller.EndlessThreatSpawnCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(controller.BossSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MinibossRewardIsGrantedWhenRunEndsInDefeat()
         {
             SurvivorsTemplateController controller = CreateController();
