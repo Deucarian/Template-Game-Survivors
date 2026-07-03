@@ -666,6 +666,54 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator MidLevelDraftLocksRareOrBetterFirstChoiceWhenEligible()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.CurrentTuning.DraftMidRarityLevel = 1;
+            controller.CurrentTuning.DraftLateRarityLevel = 99;
+            controller.CurrentTuning.NormalMidCommonWeight = 1000;
+            controller.CurrentTuning.NormalMidUncommonWeight = 1000;
+            controller.CurrentTuning.NormalMidRareWeight = 1;
+            controller.CurrentTuning.NormalMidEpicWeight = 1;
+            controller.CurrentTuning.NormalMidLegendaryWeight = 0;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.That((int)controller.CurrentDraftChoices[0].Rarity, Is.GreaterThanOrEqualTo((int)RunUpgradeRarity.Rare));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator LateLevelDraftLocksEpicOrBetterFirstChoiceWhenEligible()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.CurrentTuning.DraftMidRarityLevel = 1;
+            controller.CurrentTuning.DraftLateRarityLevel = 1;
+            controller.CurrentTuning.NormalLateCommonWeight = 1000;
+            controller.CurrentTuning.NormalLateUncommonWeight = 1000;
+            controller.CurrentTuning.NormalLateRareWeight = 1000;
+            controller.CurrentTuning.NormalLateEpicWeight = 1;
+            controller.CurrentTuning.NormalLateLegendaryWeight = 0;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.That((int)controller.CurrentDraftChoices[0].Rarity, Is.GreaterThanOrEqualTo((int)RunUpgradeRarity.Epic));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DraftRerollRefreshesChoicesWithoutConsumingLevel()
         {
             SurvivorsTemplateController controller = CreateController();

@@ -23,6 +23,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary, then drop visible reward caches so the kill moment pays out in the arena too.
 - Elite and miniboss defeat open stronger upgrade reward drafts.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
+- Mid-run level-up drafts guarantee one Rare-or-better choice when eligible, and late-run drafts guarantee one Epic-or-better choice when eligible.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes with clear caches, and recurring elite, miniboss, and boss reward threats.

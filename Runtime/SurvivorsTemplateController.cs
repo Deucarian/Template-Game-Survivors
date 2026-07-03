@@ -60,6 +60,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const int EnemyRangedAttackFeedbackLimit = 28;
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
         private const int EndlessEnemyAliveBonus = 24;
+        private const int NormalDraftRarityLockSeedSalt = 7919;
 
         private enum DraftRarityProfile
         {
@@ -3238,6 +3239,19 @@ namespace Deucarian.TemplateGameSurvivors
 
         private RunUpgradeCatalog CreateEligibleDraftCatalog()
         {
+            return CreateEligibleDraftCatalog(ResolveNormalDraftRarityProfile());
+        }
+
+        private RunUpgradeCatalog CreateEligibleDraftCatalog(DraftRarityProfile profile)
+        {
+            return CreateEligibleDraftCatalog(profile, RunUpgradeRarity.Common, requireMinimumRarity: false);
+        }
+
+        private RunUpgradeCatalog CreateEligibleDraftCatalog(
+            DraftRarityProfile profile,
+            RunUpgradeRarity minimumRarity,
+            bool requireMinimumRarity)
+        {
             if (_upgradeCatalog == null)
             {
                 return null;
@@ -3247,13 +3261,15 @@ namespace Deucarian.TemplateGameSurvivors
             for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
             {
                 RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
-                if (definition != null && IsUpgradeEligibleForCurrentBuild(definition))
+                if (definition != null &&
+                    (!requireMinimumRarity || definition.Rarity >= minimumRarity) &&
+                    IsUpgradeEligibleForCurrentBuild(definition))
                 {
                     eligible.Add(definition);
                 }
             }
 
-            return CreateWeightedDraftCatalog(eligible, ResolveNormalDraftRarityProfile());
+            return CreateWeightedDraftCatalog(eligible, profile);
         }
 
         private RunUpgradeCatalog CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole role, bool requireEvolutionChoice)
@@ -3437,6 +3453,57 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private IReadOnlyList<RunUpgradeId> CreateNormalDraftRarityLocks(
+            DraftRarityProfile profile,
+            int rerollIndex)
+        {
+            if (!TryResolveNormalDraftGuaranteedMinimumRarity(profile, out RunUpgradeRarity minimumRarity))
+            {
+                return Array.Empty<RunUpgradeId>();
+            }
+
+            RunUpgradeCatalog highRarityCatalog = CreateEligibleDraftCatalog(
+                profile,
+                minimumRarity,
+                requireMinimumRarity: true);
+            if (highRarityCatalog == null || highRarityCatalog.Definitions.Count == 0)
+            {
+                return Array.Empty<RunUpgradeId>();
+            }
+
+            RunUpgradeDraft lockDraft = RunUpgradeDraftService.Generate(
+                highRarityCatalog,
+                _upgradeState,
+                new RunUpgradeDraftRequest(
+                    1,
+                    ResolveDraftSeed(SurvivorsRewardSelectionKind.LevelUp) + NormalDraftRarityLockSeedSalt,
+                    Mathf.Max(0, rerollIndex)));
+            if (lockDraft == null || lockDraft.Choices.Count == 0)
+            {
+                return Array.Empty<RunUpgradeId>();
+            }
+
+            return new[] { lockDraft.Choices[0].Id };
+        }
+
+        private static bool TryResolveNormalDraftGuaranteedMinimumRarity(
+            DraftRarityProfile profile,
+            out RunUpgradeRarity minimumRarity)
+        {
+            switch (profile)
+            {
+                case DraftRarityProfile.NormalMid:
+                    minimumRarity = RunUpgradeRarity.Rare;
+                    return true;
+                case DraftRarityProfile.NormalLate:
+                    minimumRarity = RunUpgradeRarity.Epic;
+                    return true;
+                default:
+                    minimumRarity = RunUpgradeRarity.Common;
+                    return false;
+            }
+        }
+
         private IReadOnlyList<RunUpgradeId> CreateEligibleEvolutionChoiceLocks(int maxCount)
         {
             if (_upgradeCatalog == null || maxCount <= 0)
@@ -3501,7 +3568,12 @@ namespace Deucarian.TemplateGameSurvivors
             switch (selectionKind)
             {
                 case SurvivorsRewardSelectionKind.LevelUp:
-                    draftCatalog = CreateEligibleDraftCatalog();
+                    DraftRarityProfile normalProfile = ResolveNormalDraftRarityProfile();
+                    draftCatalog = CreateEligibleDraftCatalog(normalProfile);
+                    if (resolvedLocks == null || resolvedLocks.Count == 0)
+                    {
+                        resolvedLocks = CreateNormalDraftRarityLocks(normalProfile, rerollIndex);
+                    }
                     break;
                 case SurvivorsRewardSelectionKind.EliteUpgrade:
                     draftCatalog = CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole.Miniboss, requireEvolutionChoice: false);
