@@ -767,6 +767,48 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator TempestPrismEvolutionAddsPrismSideBeams()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureHitscanOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarFocusUpgradeId));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.TwinCharmUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
+
+            Vector3 forwardTarget = controller.PlayerPosition + new Vector3(3.8f, 0f, 0f);
+            Vector3 sideDirection = Quaternion.Euler(0f, 22f, 0f) * Vector3.right;
+            Vector3 sideTarget = controller.PlayerPosition + sideDirection * 4.8f;
+            SurvivorsEnemyActor anchor = controller.SpawnEnemyForTest(forwardTarget, 100f);
+            SurvivorsEnemyActor prismTarget = controller.SpawnEnemyForTest(sideTarget, 100f);
+            Assert.NotNull(anchor);
+            Assert.NotNull(prismTarget);
+
+            int beforeBaselineHits = controller.HitscanHitCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Hitscan));
+            int baselineHits = controller.HitscanHitCount - beforeBaselineHits;
+            Assert.AreEqual(1, baselineHits);
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
+
+            int beforePrismHits = controller.HitscanHitCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Hitscan));
+            int prismHits = controller.HitscanHitCount - beforePrismHits;
+
+            Assert.That(prismHits, Is.GreaterThanOrEqualTo(2));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DefaultWeaponPathsRequireFiveRanksBeforeEvolution()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -1868,6 +1910,22 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             tuning.MeleeDamage = 0f;
             tuning.BurstDamage = 6f;
             tuning.HitscanDamage = 0f;
+            tuning.GrenadeDamage = 0f;
+            tuning.PlacedPayloadDamage = 0f;
+        }
+
+        private static void ConfigureHitscanOnlyTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.EnemySpawnIntervalSeconds = 999f;
+            tuning.EnemyMoveSpeed = 0f;
+            tuning.EnemyContactDamage = 0f;
+            tuning.ProjectileDamage = 0f;
+            tuning.OrbitDamage = 0f;
+            tuning.MeleeDamage = 0f;
+            tuning.BurstDamage = 0f;
+            tuning.HitscanDamage = 6f;
+            tuning.HitscanRange = 9.5f;
+            tuning.HitscanWidth = 0.24f;
             tuning.GrenadeDamage = 0f;
             tuning.PlacedPayloadDamage = 0f;
         }

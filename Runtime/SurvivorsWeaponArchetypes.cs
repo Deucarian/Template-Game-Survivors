@@ -430,6 +430,9 @@ namespace Deucarian.TemplateGameSurvivors
 
     internal sealed class SurvivorsHitscanWeaponRuntime : SurvivorsWeaponRuntimeBase
     {
+        private const float TempestPrismSideBeamDegrees = 22f;
+        private const float TempestPrismSideBeamRangeMultiplier = 0.9f;
+        private const float TempestPrismSideBeamWidthMultiplier = 0.85f;
         private readonly List<SurvivorsEnemyActor> _targets = new List<SurvivorsEnemyActor>();
         private readonly List<SurvivorsEnemyActor> _beamHits = new List<SurvivorsEnemyActor>();
         private float _cooldownRemaining = 0.2f;
@@ -469,6 +472,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             bool dealtDamage = false;
+            bool tempestPrismActive = IsTempestPrismActive();
+            int maxBeamHits = ResolveBeamMaxHits();
             for (int i = 0; i < _targets.Count; i++)
             {
                 SurvivorsEnemyActor target = _targets[i];
@@ -478,21 +483,21 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 Vector3 targetPoint = target.transform.position + Vector3.up * 0.45f;
-                if (Definition.HitscanPierces || Controller.HitscanPierceBonus > 0 || Controller.ProjectilePierceBonus > 0)
+                Vector3 beamDirection = ResolveBeamDirection(origin, targetPoint);
+                if (UsesPiercingBeam())
                 {
-                    int maxHits = Mathf.Max(1, 1 + Controller.HitscanPierceBonus + Controller.ProjectilePierceBonus);
-                    CollectPierceHits(origin, targetPoint, Definition.HitscanWidth, maxHits);
-                    for (int hitIndex = 0; hitIndex < _beamHits.Count; hitIndex++)
-                    {
-                        dealtDamage |= ApplyDamage(_beamHits[hitIndex]);
-                    }
+                    dealtDamage |= ApplyPiercingBeam(origin, origin + beamDirection * Definition.Range, Definition.HitscanWidth, maxBeamHits);
                 }
                 else
                 {
                     dealtDamage |= ApplyDamage(target);
+                    CreateBeamVisual(origin, targetPoint);
                 }
 
-                CreateBeamVisual(origin, targetPoint);
+                if (tempestPrismActive)
+                {
+                    dealtDamage |= FireTempestPrismSideBeams(origin, beamDirection, maxBeamHits);
+                }
             }
 
             _targets.Clear();
@@ -530,6 +535,58 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 _targets.RemoveAt(_targets.Count - 1);
             }
+        }
+
+        private bool UsesPiercingBeam()
+        {
+            return Definition.HitscanPierces || Controller.HitscanPierceBonus > 0 || Controller.ProjectilePierceBonus > 0;
+        }
+
+        private bool IsTempestPrismActive()
+        {
+            return Definition.Id == BasicSurvivorsGame.StarBeamWeaponContentId &&
+                Controller.IsEvolutionActive(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId);
+        }
+
+        private int ResolveBeamMaxHits()
+        {
+            return Mathf.Max(1, 1 + Controller.HitscanPierceBonus + Controller.ProjectilePierceBonus);
+        }
+
+        private static Vector3 ResolveBeamDirection(Vector3 origin, Vector3 targetPosition)
+        {
+            Vector3 direction = targetPosition - origin;
+            direction.y = 0f;
+            return direction.sqrMagnitude <= 0.001f ? Vector3.forward : direction.normalized;
+        }
+
+        private bool FireTempestPrismSideBeams(Vector3 origin, Vector3 forward, int maxHits)
+        {
+            bool dealtDamage = false;
+            float range = Mathf.Max(0.5f, Definition.Range * TempestPrismSideBeamRangeMultiplier);
+            float width = Mathf.Max(0.05f, Definition.HitscanWidth * TempestPrismSideBeamWidthMultiplier);
+            dealtDamage |= FireTempestPrismSideBeam(origin, forward, -TempestPrismSideBeamDegrees, range, width, maxHits);
+            dealtDamage |= FireTempestPrismSideBeam(origin, forward, TempestPrismSideBeamDegrees, range, width, maxHits);
+            return dealtDamage;
+        }
+
+        private bool FireTempestPrismSideBeam(Vector3 origin, Vector3 forward, float degrees, float range, float width, int maxHits)
+        {
+            Vector3 direction = Quaternion.Euler(0f, degrees, 0f) * forward;
+            return ApplyPiercingBeam(origin, origin + direction.normalized * range, width, maxHits);
+        }
+
+        private bool ApplyPiercingBeam(Vector3 origin, Vector3 endpoint, float beamWidth, int maxHits)
+        {
+            CollectPierceHits(origin, endpoint, beamWidth, maxHits);
+            bool dealtDamage = false;
+            for (int hitIndex = 0; hitIndex < _beamHits.Count; hitIndex++)
+            {
+                dealtDamage |= ApplyDamage(_beamHits[hitIndex]);
+            }
+
+            CreateBeamVisual(origin, endpoint);
+            return dealtDamage;
         }
 
         private void CollectPierceHits(Vector3 origin, Vector3 targetPosition, float beamWidth, int maxHits)
