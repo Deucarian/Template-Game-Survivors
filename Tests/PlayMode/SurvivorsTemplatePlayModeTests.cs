@@ -840,6 +840,46 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator EclipseWaltzEvolutionAddsBackSweep()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureMeleeOnlyTuning(controller.CurrentTuning);
+            Assert.IsTrue(controller.UnlockClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            Assert.IsTrue(controller.TrySelectClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            controller.StartRun();
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonOathUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
+
+            SurvivorsEnemyActor forwardTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.65f, 0f, 0f), 100f);
+            SurvivorsEnemyActor backTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(-2f, 0f, 0f), 100f);
+            Assert.NotNull(forwardTarget);
+            Assert.NotNull(backTarget);
+
+            int beforeBaselineHits = controller.MeleeHitCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Melee));
+            int baselineHits = controller.MeleeHitCount - beforeBaselineHits;
+            Assert.AreEqual(1, baselineHits);
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
+
+            int beforeWaltzHits = controller.MeleeHitCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Melee));
+            int waltzHits = controller.MeleeHitCount - beforeWaltzHits;
+
+            Assert.That(waltzHits, Is.GreaterThanOrEqualTo(2));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DefaultWeaponPathsRequireFiveRanksBeforeEvolution()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -1957,6 +1997,22 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             tuning.HitscanDamage = 6f;
             tuning.HitscanRange = 9.5f;
             tuning.HitscanWidth = 0.24f;
+            tuning.GrenadeDamage = 0f;
+            tuning.PlacedPayloadDamage = 0f;
+        }
+
+        private static void ConfigureMeleeOnlyTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.EnemySpawnIntervalSeconds = 999f;
+            tuning.EnemyMoveSpeed = 0f;
+            tuning.EnemyContactDamage = 0f;
+            tuning.ProjectileDamage = 0f;
+            tuning.OrbitDamage = 0f;
+            tuning.MeleeDamage = 6f;
+            tuning.MeleeRange = 3.2f;
+            tuning.MeleeArcDegrees = 100f;
+            tuning.BurstDamage = 0f;
+            tuning.HitscanDamage = 0f;
             tuning.GrenadeDamage = 0f;
             tuning.PlacedPayloadDamage = 0f;
         }

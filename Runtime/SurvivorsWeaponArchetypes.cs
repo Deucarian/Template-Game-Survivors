@@ -810,6 +810,7 @@ namespace Deucarian.TemplateGameSurvivors
 
     internal sealed class SurvivorsMeleeWeaponRuntime : SurvivorsWeaponRuntimeBase
     {
+        private const float EclipseWaltzBackSweepDamageMultiplier = 0.85f;
         private readonly List<SurvivorsEnemyActor> _candidates = new List<SurvivorsEnemyActor>();
         private float _cooldownRemaining;
 
@@ -857,6 +858,31 @@ namespace Deucarian.TemplateGameSurvivors
             float halfArc = Mathf.Clamp(Definition.MeleeArcDegrees * 0.5f, 1f, 180f);
             float range = Definition.Range + Controller.AreaRadiusBonus;
             float rangeSquared = range * range;
+            int maxTargets = Mathf.Max(1, Definition.MeleeHitCount + Controller.MeleeTargetBonus);
+            float damage = Controller.ResolveWeaponDamage(Definition);
+            int hitCount = ApplySweep(facing, halfArc, rangeSquared, range, maxTargets, damage);
+            if (IsEclipseWaltzActive())
+            {
+                hitCount += ApplySweep(-facing, halfArc, rangeSquared, range, maxTargets, damage * EclipseWaltzBackSweepDamageMultiplier);
+            }
+
+            if (hitCount <= 0)
+            {
+                return false;
+            }
+
+            Controller.RecordMeleeSwing();
+            return true;
+        }
+
+        private bool IsEclipseWaltzActive()
+        {
+            return Definition.Id == BasicSurvivorsGame.MoonSlashWeaponContentId &&
+                Controller.IsEvolutionActive(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId);
+        }
+
+        private int ApplySweep(Vector3 facing, float halfArc, float rangeSquared, float range, int maxTargets, float damage)
+        {
             _candidates.Clear();
             IReadOnlyList<SurvivorsEnemyActor> enemies = Controller.ActiveEnemies;
             for (int i = 0; i < enemies.Count; i++)
@@ -884,12 +910,10 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (_candidates.Count == 0)
             {
-                return false;
+                return 0;
             }
 
             _candidates.Sort(CompareByDistanceToPlayer);
-            int maxTargets = Mathf.Max(1, Definition.MeleeHitCount + Controller.MeleeTargetBonus);
-            float damage = Controller.ResolveWeaponDamage(Definition);
             int hitCount = 0;
             for (int i = 0; i < _candidates.Count && hitCount < maxTargets; i++)
             {
@@ -909,9 +933,15 @@ namespace Deucarian.TemplateGameSurvivors
             _candidates.Clear();
             if (hitCount <= 0)
             {
-                return false;
+                return 0;
             }
 
+            CreateSlashVisual(facing, range);
+            return hitCount;
+        }
+
+        private void CreateSlashVisual(Vector3 facing, float range)
+        {
             GameObject slashObject = SurvivorsVisualUtility.CreatePrimitiveVisual(
                 Definition.DisplayName + " Slash",
                 PrimitiveType.Cube,
@@ -921,8 +951,6 @@ namespace Deucarian.TemplateGameSurvivors
             slashObject.transform.rotation = Quaternion.LookRotation(facing, Vector3.up);
             SurvivorsTimedVisual visual = slashObject.AddComponent<SurvivorsTimedVisual>();
             visual.Initialize(new Vector3(range * 2f, 0.12f, Mathf.Max(0.45f, range * 0.85f)), Definition.MeleeVisualDurationSeconds, Definition.Tint);
-            Controller.RecordMeleeSwing();
-            return true;
         }
 
         private int CompareByDistanceToPlayer(SurvivorsEnemyActor left, SurvivorsEnemyActor right)
