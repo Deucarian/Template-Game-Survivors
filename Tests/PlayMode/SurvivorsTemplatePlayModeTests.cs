@@ -189,6 +189,24 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator BloodShardPickupAddsRunCurrencyBonus()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.StartRun();
+
+            int startingBonus = controller.BonusBloodShardsEarnedThisRun;
+            controller.SpawnBloodShardForTest(controller.PlayerPosition + new Vector3(0.15f, 0f, 0.15f), 3);
+            controller.Simulate(0.2f);
+            yield return null;
+
+            Assert.AreEqual(1, controller.BloodShardPickupCollectedCount);
+            Assert.AreEqual(3, controller.BloodShardsCollectedFromPickups);
+            Assert.AreEqual(startingBonus + 3, controller.BonusBloodShardsEarnedThisRun);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MagnetRecallPulsesExperienceGemFeedback()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
@@ -674,19 +692,20 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.ApplyDamageToPlayer(controller.MaxHealth * 0.45f, "test.streak-health");
             Assert.That(controller.CurrentHealth, Is.LessThan(controller.MaxHealth));
 
-            for (int i = 0; i < 24; i++)
+            for (int i = 0; i < 32; i++)
             {
                 SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(7f + i * 0.08f, 0f, 0f), 1f);
                 Assert.NotNull(enemy);
                 enemy.ApplyDamage(100f, "test.streak");
             }
 
-            Assert.AreEqual(24, controller.CurrentKillStreak);
-            Assert.AreEqual(24, controller.BestKillStreak);
-            Assert.That(controller.StreakBonusDropCount, Is.GreaterThanOrEqualTo(3));
+            Assert.AreEqual(32, controller.CurrentKillStreak);
+            Assert.AreEqual(32, controller.BestKillStreak);
+            Assert.That(controller.StreakBonusDropCount, Is.GreaterThanOrEqualTo(4));
             Assert.That(controller.StreakHealthDropCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.StreakMagnetDropCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(28));
+            Assert.That(controller.StreakBloodShardDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(37));
 
             controller.Simulate(4.5f);
             yield return null;

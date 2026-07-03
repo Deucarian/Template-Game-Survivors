@@ -30,6 +30,7 @@ First 30 seconds:
 - Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
 - XP gems should pulse while being pulled in; magnet pickups or `M` should make distant XP gems spin and surge toward the player.
 - When wounded, sustained kill streaks or major-enemy kills can leave vital shards; collecting one should restore health and clear the low-health warning if enough health returns.
+- Longer kill streaks can leave blood shards; collecting one should increase the bonus blood shards counted in the run summary.
 - Opening spawns should arrive as small packs, while runners should not appear until about 35 seconds.
 - The first level-up draft should appear within about 30-60 seconds once the player moves through XP gems.
 - No console errors, missing scripts, missing materials, or missing package references should appear.

@@ -15,6 +15,11 @@
       "id": "pickup.survivors.vital-shard",
       "displayName": "Vital Shard",
       "behavior": "Restore player health when collected"
+    },
+    {
+      "id": "pickup.survivors.blood-shard",
+      "displayName": "Blood Shard",
+      "behavior": "Add run bonus currency for meta progression"
     }
   ]
 }

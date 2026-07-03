@@ -29,6 +29,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const int KillStreakExperienceInterval = 8;
         private const int KillStreakHealthInterval = 16;
         private const int KillStreakMagnetInterval = 24;
+        private const int KillStreakBloodShardInterval = 32;
         private const int DefaultMaxWeaponSlots = 6;
         private const int DefaultMaxPassiveSlots = 6;
         private const int SplitterChildCount = 2;
@@ -94,6 +95,7 @@ namespace Deucarian.TemplateGameSurvivors
         private GameObject _experiencePickupPrefab;
         private GameObject _magnetPickupPrefab;
         private GameObject _healthPickupPrefab;
+        private GameObject _bloodShardPickupPrefab;
         private GameObject _projectilePrefab;
         private Transform _feedbackRoot;
         private ParticleSystem _spawnPulse;
@@ -225,6 +227,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ExperiencePickupFeedbackCount { get; private set; }
         public int HealthPickupCollectedCount { get; private set; }
         public float HealthRestoredByPickups { get; private set; }
+        public int BloodShardPickupCollectedCount { get; private set; }
+        public int BloodShardsCollectedFromPickups { get; private set; }
         public int PickupAttractionFeedbackCount { get; private set; }
         public int MagnetRecallFeedbackCount { get; private set; }
         public int RewardCardPresentationCount { get; private set; }
@@ -239,6 +243,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int StreakBonusDropCount { get; private set; }
         public int StreakHealthDropCount { get; private set; }
         public int StreakMagnetDropCount { get; private set; }
+        public int StreakBloodShardDropCount { get; private set; }
         public int CurrentKillStreak => _killStreakTimer > 0f ? _killStreakCount : 0;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
@@ -572,6 +577,8 @@ namespace Deucarian.TemplateGameSurvivors
             ExperiencePickupFeedbackCount = 0;
             HealthPickupCollectedCount = 0;
             HealthRestoredByPickups = 0f;
+            BloodShardPickupCollectedCount = 0;
+            BloodShardsCollectedFromPickups = 0;
             PickupAttractionFeedbackCount = 0;
             MagnetRecallFeedbackCount = 0;
             RewardCardPresentationCount = 0;
@@ -586,6 +593,7 @@ namespace Deucarian.TemplateGameSurvivors
             StreakBonusDropCount = 0;
             StreakHealthDropCount = 0;
             StreakMagnetDropCount = 0;
+            StreakBloodShardDropCount = 0;
             BloodShardsEarnedThisRun = 0;
             LegacyExperienceEarnedThisRun = 0;
             LastRunResult = null;
@@ -793,6 +801,12 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureRunStartedForTest();
             return SpawnPickup(SurvivorsPickupKind.Health, position, amount);
+        }
+
+        public SurvivorsPickupActor SpawnBloodShardForTest(Vector3 position, int amount)
+        {
+            EnsureRunStartedForTest();
+            return SpawnPickup(SurvivorsPickupKind.BloodShard, position, amount);
         }
 
         public void FireWeaponForTest()
@@ -1518,6 +1532,10 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 RestoreHealthFromPickup(Mathf.Max(1, pickup.Amount));
             }
+            else if (pickup.Kind == SurvivorsPickupKind.BloodShard)
+            {
+                CollectBloodShardPickup(Mathf.Max(1, pickup.Amount));
+            }
             else
             {
                 GainExperience(Mathf.Max(1, pickup.Amount));
@@ -1546,6 +1564,14 @@ namespace Deucarian.TemplateGameSurvivors
             HealthRestoredByPickups += restored;
         }
 
+        private void CollectBloodShardPickup(int amount)
+        {
+            int gained = Mathf.Max(1, amount);
+            _bonusBloodShardsEarnedThisRun += gained;
+            BloodShardPickupCollectedCount++;
+            BloodShardsCollectedFromPickups += gained;
+        }
+
         private static int ResolvePickupFeedbackBurstCount(SurvivorsPickupKind kind)
         {
             switch (kind)
@@ -1554,6 +1580,8 @@ namespace Deucarian.TemplateGameSurvivors
                     return 28;
                 case SurvivorsPickupKind.Health:
                     return 22;
+                case SurvivorsPickupKind.BloodShard:
+                    return 18;
                 default:
                     return 10;
             }
@@ -1863,6 +1891,7 @@ namespace Deucarian.TemplateGameSurvivors
             _experiencePickupPrefab = CreatePrimitivePrefab("Survivors XP Gem Prefab", PrimitiveType.Sphere, new Color(0.22f, 0.83f, 1f), typeof(SurvivorsPickupActor));
             _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, new Color(1f, 0.86f, 0.18f), typeof(SurvivorsPickupActor));
             _healthPickupPrefab = CreatePrimitivePrefab("Survivors Vital Shard Prefab", PrimitiveType.Sphere, new Color(1f, 0.24f, 0.42f), typeof(SurvivorsPickupActor));
+            _bloodShardPickupPrefab = CreatePrimitivePrefab("Survivors Blood Shard Prefab", PrimitiveType.Sphere, new Color(0.96f, 0.08f, 0.18f), typeof(SurvivorsPickupActor));
             _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, new Color(0.78f, 0.42f, 1f), typeof(SurvivorsProjectileActor));
 
             BuildSceneLighting();
@@ -1876,6 +1905,7 @@ namespace Deucarian.TemplateGameSurvivors
                 new SpawnableDefinition(BasicSurvivorsGame.ExperiencePickupSpawnableId, new GameObjectPrefabProvider(_experiencePickupPrefab), 16, 256, "survivors-xp-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.MagnetPickupSpawnableId, new GameObjectPrefabProvider(_magnetPickupPrefab), 2, 16, "survivors-magnet-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.HealthPickupSpawnableId, new GameObjectPrefabProvider(_healthPickupPrefab), 4, 32, "survivors-health-pool"),
+                new SpawnableDefinition(BasicSurvivorsGame.BloodShardPickupSpawnableId, new GameObjectPrefabProvider(_bloodShardPickupPrefab), 4, 48, "survivors-blood-shard-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.ProjectileSpawnableId, new GameObjectPrefabProvider(_projectilePrefab), 12, 96, "survivors-projectile-pool")
             };
             _spawnService = new WorldSpawnService(new SpawnableCatalog(spawnables), _poseResolver, _worldRoot, rootName: "SurvivorsWorldSpawning");
@@ -2011,6 +2041,16 @@ namespace Deucarian.TemplateGameSurvivors
                 if (SpawnPickup(SurvivorsPickupKind.Magnet, position + offset, 1) != null)
                 {
                     StreakMagnetDropCount++;
+                }
+            }
+
+            if (_killStreakCount % KillStreakBloodShardInterval == 0)
+            {
+                int amount = Mathf.Max(1, CurrentTuning.BloodShardPickupAmount + (_killStreakCount / KillStreakBloodShardInterval) - 1);
+                Vector3 offset = new Vector3(Mathf.Sin(_killStreakCount * 0.31f) * 0.82f, 0f, Mathf.Cos(_killStreakCount * 0.31f) * 0.82f);
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + offset, amount) != null)
+                {
+                    StreakBloodShardDropCount++;
                 }
             }
         }
@@ -3785,6 +3825,8 @@ namespace Deucarian.TemplateGameSurvivors
                     return BasicSurvivorsGame.MagnetPickupSpawnableId;
                 case SurvivorsPickupKind.Health:
                     return BasicSurvivorsGame.HealthPickupSpawnableId;
+                case SurvivorsPickupKind.BloodShard:
+                    return BasicSurvivorsGame.BloodShardPickupSpawnableId;
                 default:
                     return BasicSurvivorsGame.ExperiencePickupSpawnableId;
             }
@@ -5923,6 +5965,8 @@ namespace Deucarian.TemplateGameSurvivors
                     return Vector3.one * 0.58f;
                 case SurvivorsPickupKind.Health:
                     return Vector3.one * 0.44f;
+                case SurvivorsPickupKind.BloodShard:
+                    return Vector3.one * 0.4f;
                 default:
                     return Vector3.one * 0.34f;
             }
