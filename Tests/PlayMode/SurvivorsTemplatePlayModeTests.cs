@@ -811,6 +811,32 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator DreadEliteCountsAsEliteAndOpensRewardChoice()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.StartRun();
+
+            int activeEliteBefore = controller.ActiveEliteCount;
+            SurvivorsEnemyActor dreadElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(5f, 0f, 0f), SurvivorsEnemyRole.DreadElite, 1f);
+
+            Assert.AreEqual(activeEliteBefore + 1, controller.ActiveEliteCount);
+            Assert.AreEqual(1, controller.ActiveDreadEliteCount);
+
+            dreadElite.ApplyDamage(100f, "test.dread-elite");
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
+            Assert.That(controller.EliteKilledCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.EliteRewardGrantCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.EliteUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MinibossDeathOpensEliteUpgradeRewardChoice()
         {
             SurvivorsTemplateController controller = CreateController();

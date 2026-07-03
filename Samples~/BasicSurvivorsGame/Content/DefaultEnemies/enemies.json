@@ -78,6 +78,21 @@
       "preferredRange": 2.8
     },
     {
+      "id": "enemy.survivors.dread-elite",
+      "displayName": "Dread Lantern Elite",
+      "role": "DreadElite",
+      "health": 68.6,
+      "moveSpeed": 1.2,
+      "radius": 0.61,
+      "contactDamage": 4.4,
+      "contactIntervalSeconds": 0.7,
+      "experienceDrop": 12,
+      "spawnTimeSeconds": 360,
+      "rangedAttackRange": 7.4,
+      "rangedAttackDamage": 4.9,
+      "preferredRange": 5.4
+    },
+    {
       "id": "enemy.survivors.miniboss",
       "displayName": "Bloodbound Miniboss",
       "role": "Miniboss",

@@ -536,6 +536,7 @@ namespace Deucarian.TemplateGameSurvivors
                 CreateEnemyProfile(SurvivorsEnemyRole.Spitter, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Splitter, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Elite, resolved),
+                CreateEnemyProfile(SurvivorsEnemyRole.DreadElite, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Miniboss, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Boss, resolved)
             };
@@ -614,6 +615,22 @@ namespace Deucarian.TemplateGameSurvivors
                         rangedAttackDamage: resolved.EnemyContactDamage * 0.5f,
                         rangedAttackIntervalSeconds: 2.6f,
                         preferredRange: 2.8f);
+                case SurvivorsEnemyRole.DreadElite:
+                    return new SurvivorsEnemyProfile(
+                        SurvivorsEnemyRole.DreadElite,
+                        "enemy.survivors.dread-elite",
+                        "Dread Lantern Elite",
+                        resolved.EnemyMaxHealth * 4.9f,
+                        resolved.EnemyMoveSpeed * 0.88f,
+                        resolved.EnemyRadius * 1.28f,
+                        resolved.EnemyContactDamage * 1.25f,
+                        resolved.EnemyContactIntervalSeconds,
+                        Mathf.Max(1, Mathf.RoundToInt(resolved.EnemyExperienceReward * 6.1f)),
+                        new Color(0.38f, 0.28f, 1f),
+                        rangedAttackRange: 7.4f,
+                        rangedAttackDamage: resolved.EnemyContactDamage * 0.82f,
+                        rangedAttackIntervalSeconds: 1.85f,
+                        preferredRange: 5.4f);
                 case SurvivorsEnemyRole.Miniboss:
                     return new SurvivorsEnemyProfile(
                         SurvivorsEnemyRole.Miniboss,

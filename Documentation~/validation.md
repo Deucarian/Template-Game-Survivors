@@ -116,7 +116,7 @@ No gameplay behavior changes, shared package extraction, package publishing, Idl
 
 Phase 3F adds reference-parity gameplay validation:
 
-- Default runtime content includes five starting weapons, ten local weapon archetypes, seven enemy roles, six relics, and three persistent upgrades.
+- Default runtime content includes five starting weapons, ten local weapon archetypes, nine enemy roles, six relics, and three persistent upgrades.
 - Run flow validation covers timed swarm, runner, bruiser, spitter, elite, miniboss, and boss pressure over a 30-minute sample arc.
 - EditMode coverage checks expanded enemy profiles plus barrier absorption and poison damage-over-time behavior.
 - PlayMode coverage checks the expanded default loadout while preserving class-gated advanced weapon availability.

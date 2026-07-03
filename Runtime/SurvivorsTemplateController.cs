@@ -220,7 +220,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveBruiserCount => CountEnemiesByRole(SurvivorsEnemyRole.Bruiser);
         public int ActiveSpitterCount => CountEnemiesByRole(SurvivorsEnemyRole.Spitter);
         public int ActiveSplitterCount => CountEnemiesByRole(SurvivorsEnemyRole.Splitter);
-        public int ActiveEliteCount => CountEnemiesByRole(SurvivorsEnemyRole.Elite);
+        public int ActiveEliteCount => CountEliteEnemies();
+        public int ActiveDreadEliteCount => CountEnemiesByRole(SurvivorsEnemyRole.DreadElite);
         public int ActiveMinibossCount => CountEnemiesByRole(SurvivorsEnemyRole.Miniboss);
         public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
         public int ActivePickupCount => _pickups.Count;
@@ -1130,11 +1131,11 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 SpawnSplitterChildren(position);
             }
-            else if (role == SurvivorsEnemyRole.Elite)
+            else if (IsEliteRole(role))
             {
                 EliteKilledCount++;
-                GrantMajorEnemyReward(SurvivorsEnemyRole.Elite);
-                OpenUpgradeRewardDraft(SurvivorsEnemyRole.Elite, requireEvolutionChoice: false);
+                GrantMajorEnemyReward(role);
+                OpenUpgradeRewardDraft(role, requireEvolutionChoice: false);
             }
             else if (role == SurvivorsEnemyRole.Miniboss)
             {
@@ -1438,6 +1439,26 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return count;
+        }
+
+        private int CountEliteEnemies()
+        {
+            int count = 0;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy != null && enemy.IsAlive && IsEliteRole(enemy.Role))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static bool IsEliteRole(SurvivorsEnemyRole role)
+        {
+            return role == SurvivorsEnemyRole.Elite || role == SurvivorsEnemyRole.DreadElite;
         }
 
         private void EnsureRunStartedForTest()
@@ -2233,7 +2254,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 rewardId = BasicSurvivorsGame.BossRewardId;
             }
-            else if (role == SurvivorsEnemyRole.Elite)
+            else if (IsEliteRole(role))
             {
                 rewardId = BasicSurvivorsGame.EliteRewardId;
             }
@@ -2250,7 +2271,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 BossRewardGrantCount++;
             }
-            else if (role == SurvivorsEnemyRole.Elite)
+            else if (IsEliteRole(role))
             {
                 EliteRewardGrantCount++;
             }
@@ -2481,6 +2502,11 @@ namespace Deucarian.TemplateGameSurvivors
             if (role == SurvivorsEnemyRole.Elite)
             {
                 return "group.survivors.elites";
+            }
+
+            if (role == SurvivorsEnemyRole.DreadElite)
+            {
+                return "group.survivors.dread-elites";
             }
 
             if (role == SurvivorsEnemyRole.Miniboss)

@@ -2,7 +2,7 @@
 
 Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, level-up choices, readable damage feedback, low-health warnings, miniboss and boss pressure, elite upgrade rewards, boss evolution rewards, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
 
-The `Basic Survivors Game` sample is tuned as a small complete template game rather than a toy package demo: the default class starts with five distinct weapons, extra weapons can enter through the draft pool, the horde grows through eight enemy roles including splitter pressure and elite reward enemies, the level-up pool includes 30+ authored choices with behavior mutations, passives, status effects, and six legendary evolutions, class passive atlases group class identity, weapon skill tracks group upgrade routes, and the run paces toward a 30-minute clear with continuing escalation.
+The `Basic Survivors Game` sample is tuned as a small complete template game rather than a toy package demo: the default class starts with five distinct weapons, extra weapons can enter through the draft pool, the horde grows through nine enemy roles including splitter pressure and two reward-bearing elite variants, the level-up pool includes 30+ authored choices with behavior mutations, passives, status effects, and six legendary evolutions, class passive atlases group class identity, weapon skill tracks group upgrade routes, and the run paces toward a 30-minute clear with continuing escalation.
 
 The template is intentionally a game slice, not a reusable Survivors framework. Genre-specific systems stay local until a second concrete game proves a shared package boundary.
 
@@ -87,7 +87,7 @@ The template keeps this data split between `Runtime/BasicSurvivorsGame.cs` for p
 The reference clone has a much larger authored project: class-owned content packs, passive atlases, per-weapon skill trees, boss relic pools, damage augments, enemy variety, exponential run bloat, save tooling, and runtime debug controls. This package now brings over the template-sized parts that matter most for pressing Play:
 
 - five immediately active clone-spirit weapons instead of a single starter wand
-- eight enemy pressure types with splitters, ranged pressure, elites, and long-run escalation instead of one swarm profile
+- nine enemy pressure types with splitters, ranged pressure, two elite variants, and long-run escalation instead of one swarm profile
 - 30+ meaningful upgrade choices with visible behavior changes, status/sustain hooks, passive requirements, and six legendary evolutions
 - elite kill reward drafts, miniboss rewards, boss evolution rewards with rare-or-better fallback drafts, boss relic choices, multiple persistent meta upgrades, class loadouts, compact passive atlases, weapon skill tracks, and class-gated advanced tools
 - reroll, skip-for-shards, and banish controls for draft quality of life
