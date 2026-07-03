@@ -207,6 +207,12 @@ namespace Deucarian.TemplateGameSurvivors
         public const string EmberTempoUpgradeId = "upgrade.survivors.ember-tempo";
         public const string SiegePayloadsUpgradeId = "upgrade.survivors.siege-payloads";
         public const string EmberWardUpgradeId = "upgrade.survivors.ember-ward";
+        public const string ArcaneStormEvolutionUpgradeId = "upgrade.survivors.evolution.arcane-storm";
+        public const string BlizzardCrownEvolutionUpgradeId = "upgrade.survivors.evolution.blizzard-crown";
+        public const string CrimsonAegisEvolutionUpgradeId = "upgrade.survivors.evolution.crimson-aegis";
+        public const string InfernoHeartEvolutionUpgradeId = "upgrade.survivors.evolution.inferno-heart";
+        public const string TempestPrismEvolutionUpgradeId = "upgrade.survivors.evolution.tempest-prism";
+        public const string GravefieldEngineEvolutionUpgradeId = "upgrade.survivors.evolution.gravefield-engine";
         public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
@@ -847,7 +853,52 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade(PrismaticBeamUpgradeId, RunUpgradeRarity.Uncommon, 30, 3, HitscanPierceEffect, HitscanWeaponTarget, 1.0d),
                 Upgrade(ExtraPayloadUpgradeId, RunUpgradeRarity.Rare, 22, 2, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
                 Upgrade(BiggerBoomsUpgradeId, RunUpgradeRarity.Uncommon, 32, 4, PayloadRadiusEffect, PayloadWeaponTarget, 0.45d),
-                Upgrade(WiderTriggersUpgradeId, RunUpgradeRarity.Uncommon, 28, 4, PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.35d)
+                Upgrade(WiderTriggersUpgradeId, RunUpgradeRarity.Uncommon, 28, 4, PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.35d),
+                UpgradeMulti(
+                    ArcaneStormEvolutionUpgradeId,
+                    RunUpgradeRarity.Legendary,
+                    14,
+                    1,
+                    new RunUpgradeEffectDescriptor(ProjectileChainEffect, WeaponTarget, 3.0d),
+                    new RunUpgradeEffectDescriptor(ProjectileForkEffect, WeaponTarget, 1.0d),
+                    new RunUpgradeEffectDescriptor(DamageBonusEffect, WeaponTarget, 5.0d)),
+                UpgradeMulti(
+                    BlizzardCrownEvolutionUpgradeId,
+                    RunUpgradeRarity.Legendary,
+                    14,
+                    1,
+                    new RunUpgradeEffectDescriptor(ProjectileFanEffect, FrostFanWeaponTarget, 3.0d),
+                    new RunUpgradeEffectDescriptor(ProjectilePierceEffect, FrostFanWeaponTarget, 2.0d)),
+                UpgradeMulti(
+                    CrimsonAegisEvolutionUpgradeId,
+                    RunUpgradeRarity.Legendary,
+                    14,
+                    1,
+                    new RunUpgradeEffectDescriptor(OrbitBladeEffect, OrbitWeaponTarget, 3.0d),
+                    new RunUpgradeEffectDescriptor(OrbitRadiusEffect, ThornHaloWeaponTarget, 0.75d)),
+                UpgradeMulti(
+                    InfernoHeartEvolutionUpgradeId,
+                    RunUpgradeRarity.Legendary,
+                    14,
+                    1,
+                    new RunUpgradeEffectDescriptor(BurstCountEffect, BurstWeaponTarget, 2.0d),
+                    new RunUpgradeEffectDescriptor(BurstEchoEffect, BurstWeaponTarget, 2.0d),
+                    new RunUpgradeEffectDescriptor(TargetedBurstEffect, BurstWeaponTarget, 1.0d)),
+                UpgradeMulti(
+                    TempestPrismEvolutionUpgradeId,
+                    RunUpgradeRarity.Legendary,
+                    10,
+                    1,
+                    new RunUpgradeEffectDescriptor(HitscanPierceEffect, HitscanWeaponTarget, 3.0d),
+                    new RunUpgradeEffectDescriptor(FireRateEffect, HitscanWeaponTarget, -0.12d)),
+                UpgradeMulti(
+                    GravefieldEngineEvolutionUpgradeId,
+                    RunUpgradeRarity.Legendary,
+                    10,
+                    1,
+                    new RunUpgradeEffectDescriptor(PayloadCountEffect, PayloadWeaponTarget, 2.0d),
+                    new RunUpgradeEffectDescriptor(PayloadRadiusEffect, PayloadWeaponTarget, 0.85d),
+                    new RunUpgradeEffectDescriptor(PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.65d))
             });
         }
 
@@ -870,6 +921,54 @@ namespace Deucarian.TemplateGameSurvivors
                 PickupTarget,
                 StatusTarget,
                 BarrierTarget
+            };
+        }
+
+        public static IReadOnlyList<SurvivorsRunUpgradeMetadata> CreateRunUpgradeMetadata()
+        {
+            return new[]
+            {
+                UpgradeMetadata("upgrade.survivors.arcane-damage", "Arcane Damage", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt deals more damage."),
+                UpgradeMetadata("upgrade.survivors.quick-casting", "Quick Casting", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt fires more often."),
+                UpgradeMetadata("upgrade.survivors.swift-steps", "Swift Steps", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: move faster through horde pressure."),
+                UpgradeMetadata("upgrade.survivors.gem-magnet", "Gem Magnet", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PickupTarget.Value, "Passive: pull XP gems from farther away."),
+                UpgradeMetadata("upgrade.survivors.iron-blood", "Iron Blood", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: increase maximum health."),
+                UpgradeMetadata(FrostFanUpgradeId, "Frost Fan", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Add more frost shards to the fan pattern."),
+                UpgradeMetadata(OrbitingFocusUpgradeId, "Orbiting Focus", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Add blades to the orbiting ward."),
+                UpgradeMetadata(ThornHaloUpgradeId, "Thorn Halo Wall", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Push the halo outward and add another guard blade."),
+                UpgradeMetadata(CrescentChainUpgradeId, "Crescent Chain", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Let Moon Slash cut through more targets."),
+                UpgradeMetadata(NovaEchoUpgradeId, "Nova Echo", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Add another pulse to Cinder Burst."),
+                UpgradeMetadata(CinderEchoUpgradeId, "Cinder Echoes", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Repeat Cinder Burst with delayed echoes."),
+                UpgradeMetadata(TargetedSigilUpgradeId, "Targeted Burst Sigils", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Cinder Burst leaves focused sigils on nearby enemies."),
+                UpgradeMetadata("upgrade.survivors.piercing-bolts", "Piercing Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt pierces additional enemies."),
+                UpgradeMetadata("upgrade.survivors.chain-bolts", "Chain Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt jumps to a nearby enemy after impact."),
+                UpgradeMetadata("upgrade.survivors.forked-bolts", "Forked Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt splits after a hit."),
+                UpgradeMetadata("upgrade.survivors.returning-bolts", "Returning Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt boomerangs after impact."),
+                UpgradeMetadata("upgrade.survivors.distilled-poison", "Distilled Poison", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StatusTarget.Value, "Passive: weapon hits leave poison damage over time."),
+                UpgradeMetadata("upgrade.survivors.hemorrhage-edge", "Hemorrhage Edge", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StatusTarget.Value, "Passive: weapon hits add bleeding damage over time."),
+                UpgradeMetadata("upgrade.survivors.execution-rite", "Execution Rite", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StatusTarget.Value, "Passive: wounded enemies can be executed by weapon hits."),
+                UpgradeMetadata("upgrade.survivors.sanguine-feast", "Sanguine Feast", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: heal from a portion of weapon damage."),
+                UpgradeMetadata("upgrade.survivors.guardian-barrier", "Guardian Barrier", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: increase starting barrier capacity."),
+                UpgradeMetadata("upgrade.survivors.ward-recovery", "Ward Recovery", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: regenerate barrier during the run."),
+                UpgradeMetadata("upgrade.survivors.mirror-bulwark", "Mirror Bulwark", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: weapon damage restores a little barrier."),
+                UpgradeMetadata(ArcaneThesisUpgradeId, "Arcane Thesis", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, ArcaneWandWeaponContentId, "Passive: commit to Arc Bolt damage and unlock Arcane Storm."),
+                UpgradeMetadata(FrostNeedleworkUpgradeId, "Frost Needlework", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, FrostFanWeaponContentId, "Passive: sharpen frost shards and unlock Blizzard Crown."),
+                UpgradeMetadata(BloodRingCanticleUpgradeId, "Blood Ring Canticle", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, OrbitWardWeaponContentId, "Passive: deepen orbit damage and unlock Crimson Aegis."),
+                UpgradeMetadata(CinderScriptUpgradeId, "Cinder Script", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarNovaWeaponContentId, "Passive: focus burst sigils and unlock Inferno Heart."),
+                UpgradeMetadata(EmberForgeHeartUpgradeId, "Ember Forge Heart", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarBeamWeaponContentId, "Passive: raise Ember weapon damage."),
+                UpgradeMetadata(EmberTempoUpgradeId, "Ember Tempo", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarBeamWeaponContentId, "Passive: quicken Star Beam and unlock Tempest Prism."),
+                UpgradeMetadata(SiegePayloadsUpgradeId, "Siege Payloads", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PayloadWeaponTarget.Value, "Passive: carry heavier payloads and unlock Gravefield Engine."),
+                UpgradeMetadata(EmberWardUpgradeId, "Ember Ward", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: add a larger defensive barrier."),
+                UpgradeMetadata(PrismaticBeamUpgradeId, "Prismatic Beam", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Star Beam pierces more enemies."),
+                UpgradeMetadata(ExtraPayloadUpgradeId, "Extra Payload", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Throw or place additional payloads."),
+                UpgradeMetadata(BiggerBoomsUpgradeId, "Bigger Booms", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Payload explosions cover a wider area."),
+                UpgradeMetadata(WiderTriggersUpgradeId, "Wider Triggers", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Payloads trigger from farther away."),
+                UpgradeMetadata(ArcaneStormEvolutionUpgradeId, "Arcane Storm", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Evolution: Arc Bolt becomes a storm of chaining, forking bolts.", ArcaneWandWeaponContentId, "upgrade.survivors.arcane-damage", 5, ArcaneThesisUpgradeId),
+                UpgradeMetadata(BlizzardCrownEvolutionUpgradeId, "Blizzard Crown", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Evolution: Frost Fan expands into a piercing crown of shards.", FrostFanWeaponContentId, FrostFanUpgradeId, 3, FrostNeedleworkUpgradeId),
+                UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo become a dense orbit shield.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 4, BloodRingCanticleUpgradeId),
+                UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 3, CinderScriptUpgradeId),
+                UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam turns into a rapid piercing prism.", StarBeamWeaponContentId, PrismaticBeamUpgradeId, 3, EmberTempoUpgradeId),
+                UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload weapons flood the arena with larger danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, SiegePayloadsUpgradeId)
             };
         }
 
@@ -1225,7 +1324,38 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.extra-payload") return "Extra Payload";
             if (value == "upgrade.survivors.bigger-booms") return "Bigger Booms";
             if (value == "upgrade.survivors.wider-triggers") return "Wider Triggers";
+            if (value == ArcaneStormEvolutionUpgradeId) return "Arcane Storm";
+            if (value == BlizzardCrownEvolutionUpgradeId) return "Blizzard Crown";
+            if (value == CrimsonAegisEvolutionUpgradeId) return "Crimson Aegis";
+            if (value == InfernoHeartEvolutionUpgradeId) return "Inferno Heart";
+            if (value == TempestPrismEvolutionUpgradeId) return "Tempest Prism";
+            if (value == GravefieldEngineEvolutionUpgradeId) return "Gravefield Engine";
             return value;
+        }
+
+        private static SurvivorsRunUpgradeMetadata UpgradeMetadata(
+            string id,
+            string displayName,
+            SurvivorsRunUpgradeCategory category,
+            SurvivorsRunBuildSlotKind slotKind,
+            string affectedContentId,
+            string description,
+            string requiredOwnedWeaponId = null,
+            string requiredUpgradeId = null,
+            int requiredUpgradeRank = 0,
+            string requiredPassiveUpgradeId = null)
+        {
+            return new SurvivorsRunUpgradeMetadata(
+                id,
+                displayName,
+                category,
+                slotKind,
+                affectedContentId,
+                description,
+                requiredOwnedWeaponId,
+                requiredUpgradeId,
+                requiredUpgradeRank,
+                requiredPassiveUpgradeId);
         }
 
         private static RunUpgradeDefinition Upgrade(string id, RunUpgradeRarity rarity, int weight, int maxRank, RunUpgradeEffectId effect, RunUpgradeTargetId target, double amount)
@@ -1236,6 +1366,16 @@ namespace Deucarian.TemplateGameSurvivors
                 weight,
                 maxRank,
                 new[] { new RunUpgradeEffectDescriptor(effect, target, amount) });
+        }
+
+        private static RunUpgradeDefinition UpgradeMulti(string id, RunUpgradeRarity rarity, int weight, int maxRank, params RunUpgradeEffectDescriptor[] effects)
+        {
+            return new RunUpgradeDefinition(
+                new RunUpgradeId(id),
+                rarity,
+                weight,
+                maxRank,
+                effects);
         }
     }
 }

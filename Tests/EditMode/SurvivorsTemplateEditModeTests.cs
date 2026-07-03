@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Deucarian.Persistence;
 using Deucarian.Projectiles;
@@ -24,6 +25,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             var relics = BasicSurvivorsGame.CreateRelicDefinitions();
             SurvivorsClassLibraryDefinition classes = BasicSurvivorsGame.CreateClassLibraryDefinition();
             var progressionTracks = BasicSurvivorsGame.CreateProgressionTrackDefinitions();
+            var upgradeMetadata = BasicSurvivorsGame.CreateRunUpgradeMetadata();
 
             Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponId, weapon.Id);
             Assert.AreEqual(WeaponFireMode.Projectile, weapon.FireMode);
@@ -58,7 +60,48 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, progressionTracks[0].ClassId);
             Assert.That(progressionTracks[0].Nodes.Count, Is.GreaterThanOrEqualTo(4));
             Assert.That(BasicSurvivorsGame.CreateClassUpgradeGates().Count, Is.GreaterThanOrEqualTo(13));
+            AssertRunUpgradeMetadataCoversPassivesAndEvolutions(upgrades, upgradeMetadata);
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
+        }
+
+        private static void AssertRunUpgradeMetadataCoversPassivesAndEvolutions(RunUpgradeCatalog upgrades, IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata)
+        {
+            Assert.NotNull(metadata);
+            Assert.That(metadata.Count, Is.GreaterThanOrEqualTo(upgrades.Definitions.Count));
+
+            int passiveCount = 0;
+            int evolutionCount = 0;
+            var metadataIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < metadata.Count; i++)
+            {
+                SurvivorsRunUpgradeMetadata entry = metadata[i];
+                Assert.NotNull(entry);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(entry.UpgradeId));
+                Assert.IsTrue(metadataIds.Add(entry.UpgradeId), "Duplicate metadata id: " + entry.UpgradeId);
+                Assert.IsFalse(string.IsNullOrWhiteSpace(entry.Description));
+
+                if (entry.UsesPassiveSlot)
+                {
+                    passiveCount++;
+                }
+
+                if (entry.IsEvolution)
+                {
+                    evolutionCount++;
+                    Assert.IsFalse(string.IsNullOrWhiteSpace(entry.RequiredOwnedWeaponId));
+                    Assert.IsFalse(string.IsNullOrWhiteSpace(entry.RequiredUpgradeId));
+                    Assert.That(entry.RequiredUpgradeRank, Is.GreaterThan(0));
+                    Assert.IsFalse(string.IsNullOrWhiteSpace(entry.RequiredPassiveUpgradeId));
+                }
+            }
+
+            for (int i = 0; i < upgrades.Definitions.Count; i++)
+            {
+                Assert.IsTrue(metadataIds.Contains(upgrades.Definitions[i].Id.Value), "Missing metadata for " + upgrades.Definitions[i].Id.Value);
+            }
+
+            Assert.That(passiveCount, Is.GreaterThanOrEqualTo(8));
+            Assert.That(evolutionCount, Is.GreaterThanOrEqualTo(6));
         }
 
         [Test]

@@ -306,6 +306,74 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator PassiveSlotsBlockNewPassivesButAllowOwnedRanks()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            string[] passives =
+            {
+                "upgrade.survivors.swift-steps",
+                "upgrade.survivors.gem-magnet",
+                "upgrade.survivors.iron-blood",
+                "upgrade.survivors.distilled-poison",
+                "upgrade.survivors.hemorrhage-edge",
+                "upgrade.survivors.execution-rite"
+            };
+
+            for (int i = 0; i < passives.Length; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(passives[i]));
+            }
+
+            Assert.AreEqual(controller.MaxPassiveSlots, controller.ActivePassiveCount);
+            Assert.AreEqual(SurvivorsRunUpgradeCategory.PassiveUpgrade, controller.GetUpgradeCategoryForTest("upgrade.survivors.swift-steps"));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest("upgrade.survivors.sanguine-feast"));
+            Assert.IsFalse(controller.ApplyUpgradeByIdForTest("upgrade.survivors.sanguine-feast"));
+
+            int previousRank = controller.GetRunUpgradeRankForTest("upgrade.survivors.swift-steps");
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest("upgrade.survivors.swift-steps"));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.swift-steps"));
+            Assert.AreEqual(controller.MaxPassiveSlots, controller.ActivePassiveCount);
+            Assert.AreEqual(previousRank + 1, controller.GetRunUpgradeRankForTest("upgrade.survivors.swift-steps"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator WeaponEvolutionRequiresRankedWeaponPathAndPassive()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunUpgradeCategory.Evolution, controller.GetUpgradeCategoryForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.That(controller.GetUpgradeDescriptionForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId), Does.Contain("Evolution"));
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+
+            float previousDamage = controller.DamageBonus;
+            int previousChains = controller.ProjectileChainBonus;
+            int previousForks = controller.ProjectileForkBonus;
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.AreEqual(1, controller.EvolvedWeaponCount);
+            Assert.That(controller.DamageBonus, Is.GreaterThan(previousDamage));
+            Assert.That(controller.ProjectileChainBonus, Is.GreaterThan(previousChains));
+            Assert.That(controller.ProjectileForkBonus, Is.GreaterThan(previousForks));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator OrbitWeaponCanDamageAndKillEnemy()
         {
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
@@ -573,7 +641,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator MinibossDeathOpensBossRelicChoice()
+        public IEnumerator MinibossDeathOpensEliteUpgradeRewardChoice()
         {
             SurvivorsTemplateController controller = CreateController();
             yield return null;
@@ -583,9 +651,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
-            Assert.IsTrue(controller.IsRelicChoiceOpen);
-            Assert.That(controller.BossRelicDraftOpenCount, Is.GreaterThanOrEqualTo(1));
-            Assert.AreEqual(3, controller.CurrentRelicChoices.Count);
+            Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
+            Assert.IsFalse(controller.IsRelicChoiceOpen);
+            Assert.That(controller.EliteUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.IsTrue(controller.SelectUpgrade(0));
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.SelectedRewardUpgradeCount);
 
             Object.Destroy(controller.gameObject);
         }
@@ -610,6 +682,45 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
                 controller.RelicCooldownMultiplierBonus != previousRelicCooldown ||
                 controller.RelicPickupRangeBonus != previousRelicPickup;
             Assert.IsTrue(relicChanged);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator EligibleBossEvolutionRewardDelaysVictoryUntilSelected()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss.evolution");
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
+            Assert.IsFalse(controller.IsVictory);
+            Assert.That(controller.BossUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            int evolutionChoiceIndex = IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId);
+            Assert.That(evolutionChoiceIndex, Is.GreaterThanOrEqualTo(0));
+
+            Assert.IsTrue(controller.SelectUpgrade(evolutionChoiceIndex));
+            yield return null;
+
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.AreEqual(1, controller.SelectedRewardUpgradeCount);
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.IsTrue(controller.IsVictory);
+            Assert.That(controller.BossRewardGrantCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.BloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(18));
+            Assert.AreEqual(1, controller.MetaBossVictories);
 
             Object.Destroy(controller.gameObject);
         }

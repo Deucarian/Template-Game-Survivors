@@ -7,7 +7,9 @@ namespace Deucarian.TemplateGameSurvivors
     {
         None = 0,
         LevelUp = 1,
-        BossRelic = 2
+        BossRelic = 2,
+        EliteUpgrade = 3,
+        BossUpgrade = 4
     }
 
     public enum SurvivorsRelicEffectKind
