@@ -691,6 +691,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             controller.ApplyDamageToPlayer(controller.MaxHealth * 0.45f, "test.streak-health");
             Assert.That(controller.CurrentHealth, Is.LessThan(controller.MaxHealth));
+            float startingDamage = controller.ProjectileDamage;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
 
             for (int i = 0; i < 32; i++)
             {
@@ -705,16 +709,26 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.StreakHealthDropCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.StreakMagnetDropCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.StreakBloodShardDropCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(controller.StreakRewardFeedbackCount, Is.GreaterThanOrEqualTo(4));
-            Assert.That(controller.LastStreakRewardFeedbackLabel, Does.Contain("Blood Shards"));
-            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Blood Shards"));
+            Assert.That(controller.StreakRewardFeedbackCount, Is.GreaterThanOrEqualTo(6));
+            Assert.AreEqual(2, controller.StreakSurgeTier);
+            Assert.AreEqual(2, controller.StreakSurgeActivationCount);
+            Assert.IsTrue(controller.IsStreakSurgeActive);
+            Assert.That(controller.StreakSurgeDamageBonus, Is.GreaterThan(0f));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
+            Assert.That(controller.LastStreakRewardFeedbackLabel, Does.Contain("Tempo Surge"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Tempo Surge"));
             Assert.That(controller.StreakRewardFeedbackRemainingSeconds, Is.GreaterThan(0f));
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(37));
 
-            controller.Simulate(4.5f);
+            controller.Simulate(6.5f);
             yield return null;
 
             Assert.AreEqual(0, controller.CurrentKillStreak);
+            Assert.AreEqual(0, controller.StreakSurgeTier);
+            Assert.IsFalse(controller.IsStreakSurgeActive);
             Assert.IsEmpty(controller.ActiveStreakRewardFeedbackLabel);
 
             Object.Destroy(controller.gameObject);

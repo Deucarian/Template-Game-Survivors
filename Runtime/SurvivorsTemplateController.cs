@@ -30,6 +30,13 @@ namespace Deucarian.TemplateGameSurvivors
         private const int KillStreakHealthInterval = 16;
         private const int KillStreakMagnetInterval = 24;
         private const int KillStreakBloodShardInterval = 32;
+        private const int KillStreakSurgeInterval = 16;
+        private const int KillStreakSurgeMaxTier = 5;
+        private const float StreakSurgeDurationSeconds = 6f;
+        private const float StreakSurgeDamageBonusPerTier = 1.1f;
+        private const float StreakSurgeMoveSpeedBonusPerTier = 0.16f;
+        private const float StreakSurgeCooldownReductionPerTier = 0.025f;
+        private const float StreakSurgePickupRangeBonusPerTier = 0.18f;
         private const int DefaultMaxWeaponSlots = 6;
         private const int DefaultMaxPassiveSlots = 6;
         private const int SplitterChildCount = 2;
@@ -149,6 +156,7 @@ namespace Deucarian.TemplateGameSurvivors
         private long _spawnSequence;
         private int _killStreakCount;
         private int _currentDraftRerollIndex;
+        private float _streakSurgeTimer;
         private bool _runStarted;
         private bool _ownsMetaProgressionService;
         private bool _metaProfileLoaded;
@@ -250,7 +258,15 @@ namespace Deucarian.TemplateGameSurvivors
         public int StreakBloodShardDropCount { get; private set; }
         public int StreakRewardFeedbackCount { get; private set; }
         public string LastStreakRewardFeedbackLabel { get; private set; } = string.Empty;
+        public int StreakSurgeTier { get; private set; }
+        public int StreakSurgeActivationCount { get; private set; }
         public int CurrentKillStreak => _killStreakTimer > 0f ? _killStreakCount : 0;
+        public bool IsStreakSurgeActive => _streakSurgeTimer > 0f && StreakSurgeTier > 0;
+        public float StreakSurgeRemainingSeconds => Mathf.Max(0f, _streakSurgeTimer);
+        public float StreakSurgeDamageBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgeDamageBonusPerTier : 0f;
+        public float StreakSurgeMoveSpeedBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgeMoveSpeedBonusPerTier : 0f;
+        public float StreakSurgeCooldownMultiplierBonus => IsStreakSurgeActive ? -StreakSurgeTier * StreakSurgeCooldownReductionPerTier : 0f;
+        public float StreakSurgePickupRangeBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgePickupRangeBonusPerTier : 0f;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
         public int BloodShardsEarnedThisRun { get; private set; }
@@ -319,9 +335,10 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 FirstInfiniteArenaTilePositionForTest => _arenaTiles.Count == 0 || _arenaTiles[0] == null ? Vector3.zero : _arenaTiles[0].position;
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
-        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus;
-        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus);
-        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus));
+        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus;
+        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus);
+        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus));
+        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus);
         public float CurrentHealth => _playerHealth == null ? 0f : (float)_playerHealth.CurrentHealth;
         public float MaxHealth => _playerHealth == null ? 0f : (float)_playerHealth.MaximumHealth;
         public float BarrierCapacity => Mathf.Max(0f, CurrentTuning.StartingBarrierCapacity + BarrierCapacityBonus);
@@ -477,7 +494,8 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 236, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
             GUI.Label(new Rect(24, 258, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
             GUI.Label(new Rect(24, 280, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}", _hudSmallStyle);
+            string surgeHud = IsStreakSurgeActive ? $"   Surge T{StreakSurgeTier} {StreakSurgeRemainingSeconds:0.0}s" : string.Empty;
+            GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
@@ -607,6 +625,8 @@ namespace Deucarian.TemplateGameSurvivors
             StreakBloodShardDropCount = 0;
             StreakRewardFeedbackCount = 0;
             LastStreakRewardFeedbackLabel = string.Empty;
+            StreakSurgeTier = 0;
+            StreakSurgeActivationCount = 0;
             BloodShardsEarnedThisRun = 0;
             LegacyExperienceEarnedThisRun = 0;
             LastRunResult = null;
@@ -670,6 +690,7 @@ namespace Deucarian.TemplateGameSurvivors
             _playerInvulnerabilityTimer = 0f;
             _killStreakTimer = 0f;
             _killStreakCount = 0;
+            _streakSurgeTimer = 0f;
             _spawnSequence = 0;
             _currentDraft = null;
             _currentRelicDraft = null;
@@ -744,6 +765,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             _playerInvulnerabilityTimer = Mathf.Max(0f, _playerInvulnerabilityTimer - dt);
             TickKillStreak(dt);
+            TickStreakSurge(dt);
             TickBarrier(dt);
             MovePlayer(movementInput, dt);
             UpdateArenaPresentation();
@@ -1088,7 +1110,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
-                $"Stats: damage +{DamageBonus:0.#}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup +{PickupRangeBonus:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
+                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus:0.#}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
@@ -1649,7 +1671,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return 0f;
             }
 
-            return Mathf.Max(0f, definition.Damage + DamageBonus);
+            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus);
         }
 
         internal float ResolveWeaponCooldownSeconds(SurvivorsWeaponArchetypeDefinition definition)
@@ -1659,7 +1681,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return WeaponCooldownSeconds;
             }
 
-            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus));
+            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus));
         }
 
         internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction)
@@ -2074,6 +2096,22 @@ namespace Deucarian.TemplateGameSurvivors
                     RecordStreakRewardFeedback($"{_killStreakCount} Streak: Blood Shards +{amount}", new Color(1f, 0.34f, 0.42f));
                 }
             }
+
+            TryActivateStreakSurge();
+        }
+
+        private void TryActivateStreakSurge()
+        {
+            if (_killStreakCount <= 0 || _killStreakCount % KillStreakSurgeInterval != 0)
+            {
+                return;
+            }
+
+            int tier = Mathf.Clamp(_killStreakCount / KillStreakSurgeInterval, 1, KillStreakSurgeMaxTier);
+            StreakSurgeTier = tier;
+            StreakSurgeActivationCount++;
+            _streakSurgeTimer = StreakSurgeDurationSeconds;
+            RecordStreakRewardFeedback($"{_killStreakCount} Streak: Tempo Surge T{tier}", new Color(1f, 0.74f, 0.24f));
         }
 
         private void RecordStreakRewardFeedback(string label, Color color)
@@ -3847,7 +3885,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SurvivorsPickupActor pickup = result.Instance.GetComponent<SurvivorsPickupActor>();
-            pickup.Initialize(this, kind, Mathf.Max(1, amount), CurrentTuning.PickupAttractRange + PickupRangeBonus, CurrentTuning.PickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
+            pickup.Initialize(this, kind, Mathf.Max(1, amount), CurrentPickupAttractRange, CurrentTuning.PickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
             _pickups.Add(pickup);
             return pickup;
         }
@@ -4264,6 +4302,20 @@ namespace Deucarian.TemplateGameSurvivors
             if (_killStreakTimer <= 0f)
             {
                 _killStreakCount = 0;
+            }
+        }
+
+        private void TickStreakSurge(float deltaTime)
+        {
+            if (_streakSurgeTimer <= 0f || StreakSurgeTier <= 0)
+            {
+                return;
+            }
+
+            _streakSurgeTimer = Mathf.Max(0f, _streakSurgeTimer - Mathf.Max(0f, deltaTime));
+            if (_streakSurgeTimer <= 0f)
+            {
+                StreakSurgeTier = 0;
             }
         }
 
