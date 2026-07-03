@@ -827,6 +827,9 @@ namespace Deucarian.TemplateGameSurvivors
 
     internal sealed class SurvivorsBurstWeaponRuntime : SurvivorsWeaponRuntimeBase
     {
+        private const int InfernoHeartSatelliteBurstCount = 6;
+        private const float InfernoHeartSatelliteDistanceRatio = 0.86f;
+        private const float InfernoHeartSatelliteRadiusRatio = 0.48f;
         private readonly List<SurvivorsEnemyActor> _targets = new List<SurvivorsEnemyActor>();
         private float _cooldownRemaining;
         private float _timeUntilNextBurst;
@@ -889,12 +892,31 @@ namespace Deucarian.TemplateGameSurvivors
             _timeUntilNextBurst -= deltaTime;
             while (_pendingBursts > 0 && _timeUntilNextBurst <= 0f)
             {
-                EmitBurst(_sequenceOrigin, Definition.Range + Controller.AreaRadiusBonus);
+                float radius = Definition.Range + Controller.AreaRadiusBonus;
+                EmitBurst(_sequenceOrigin, radius);
+                if (Definition.Id == BasicSurvivorsGame.StarNovaWeaponContentId &&
+                    Controller.IsEvolutionActive(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId))
+                {
+                    EmitInfernoHeartSatellites(_sequenceOrigin, radius);
+                }
+
                 _pendingBursts--;
                 if (_pendingBursts > 0)
                 {
                     _timeUntilNextBurst += Definition.BurstRepeatIntervalSeconds;
                 }
+            }
+        }
+
+        private void EmitInfernoHeartSatellites(Vector3 origin, float baseRadius)
+        {
+            float satelliteDistance = Mathf.Max(0.25f, baseRadius * InfernoHeartSatelliteDistanceRatio);
+            float satelliteRadius = Mathf.Max(0.35f, baseRadius * InfernoHeartSatelliteRadiusRatio);
+            for (int index = 0; index < InfernoHeartSatelliteBurstCount; index++)
+            {
+                float angle = (360f / InfernoHeartSatelliteBurstCount) * index;
+                Vector3 offset = Quaternion.Euler(0f, angle, 0f) * (Vector3.right * satelliteDistance);
+                EmitBurst(origin + offset, satelliteRadius);
             }
         }
 

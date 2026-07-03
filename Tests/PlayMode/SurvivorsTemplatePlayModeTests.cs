@@ -720,6 +720,53 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator InfernoHeartEvolutionAddsSatelliteNovaCoverage()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureBurstOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.NovaEchoUpgradeId));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.CinderScriptUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
+
+            float radius = controller.CurrentTuning.BurstRadius + controller.AreaRadiusBonus;
+            Vector3 anchorPosition = controller.PlayerPosition + new Vector3(radius * 0.55f, 0f, 0f);
+            Vector3 outsideCentralBurst = anchorPosition + new Vector3(radius * 1.18f, 0f, 0f);
+            SurvivorsEnemyActor anchor = controller.SpawnEnemyForTest(anchorPosition, 100f);
+            SurvivorsEnemyActor satelliteTarget = controller.SpawnEnemyForTest(outsideCentralBurst, 100f);
+            Assert.NotNull(anchor);
+            Assert.NotNull(satelliteTarget);
+
+            int beforeBaselineHits = controller.BurstHitCount;
+            int beforeBaselinePulses = controller.BurstPulseCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Burst));
+            int baselineHits = controller.BurstHitCount - beforeBaselineHits;
+            int baselinePulses = controller.BurstPulseCount - beforeBaselinePulses;
+            Assert.AreEqual(1, baselineHits);
+            Assert.AreEqual(1, baselinePulses);
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
+
+            int beforeInfernoHits = controller.BurstHitCount;
+            int beforeInfernoPulses = controller.BurstPulseCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Burst));
+            int infernoHits = controller.BurstHitCount - beforeInfernoHits;
+            int infernoPulses = controller.BurstPulseCount - beforeInfernoPulses;
+
+            Assert.That(infernoHits, Is.GreaterThanOrEqualTo(2));
+            Assert.That(infernoPulses, Is.GreaterThanOrEqualTo(baselinePulses + 6));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DefaultWeaponPathsRequireFiveRanksBeforeEvolution()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -1806,6 +1853,20 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             tuning.OrbitDamage = 0f;
             tuning.MeleeDamage = 0f;
             tuning.BurstDamage = 0f;
+            tuning.HitscanDamage = 0f;
+            tuning.GrenadeDamage = 0f;
+            tuning.PlacedPayloadDamage = 0f;
+        }
+
+        private static void ConfigureBurstOnlyTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.EnemySpawnIntervalSeconds = 999f;
+            tuning.EnemyMoveSpeed = 0f;
+            tuning.EnemyContactDamage = 0f;
+            tuning.ProjectileDamage = 0f;
+            tuning.OrbitDamage = 0f;
+            tuning.MeleeDamage = 0f;
+            tuning.BurstDamage = 6f;
             tuning.HitscanDamage = 0f;
             tuning.GrenadeDamage = 0f;
             tuning.PlacedPayloadDamage = 0f;
