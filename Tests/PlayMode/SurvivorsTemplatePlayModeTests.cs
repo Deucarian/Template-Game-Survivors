@@ -232,6 +232,36 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator PickupRangeUpgradeAffectsExistingExperienceGems()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.StartRun();
+            yield return null;
+
+            float startingRange = controller.CurrentPickupAttractRange;
+            SurvivorsPickupActor gem = controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(startingRange + 0.45f, 0f, 0f), 1);
+            Assert.IsNotNull(gem);
+
+            controller.Simulate(0.15f);
+            yield return null;
+
+            Assert.IsFalse(gem.HasShownAttractionFeedback);
+            Assert.AreEqual(0, controller.PickupAttractionFeedbackCount);
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.gem-magnet"));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingRange + 0.45f));
+
+            controller.Simulate(1f / 30f);
+            yield return null;
+
+            Assert.IsTrue(gem.HasShownAttractionFeedback);
+            Assert.That(controller.PickupAttractionFeedbackCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ControllerUsesHumanPlaytestPacingByDefault()
         {
             SurvivorsTemplateController controller = CreateController();

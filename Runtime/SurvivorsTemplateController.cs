@@ -3951,6 +3951,7 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
+                pickup.UpdateAttractionSettings(CurrentPickupAttractRange, CurrentTuning.PickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
                 pickup.Simulate(deltaTime);
             }
         }
@@ -6061,9 +6062,7 @@ namespace Deucarian.TemplateGameSurvivors
             _controller = controller;
             Kind = kind;
             Amount = Mathf.Max(1, amount);
-            _attractRange = Mathf.Max(0.1f, attractRange);
-            _attractionSpeed = Mathf.Max(0.1f, attractionSpeed);
-            _collectRadius = Mathf.Max(0.1f, collectRadius);
+            UpdateAttractionSettings(attractRange, attractionSpeed, collectRadius);
             _globalRecall = false;
             _attractionFeedbackSent = false;
             _recallSpeedMultiplier = 1f;
@@ -6072,6 +6071,13 @@ namespace Deucarian.TemplateGameSurvivors
             IsActive = true;
             _baseScale = ResolvePickupBaseScale(kind);
             transform.localScale = _baseScale;
+        }
+
+        public void UpdateAttractionSettings(float attractRange, float attractionSpeed, float collectRadius)
+        {
+            _attractRange = Mathf.Max(0.1f, attractRange);
+            _attractionSpeed = Mathf.Max(0.1f, attractionSpeed);
+            _collectRadius = Mathf.Max(0.1f, collectRadius);
         }
 
         public void StartGlobalRecall(float speedMultiplier)
