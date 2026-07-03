@@ -1254,6 +1254,37 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator AetherfieldMatrixEvolutionMakesAetherMineLeaveHazards()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureTrapOnlyTuning(controller.CurrentTuning);
+            Assert.IsTrue(controller.UnlockClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            Assert.IsTrue(controller.TrySelectClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            controller.StartRun();
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.SiegePayloadsUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 1.8f), 100f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Mine));
+            yield return SimulateFrames(controller, 150);
+
+            Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadHazardTickCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ExperienceAndAreaPassivesCreateReadablePowerGains()
         {
             SurvivorsTemplateController controller = CreateController();

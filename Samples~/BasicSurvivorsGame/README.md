@@ -16,7 +16,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Projectile upgrades can add fan spread, pierce, chain, fork, and return behavior.
 - Status and sustain upgrades can add poison, bleed, execute, lifesteal, barrier capacity, barrier recovery, and barrier-on-damage loops.
 - Enemies escalate from basic swarm pressure into fast runners, bruisers, ranged spitters, splitters that burst into smaller enemies, Blood Warden and Dread Lantern elite variants, minibosses, and a final boss.
-- Payload upgrades can add extra payloads, bigger explosions, wider trigger radii, and denser placed hazard fields.
+- Payload upgrades can add extra payloads, bigger explosions, wider trigger radii, and satellite hazard fields.
 - The run escalates over a 30-minute arc, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary.
 - Elite and miniboss defeat open stronger upgrade reward drafts.
@@ -45,7 +45,7 @@ First run target:
 - Pick Star Beam when it appears, rank Star Focus five times, branch into Prismatic Beam or Star Pulse, and take Twin Charm to build toward Tempest Prism side beams; or pick Gravity Grenade, rank Extra Payload and Bigger Booms, then take Giant Rune to build toward Gravefield Engine.
 - For a default-class evolution, rank Arcane Damage five times and take Arcane Thesis to build Arc Bolt toward Arcane Storm, rank Frost Fan five times and take Frost Needlework, rank Orbiting Focus five times and take Blood Ring Canticle, or rank Nova Echo five times and take Cinder Script.
 - After unlocking Ember Vanguard, rank Moonlit Edge five times and take Moon Oath to build Moon Slash toward Eclipse Waltz.
-- For the Ember Vanguard hazard build, rank Rune Lattice five times and take Siege Payloads to build Rune Trap and Aether Mine toward Aetherfield Matrix.
+- For the Ember Vanguard hazard build, rank Rune Lattice five times and take Siege Payloads to build Rune Trap and Aether Mine toward Aetherfield Matrix satellite hazards.
 - Defeat the miniboss and pick an elite upgrade reward.
 - Build toward an evolution by ranking a weapon path and taking the matching passive.
 - Defeat the final boss; if an evolution is eligible, pick the boss evolution reward, otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile, then `C` continues the same build into endless escalation.

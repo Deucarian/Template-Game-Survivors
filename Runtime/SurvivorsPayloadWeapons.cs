@@ -6,6 +6,13 @@ namespace Deucarian.TemplateGameSurvivors
 {
     internal abstract class SurvivorsPayloadWeaponRuntimeBase : SurvivorsWeaponRuntimeBase
     {
+        private const int EvolvedSatelliteHazardCount = 4;
+        private const float EvolvedHazardRadiusMultiplier = 1.18f;
+        private const float EvolvedHazardDurationMultiplier = 1.65f;
+        private const float EvolvedHazardTickIntervalMultiplier = 0.65f;
+        private const float EvolvedHazardDamageMultiplier = 1.25f;
+        private const float EvolvedSatelliteHazardRadiusMultiplier = 0.58f;
+        private const float EvolvedSatelliteHazardDistanceMultiplier = 0.82f;
         private readonly List<SurvivorsPayloadActorBase> _payloads = new List<SurvivorsPayloadActorBase>();
         protected readonly List<SurvivorsEnemyActor> DamageTargets = new List<SurvivorsEnemyActor>();
 
@@ -74,13 +81,69 @@ namespace Deucarian.TemplateGameSurvivors
             float radius = ResolveExplosionRadius();
             float damage = Controller.ResolveWeaponDamage(Definition);
             SurvivorsPayloadUtility.ApplyExplosion(Controller, Definition, origin, radius, damage, DamageTargets);
-            if (Definition.PayloadLeavesHazard && Definition.PayloadHazardDurationSeconds > 0f && Definition.PayloadHazardDamageRatio > 0f)
+            bool payloadEvolutionActive = IsPayloadEvolutionActive();
+            bool leavesHazard = Definition.PayloadLeavesHazard || payloadEvolutionActive;
+            float baseHazardDuration = payloadEvolutionActive
+                ? Mathf.Max(Definition.PayloadHazardDurationSeconds, 1.4f)
+                : Definition.PayloadHazardDurationSeconds;
+            float baseHazardTickInterval = payloadEvolutionActive
+                ? Mathf.Max(0.05f, Definition.PayloadHazardTickIntervalSeconds)
+                : Definition.PayloadHazardTickIntervalSeconds;
+            float baseHazardDamageRatio = payloadEvolutionActive
+                ? Mathf.Max(Definition.PayloadHazardDamageRatio, 0.16f)
+                : Definition.PayloadHazardDamageRatio;
+            if (leavesHazard && baseHazardDuration > 0f && baseHazardDamageRatio > 0f)
             {
-                SpawnHazard(origin, radius, damage * Definition.PayloadHazardDamageRatio);
+                float hazardRadius = Mathf.Max(0.2f, radius * 0.85f);
+                float hazardDuration = baseHazardDuration;
+                float hazardTickInterval = baseHazardTickInterval;
+                float hazardDamage = damage * baseHazardDamageRatio;
+                if (payloadEvolutionActive)
+                {
+                    hazardRadius *= EvolvedHazardRadiusMultiplier;
+                    hazardDuration *= EvolvedHazardDurationMultiplier;
+                    hazardTickInterval *= EvolvedHazardTickIntervalMultiplier;
+                    hazardDamage *= EvolvedHazardDamageMultiplier;
+                }
+
+                SpawnHazard(origin, hazardRadius, hazardDuration, hazardTickInterval, hazardDamage);
+                if (payloadEvolutionActive)
+                {
+                    SpawnSatelliteHazards(origin, hazardRadius, hazardDuration, hazardTickInterval, hazardDamage);
+                }
             }
         }
 
-        private void SpawnHazard(Vector3 origin, float explosionRadius, float damagePerTick)
+        private bool IsPayloadEvolutionActive()
+        {
+            if (Definition.Id == BasicSurvivorsGame.GravityGrenadeWeaponContentId)
+            {
+                return Controller.IsEvolutionActive(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId);
+            }
+
+            if (Definition.Id == BasicSurvivorsGame.RuneTrapWeaponContentId ||
+                Definition.Id == BasicSurvivorsGame.AetherMineWeaponContentId)
+            {
+                return Controller.IsEvolutionActive(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId);
+            }
+
+            return false;
+        }
+
+        private void SpawnSatelliteHazards(Vector3 origin, float hazardRadius, float durationSeconds, float tickIntervalSeconds, float damagePerTick)
+        {
+            float distance = Mathf.Max(0.35f, hazardRadius * EvolvedSatelliteHazardDistanceMultiplier);
+            float satelliteRadius = Mathf.Max(0.25f, hazardRadius * EvolvedSatelliteHazardRadiusMultiplier);
+            float satelliteDamage = damagePerTick * EvolvedSatelliteHazardRadiusMultiplier;
+            for (int index = 0; index < EvolvedSatelliteHazardCount; index++)
+            {
+                float angle = (360f / EvolvedSatelliteHazardCount) * index;
+                Vector3 offset = Quaternion.Euler(0f, angle, 0f) * (Vector3.forward * distance);
+                SpawnHazard(origin + offset, satelliteRadius, durationSeconds, tickIntervalSeconds, satelliteDamage);
+            }
+        }
+
+        private void SpawnHazard(Vector3 origin, float radius, float durationSeconds, float tickIntervalSeconds, float damagePerTick)
         {
             GameObject hazardObject = new GameObject(Definition.DisplayName + " Hazard");
             hazardObject.transform.SetParent(Controller.RuntimeWorldRoot, false);
@@ -89,9 +152,9 @@ namespace Deucarian.TemplateGameSurvivors
             hazard.Initialize(
                 Controller,
                 Definition,
-                Mathf.Max(0.2f, explosionRadius * 0.85f),
-                Definition.PayloadHazardDurationSeconds,
-                Definition.PayloadHazardTickIntervalSeconds,
+                radius,
+                durationSeconds,
+                tickIntervalSeconds,
                 damagePerTick);
             RegisterPayload(hazard);
         }
