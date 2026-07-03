@@ -193,6 +193,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int PlayerDamageFeedbackCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int MajorThreatWarningCount { get; private set; }
+        public int ExperiencePickupFeedbackCount { get; private set; }
+        public int PickupAttractionFeedbackCount { get; private set; }
+        public int MagnetRecallFeedbackCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -504,6 +507,9 @@ namespace Deucarian.TemplateGameSurvivors
             DamagePopupSpawnCount = 0;
             PlayerDamageFeedbackCount = 0;
             MajorThreatWarningCount = 0;
+            ExperiencePickupFeedbackCount = 0;
+            PickupAttractionFeedbackCount = 0;
+            MagnetRecallFeedbackCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -1235,13 +1241,21 @@ namespace Deucarian.TemplateGameSurvivors
         public void TriggerMagnetRecall()
         {
             MagnetRecallCount++;
+            int recalled = 0;
             for (int i = 0; i < _pickups.Count; i++)
             {
                 SurvivorsPickupActor pickup = _pickups[i];
                 if (pickup != null && pickup.Kind == SurvivorsPickupKind.Experience)
                 {
                     pickup.StartGlobalRecall(CurrentTuning.MagnetRecallSpeedMultiplier);
+                    recalled++;
                 }
+            }
+
+            if (recalled > 0)
+            {
+                MagnetRecallFeedbackCount++;
+                PlayFeedback(_pickupPulse, PlayerPosition, Mathf.Clamp(12 + recalled * 3, 18, 72), _pickupClip);
             }
         }
 
@@ -1400,6 +1414,7 @@ namespace Deucarian.TemplateGameSurvivors
             else
             {
                 GainExperience(Mathf.Max(1, pickup.Amount));
+                ExperiencePickupFeedbackCount++;
             }
 
             PlayFeedback(_pickupPulse, pickup.transform.position, pickup.Kind == SurvivorsPickupKind.Magnet ? 28 : 10, _pickupClip);
@@ -1408,6 +1423,17 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 _spawnService.Despawn(pickup.InstanceId, DespawnReason.Completed);
             }
+        }
+
+        internal void RecordPickupAttractionFeedback(SurvivorsPickupKind kind, Vector3 position)
+        {
+            if (kind != SurvivorsPickupKind.Experience)
+            {
+                return;
+            }
+
+            PickupAttractionFeedbackCount++;
+            PlayFeedback(_pickupPulse, position, 6, null);
         }
 
         internal SurvivorsEnemyActor FindNearestEnemy(Vector3 origin, float range)
@@ -4790,13 +4816,18 @@ namespace Deucarian.TemplateGameSurvivors
         private float _attractionSpeed;
         private float _collectRadius;
         private bool _globalRecall;
+        private bool _attractionFeedbackSent;
         private float _recallSpeedMultiplier;
         private float _currentSpeed;
+        private Vector3 _baseScale;
+        private float _pulseSeconds;
 
         public SpawnInstanceId InstanceId { get; private set; }
         public bool IsActive { get; private set; }
         public SurvivorsPickupKind Kind { get; private set; }
         public int Amount { get; private set; }
+        public bool IsGlobalRecallActive => IsActive && _globalRecall;
+        public bool HasShownAttractionFeedback => _attractionFeedbackSent;
 
         public void Initialize(SurvivorsTemplateController controller, SurvivorsPickupKind kind, int amount, float attractRange, float attractionSpeed, float collectRadius)
         {
@@ -4807,10 +4838,13 @@ namespace Deucarian.TemplateGameSurvivors
             _attractionSpeed = Mathf.Max(0.1f, attractionSpeed);
             _collectRadius = Mathf.Max(0.1f, collectRadius);
             _globalRecall = false;
+            _attractionFeedbackSent = false;
             _recallSpeedMultiplier = 1f;
             _currentSpeed = 0f;
+            _pulseSeconds = 0f;
             IsActive = true;
-            transform.localScale = Vector3.one * (kind == SurvivorsPickupKind.Magnet ? 0.58f : 0.34f);
+            _baseScale = Vector3.one * (kind == SurvivorsPickupKind.Magnet ? 0.58f : 0.34f);
+            transform.localScale = _baseScale;
         }
 
         public void StartGlobalRecall(float speedMultiplier)
@@ -4823,6 +4857,7 @@ namespace Deucarian.TemplateGameSurvivors
             _globalRecall = true;
             _recallSpeedMultiplier = Mathf.Max(1f, speedMultiplier);
             _currentSpeed = Mathf.Max(_currentSpeed, _attractionSpeed * 1.5f);
+            BeginAttractionFeedback();
         }
 
         public void Simulate(float deltaTime)
@@ -4839,6 +4874,7 @@ namespace Deucarian.TemplateGameSurvivors
             bool shouldAttract = _globalRecall || distance <= _attractRange;
             if (shouldAttract && distance > 0.001f)
             {
+                BeginAttractionFeedback();
                 float targetSpeed = _attractionSpeed * (_globalRecall ? _recallSpeedMultiplier * Mathf.Clamp(1f + distance * 0.18f, 1f, 10f) : 1f);
                 _currentSpeed = Mathf.MoveTowards(_currentSpeed, targetSpeed, targetSpeed * 8f * deltaTime);
                 float travel = Mathf.Min(distance, _currentSpeed * deltaTime);
@@ -4855,11 +4891,45 @@ namespace Deucarian.TemplateGameSurvivors
                 transform.Rotate(0f, 420f * deltaTime, 0f, Space.Self);
             }
 
+            TickPickupPresentation(deltaTime, shouldAttract);
+
             if (distance <= _collectRadius)
             {
                 IsActive = false;
                 _controller.CollectPickup(this);
             }
+        }
+
+        private void BeginAttractionFeedback()
+        {
+            if (_attractionFeedbackSent || _controller == null)
+            {
+                return;
+            }
+
+            _attractionFeedbackSent = true;
+            _controller.RecordPickupAttractionFeedback(Kind, transform.position);
+        }
+
+        private void TickPickupPresentation(float deltaTime, bool attracting)
+        {
+            if (_baseScale == Vector3.zero)
+            {
+                _baseScale = transform.localScale == Vector3.zero ? Vector3.one * 0.34f : transform.localScale;
+            }
+
+            _pulseSeconds += Mathf.Max(0f, deltaTime);
+            float scale = 1f;
+            if (_globalRecall)
+            {
+                scale = 1.28f + Mathf.Sin(_pulseSeconds * 18f) * 0.16f;
+            }
+            else if (attracting)
+            {
+                scale = 1.12f + Mathf.Sin(_pulseSeconds * 12f) * 0.08f;
+            }
+
+            transform.localScale = _baseScale * Mathf.Max(0.5f, scale);
         }
 
         public void OnWorldSpawned(WorldSpawnContext context)
@@ -4879,7 +4949,9 @@ namespace Deucarian.TemplateGameSurvivors
             IsActive = false;
             InstanceId = default;
             _globalRecall = false;
+            _attractionFeedbackSent = false;
             _currentSpeed = 0f;
+            _pulseSeconds = 0f;
         }
     }
 

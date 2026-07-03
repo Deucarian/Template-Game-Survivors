@@ -948,6 +948,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Step(controller, 180, 1f / 60f);
 
                 Assert.That(controller.MagnetRecallCount, Is.GreaterThanOrEqualTo(1));
+                Assert.That(controller.MagnetRecallFeedbackCount, Is.GreaterThanOrEqualTo(1));
+                Assert.That(controller.PickupAttractionFeedbackCount, Is.GreaterThanOrEqualTo(2));
+                Assert.That(controller.ExperiencePickupFeedbackCount, Is.GreaterThanOrEqualTo(2));
                 Assert.That(controller.ExperienceCollected, Is.GreaterThanOrEqualTo(2));
             }
             finally

@@ -101,6 +101,31 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator MagnetRecallPulsesExperienceGemFeedback()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsPickupActor gem = controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(6f, 0f, 0f), 1);
+            Assert.IsNotNull(gem);
+            float baseScale = gem.transform.localScale.x;
+
+            controller.TriggerMagnetRecall();
+            controller.Simulate(1f / 30f);
+            yield return null;
+
+            Assert.AreEqual(1, controller.MagnetRecallFeedbackCount);
+            Assert.That(controller.PickupAttractionFeedbackCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(gem.IsGlobalRecallActive);
+            Assert.IsTrue(gem.HasShownAttractionFeedback);
+            Assert.That(gem.transform.localScale.x, Is.GreaterThan(baseScale));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ControllerUsesHumanPlaytestPacingByDefault()
         {
             SurvivorsTemplateController controller = CreateController();
