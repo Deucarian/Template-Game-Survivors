@@ -158,6 +158,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             EditorGUILayout.LabelField("Reward Timeout", rewardTimeout);
             EditorGUILayout.LabelField("Draft Tools", $"Rerolls {controller.DraftRerollsRemaining}, Banishes {controller.DraftBanishesRemaining}, Skips {controller.DraftSkipCount}");
             EditorGUILayout.LabelField("Enemies", $"{controller.ActiveEnemyCount} alive, {controller.KilledCount} killed, {controller.ActiveEliteCount} elites");
+            EditorGUILayout.LabelField("Major Threat", controller.IsMajorThreatHealthVisible
+                ? $"{controller.CurrentMajorThreatHealthLabel} {controller.CurrentMajorThreatHealthFraction:P0}"
+                : "None");
             EditorGUILayout.LabelField("Horde Rush", $"{controller.ActiveHordeRushEnemyCount} tracked, {controller.HordeRushSpawnCount} spawned, {controller.HordeRushClearRewardCount} cleared");
             EditorGUILayout.LabelField("Build", $"Weapons {controller.ActiveWeaponCount}, Upgrades {controller.SelectedUpgradeCount}, Relics {controller.SelectedRelicCount}");
             EditorGUILayout.LabelField("Survivability", $"Health {controller.CurrentHealth:0}/{controller.MaxHealth:0}, Barrier {controller.BarrierValue:0}/{controller.BarrierCapacity:0}");

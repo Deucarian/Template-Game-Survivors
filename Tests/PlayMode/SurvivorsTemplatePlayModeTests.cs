@@ -1914,6 +1914,44 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator MajorThreatHealthReadoutPrioritizesBossAndTracksDamage()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureProjectileModifierOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
+            yield return null;
+
+            Assert.IsFalse(controller.IsMajorThreatHealthVisible);
+            Assert.AreEqual(0f, controller.CurrentMajorThreatHealthFraction);
+            Assert.AreEqual(string.Empty, controller.CurrentMajorThreatHealthLabel);
+
+            SurvivorsEnemyActor elite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), SurvivorsEnemyRole.Elite, 100f);
+            yield return null;
+
+            Assert.IsTrue(controller.IsMajorThreatHealthVisible);
+            Assert.That(controller.CurrentMajorThreatHealthLabel, Does.Contain("Blood Warden"));
+            Assert.AreEqual(1f, controller.CurrentMajorThreatHealthFraction);
+
+            SurvivorsEnemyActor miniboss = controller.SpawnMinibossForTest(controller.PlayerPosition + new Vector3(4f, 0f, 0f), 120f);
+            yield return null;
+
+            Assert.That(controller.CurrentMajorThreatHealthLabel, Does.Contain("Bloodbound Miniboss"));
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(5f, 0f, 0f), 200f);
+            yield return null;
+
+            Assert.That(controller.CurrentMajorThreatHealthLabel, Does.Contain("Eclipse Boss"));
+            boss.ApplyDamage(50f, "test.major-threat-health");
+            yield return null;
+
+            Assert.AreEqual(0.75f, controller.CurrentMajorThreatHealthFraction, 0.001f);
+            Assert.IsTrue(elite.IsAlive);
+            Assert.IsTrue(miniboss.IsAlive);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MinibossCanDieAndDropExperience()
         {
             SurvivorsTemplateController controller = CreateController();

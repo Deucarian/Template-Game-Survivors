@@ -362,6 +362,29 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveDreadEliteCount => CountEnemiesByRole(SurvivorsEnemyRole.DreadElite);
         public int ActiveMinibossCount => CountEnemiesByRole(SurvivorsEnemyRole.Miniboss);
         public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
+        public bool IsMajorThreatHealthVisible => ResolveCurrentMajorThreatForHud() != null;
+        public string CurrentMajorThreatHealthLabel
+        {
+            get
+            {
+                SurvivorsEnemyActor enemy = ResolveCurrentMajorThreatForHud();
+                if (enemy == null)
+                {
+                    return string.Empty;
+                }
+
+                return string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName;
+            }
+        }
+
+        public float CurrentMajorThreatHealthFraction
+        {
+            get
+            {
+                SurvivorsEnemyActor enemy = ResolveCurrentMajorThreatForHud();
+                return enemy == null ? 0f : Mathf.Clamp01(enemy.HealthFraction);
+            }
+        }
         public int ActivePickupCount => _pickups.Count;
         public int ActiveHordeRushEnemyCount => _activeHordeRushEnemies.Count;
         public int ActiveProjectileCount => _projectiles.Count;
@@ -558,6 +581,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
+            DrawMajorThreatHealthBar();
             DrawRewardSelectionFeedback();
             DrawStreakRewardFeedback();
             DrawEvolutionReadyFeedback();
@@ -2032,6 +2056,65 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return count;
+        }
+
+        private SurvivorsEnemyActor ResolveCurrentMajorThreatForHud()
+        {
+            SurvivorsEnemyActor selected = null;
+            int selectedPriority = -1;
+            float selectedHealthFraction = 2f;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy == null || !enemy.IsAlive || !IsMajorRewardRole(enemy.Role))
+                {
+                    continue;
+                }
+
+                int priority = ResolveMajorThreatHealthPriority(enemy.Role);
+                float healthFraction = Mathf.Clamp01(enemy.HealthFraction);
+                if (priority > selectedPriority ||
+                    (priority == selectedPriority && healthFraction < selectedHealthFraction))
+                {
+                    selected = enemy;
+                    selectedPriority = priority;
+                    selectedHealthFraction = healthFraction;
+                }
+            }
+
+            return selected;
+        }
+
+        private static int ResolveMajorThreatHealthPriority(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return 4;
+                case SurvivorsEnemyRole.Miniboss:
+                    return 3;
+                case SurvivorsEnemyRole.DreadElite:
+                    return 2;
+                case SurvivorsEnemyRole.Elite:
+                    return 1;
+                default:
+                    return 0;
+            }
+        }
+
+        private static string ResolveMajorThreatHealthFallbackLabel(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return "Final Boss";
+                case SurvivorsEnemyRole.Miniboss:
+                    return "Miniboss";
+                case SurvivorsEnemyRole.DreadElite:
+                    return "Dread Elite";
+                default:
+                    return "Elite";
+            }
         }
 
         private static bool IsEliteRole(SurvivorsEnemyRole role)
@@ -5596,6 +5679,36 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
         }
 
+        private void DrawMajorThreatHealthBar()
+        {
+            SurvivorsEnemyActor enemy = ResolveCurrentMajorThreatForHud();
+            if (enemy == null)
+            {
+                return;
+            }
+
+            float width = Mathf.Min(420f, Mathf.Max(260f, Screen.width - 48f));
+            float x = Mathf.Max(24f, Screen.width - width - 24f);
+            float y = 24f;
+            if (IsMajorThreatWarningActive)
+            {
+                y += 60f;
+            }
+
+            if (IsHordeRushWarningActive)
+            {
+                y += 52f;
+            }
+
+            Rect panel = new Rect(x, y, width, 46f);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.03f, 0.02f, 0.02f, 0.66f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = oldColor;
+            string label = (string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName) + " HP";
+            DrawHudBar(new Rect(panel.x + 10f, panel.y + 13f, panel.width - 20f, 20f), label, enemy.HealthFraction, ResolveMajorRewardDropColor(enemy.Role));
+        }
+
         private void DrawRewardSelectionFeedback()
         {
             if (_rewardFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_rewardFeedbackLabel))
@@ -6142,6 +6255,7 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsHitFlashActive => _hitFlashTimer > 0f;
         public SurvivorsEnemyRole Role { get; private set; }
         public string ProfileId { get; private set; }
+        public string DisplayName { get; private set; } = string.Empty;
         public float Radius { get; private set; }
         public int ExperienceReward { get; private set; }
         public float CurrentHealth => _health == null ? 0f : (float)_health.CurrentHealth;
@@ -6153,6 +6267,7 @@ namespace Deucarian.TemplateGameSurvivors
             _controller = controller;
             Role = profile.Role;
             ProfileId = profile.Id;
+            DisplayName = string.IsNullOrWhiteSpace(profile.DisplayName) ? profile.Role.ToString() : profile.DisplayName;
             _moveSpeed = Mathf.Max(0f, profile.MoveSpeed);
             Radius = Mathf.Max(0.05f, profile.Radius);
             _contactDamage = Mathf.Max(0f, profile.ContactDamage);
@@ -6405,6 +6520,7 @@ namespace Deucarian.TemplateGameSurvivors
             _controller = null;
             _health = null;
             ProfileId = null;
+            DisplayName = string.Empty;
             _poisonDamagePerSecond = 0f;
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;
@@ -6445,6 +6561,7 @@ namespace Deucarian.TemplateGameSurvivors
             transform.localScale = _baseScale;
             Role = SurvivorsEnemyRole.Swarm;
             ProfileId = null;
+            DisplayName = string.Empty;
             InstanceId = default;
         }
 
