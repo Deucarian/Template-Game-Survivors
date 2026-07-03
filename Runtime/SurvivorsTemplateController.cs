@@ -579,7 +579,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureHudStyles();
-            GUI.Box(new Rect(12, 12, 356, 376), string.Empty);
+            GUI.Box(new Rect(12, 12, 356, 400), string.Empty);
             GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
             DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
             DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
@@ -595,6 +595,7 @@ namespace Deucarian.TemplateGameSurvivors
             string surgeHud = IsStreakSurgeActive ? $"   Surge T{StreakSurgeTier} {StreakSurgeRemainingSeconds:0.0}s" : string.Empty;
             GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 346, 318, 22), ResolveBuildSlotHudLabel(), _hudSmallStyle);
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
@@ -6159,7 +6160,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.DrawTexture(new Rect(0f, 0f, 12f, Screen.height), Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(Screen.width - 12f, 0f, 12f, Screen.height), Texture2D.whiteTexture);
             GUI.color = new Color(1f, 1f, 1f, 0.95f);
-            GUI.Label(new Rect(24, 346, 318, 22), "LOW HEALTH", _lowHealthStyle);
+            GUI.Label(new Rect(24, 370, 318, 22), "LOW HEALTH", _lowHealthStyle);
             GUI.color = oldColor;
         }
 
@@ -6540,6 +6541,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return label;
+        }
+
+        private string ResolveBuildSlotHudLabel()
+        {
+            return $"Build W {ActiveWeaponCount}/{MaxWeaponSlots}   P {ActivePassiveCount}/{MaxPassiveSlots}   Evo {EvolvedWeaponCount}";
         }
 
         private string ResolveRunPhaseHudLabel()

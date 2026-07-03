@@ -20,6 +20,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Payload upgrades can add extra payloads, bigger explosions, wider trigger radii, and satellite hazard fields.
 - The run escalates over a 30-minute arc, adds timed horde-rush rings between steady spawn waves, rewards clearing each ring with a small cache, lets elites/minibosses/bosses call support when damaged low, adds a first elite around 3 minutes and a dread elite around 5 minutes, repeats timed elite and dread-elite reward pressure through the mid-run, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
 - Long movement through the endless arena drops small roaming XP caches, and later caches can add magnet recall pickups, shard bonuses, or clearable trailing ambush packs so repositioning has a reward beat with some pressure.
+- The HUD shows current weapon slots, passive slots, and evolved weapon count so build pressure is visible during the run.
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary, then drop visible reward caches so the kill moment pays out in the arena too.
 - Elite and miniboss defeat open stronger upgrade reward drafts.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
