@@ -689,6 +689,11 @@ namespace Deucarian.TemplateGameSurvivors
 
     internal sealed class SurvivorsOrbitWeaponRuntime : SurvivorsWeaponRuntimeBase
     {
+        private const int CrimsonAegisMinimumCounterBladeCount = 2;
+        private const float CrimsonAegisCounterBladeRatio = 0.5f;
+        private const float CrimsonAegisCounterRingRadiusMultiplier = 0.68f;
+        private const float CrimsonAegisCounterRingSpeedMultiplier = 1.35f;
+        private const float CrimsonAegisCounterBladeDamageMultiplier = 0.7f;
         private readonly List<SurvivorsOrbitBladeActor> _blades = new List<SurvivorsOrbitBladeActor>();
         private float _rotationDegrees;
 
@@ -701,21 +706,22 @@ namespace Deucarian.TemplateGameSurvivors
 
         public override void Tick(float deltaTime)
         {
-            int desiredCount = Mathf.Max(1, Definition.OrbitCount + Controller.OrbitBladeBonus);
+            int primaryCount = Mathf.Max(1, Definition.OrbitCount + Controller.OrbitBladeBonus);
+            int counterCount = ResolveCrimsonAegisCounterBladeCount(primaryCount);
+            int desiredCount = primaryCount + counterCount;
             EnsureBladeCount(desiredCount);
             _rotationDegrees += Definition.OrbitDegreesPerSecond * deltaTime;
 
             float radius = Definition.OrbitRadius + Controller.OrbitRadiusBonus + Controller.AreaRadiusBonus;
             float hitRadius = Mathf.Max(0.18f, Definition.Range);
             float damage = Controller.ResolveWeaponDamage(Definition);
-            for (int i = 0; i < _blades.Count; i++)
+            UpdateBladeRing(0, primaryCount, radius, hitRadius, damage, Definition.OrbitContactTickIntervalSeconds, _rotationDegrees);
+            if (counterCount > 0)
             {
-                float angle = (_rotationDegrees + (360f / _blades.Count) * i) * Mathf.Deg2Rad;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-                SurvivorsOrbitBladeActor blade = _blades[i];
-                blade.Configure(Controller, Definition, damage, hitRadius, Definition.OrbitContactTickIntervalSeconds);
-                blade.SetPose(Controller.PlayerPosition + offset + Vector3.up * 0.4f);
-                blade.TickContacts(Controller.RunTimeSeconds);
+                float counterRadius = Mathf.Max(0.8f, radius * CrimsonAegisCounterRingRadiusMultiplier);
+                float counterDamage = damage * CrimsonAegisCounterBladeDamageMultiplier;
+                float counterRotation = (_rotationDegrees * -CrimsonAegisCounterRingSpeedMultiplier) + (180f / counterCount);
+                UpdateBladeRing(primaryCount, counterCount, counterRadius, hitRadius, counterDamage, Definition.OrbitContactTickIntervalSeconds, counterRotation);
             }
         }
 
@@ -730,6 +736,51 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _blades.Clear();
+        }
+
+        private int ResolveCrimsonAegisCounterBladeCount(int primaryCount)
+        {
+            if (!IsCrimsonAegisActive())
+            {
+                return 0;
+            }
+
+            return Mathf.Max(CrimsonAegisMinimumCounterBladeCount, Mathf.CeilToInt(primaryCount * CrimsonAegisCounterBladeRatio));
+        }
+
+        private bool IsCrimsonAegisActive()
+        {
+            if (Definition.Id != BasicSurvivorsGame.OrbitWardWeaponContentId &&
+                Definition.Id != BasicSurvivorsGame.ThornHaloWeaponContentId)
+            {
+                return false;
+            }
+
+            return Controller.IsEvolutionActive(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId);
+        }
+
+        private void UpdateBladeRing(int bladeOffset, int count, float radius, float hitRadius, float damage, float tickIntervalSeconds, float rotationDegrees)
+        {
+            if (count <= 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                int bladeIndex = bladeOffset + i;
+                if (bladeIndex < 0 || bladeIndex >= _blades.Count)
+                {
+                    continue;
+                }
+
+                float angle = (rotationDegrees + (360f / count) * i) * Mathf.Deg2Rad;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                SurvivorsOrbitBladeActor blade = _blades[bladeIndex];
+                blade.Configure(Controller, Definition, damage, hitRadius, tickIntervalSeconds);
+                blade.SetPose(Controller.PlayerPosition + offset + Vector3.up * 0.4f);
+                blade.TickContacts(Controller.RunTimeSeconds);
+            }
         }
 
         private void EnsureBladeCount(int desiredCount)

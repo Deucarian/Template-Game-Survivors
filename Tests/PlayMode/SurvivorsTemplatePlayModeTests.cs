@@ -809,6 +809,37 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator CrimsonAegisEvolutionAddsCounterRotatingShieldRing()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BloodRingCanticleUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+
+            controller.Simulate(1f / 60f);
+            yield return null;
+            int beforeEvolutionCount = controller.ActiveOrbitBladeCount;
+            Assert.That(beforeEvolutionCount, Is.GreaterThanOrEqualTo(2));
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+
+            controller.Simulate(1f / 60f);
+            yield return null;
+            int evolvedCount = controller.ActiveOrbitBladeCount;
+
+            Assert.That(evolvedCount, Is.GreaterThanOrEqualTo(beforeEvolutionCount + 10));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DefaultWeaponPathsRequireFiveRanksBeforeEvolution()
         {
             SurvivorsTemplateController controller = CreateController();
