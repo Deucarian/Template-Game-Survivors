@@ -93,7 +93,9 @@
       "targetWeaponId": "weapon.survivors.star-beam",
       "nodes": [
         { "id": "node.survivors.star-beam.unlock", "displayName": "Star Beam", "upgradeId": "upgrade.survivors.weapon.star-beam", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
-        { "id": "node.survivors.star-beam.prismatic-beam", "displayName": "Prismatic Beam", "upgradeId": "upgrade.survivors.prismatic-beam", "kind": "WeaponMutation", "tier": 1, "pointCost": 1, "maxRank": 3 }
+        { "id": "node.survivors.star-beam.focus", "displayName": "Star Focus", "upgradeId": "upgrade.survivors.star-focus", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
+        { "id": "node.survivors.star-beam.prismatic-beam", "displayName": "Prismatic Beam", "upgradeId": "upgrade.survivors.prismatic-beam", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 3 },
+        { "id": "node.survivors.star-beam.pulse", "displayName": "Star Pulse", "upgradeId": "upgrade.survivors.star-pulse", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 2 }
       ]
     },
     {

@@ -37,6 +37,8 @@
     { "id": "upgrade.survivors.cinder-script", "rarity": "Rare", "effect": "survivors.burst.targeted_sigils", "target": "survivors.weapon.star-nova", "allowedClasses": [ "class.survivors.arcane-initiate" ] },
     { "id": "upgrade.survivors.ember-forge-heart", "rarity": "Uncommon", "effect": "survivors.damage.flat", "target": "survivors.weapon.star-nova", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.ember-tempo", "rarity": "Uncommon", "effect": "survivors.weapon.cooldown_multiplier", "target": "survivors.weapon.star-beam", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.star-focus", "rarity": "Uncommon", "effect": "survivors.damage.flat", "target": "survivors.weapon.star-beam" },
+    { "id": "upgrade.survivors.star-pulse", "rarity": "Rare", "effect": "survivors.weapon.cooldown_multiplier", "target": "survivors.weapon.star-beam" },
     { "id": "upgrade.survivors.siege-payloads", "rarity": "Rare", "effect": "survivors.payload.count", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.ember-ward", "rarity": "Rare", "effect": "survivors.barrier.capacity", "target": "survivors.barrier", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.prismatic-beam", "rarity": "Uncommon", "effect": "survivors.hitscan.pierce", "target": "survivors.weapon.star-beam" },
