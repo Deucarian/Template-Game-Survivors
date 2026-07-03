@@ -51,6 +51,18 @@
       "preferredRange": 4.2
     },
     {
+      "id": "enemy.survivors.splitter",
+      "displayName": "Grave Husk Splitter",
+      "role": "Splitter",
+      "health": 28.7,
+      "moveSpeed": 1.1,
+      "radius": 0.57,
+      "contactDamage": 3.7,
+      "contactIntervalSeconds": 0.76,
+      "experienceDrop": 6,
+      "spawnTimeSeconds": 210
+    },
+    {
       "id": "enemy.survivors.elite",
       "displayName": "Blood Warden Elite",
       "role": "Elite",

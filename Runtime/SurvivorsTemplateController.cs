@@ -30,6 +30,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const int KillStreakMagnetInterval = 24;
         private const int DefaultMaxWeaponSlots = 6;
         private const int DefaultMaxPassiveSlots = 6;
+        private const int SplitterChildCount = 2;
         private const float DamagePopupLifetimeSeconds = 0.9f;
         private const float DamagePopupRiseHeight = 1.25f;
         private const int DamagePopupLimit = 72;
@@ -149,10 +150,13 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadDetonationCount { get; private set; }
         public int PayloadExplosionHitCount { get; private set; }
         public int PayloadHazardTickCount { get; private set; }
+        public int SplitterChildSpawnCount { get; private set; }
         public int MinibossSpawnCount { get; private set; }
         public int BossSpawnCount { get; private set; }
+        public int EliteKilledCount { get; private set; }
         public int MinibossKilledCount { get; private set; }
         public int BossKilledCount { get; private set; }
+        public int EliteRewardGrantCount { get; private set; }
         public int MinibossRewardGrantCount { get; private set; }
         public int BossRewardGrantCount { get; private set; }
         public int BossRelicDraftOpenCount { get; private set; }
@@ -215,6 +219,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveRunnerCount => CountEnemiesByRole(SurvivorsEnemyRole.Runner);
         public int ActiveBruiserCount => CountEnemiesByRole(SurvivorsEnemyRole.Bruiser);
         public int ActiveSpitterCount => CountEnemiesByRole(SurvivorsEnemyRole.Spitter);
+        public int ActiveSplitterCount => CountEnemiesByRole(SurvivorsEnemyRole.Splitter);
         public int ActiveEliteCount => CountEnemiesByRole(SurvivorsEnemyRole.Elite);
         public int ActiveMinibossCount => CountEnemiesByRole(SurvivorsEnemyRole.Miniboss);
         public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
@@ -356,9 +361,9 @@ namespace Deucarian.TemplateGameSurvivors
             DrawHudBar(new Rect(24, 98, 318, 18), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
             DrawHudBar(new Rect(24, 122, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
             GUI.Label(new Rect(24, 148, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {RunPhase} +{RunEscalationLevel}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 170, 318, 22), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}   Elite {ActiveEliteCount}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 192, 318, 22), $"Miniboss {ActiveMinibossCount}   Boss {ActiveBossCount}   Shards {MetaBloodShards}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 214, 318, 22), $"Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 170, 318, 22), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 192, 318, 22), $"Split {ActiveSplitterCount}   Elite {ActiveEliteCount}   Miniboss {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 214, 318, 22), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
             GUI.Label(new Rect(24, 236, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
             GUI.Label(new Rect(24, 258, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
             GUI.Label(new Rect(24, 280, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
@@ -434,10 +439,13 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadDetonationCount = 0;
             PayloadExplosionHitCount = 0;
             PayloadHazardTickCount = 0;
+            SplitterChildSpawnCount = 0;
             MinibossSpawnCount = 0;
             BossSpawnCount = 0;
+            EliteKilledCount = 0;
             MinibossKilledCount = 0;
             BossKilledCount = 0;
+            EliteRewardGrantCount = 0;
             MinibossRewardGrantCount = 0;
             BossRewardGrantCount = 0;
             BossRelicDraftOpenCount = 0;
@@ -1118,10 +1126,20 @@ namespace Deucarian.TemplateGameSurvivors
             SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
             RegisterKillStreak(position);
             PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip);
-            if (role == SurvivorsEnemyRole.Miniboss)
+            if (role == SurvivorsEnemyRole.Splitter)
+            {
+                SpawnSplitterChildren(position);
+            }
+            else if (role == SurvivorsEnemyRole.Elite)
+            {
+                EliteKilledCount++;
+                GrantMajorEnemyReward(SurvivorsEnemyRole.Elite);
+                OpenUpgradeRewardDraft(SurvivorsEnemyRole.Elite, requireEvolutionChoice: false);
+            }
+            else if (role == SurvivorsEnemyRole.Miniboss)
             {
                 MinibossKilledCount++;
-                GrantBossReward(SurvivorsEnemyRole.Miniboss);
+                GrantMajorEnemyReward(SurvivorsEnemyRole.Miniboss);
                 if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Miniboss, requireEvolutionChoice: false))
                 {
                     OpenBossRelicDraft();
@@ -1130,7 +1148,7 @@ namespace Deucarian.TemplateGameSurvivors
             else if (role == SurvivorsEnemyRole.Boss)
             {
                 BossKilledCount++;
-                GrantBossReward(SurvivorsEnemyRole.Boss);
+                GrantMajorEnemyReward(SurvivorsEnemyRole.Boss);
                 if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false))
                 {
                     EnterVictory();
@@ -2208,9 +2226,18 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void GrantBossReward(SurvivorsEnemyRole role)
+        private void GrantMajorEnemyReward(SurvivorsEnemyRole role)
         {
-            string rewardId = role == SurvivorsEnemyRole.Boss ? BasicSurvivorsGame.BossRewardId : BasicSurvivorsGame.MinibossRewardId;
+            string rewardId = BasicSurvivorsGame.MinibossRewardId;
+            if (role == SurvivorsEnemyRole.Boss)
+            {
+                rewardId = BasicSurvivorsGame.BossRewardId;
+            }
+            else if (role == SurvivorsEnemyRole.Elite)
+            {
+                rewardId = BasicSurvivorsGame.EliteRewardId;
+            }
+
             SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
             if (!definition.TryGetReward(rewardId, out SurvivorsRewardDefinition reward))
             {
@@ -2222,6 +2249,10 @@ namespace Deucarian.TemplateGameSurvivors
             if (role == SurvivorsEnemyRole.Boss)
             {
                 BossRewardGrantCount++;
+            }
+            else if (role == SurvivorsEnemyRole.Elite)
+            {
+                EliteRewardGrantCount++;
             }
             else
             {
@@ -2442,6 +2473,11 @@ namespace Deucarian.TemplateGameSurvivors
                 return "group.survivors.spitters";
             }
 
+            if (role == SurvivorsEnemyRole.Splitter)
+            {
+                return "group.survivors.splitters";
+            }
+
             if (role == SurvivorsEnemyRole.Elite)
             {
                 return "group.survivors.elites";
@@ -2515,6 +2551,25 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return enemy;
+        }
+
+        private void SpawnSplitterChildren(Vector3 position)
+        {
+            if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
+            {
+                return;
+            }
+
+            float radius = Mathf.Max(0.65f, CurrentTuning.EnemyRadius * 1.5f);
+            for (int index = 0; index < SplitterChildCount; index++)
+            {
+                float angle = ((index + 0.25f) / SplitterChildCount) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                if (SpawnEnemy(position + offset, explicitPosition: true, SurvivorsEnemyRole.Swarm) != null)
+                {
+                    SplitterChildSpawnCount++;
+                }
+            }
         }
 
         private SurvivorsPickupActor SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount)

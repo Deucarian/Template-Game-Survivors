@@ -722,6 +722,29 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator SplitterDeathSpawnsSwarmChildren()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor splitter = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4f, 0f, 0f), SurvivorsEnemyRole.Splitter, 1f);
+            Assert.AreEqual(1, controller.ActiveSplitterCount);
+            int activeBeforeKill = controller.ActiveEnemyCount;
+
+            splitter.ApplyDamage(100f, "test.splitter");
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveSplitterCount);
+            Assert.AreEqual(2, controller.SplitterChildSpawnCount);
+            Assert.AreEqual(activeBeforeKill + 1, controller.ActiveEnemyCount);
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RunFlowCanSpawnMinibossAndBossOverTime()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -759,6 +782,30 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(4));
             Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator EliteDeathOpensEliteUpgradeRewardChoice()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            SurvivorsEnemyActor elite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.8f, 0f, 0f), SurvivorsEnemyRole.Elite, 1f);
+            elite.ApplyDamage(100f, "test.elite");
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
+            Assert.IsFalse(controller.IsRelicChoiceOpen);
+            Assert.That(controller.EliteKilledCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.EliteRewardGrantCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.EliteUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.IsTrue(controller.SkipCurrentDraft());
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
 
             Object.Destroy(controller.gameObject);
         }

@@ -183,6 +183,7 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly TrackId LegacyExperienceTrackId = new TrackId("track.survivors.legacy-xp");
         public static readonly ResearchNodeId ArcaneLegacyMetaUpgradeId = new ResearchNodeId("meta.survivors.arcane-legacy");
         public const string MetaDamageEffectId = "survivors.meta.damage.flat";
+        public const string EliteRewardId = "reward.survivors.elite-clear";
         public const string MinibossRewardId = "reward.survivors.miniboss";
         public const string BossRewardId = "reward.survivors.final-boss";
         public const string BloodStarRelicId = "relic.survivors.blood-star";
@@ -533,6 +534,7 @@ namespace Deucarian.TemplateGameSurvivors
                 CreateEnemyProfile(SurvivorsEnemyRole.Runner, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Bruiser, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Spitter, resolved),
+                CreateEnemyProfile(SurvivorsEnemyRole.Splitter, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Elite, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Miniboss, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Boss, resolved)
@@ -584,6 +586,18 @@ namespace Deucarian.TemplateGameSurvivors
                         rangedAttackDamage: resolved.EnemyContactDamage * 0.62f,
                         rangedAttackIntervalSeconds: 2.2f,
                         preferredRange: 4.2f);
+                case SurvivorsEnemyRole.Splitter:
+                    return new SurvivorsEnemyProfile(
+                        SurvivorsEnemyRole.Splitter,
+                        "enemy.survivors.splitter",
+                        "Grave Husk Splitter",
+                        resolved.EnemyMaxHealth * 2.05f,
+                        resolved.EnemyMoveSpeed * 0.82f,
+                        resolved.EnemyRadius * 1.18f,
+                        resolved.EnemyContactDamage * 1.05f,
+                        resolved.EnemyContactIntervalSeconds * 1.08f,
+                        Mathf.Max(1, Mathf.RoundToInt(resolved.EnemyExperienceReward * 3.1f)),
+                        new Color(0.36f, 0.54f, 0.92f));
                 case SurvivorsEnemyRole.Elite:
                     return new SurvivorsEnemyProfile(
                         SurvivorsEnemyRole.Elite,
@@ -1290,6 +1304,7 @@ namespace Deucarian.TemplateGameSurvivors
                 },
                 new[]
                 {
+                    new SurvivorsRewardDefinition(EliteRewardId, BloodShardsCurrencyId, 2, LegacyExperienceTrackId, 12),
                     new SurvivorsRewardDefinition(MinibossRewardId, BloodShardsCurrencyId, 4, LegacyExperienceTrackId, 25),
                     new SurvivorsRewardDefinition(BossRewardId, BloodShardsCurrencyId, 18, LegacyExperienceTrackId, 120)
                 });
