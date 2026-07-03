@@ -24,7 +24,8 @@ namespace Deucarian.TemplateGameSurvivors
     public enum SurvivorsPickupKind
     {
         Experience = 0,
-        Magnet = 1
+        Magnet = 1,
+        Health = 2
     }
 
     public enum SurvivorsPacingProfile
@@ -141,6 +142,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float PickupAttractionSpeed = 4.8f;
         public float PickupCollectRadius = 0.68f;
         public float MagnetRecallSpeedMultiplier = 1.65f;
+        public int HealthPickupHealAmount = 10;
         public int ExperienceRequiredBase = 8;
         public int ExperienceRequiredPerLevel = 5;
         public float StatusPoisonDurationSeconds = 4.5f;
@@ -195,6 +197,7 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly WorldSpawnableId BossEnemySpawnableId = new WorldSpawnableId("enemy.survivors.boss");
         public static readonly WorldSpawnableId ExperiencePickupSpawnableId = new WorldSpawnableId("pickup.survivors.experience");
         public static readonly WorldSpawnableId MagnetPickupSpawnableId = new WorldSpawnableId("pickup.survivors.magnet");
+        public static readonly WorldSpawnableId HealthPickupSpawnableId = new WorldSpawnableId("pickup.survivors.vital-shard");
         public static readonly WorldSpawnableId ProjectileSpawnableId = new WorldSpawnableId("projectile.survivors.arcane-bolt");
         public static readonly WorldSpawnChannelId RadialSpawnChannelId = new WorldSpawnChannelId("spawn.survivors.radial");
         public static readonly WorldSpawnChannelId ExplicitSpawnChannelId = new WorldSpawnChannelId("spawn.survivors.explicit");
@@ -439,6 +442,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.PickupAttractionSpeed = 4.6f;
             tuning.PickupCollectRadius = 0.72f;
             tuning.MagnetRecallSpeedMultiplier = 2f;
+            tuning.HealthPickupHealAmount = 9;
             tuning.ExperienceRequiredBase = 8;
             tuning.ExperienceRequiredPerLevel = 5;
             tuning.DraftRerollCharges = 3;
@@ -508,6 +512,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.PickupAttractRange = 3.5f;
             tuning.PickupAttractionSpeed = 8.5f;
             tuning.MagnetRecallSpeedMultiplier = 2.6f;
+            tuning.HealthPickupHealAmount = 14;
             tuning.ExperienceRequiredBase = 3;
             tuning.ExperienceRequiredPerLevel = 2;
             tuning.DraftRerollCharges = 5;
@@ -559,6 +564,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.PickupAttractRange = 2.9f;
             tuning.PickupAttractionSpeed = 6.4f;
             tuning.MagnetRecallSpeedMultiplier = 2.25f;
+            tuning.HealthPickupHealAmount = 12;
             tuning.ExperienceRequiredBase = 5;
             tuning.ExperienceRequiredPerLevel = 3;
             tuning.DraftRerollCharges = 3;

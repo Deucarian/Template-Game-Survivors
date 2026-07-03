@@ -27,6 +27,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const int InfiniteArenaGridRadius = 2;
         private const float KillStreakWindowSeconds = 3.8f;
         private const int KillStreakExperienceInterval = 8;
+        private const int KillStreakHealthInterval = 16;
         private const int KillStreakMagnetInterval = 24;
         private const int DefaultMaxWeaponSlots = 6;
         private const int DefaultMaxPassiveSlots = 6;
@@ -92,6 +93,7 @@ namespace Deucarian.TemplateGameSurvivors
         private GameObject _enemyPrefab;
         private GameObject _experiencePickupPrefab;
         private GameObject _magnetPickupPrefab;
+        private GameObject _healthPickupPrefab;
         private GameObject _projectilePrefab;
         private Transform _feedbackRoot;
         private ParticleSystem _spawnPulse;
@@ -221,6 +223,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int MajorThreatWarningCount { get; private set; }
         public int ExperiencePickupFeedbackCount { get; private set; }
+        public int HealthPickupCollectedCount { get; private set; }
+        public float HealthRestoredByPickups { get; private set; }
         public int PickupAttractionFeedbackCount { get; private set; }
         public int MagnetRecallFeedbackCount { get; private set; }
         public int RewardCardPresentationCount { get; private set; }
@@ -233,6 +237,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int MagnetRecallCount { get; private set; }
         public int BestKillStreak { get; private set; }
         public int StreakBonusDropCount { get; private set; }
+        public int StreakHealthDropCount { get; private set; }
         public int StreakMagnetDropCount { get; private set; }
         public int CurrentKillStreak => _killStreakTimer > 0f ? _killStreakCount : 0;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
@@ -565,6 +570,8 @@ namespace Deucarian.TemplateGameSurvivors
             MajorRewardDropFeedbackCount = 0;
             MajorThreatWarningCount = 0;
             ExperiencePickupFeedbackCount = 0;
+            HealthPickupCollectedCount = 0;
+            HealthRestoredByPickups = 0f;
             PickupAttractionFeedbackCount = 0;
             MagnetRecallFeedbackCount = 0;
             RewardCardPresentationCount = 0;
@@ -577,6 +584,7 @@ namespace Deucarian.TemplateGameSurvivors
             MagnetRecallCount = 0;
             BestKillStreak = 0;
             StreakBonusDropCount = 0;
+            StreakHealthDropCount = 0;
             StreakMagnetDropCount = 0;
             BloodShardsEarnedThisRun = 0;
             LegacyExperienceEarnedThisRun = 0;
@@ -779,6 +787,12 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureRunStartedForTest();
             return SpawnPickup(SurvivorsPickupKind.Magnet, position, 1);
+        }
+
+        public SurvivorsPickupActor SpawnHealthForTest(Vector3 position, int amount)
+        {
+            EnsureRunStartedForTest();
+            return SpawnPickup(SurvivorsPickupKind.Health, position, amount);
         }
 
         public void FireWeaponForTest()
@@ -1427,6 +1441,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (IsMajorRewardRole(role))
             {
                 RecordMajorRewardDropFeedback(position, role, radius);
+                TryDropHealthPickup(position + new Vector3(radius * 0.7f, 0f, radius * 0.35f));
             }
 
             PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip);
@@ -1499,13 +1514,17 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 TriggerMagnetRecall();
             }
+            else if (pickup.Kind == SurvivorsPickupKind.Health)
+            {
+                RestoreHealthFromPickup(Mathf.Max(1, pickup.Amount));
+            }
             else
             {
                 GainExperience(Mathf.Max(1, pickup.Amount));
                 ExperiencePickupFeedbackCount++;
             }
 
-            PlayFeedback(_pickupPulse, pickup.transform.position, pickup.Kind == SurvivorsPickupKind.Magnet ? 28 : 10, _pickupClip);
+            PlayFeedback(_pickupPulse, pickup.transform.position, ResolvePickupFeedbackBurstCount(pickup.Kind), _pickupClip);
             _pickups.Remove(pickup);
             if (_spawnService != null && pickup.InstanceId.Value > 0)
             {
@@ -1513,9 +1532,36 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void RestoreHealthFromPickup(int amount)
+        {
+            if (_playerHealth == null || amount <= 0)
+            {
+                return;
+            }
+
+            float before = CurrentHealth;
+            _playerHealth.Heal(amount);
+            float restored = Mathf.Max(0f, CurrentHealth - before);
+            HealthPickupCollectedCount++;
+            HealthRestoredByPickups += restored;
+        }
+
+        private static int ResolvePickupFeedbackBurstCount(SurvivorsPickupKind kind)
+        {
+            switch (kind)
+            {
+                case SurvivorsPickupKind.Magnet:
+                    return 28;
+                case SurvivorsPickupKind.Health:
+                    return 22;
+                default:
+                    return 10;
+            }
+        }
+
         internal void RecordPickupAttractionFeedback(SurvivorsPickupKind kind, Vector3 position)
         {
-            if (kind != SurvivorsPickupKind.Experience)
+            if (kind == SurvivorsPickupKind.Magnet)
             {
                 return;
             }
@@ -1816,6 +1862,7 @@ namespace Deucarian.TemplateGameSurvivors
             _enemyPrefab = CreatePrimitivePrefab("Survivors Swarm Enemy Prefab", PrimitiveType.Capsule, new Color(0.88f, 0.22f, 0.32f), typeof(SurvivorsEnemyActor));
             _experiencePickupPrefab = CreatePrimitivePrefab("Survivors XP Gem Prefab", PrimitiveType.Sphere, new Color(0.22f, 0.83f, 1f), typeof(SurvivorsPickupActor));
             _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, new Color(1f, 0.86f, 0.18f), typeof(SurvivorsPickupActor));
+            _healthPickupPrefab = CreatePrimitivePrefab("Survivors Vital Shard Prefab", PrimitiveType.Sphere, new Color(1f, 0.24f, 0.42f), typeof(SurvivorsPickupActor));
             _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, new Color(0.78f, 0.42f, 1f), typeof(SurvivorsProjectileActor));
 
             BuildSceneLighting();
@@ -1828,6 +1875,7 @@ namespace Deucarian.TemplateGameSurvivors
                 new SpawnableDefinition(BasicSurvivorsGame.BossEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 1, 4, "survivors-boss-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.ExperiencePickupSpawnableId, new GameObjectPrefabProvider(_experiencePickupPrefab), 16, 256, "survivors-xp-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.MagnetPickupSpawnableId, new GameObjectPrefabProvider(_magnetPickupPrefab), 2, 16, "survivors-magnet-pool"),
+                new SpawnableDefinition(BasicSurvivorsGame.HealthPickupSpawnableId, new GameObjectPrefabProvider(_healthPickupPrefab), 4, 32, "survivors-health-pool"),
                 new SpawnableDefinition(BasicSurvivorsGame.ProjectileSpawnableId, new GameObjectPrefabProvider(_projectilePrefab), 12, 96, "survivors-projectile-pool")
             };
             _spawnService = new WorldSpawnService(new SpawnableCatalog(spawnables), _poseResolver, _worldRoot, rootName: "SurvivorsWorldSpawning");
@@ -1948,6 +1996,15 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
+            if (_killStreakCount % KillStreakHealthInterval == 0)
+            {
+                Vector3 offset = new Vector3(Mathf.Cos(_killStreakCount * 0.7f) * 0.65f, 0f, Mathf.Sin(_killStreakCount * 0.7f) * 0.65f);
+                if (TryDropHealthPickup(position + offset))
+                {
+                    StreakHealthDropCount++;
+                }
+            }
+
             if (_killStreakCount % KillStreakMagnetInterval == 0)
             {
                 Vector3 offset = new Vector3(Mathf.Cos(_killStreakCount) * 0.75f, 0f, Mathf.Sin(_killStreakCount) * 0.75f);
@@ -1956,6 +2013,16 @@ namespace Deucarian.TemplateGameSurvivors
                     StreakMagnetDropCount++;
                 }
             }
+        }
+
+        private bool TryDropHealthPickup(Vector3 position)
+        {
+            if (_playerHealth == null || CurrentTuning.HealthPickupHealAmount <= 0 || CurrentHealth >= MaxHealth - 0.01f)
+            {
+                return false;
+            }
+
+            return SpawnPickup(SurvivorsPickupKind.Health, position, CurrentTuning.HealthPickupHealAmount) != null;
         }
 
         private GameObject CreateArenaPrimitive(string name, PrimitiveType primitive, Vector3 position, Vector3 scale, Color color)
@@ -3692,9 +3759,7 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsPickupActor SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount)
         {
             long sequence = ++_spawnSequence;
-            WorldSpawnableId spawnable = kind == SurvivorsPickupKind.Magnet
-                ? BasicSurvivorsGame.MagnetPickupSpawnableId
-                : BasicSurvivorsGame.ExperiencePickupSpawnableId;
+            WorldSpawnableId spawnable = ResolvePickupSpawnableId(kind);
             _poseResolver.RegisterExplicitPose(sequence, position);
             SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
                 spawnable,
@@ -3710,6 +3775,19 @@ namespace Deucarian.TemplateGameSurvivors
             pickup.Initialize(this, kind, Mathf.Max(1, amount), CurrentTuning.PickupAttractRange + PickupRangeBonus, CurrentTuning.PickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
             _pickups.Add(pickup);
             return pickup;
+        }
+
+        private static WorldSpawnableId ResolvePickupSpawnableId(SurvivorsPickupKind kind)
+        {
+            switch (kind)
+            {
+                case SurvivorsPickupKind.Magnet:
+                    return BasicSurvivorsGame.MagnetPickupSpawnableId;
+                case SurvivorsPickupKind.Health:
+                    return BasicSurvivorsGame.HealthPickupSpawnableId;
+                default:
+                    return BasicSurvivorsGame.ExperiencePickupSpawnableId;
+            }
         }
 
         private void TickWeapon(float deltaTime)
@@ -5820,7 +5898,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentSpeed = 0f;
             _pulseSeconds = 0f;
             IsActive = true;
-            _baseScale = Vector3.one * (kind == SurvivorsPickupKind.Magnet ? 0.58f : 0.34f);
+            _baseScale = ResolvePickupBaseScale(kind);
             transform.localScale = _baseScale;
         }
 
@@ -5835,6 +5913,19 @@ namespace Deucarian.TemplateGameSurvivors
             _recallSpeedMultiplier = Mathf.Max(1f, speedMultiplier);
             _currentSpeed = Mathf.Max(_currentSpeed, _attractionSpeed * 1.5f);
             BeginAttractionFeedback();
+        }
+
+        private static Vector3 ResolvePickupBaseScale(SurvivorsPickupKind kind)
+        {
+            switch (kind)
+            {
+                case SurvivorsPickupKind.Magnet:
+                    return Vector3.one * 0.58f;
+                case SurvivorsPickupKind.Health:
+                    return Vector3.one * 0.44f;
+                default:
+                    return Vector3.one * 0.34f;
+            }
         }
 
         public void Simulate(float deltaTime)

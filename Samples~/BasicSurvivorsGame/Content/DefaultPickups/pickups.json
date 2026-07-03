@@ -10,6 +10,11 @@
       "id": "pickup.survivors.magnet",
       "displayName": "Magnet",
       "behavior": "Recall all active XP gems"
+    },
+    {
+      "id": "pickup.survivors.vital-shard",
+      "displayName": "Vital Shard",
+      "behavior": "Restore player health when collected"
     }
   ]
 }
