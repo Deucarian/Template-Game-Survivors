@@ -18,7 +18,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Enemies escalate from basic swarm pressure into fast runners, bruisers, ranged spitters, splitters that burst into smaller enemies, Blood Warden and Dread Lantern elite variants, minibosses, and a final boss.
 - Payload upgrades can add extra payloads, bigger explosions, wider trigger radii, and satellite hazard fields.
 - The run escalates over a 30-minute arc, adds timed horde-rush rings between steady spawn waves, rewards clearing each ring with a small cache, lets elites/minibosses/bosses call support when damaged low, adds a first elite around 3 minutes and a dread elite around 5 minutes, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
-- Long movement through the endless arena drops small roaming XP caches, and every few caches can add a magnet recall pickup so repositioning has a reward beat.
+- Long movement through the endless arena drops small roaming XP caches, and later caches can add magnet recall pickups, shard bonuses, or trailing ambush packs so repositioning has a reward beat with some pressure.
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary, then drop visible reward caches so the kill moment pays out in the arena too.
 - Elite and miniboss defeat open stronger upgrade reward drafts.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
@@ -44,7 +44,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 First run target:
 
 - Move through the opening horde and let the wand auto-fire.
-- Keep moving across the arena long enough to see roaming XP caches appear.
+- Keep moving across the arena long enough to see roaming XP caches appear, then keep roaming until a later cache adds a special pickup or ambush.
 - Collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
 - Survive a horde-rush warning, clear the mixed enemy ring, and collect its bonus cache.
 - Pick Star Beam when it appears, rank Star Focus five times, branch into Prismatic Beam or Star Pulse, and take Twin Charm to build toward Tempest Prism side beams; or pick Gravity Grenade, rank Extra Payload and Bigger Booms, then take Giant Rune to build toward Gravefield Engine.

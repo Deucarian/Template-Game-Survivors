@@ -884,6 +884,40 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator RoamingArenaCachesCanTriggerSpecialDropsAndAmbushes()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.RoamingCacheTravelInterval = 2f;
+            controller.CurrentTuning.RoamingCacheExperienceGemCount = 1;
+            controller.CurrentTuning.RoamingCacheMagnetInterval = 2;
+            controller.CurrentTuning.RoamingCacheBloodShardInterval = 2;
+            controller.CurrentTuning.RoamingCacheAmbushStartCache = 2;
+            controller.CurrentTuning.RoamingCacheAmbushInterval = 1;
+            controller.CurrentTuning.RoamingCacheAmbushBaseEnemyCount = 1;
+            controller.CurrentTuning.RoamingCacheAmbushMaxEnemyCount = 2;
+            controller.CurrentTuning.RoamingCacheAmbushExtraAliveAllowance = 4;
+            controller.CurrentTuning.RoamingCacheAmbushRadius = 2f;
+            controller.StartRun();
+            yield return null;
+
+            yield return SimulateFrames(controller, 90, Vector2.right);
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.That(controller.RoamingCacheDropCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.RoamingCacheBloodShardDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.RoamingCacheAmbushCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.RoamingCacheAmbushEnemySpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Roaming Cache"));
+            Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Ambush"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RapidKillsCreateStreakBonusDropsAndMagnet()
         {
             SurvivorsTemplateController controller = CreateController();

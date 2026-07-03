@@ -25,9 +25,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const string DirectionalLightName = "Survivors Directional Light";
         private const float InfiniteArenaTileSize = 12f;
         private const int InfiniteArenaGridRadius = 2;
-        private const float RoamingCacheTravelInterval = 18f;
-        private const int RoamingCacheExperienceGemCount = 3;
-        private const int RoamingCacheMagnetInterval = 3;
         private const float KillStreakWindowSeconds = 3.8f;
         private const int KillStreakExperienceInterval = 8;
         private const int KillStreakHealthInterval = 16;
@@ -301,6 +298,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int RoamingCacheDropCount { get; private set; }
         public int RoamingCacheExperienceGemDropCount { get; private set; }
         public int RoamingCacheMagnetDropCount { get; private set; }
+        public int RoamingCacheBloodShardDropCount { get; private set; }
+        public int RoamingCacheAmbushCount { get; private set; }
+        public int RoamingCacheAmbushEnemySpawnCount { get; private set; }
         public string LastRoamingCacheFeedbackLabel { get; private set; } = string.Empty;
         public int BestKillStreak { get; private set; }
         public int StreakBonusDropCount { get; private set; }
@@ -721,6 +721,9 @@ namespace Deucarian.TemplateGameSurvivors
             RoamingCacheDropCount = 0;
             RoamingCacheExperienceGemDropCount = 0;
             RoamingCacheMagnetDropCount = 0;
+            RoamingCacheBloodShardDropCount = 0;
+            RoamingCacheAmbushCount = 0;
+            RoamingCacheAmbushEnemySpawnCount = 0;
             LastRoamingCacheFeedbackLabel = string.Empty;
             BestKillStreak = 0;
             StreakBonusDropCount = 0;
@@ -4014,13 +4017,14 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _roamingCacheTravelDistance += delta.magnitude;
-            if (_roamingCacheTravelDistance < RoamingCacheTravelInterval)
+            float travelInterval = Mathf.Max(1f, CurrentTuning.RoamingCacheTravelInterval);
+            if (_roamingCacheTravelDistance < travelInterval)
             {
                 return;
             }
 
-            int cacheCount = Mathf.Min(3, Mathf.FloorToInt(_roamingCacheTravelDistance / RoamingCacheTravelInterval));
-            _roamingCacheTravelDistance = Mathf.Max(0f, _roamingCacheTravelDistance - cacheCount * RoamingCacheTravelInterval);
+            int cacheCount = Mathf.Min(3, Mathf.FloorToInt(_roamingCacheTravelDistance / travelInterval));
+            _roamingCacheTravelDistance = Mathf.Max(0f, _roamingCacheTravelDistance - cacheCount * travelInterval);
             Vector3 direction = delta.normalized;
             for (int i = 0; i < cacheCount; i++)
             {
@@ -4039,11 +4043,12 @@ namespace Deucarian.TemplateGameSurvivors
             Vector3 side = new Vector3(-forward.z, 0f, forward.x);
             int nextCacheNumber = RoamingCacheDropCount + 1;
             int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1f + RunEscalationLevel * 0.08f)));
+            int gemCount = Mathf.Max(1, CurrentTuning.RoamingCacheExperienceGemCount);
             int spawnedExperience = 0;
             Vector3 origin = PlayerPosition + forward * (3.1f + sequenceOffset * 0.45f);
-            for (int i = 0; i < RoamingCacheExperienceGemCount; i++)
+            for (int i = 0; i < gemCount; i++)
             {
-                float lane = (i - (RoamingCacheExperienceGemCount - 1) * 0.5f) * 0.72f;
+                float lane = (i - (gemCount - 1) * 0.5f) * 0.72f;
                 Vector3 position = origin + side * lane + forward * (i * 0.18f);
                 if (SpawnPickup(SurvivorsPickupKind.Experience, position, xpPerGem) != null)
                 {
@@ -4053,7 +4058,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             bool spawnedMagnet = false;
-            if (nextCacheNumber % RoamingCacheMagnetInterval == 0)
+            if (ShouldTriggerRoamingCacheCadence(nextCacheNumber, CurrentTuning.RoamingCacheMagnetInterval))
             {
                 Vector3 magnetPosition = origin + forward * 0.8f;
                 if (SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1) != null)
@@ -4063,17 +4068,120 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            if (spawnedExperience <= 0 && !spawnedMagnet)
+            bool spawnedBloodShard = false;
+            if (ShouldTriggerRoamingCacheCadence(nextCacheNumber, CurrentTuning.RoamingCacheBloodShardInterval))
+            {
+                Vector3 shardPosition = origin - forward * 0.35f;
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, CurrentTuning.BloodShardPickupAmount) != null)
+                {
+                    spawnedBloodShard = true;
+                    RoamingCacheBloodShardDropCount++;
+                }
+            }
+
+            int ambushSpawned = SpawnRoamingArenaCacheAmbush(origin, forward, side, nextCacheNumber);
+            if (spawnedExperience <= 0 && !spawnedMagnet && !spawnedBloodShard && ambushSpawned <= 0)
             {
                 return;
             }
 
             RoamingCacheDropCount++;
-            string label = spawnedMagnet
-                ? $"Roaming Cache: +{spawnedExperience} XP + Magnet"
-                : $"Roaming Cache: +{spawnedExperience} XP";
+            string label = $"Roaming Cache: +{spawnedExperience} XP";
+            if (spawnedMagnet)
+            {
+                label += " + Magnet";
+            }
+
+            if (spawnedBloodShard)
+            {
+                label += " + Shard";
+            }
+
+            if (ambushSpawned > 0)
+            {
+                label += $" + Ambush x{ambushSpawned}";
+            }
+
             LastRoamingCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.35f, 0.9f, 1f));
+        }
+
+        private int SpawnRoamingArenaCacheAmbush(Vector3 origin, Vector3 forward, Vector3 side, int cacheNumber)
+        {
+            if (!ShouldTriggerRoamingCacheAmbush(cacheNumber))
+            {
+                return 0;
+            }
+
+            int baseCount = Mathf.Max(0, CurrentTuning.RoamingCacheAmbushBaseEnemyCount);
+            if (baseCount <= 0)
+            {
+                return 0;
+            }
+
+            int maxCount = Mathf.Max(baseCount, CurrentTuning.RoamingCacheAmbushMaxEnemyCount);
+            int interval = Mathf.Max(1, CurrentTuning.RoamingCacheAmbushInterval);
+            int start = Mathf.Max(1, CurrentTuning.RoamingCacheAmbushStartCache);
+            int distancePressureBonus = Mathf.Max(0, cacheNumber - start) / (interval * 2);
+            int escalationBonus = Mathf.Max(0, RunEscalationLevel) / 3;
+            int targetCount = Mathf.Clamp(baseCount + distancePressureBonus + escalationBonus, 1, maxCount);
+            int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.RoamingCacheAmbushExtraAliveAllowance) - _enemies.Count);
+            targetCount = Mathf.Min(targetCount, available);
+            if (targetCount <= 0)
+            {
+                return 0;
+            }
+
+            int spawned = 0;
+            float radius = Mathf.Max(1f, CurrentTuning.RoamingCacheAmbushRadius);
+            Vector3 center = origin - forward * (radius * 0.35f);
+            for (int i = 0; i < targetCount; i++)
+            {
+                float angle = ((i + 0.5f) / targetCount) * Mathf.PI * 2f;
+                Vector3 offset = side * (Mathf.Cos(angle) * radius) + forward * (Mathf.Sin(angle) * radius);
+                SurvivorsEnemyRole role = ResolveRoamingCacheAmbushRole(i, cacheNumber);
+                if (SpawnEnemy(center + offset, explicitPosition: true, role) != null)
+                {
+                    spawned++;
+                }
+            }
+
+            if (spawned > 0)
+            {
+                RoamingCacheAmbushCount++;
+                RoamingCacheAmbushEnemySpawnCount += spawned;
+            }
+
+            return spawned;
+        }
+
+        private bool ShouldTriggerRoamingCacheAmbush(int cacheNumber)
+        {
+            int start = Mathf.Max(1, CurrentTuning.RoamingCacheAmbushStartCache);
+            int interval = Mathf.Max(0, CurrentTuning.RoamingCacheAmbushInterval);
+            return interval > 0 && cacheNumber >= start && ((cacheNumber - start) % interval) == 0;
+        }
+
+        private static bool ShouldTriggerRoamingCacheCadence(int cacheNumber, int cadence)
+        {
+            return cadence > 0 && cacheNumber > 0 && cacheNumber % cadence == 0;
+        }
+
+        private SurvivorsEnemyRole ResolveRoamingCacheAmbushRole(int index, int cacheNumber)
+        {
+            int pressure = Mathf.Max(0, RunEscalationLevel);
+            int seed = index + cacheNumber;
+            if (pressure >= 6 && seed % 7 == 0)
+            {
+                return SurvivorsEnemyRole.Splitter;
+            }
+
+            if (pressure >= 3 && seed % 5 == 0)
+            {
+                return SurvivorsEnemyRole.Spitter;
+            }
+
+            return seed % 3 == 0 ? SurvivorsEnemyRole.Runner : SurvivorsEnemyRole.Swarm;
         }
 
         private void UpdateArenaPresentation()

@@ -224,6 +224,12 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(runner.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
             Assert.That(tuning.ProjectileSpeed, Is.LessThanOrEqualTo(9f));
             Assert.That(tuning.PickupAttractRange, Is.InRange(2f, 3f));
+            Assert.That(tuning.RoamingCacheTravelInterval, Is.InRange(14f, 22f));
+            Assert.That(tuning.RoamingCacheExperienceGemCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(tuning.RoamingCacheMagnetInterval, Is.GreaterThanOrEqualTo(2));
+            Assert.That(tuning.RoamingCacheBloodShardInterval, Is.GreaterThan(tuning.RoamingCacheMagnetInterval));
+            Assert.That(tuning.RoamingCacheAmbushStartCache, Is.GreaterThanOrEqualTo(3));
+            Assert.That(tuning.RoamingCacheAmbushMaxEnemyCount, Is.GreaterThanOrEqualTo(tuning.RoamingCacheAmbushBaseEnemyCount));
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
             Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
@@ -274,6 +280,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.EnemySpawnPackBaseCount, Is.GreaterThanOrEqualTo(human.EnemySpawnPackBaseCount));
             Assert.That(debugFast.EnemySpawnPackMaxCount, Is.GreaterThan(human.EnemySpawnPackMaxCount));
             Assert.That(debugFast.ExperienceRequiredBase, Is.LessThan(human.ExperienceRequiredBase));
+            Assert.That(debugFast.RoamingCacheTravelInterval, Is.LessThan(human.RoamingCacheTravelInterval));
+            Assert.That(debugFast.RoamingCacheAmbushStartCache, Is.LessThan(human.RoamingCacheAmbushStartCache));
+            Assert.That(showcase.RoamingCacheTravelInterval, Is.LessThan(human.RoamingCacheTravelInterval));
             Assert.That(debugFast.FirstEliteSpawnTimeSeconds, Is.LessThan(human.FirstEliteSpawnTimeSeconds));
             Assert.That(debugFast.MinibossSpawnTimeSeconds, Is.LessThan(human.MinibossSpawnTimeSeconds));
             Assert.That(normal.FirstDreadEliteSpawnTimeSeconds, Is.LessThan(normal.MinibossSpawnTimeSeconds));
