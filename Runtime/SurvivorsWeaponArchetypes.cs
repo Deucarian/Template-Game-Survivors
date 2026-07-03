@@ -340,6 +340,7 @@ namespace Deucarian.TemplateGameSurvivors
     internal sealed class SurvivorsProjectileWeaponRuntime : SurvivorsWeaponRuntimeBase
     {
         private const int ArcaneStormRingProjectileCount = 8;
+        private const int BlizzardCrownRingProjectileCount = 10;
         private float _cooldownRemaining = 0.08f;
 
         public SurvivorsProjectileWeaponRuntime(SurvivorsTemplateController controller, SurvivorsWeaponArchetypeDefinition definition)
@@ -399,19 +400,26 @@ namespace Deucarian.TemplateGameSurvivors
             if (Definition.Id == BasicSurvivorsGame.ArcaneWandWeaponContentId &&
                 Controller.IsEvolutionActive(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId))
             {
-                fired |= FireArcaneStormRing(direction.normalized);
+                fired |= FireProjectileRing(direction.normalized, ArcaneStormRingProjectileCount);
+            }
+
+            if (Definition.Id == BasicSurvivorsGame.FrostFanWeaponContentId &&
+                Controller.IsEvolutionActive(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId))
+            {
+                fired |= FireProjectileRing(direction.normalized, BlizzardCrownRingProjectileCount);
             }
 
             return fired;
         }
 
-        private bool FireArcaneStormRing(Vector3 forward)
+        private bool FireProjectileRing(Vector3 forward, int projectileCount)
         {
             Vector3 resolvedForward = forward.sqrMagnitude <= 0.001f ? Vector3.forward : forward.normalized;
             bool fired = false;
-            for (int index = 0; index < ArcaneStormRingProjectileCount; index++)
+            int count = Mathf.Max(1, projectileCount);
+            for (int index = 0; index < count; index++)
             {
-                float angle = (360f / ArcaneStormRingProjectileCount) * index;
+                float angle = (360f / count) * index;
                 Vector3 direction = Quaternion.Euler(0f, angle, 0f) * resolvedForward;
                 fired |= Controller.LaunchProjectile(Definition, direction);
             }

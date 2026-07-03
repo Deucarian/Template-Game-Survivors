@@ -685,6 +685,41 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator BlizzardCrownEvolutionAddsRadialShardCrown()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureProjectileModifierOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostNeedleworkUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4f, 0f, 0f), 100f);
+            int beforeBaselineFire = controller.ProjectileLaunchCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            int baselineLaunches = controller.ProjectileLaunchCount - beforeBaselineFire;
+            Assert.That(baselineLaunches, Is.GreaterThanOrEqualTo(1));
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4.4f, 0f, 0f), 100f);
+            int beforeCrownFire = controller.ProjectileLaunchCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            int evolvedLaunches = controller.ProjectileLaunchCount - beforeCrownFire;
+
+            Assert.That(evolvedLaunches, Is.GreaterThanOrEqualTo(baselineLaunches + 10));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DefaultWeaponPathsRequireFiveRanksBeforeEvolution()
         {
             SurvivorsTemplateController controller = CreateController();
