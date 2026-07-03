@@ -623,6 +623,38 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator LevelUpDraftPausesCombatButKeepsSelectionTimeout()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            controller.CurrentTuning.RewardSelectionTimeoutSeconds = 2f;
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            yield return null;
+
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 100f);
+            Vector3 playerPosition = controller.PlayerPosition;
+            Vector3 enemyPosition = enemy.transform.position;
+            float runTime = controller.RunTimeSeconds;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            float timeoutStart = controller.RewardSelectionRemainingSeconds;
+
+            controller.Simulate(0.5f, Vector2.right);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(runTime, controller.RunTimeSeconds);
+            Assert.That((controller.PlayerPosition - playerPosition).sqrMagnitude, Is.LessThan(0.0001f));
+            Assert.That((enemy.transform.position - enemyPosition).sqrMagnitude, Is.LessThan(0.0001f));
+            Assert.That(controller.RewardSelectionRemainingSeconds, Is.LessThan(timeoutStart));
+            Assert.That(controller.RewardSelectionRemainingSeconds, Is.GreaterThan(0f));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator EmptyLevelUpDraftAutoSkipsAndResumes()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
