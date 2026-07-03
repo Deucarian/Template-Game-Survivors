@@ -974,6 +974,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunUpgradeCategory.Evolution, controller.GetUpgradeCategoryForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.That(controller.GetUpgradeDescriptionForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId), Does.Contain("Evolution"));
+            Assert.AreEqual(0, controller.EvolutionReadyFeedbackCount);
 
             for (int i = 0; i < 5; i++)
             {
@@ -981,19 +982,28 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.AreEqual(0, controller.EvolutionReadyFeedbackCount);
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.AreEqual(1, controller.EvolutionReadyFeedbackCount);
+            Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Evolution Ready"));
+            Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Arcane Storm"));
+            Assert.That(controller.ActiveEvolutionReadyFeedbackLabel, Does.Contain("Arcane Storm"));
+            Assert.That(controller.EvolutionReadyFeedbackRemainingSeconds, Is.GreaterThan(0f));
 
             float previousDamage = controller.DamageBonus;
             int previousChains = controller.ProjectileChainBonus;
             int previousForks = controller.ProjectileForkBonus;
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.AreEqual(1, controller.EvolutionReadyFeedbackCount);
 
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.AreEqual(1, controller.EvolvedWeaponCount);
             Assert.That(controller.DamageBonus, Is.GreaterThan(previousDamage));
             Assert.That(controller.ProjectileChainBonus, Is.GreaterThan(previousChains));
             Assert.That(controller.ProjectileForkBonus, Is.GreaterThan(previousForks));
+            controller.Simulate(3f);
+            Assert.IsEmpty(controller.ActiveEvolutionReadyFeedbackLabel);
 
             Object.Destroy(controller.gameObject);
         }

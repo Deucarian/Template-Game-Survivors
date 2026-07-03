@@ -56,6 +56,7 @@ After 7 minutes:
 - The miniboss should have appeared and may have opened an elite reward draft.
 - The miniboss warning should have appeared shortly before the miniboss entered.
 - The run should have a clear build direction from weapon ranks, passives, or branch mutations.
+- If a weapon path has reached its required rank and the matching passive is owned, the HUD should briefly announce Evolution Ready for that payoff.
 
 After victory:
 

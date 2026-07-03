@@ -46,6 +46,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
+        private const float EvolutionReadyFeedbackDurationSeconds = 2.4f;
         private const float ExperienceComboWindowSeconds = 0.85f;
         private const float ExperienceComboFeedbackDurationSeconds = 1.35f;
         private const int ExperienceComboMinimumPickupCount = 3;
@@ -95,6 +96,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _announcedEvolutionReadyUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private Transform _worldRoot;
         private Transform _prefabRoot;
         private Transform _arenaTileRoot;
@@ -185,6 +187,8 @@ namespace Deucarian.TemplateGameSurvivors
         private string _streakRewardFeedbackLabel = string.Empty;
         private Color _streakRewardFeedbackColor = Color.white;
         private float _streakRewardFeedbackTimer;
+        private string _evolutionReadyFeedbackLabel = string.Empty;
+        private float _evolutionReadyFeedbackTimer;
         private string _experienceComboFeedbackLabel = string.Empty;
         private float _experienceComboTimer;
         private float _experienceComboFeedbackTimer;
@@ -247,6 +251,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ExperiencePickupFeedbackCount { get; private set; }
         public int ExperienceComboFeedbackCount { get; private set; }
         public string LastExperienceComboFeedbackLabel { get; private set; } = string.Empty;
+        public int EvolutionReadyFeedbackCount { get; private set; }
+        public string LastEvolutionReadyFeedbackLabel { get; private set; } = string.Empty;
         public int HealthPickupCollectedCount { get; private set; }
         public float HealthRestoredByPickups { get; private set; }
         public int BloodShardPickupCollectedCount { get; private set; }
@@ -394,6 +400,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
         public string ActiveStreakRewardFeedbackLabel => _streakRewardFeedbackTimer > 0f ? _streakRewardFeedbackLabel : string.Empty;
         public float StreakRewardFeedbackRemainingSeconds => Mathf.Max(0f, _streakRewardFeedbackTimer);
+        public string ActiveEvolutionReadyFeedbackLabel => _evolutionReadyFeedbackTimer > 0f ? _evolutionReadyFeedbackLabel : string.Empty;
+        public float EvolutionReadyFeedbackRemainingSeconds => Mathf.Max(0f, _evolutionReadyFeedbackTimer);
         public string ActiveExperienceComboFeedbackLabel => _experienceComboFeedbackTimer > 0f ? _experienceComboFeedbackLabel : string.Empty;
         public float ExperienceComboFeedbackRemainingSeconds => Mathf.Max(0f, _experienceComboFeedbackTimer);
         public int CurrentExperienceComboPickupCount => _experienceComboTimer > 0f ? _experienceComboPickupCount : 0;
@@ -439,6 +447,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickStreakRewardFeedback(Time.deltaTime);
+                TickEvolutionReadyFeedback(Time.deltaTime);
                 TickExperienceComboFeedback(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
                 HandleLevelUpInput();
@@ -453,6 +462,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickStreakRewardFeedback(Time.deltaTime);
+                TickEvolutionReadyFeedback(Time.deltaTime);
                 TickExperienceComboFeedback(Time.deltaTime);
                 if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
                 {
@@ -517,6 +527,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawMajorThreatWarning();
             DrawRewardSelectionFeedback();
             DrawStreakRewardFeedback();
+            DrawEvolutionReadyFeedback();
             DrawExperienceComboFeedback();
             DrawDamagePopups();
 
@@ -602,6 +613,8 @@ namespace Deucarian.TemplateGameSurvivors
             MinibossRewardGrantCount = 0;
             BossRewardGrantCount = 0;
             WeaponEvolutionFeedbackCount = 0;
+            EvolutionReadyFeedbackCount = 0;
+            LastEvolutionReadyFeedbackLabel = string.Empty;
             BossRelicDraftOpenCount = 0;
             EliteUpgradeDraftOpenCount = 0;
             BossUpgradeDraftOpenCount = 0;
@@ -715,6 +728,9 @@ namespace Deucarian.TemplateGameSurvivors
             _killStreakTimer = 0f;
             _killStreakCount = 0;
             _streakSurgeTimer = 0f;
+            _announcedEvolutionReadyUpgradeIds.Clear();
+            _evolutionReadyFeedbackLabel = string.Empty;
+            _evolutionReadyFeedbackTimer = 0f;
             _spawnSequence = 0;
             _currentDraft = null;
             _currentRelicDraft = null;
@@ -768,6 +784,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickMajorRewardDropFeedbackEffects(dt);
             TickRewardFeedback(dt);
             TickStreakRewardFeedback(dt);
+            TickEvolutionReadyFeedback(dt);
             TickExperienceComboFeedback(dt);
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -3205,6 +3222,47 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void RecordNewlyEligibleEvolutionFeedback()
+        {
+            if (_upgradeCatalog == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                if (definition == null || !IsEvolutionUpgrade(definition))
+                {
+                    continue;
+                }
+
+                string upgradeId = definition.Id.Value;
+                if (_ownedEvolutionUpgradeIds.Contains(upgradeId) || _announcedEvolutionReadyUpgradeIds.Contains(upgradeId))
+                {
+                    continue;
+                }
+
+                if (!IsUpgradeEligibleForCurrentBuild(definition))
+                {
+                    continue;
+                }
+
+                _announcedEvolutionReadyUpgradeIds.Add(upgradeId);
+                RecordEvolutionReadyFeedback(definition);
+            }
+        }
+
+        private void RecordEvolutionReadyFeedback(RunUpgradeDefinition evolution)
+        {
+            string name = BasicSurvivorsGame.GetUpgradeDisplayName(evolution.Id);
+            _evolutionReadyFeedbackLabel = $"Evolution Ready: {name}";
+            _evolutionReadyFeedbackTimer = EvolutionReadyFeedbackDurationSeconds;
+            EvolutionReadyFeedbackCount++;
+            LastEvolutionReadyFeedbackLabel = _evolutionReadyFeedbackLabel;
+            PlayFeedback(_levelUpPulse, PlayerPosition, 36, _levelUpClip);
+        }
+
         private bool IsUpgradeAllowedForSelectedClass(string upgradeId)
         {
             if (string.IsNullOrWhiteSpace(upgradeId) || _upgradeClassGates == null)
@@ -4561,6 +4619,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             RecordRunBuildSelection(upgrade);
+            RecordNewlyEligibleEvolutionFeedback();
         }
 
         private void DrawLevelUpOverlay()
@@ -5076,6 +5135,34 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
         }
 
+        private void DrawEvolutionReadyFeedback()
+        {
+            if (_evolutionReadyFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_evolutionReadyFeedbackLabel))
+            {
+                return;
+            }
+
+            float width = Mathf.Min(460f, Mathf.Max(0f, Screen.width - 32f));
+            if (width <= 0f)
+            {
+                return;
+            }
+
+            float pulse = 0.7f + Mathf.Sin(Time.unscaledTime * 9f) * 0.3f;
+            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, 88f, width, 44f);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.03f, 0.018f, 0.04f, 0.76f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 0.78f, 0.22f, 0.2f + 0.16f * pulse);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 0.78f, 0.22f, 0.96f);
+            GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(panel.x, panel.y + panel.height - 3f, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 6f, panel.width - 24f, panel.height - 12f), _evolutionReadyFeedbackLabel, _rewardFeedbackStyle);
+            GUI.color = oldColor;
+        }
+
         private void DrawDamagePopups()
         {
             if (_damagePopups.Count == 0)
@@ -5157,6 +5244,20 @@ namespace Deucarian.TemplateGameSurvivors
             if (_streakRewardFeedbackTimer <= 0f)
             {
                 _streakRewardFeedbackLabel = string.Empty;
+            }
+        }
+
+        private void TickEvolutionReadyFeedback(float deltaTime)
+        {
+            if (_evolutionReadyFeedbackTimer <= 0f)
+            {
+                return;
+            }
+
+            _evolutionReadyFeedbackTimer = Mathf.Max(0f, _evolutionReadyFeedbackTimer - Mathf.Max(0f, deltaTime));
+            if (_evolutionReadyFeedbackTimer <= 0f)
+            {
+                _evolutionReadyFeedbackLabel = string.Empty;
             }
         }
 
