@@ -41,6 +41,8 @@ namespace Deucarian.TemplateGameSurvivors
         private const int EnemyDeathEffectLimit = 56;
         private const float MajorRewardDropLifetimeSeconds = 1.25f;
         private const int MajorRewardDropEffectLimit = 8;
+        private const float EnemyRangedAttackFeedbackLifetimeSeconds = 0.24f;
+        private const int EnemyRangedAttackFeedbackLimit = 28;
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
         private const int EndlessEnemyAliveBonus = 24;
 
@@ -76,6 +78,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsDamagePopup> _damagePopups = new List<SurvivorsDamagePopup>(DamagePopupLimit);
         private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
         private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
+        private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -205,6 +208,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int PlayerDamageFeedbackCount { get; private set; }
         public int EnemyHitFlashFeedbackCount { get; private set; }
         public int EnemyDeathEffectCount { get; private set; }
+        public int EnemyRangedAttackFeedbackCount { get; private set; }
         public int MajorRewardDropFeedbackCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int MajorThreatWarningCount { get; private set; }
@@ -279,6 +283,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveProjectileCount => _projectiles.Count;
         public int ActiveDamagePopupCount => _damagePopups.Count;
         public int ActiveEnemyDeathEffectCount => _worldFeedbackEffects.Count;
+        public int ActiveEnemyRangedAttackFeedbackCount => _enemyRangedAttackFeedbackEffects.Count;
         public int ActiveMajorRewardDropFeedbackCount => _rewardDropFeedbackEffects.Count;
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
         public int ActivePassiveCount => _ownedPassiveUpgradeIds.Count;
@@ -373,6 +378,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 TickDamagePopups(Time.deltaTime);
                 TickWorldFeedbackEffects(Time.deltaTime);
+                TickEnemyRangedAttackFeedbackEffects(Time.deltaTime);
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
@@ -384,6 +390,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 TickDamagePopups(Time.deltaTime);
                 TickWorldFeedbackEffects(Time.deltaTime);
+                TickEnemyRangedAttackFeedbackEffects(Time.deltaTime);
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
@@ -545,6 +552,7 @@ namespace Deucarian.TemplateGameSurvivors
             PlayerDamageFeedbackCount = 0;
             EnemyHitFlashFeedbackCount = 0;
             EnemyDeathEffectCount = 0;
+            EnemyRangedAttackFeedbackCount = 0;
             MajorRewardDropFeedbackCount = 0;
             MajorThreatWarningCount = 0;
             ExperiencePickupFeedbackCount = 0;
@@ -668,6 +676,7 @@ namespace Deucarian.TemplateGameSurvivors
             float dt = Mathf.Max(0f, deltaTime);
             TickDamagePopups(dt);
             TickWorldFeedbackEffects(dt);
+            TickEnemyRangedAttackFeedbackEffects(dt);
             TickMajorRewardDropFeedbackEffects(dt);
             TickRewardFeedback(dt);
             if (State == SurvivorsRunState.LevelUp)
@@ -2106,6 +2115,116 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        internal void RecordEnemyRangedAttackFeedback(Vector3 origin, Vector3 target, SurvivorsEnemyRole role)
+        {
+            if (_feedbackRoot == null)
+            {
+                return;
+            }
+
+            Vector3 start = origin + Vector3.up * 0.42f;
+            Vector3 end = target + Vector3.up * 0.36f;
+            Vector3 direction = end - start;
+            float distance = direction.magnitude;
+            if (distance <= 0.05f)
+            {
+                return;
+            }
+
+            while (_enemyRangedAttackFeedbackEffects.Count >= EnemyRangedAttackFeedbackLimit)
+            {
+                ReleaseEnemyRangedAttackFeedbackEffect(0);
+            }
+
+            Color color = ResolveEnemyRangedAttackColor(role);
+            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            instance.name = "Survivors Enemy Ranged Attack Cue";
+            instance.transform.SetParent(_feedbackRoot, false);
+            instance.transform.position = (start + end) * 0.5f;
+            instance.transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
+            Vector3 baseScale = new Vector3(0.1f, 0.1f, distance);
+            instance.transform.localScale = baseScale;
+
+            Collider collider = instance.GetComponent<Collider>();
+            if (collider != null)
+            {
+                ReleaseTemplateObject(collider);
+            }
+
+            Renderer renderer = instance.GetComponentInChildren<Renderer>();
+            Material material = ApplyColor(renderer, color);
+            _enemyRangedAttackFeedbackEffects.Add(new SurvivorsEnemyRangedAttackFeedbackEffect(instance, material, color, baseScale));
+            EnemyRangedAttackFeedbackCount++;
+        }
+
+        private void TickEnemyRangedAttackFeedbackEffects(float deltaTime)
+        {
+            if (_enemyRangedAttackFeedbackEffects.Count == 0)
+            {
+                return;
+            }
+
+            float dt = Mathf.Max(0f, deltaTime);
+            for (int i = _enemyRangedAttackFeedbackEffects.Count - 1; i >= 0; i--)
+            {
+                SurvivorsEnemyRangedAttackFeedbackEffect effect = _enemyRangedAttackFeedbackEffects[i];
+                effect.ElapsedSeconds += dt;
+                if (effect.Instance == null || effect.ElapsedSeconds >= EnemyRangedAttackFeedbackLifetimeSeconds)
+                {
+                    ReleaseEnemyRangedAttackFeedbackEffect(i);
+                    continue;
+                }
+
+                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / EnemyRangedAttackFeedbackLifetimeSeconds);
+                float width = Mathf.Lerp(1.35f, 0.25f, normalizedAge);
+                effect.Instance.transform.localScale = new Vector3(effect.BaseScale.x * width, effect.BaseScale.y * width, effect.BaseScale.z);
+                if (effect.Material != null)
+                {
+                    Color color = effect.Color;
+                    color.a = Mathf.Lerp(0.86f, 0.05f, normalizedAge);
+                    effect.Material.color = color;
+                }
+
+                _enemyRangedAttackFeedbackEffects[i] = effect;
+            }
+        }
+
+        private void ReleaseEnemyRangedAttackFeedbackEffect(int index)
+        {
+            if (index < 0 || index >= _enemyRangedAttackFeedbackEffects.Count)
+            {
+                return;
+            }
+
+            SurvivorsEnemyRangedAttackFeedbackEffect effect = _enemyRangedAttackFeedbackEffects[index];
+            _enemyRangedAttackFeedbackEffects.RemoveAt(index);
+            if (effect.Material != null)
+            {
+                ReleaseTemplateObject(effect.Material);
+            }
+
+            if (effect.Instance != null)
+            {
+                ReleaseTemplateObject(effect.Instance);
+            }
+        }
+
+        private static Color ResolveEnemyRangedAttackColor(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return new Color(1f, 0.18f, 0.52f, 0.86f);
+                case SurvivorsEnemyRole.DreadElite:
+                    return new Color(0.42f, 0.86f, 1f, 0.82f);
+                case SurvivorsEnemyRole.Miniboss:
+                case SurvivorsEnemyRole.Elite:
+                    return new Color(1f, 0.56f, 0.2f, 0.84f);
+                default:
+                    return new Color(0.54f, 1f, 0.32f, 0.78f);
+            }
+        }
+
         private void RecordMajorRewardDropFeedback(Vector3 position, SurvivorsEnemyRole role, float radius)
         {
             if (_feedbackRoot == null)
@@ -2299,6 +2418,11 @@ namespace Deucarian.TemplateGameSurvivors
             while (_worldFeedbackEffects.Count > 0)
             {
                 ReleaseWorldFeedbackEffect(_worldFeedbackEffects.Count - 1);
+            }
+
+            while (_enemyRangedAttackFeedbackEffects.Count > 0)
+            {
+                ReleaseEnemyRangedAttackFeedbackEffect(_enemyRangedAttackFeedbackEffects.Count - 1);
             }
 
             while (_rewardDropFeedbackEffects.Count > 0)
@@ -4823,6 +4947,24 @@ namespace Deucarian.TemplateGameSurvivors
             public float ElapsedSeconds;
         }
 
+        private struct SurvivorsEnemyRangedAttackFeedbackEffect
+        {
+            public SurvivorsEnemyRangedAttackFeedbackEffect(GameObject instance, Material material, Color color, Vector3 baseScale)
+            {
+                Instance = instance;
+                Material = material;
+                Color = color;
+                BaseScale = baseScale;
+                ElapsedSeconds = 0f;
+            }
+
+            public GameObject Instance { get; }
+            public Material Material { get; }
+            public Color Color { get; }
+            public Vector3 BaseScale { get; }
+            public float ElapsedSeconds;
+        }
+
         private struct SurvivorsRewardDropFeedbackEffect
         {
             public SurvivorsRewardDropFeedbackEffect(GameObject instance, Material material, Color color, Vector3 basePosition, Vector3 baseScale)
@@ -5085,6 +5227,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            _controller.RecordEnemyRangedAttackFeedback(transform.position, _controller.PlayerPosition, Role);
             _controller.ApplyDamageToPlayer(_rangedAttackDamage, "combatant.survivors.enemy.ranged." + InstanceId.Value);
             _rangedAttackCooldown = _rangedAttackInterval;
         }

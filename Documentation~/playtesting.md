@@ -42,7 +42,7 @@ After 2 minutes:
 
 After 5 minutes:
 
-- Spitters should have joined the enemy mix.
+- Spitters should have joined the enemy mix, and their ranged hits should show quick hostile shot cues.
 - The first elite should have arrived around 3 minutes and the dread elite should be arriving around 5 minutes; killing either one should open an elite reward draft.
 - Each scheduled elite should show a short incoming warning before it appears.
 - The game should feel busier than the first minute without becoming immediate visual noise.

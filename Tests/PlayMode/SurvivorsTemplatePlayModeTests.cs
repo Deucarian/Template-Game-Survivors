@@ -138,6 +138,34 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator RangedEnemyAttackCreatesReadableShotFeedback()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.StartingBarrierCapacity = 0f;
+            controller.CurrentTuning.EnemyMaximumAlive = 1;
+            controller.StartRun();
+
+            SurvivorsEnemyActor spitter = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4.5f, 0f, 0f), SurvivorsEnemyRole.Spitter, 50f);
+            Assert.NotNull(spitter);
+            Assert.AreEqual(0, controller.EnemyRangedAttackFeedbackCount);
+            Assert.AreEqual(0, controller.ActiveEnemyRangedAttackFeedbackCount);
+
+            controller.Simulate(0.8f);
+            yield return null;
+
+            Assert.That(controller.PlayerDamageFeedbackCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(1, controller.EnemyRangedAttackFeedbackCount);
+            Assert.AreEqual(1, controller.ActiveEnemyRangedAttackFeedbackCount);
+
+            controller.Simulate(0.3f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveEnemyRangedAttackFeedbackCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MagnetRecallPulsesExperienceGemFeedback()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
