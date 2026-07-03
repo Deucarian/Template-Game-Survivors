@@ -2,7 +2,7 @@
 
 Playable sample for the Deucarian Survivors template.
 
-For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`. The bootstrap object builds the arena, player, horde loop, pooled enemies, pickups, projectiles, HUD, draft UI, relic UI, meta profile service, victory, defeat, and restart flow at runtime.
+For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`. The bootstrap object builds the arena, player, horde loop, pooled enemies, pickups, projectiles, HUD, draft UI, relic UI, meta profile service, victory/defeat summary screens, endless continuation, and restart flow at runtime.
 
 - Move with WASD or arrow keys.
 - The sample defaults to `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` stays at `1`, opening spawns use two-enemy packs on a `1.15` second interval, pack size grows with escalation up to `5`, the opening max alive cap is `34`, and reward choices stay open until the player chooses.
@@ -26,7 +26,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes with clear caches, and recurring elite, miniboss, and boss reward threats.
 - Defeating the final boss unlocks the Ember Vanguard sample class.
-- Victory or defeat persists the run summary to a local meta profile.
+- Victory or defeat persists the run summary to a local meta profile and shows a summary panel with time, level, kills, build size, rewards, and meta totals.
 - The sample includes seven persistent meta upgrades for later-run damage, max health, pickup range, XP gain, and extra rerolls.
 - The sample includes a default Arcane Initiate class, one unlockable class, class-owned loadouts, passive atlases, weapon skill tracks, and six boss relics.
 - XP gems pull into the player when close.

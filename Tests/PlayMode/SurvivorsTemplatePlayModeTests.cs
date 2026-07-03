@@ -924,11 +924,18 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.AreEqual(SurvivorsRunState.GameOver, controller.State);
+            Assert.That(controller.LastRunSummaryLines.Count, Is.GreaterThanOrEqualTo(5));
+            string defeatSummary = string.Join("\n", controller.LastRunSummaryLines);
+            Assert.That(defeatSummary, Does.Contain("Defeat"));
+            Assert.That(defeatSummary, Does.Contain("Rewards"));
+            Assert.That(defeatSummary, Does.Contain("Meta"));
+
             controller.RestartRun();
             yield return null;
 
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.That(controller.CurrentHealth, Is.GreaterThan(0f));
+            Assert.AreEqual(0, controller.LastRunSummaryLines.Count);
 
             Object.Destroy(controller.gameObject);
         }
@@ -2227,6 +2234,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.MetaBossVictories);
             Assert.That(controller.ClassUnlockRewardCount, Is.GreaterThanOrEqualTo(1));
             Assert.IsTrue(controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
+            Assert.That(controller.LastRunSummaryLines.Count, Is.GreaterThanOrEqualTo(6));
+            string victorySummary = string.Join("\n", controller.LastRunSummaryLines);
+            Assert.That(victorySummary, Does.Contain("Victory"));
+            Assert.That(victorySummary, Does.Contain("Bosses 1"));
+            Assert.That(victorySummary, Does.Contain("Build"));
+            Assert.That(victorySummary, Does.Contain("Class unlocked"));
 
             Object.Destroy(controller.gameObject);
         }

@@ -97,6 +97,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
         private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
+        private readonly List<string> _lastRunSummaryLines = new List<string>(8);
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
@@ -319,6 +320,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int BloodShardsEarnedThisRun { get; private set; }
         public int LegacyExperienceEarnedThisRun { get; private set; }
         public SurvivorsRunRewardSummary LastRunResult { get; private set; }
+        public IReadOnlyList<string> LastRunSummaryLines => _lastRunSummaryLines;
         public float RunTimeSeconds { get; private set; }
         public float MoveSpeedBonus { get; private set; }
         public float DamageBonus { get; private set; }
@@ -598,27 +600,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
             else if (State == SurvivorsRunState.GameOver)
             {
-                GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 82f, 300f, 164f), "Game Over");
-                GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 28f, 232f, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP");
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f + 18f, 140f, 34f), "Restart"))
-                {
-                    RestartRun();
-                }
+                DrawRunResultOverlay(victory: false);
             }
             else if (State == SurvivorsRunState.Victory)
             {
-                GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 82f, 300f, 164f), "Victory");
-                GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 28f, 232f, 22f), $"Run cleared in {RunTimeSeconds:0}s");
-                GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 6f, 232f, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP");
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f + 30f, 106f, 34f), "Continue"))
-                {
-                    ContinueAfterVictory();
-                }
-
-                if (GUI.Button(new Rect(Screen.width * 0.5f + 10f, Screen.height * 0.5f + 30f, 106f, 34f), "Restart"))
-                {
-                    RestartRun();
-                }
+                DrawRunResultOverlay(victory: true);
             }
         }
 
@@ -742,6 +728,7 @@ namespace Deucarian.TemplateGameSurvivors
             BloodShardsEarnedThisRun = 0;
             LegacyExperienceEarnedThisRun = 0;
             LastRunResult = null;
+            _lastRunSummaryLines.Clear();
             RunTimeSeconds = 0f;
             MoveSpeedBonus = 0f;
             DamageBonus = 0f;
@@ -3915,6 +3902,23 @@ namespace Deucarian.TemplateGameSurvivors
                     GrantVictoryClassUnlockReward();
                 }
             }
+
+            RebuildLastRunSummaryLines(victory);
+        }
+
+        private void RebuildLastRunSummaryLines(bool victory)
+        {
+            _lastRunSummaryLines.Clear();
+            string result = victory ? "Victory" : "Defeat";
+            _lastRunSummaryLines.Add($"{result} - {FormatRunTime(RunTimeSeconds)} - Level {Level}");
+            _lastRunSummaryLines.Add($"Kills {KilledCount} - Best Streak {BestKillStreak} - Bosses {BossKilledCount}");
+            _lastRunSummaryLines.Add($"Build {ActiveWeaponCount}/{MaxWeaponSlots} weapons, {ActivePassiveCount}/{MaxPassiveSlots} passives, {EvolvedWeaponCount} evolutions");
+            _lastRunSummaryLines.Add($"Rewards +{BloodShardsEarnedThisRun} shards, +{LegacyExperienceEarnedThisRun} XP");
+            _lastRunSummaryLines.Add($"Meta {MetaBloodShards} shards banked, {LifetimeLegacyExperience} lifetime XP");
+            if (ClassUnlockRewardCount > 0)
+            {
+                _lastRunSummaryLines.Add("Class unlocked: Ember Vanguard");
+            }
         }
 
         private void GrantVictoryClassUnlockReward()
@@ -5459,6 +5463,45 @@ namespace Deucarian.TemplateGameSurvivors
                     new Rect(rect.x + 390f, footerY + 6f, width - 414f, 18f),
                     $"Banishes {DraftBanishesRemaining}",
                     _hudSmallStyle);
+            }
+        }
+
+        private void DrawRunResultOverlay(bool victory)
+        {
+            const float width = 440f;
+            float height = victory ? 248f : 210f;
+            Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            GUI.Box(rect, victory ? "Victory" : "Game Over");
+            IReadOnlyList<string> lines = LastRunSummaryLines;
+            int shown = Mathf.Min(lines == null ? 0 : lines.Count, 6);
+            if (shown == 0)
+            {
+                GUI.Label(new Rect(rect.x + 24f, rect.y + 34f, width - 48f, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP", _hudLabelStyle);
+            }
+            else
+            {
+                for (int i = 0; i < shown; i++)
+                {
+                    GUI.Label(new Rect(rect.x + 24f, rect.y + 34f + i * 22f, width - 48f, 22f), lines[i], _hudSmallStyle);
+                }
+            }
+
+            float buttonY = rect.yMax - 48f;
+            if (victory)
+            {
+                if (GUI.Button(new Rect(rect.x + 100f, buttonY, 106f, 34f), "Continue"))
+                {
+                    ContinueAfterVictory();
+                }
+
+                if (GUI.Button(new Rect(rect.x + width - 206f, buttonY, 106f, 34f), "Restart"))
+                {
+                    RestartRun();
+                }
+            }
+            else if (GUI.Button(new Rect(rect.x + width * 0.5f - 70f, buttonY, 140f, 34f), "Restart"))
+            {
+                RestartRun();
             }
         }
 
