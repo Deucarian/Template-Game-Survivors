@@ -492,6 +492,50 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator TimedHordeRushWarnsAndSpawnsArenaBurst()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMaximumAlive = 40;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.HordeRushFirstTimeSeconds = 0.5f;
+            controller.CurrentTuning.HordeRushIntervalSeconds = 1.1f;
+            controller.CurrentTuning.HordeRushWarningLeadSeconds = 0.25f;
+            controller.CurrentTuning.HordeRushBaseEnemyCount = 6;
+            controller.CurrentTuning.HordeRushEnemyCountIncreasePerRush = 2;
+            controller.CurrentTuning.HordeRushMaxEnemyCount = 10;
+            controller.CurrentTuning.HordeRushExtraAliveAllowance = 12;
+            controller.CurrentTuning.HordeRushSpawnRadius = 5.5f;
+            controller.StartRun();
+
+            Assert.AreEqual(0, controller.HordeRushSpawnCount);
+            Assert.That(controller.NextHordeRushTimeSecondsForTest, Is.EqualTo(0.5f).Within(0.001f));
+
+            controller.Simulate(0.3f);
+            yield return null;
+
+            Assert.IsTrue(controller.IsHordeRushWarningActive);
+            Assert.AreEqual(1, controller.HordeRushWarningCount);
+            Assert.That(controller.CurrentHordeRushWarningLabel, Does.Contain("HORDE RUSH"));
+            Assert.AreEqual(0, controller.HordeRushSpawnCount);
+            int activeBeforeRush = controller.ActiveEnemyCount;
+
+            controller.Simulate(0.25f);
+            yield return null;
+
+            Assert.IsFalse(controller.IsHordeRushWarningActive);
+            Assert.AreEqual(1, controller.HordeRushSpawnCount);
+            Assert.AreEqual(6, controller.HordeRushEnemySpawnCount);
+            Assert.AreEqual(activeBeforeRush + 6, controller.ActiveEnemyCount);
+            Assert.That(controller.ActiveRunnerCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastHordeRushFeedbackLabel, Does.Contain("Horde Rush"));
+            Assert.That(controller.LastStreakRewardFeedbackLabel, Does.Contain("Horde Rush"));
+            Assert.That(controller.NextHordeRushTimeSecondsForTest, Is.GreaterThan(controller.RunTimeSeconds));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator SpawnPackSizeScalesWithRunEscalation()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

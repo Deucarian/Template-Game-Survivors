@@ -184,6 +184,11 @@ namespace Deucarian.TemplateGameSurvivors
         private float _nextEndlessMinibossSpawnTimeSeconds;
         private float _nextEndlessBossSpawnTimeSeconds;
         private int _endlessEliteSpawnSequence;
+        private bool _hordeRushWarningShown;
+        private float _nextHordeRushTimeSeconds;
+        private int _hordeRushSequence;
+        private string _hordeRushWarningLabel = string.Empty;
+        private float _hordeRushWarningTargetTimeSeconds;
         private string _majorThreatWarningLabel = string.Empty;
         private float _majorThreatWarningTargetTimeSeconds;
         private string _rewardFeedbackLabel = string.Empty;
@@ -241,6 +246,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int SelectedRewardUpgradeCount { get; private set; }
         public int RewardAutoSelectCount { get; private set; }
         public int EndlessThreatSpawnCount { get; private set; }
+        public int HordeRushSpawnCount { get; private set; }
+        public int HordeRushEnemySpawnCount { get; private set; }
+        public int HordeRushWarningCount { get; private set; }
+        public string LastHordeRushFeedbackLabel { get; private set; } = string.Empty;
         public int DraftRerollCount { get; private set; }
         public int DraftBanishCount { get; private set; }
         public int DraftSkipCount { get; private set; }
@@ -409,6 +418,10 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsMajorThreatWarningActive => !string.IsNullOrEmpty(_majorThreatWarningLabel) && RunTimeSeconds < _majorThreatWarningTargetTimeSeconds;
         public string CurrentMajorThreatWarningLabel => IsMajorThreatWarningActive ? _majorThreatWarningLabel : string.Empty;
         public float MajorThreatWarningRemainingSeconds => IsMajorThreatWarningActive ? Mathf.Max(0f, _majorThreatWarningTargetTimeSeconds - RunTimeSeconds) : 0f;
+        public bool IsHordeRushWarningActive => !string.IsNullOrEmpty(_hordeRushWarningLabel) && RunTimeSeconds < _hordeRushWarningTargetTimeSeconds;
+        public string CurrentHordeRushWarningLabel => IsHordeRushWarningActive ? _hordeRushWarningLabel : string.Empty;
+        public float HordeRushWarningRemainingSeconds => IsHordeRushWarningActive ? Mathf.Max(0f, _hordeRushWarningTargetTimeSeconds - RunTimeSeconds) : 0f;
+        public float NextHordeRushTimeSecondsForTest => _nextHordeRushTimeSeconds;
         public string ActiveRewardFeedbackLabel => _rewardFeedbackTimer > 0f ? _rewardFeedbackLabel : string.Empty;
         public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
         public string ActiveStreakRewardFeedbackLabel => _streakRewardFeedbackTimer > 0f ? _streakRewardFeedbackLabel : string.Empty;
@@ -538,6 +551,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
+            DrawHordeRushWarning();
             DrawRewardSelectionFeedback();
             DrawStreakRewardFeedback();
             DrawEvolutionReadyFeedback();
@@ -635,6 +649,10 @@ namespace Deucarian.TemplateGameSurvivors
             SelectedRewardUpgradeCount = 0;
             RewardAutoSelectCount = 0;
             EndlessThreatSpawnCount = 0;
+            HordeRushSpawnCount = 0;
+            HordeRushEnemySpawnCount = 0;
+            HordeRushWarningCount = 0;
+            LastHordeRushFeedbackLabel = string.Empty;
             DraftRerollCount = 0;
             DraftBanishCount = 0;
             DraftSkipCount = 0;
@@ -729,6 +747,7 @@ namespace Deucarian.TemplateGameSurvivors
             _minibossWarningShown = false;
             _bossWarningShown = false;
             ResetEndlessThreatSchedule();
+            ResetHordeRushSchedule();
             _majorThreatWarningLabel = string.Empty;
             _majorThreatWarningTargetTimeSeconds = 0f;
             _rewardFeedbackLabel = string.Empty;
@@ -788,6 +807,7 @@ namespace Deucarian.TemplateGameSurvivors
             State = SurvivorsRunState.Playing;
             _enemySpawnTimer = 0f;
             ScheduleEndlessThreats(RunTimeSeconds);
+            EnsureFutureHordeRushScheduled();
             PlayFeedback(_levelUpPulse, PlayerPosition, 32, _levelUpClip);
             return true;
         }
@@ -827,6 +847,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            TickHordeRushEvents();
             _playerInvulnerabilityTimer = Mathf.Max(0f, _playerInvulnerabilityTimer - dt);
             TickKillStreak(dt);
             TickStreakSurge(dt);
@@ -3951,6 +3972,146 @@ namespace Deucarian.TemplateGameSurvivors
                 : SurvivorsEnemyRole.DreadElite;
         }
 
+        private void ResetHordeRushSchedule()
+        {
+            _hordeRushSequence = 0;
+            _hordeRushWarningShown = false;
+            _hordeRushWarningLabel = string.Empty;
+            _hordeRushWarningTargetTimeSeconds = 0f;
+            ScheduleNextHordeRush(0f, firstRush: true);
+        }
+
+        private void EnsureFutureHordeRushScheduled()
+        {
+            if (_nextHordeRushTimeSeconds <= RunTimeSeconds)
+            {
+                ScheduleNextHordeRush(RunTimeSeconds, firstRush: false);
+            }
+        }
+
+        private void ScheduleNextHordeRush(float startTimeSeconds, bool firstRush)
+        {
+            _hordeRushWarningShown = false;
+            _hordeRushWarningLabel = string.Empty;
+            _hordeRushWarningTargetTimeSeconds = 0f;
+            float interval = firstRush
+                ? CurrentTuning.HordeRushFirstTimeSeconds
+                : CurrentTuning.HordeRushIntervalSeconds;
+            _nextHordeRushTimeSeconds = interval <= 0f
+                ? 0f
+                : Mathf.Max(0f, startTimeSeconds) + Mathf.Max(0.1f, interval);
+        }
+
+        private void TickHordeRushEvents()
+        {
+            if (_nextHordeRushTimeSeconds <= 0f)
+            {
+                return;
+            }
+
+            TryBeginHordeRushWarning();
+            if (RunTimeSeconds < _nextHordeRushTimeSeconds)
+            {
+                return;
+            }
+
+            int spawned = SpawnHordeRushBurst();
+            _hordeRushSequence++;
+            ScheduleNextHordeRush(RunTimeSeconds, firstRush: false);
+            if (spawned <= 0)
+            {
+                return;
+            }
+
+            HordeRushSpawnCount++;
+            HordeRushEnemySpawnCount += spawned;
+            LastHordeRushFeedbackLabel = $"Horde Rush {HordeRushSpawnCount}: {spawned} enemies";
+            RecordStreakRewardFeedback(LastHordeRushFeedbackLabel, new Color(1f, 0.42f, 0.18f));
+            PlayFeedback(_bossPulse, PlayerPosition, 28, _dangerClip);
+        }
+
+        private void TryBeginHordeRushWarning()
+        {
+            float leadSeconds = Mathf.Max(0f, CurrentTuning.HordeRushWarningLeadSeconds);
+            if (_hordeRushWarningShown || leadSeconds <= 0f || _nextHordeRushTimeSeconds <= 0f)
+            {
+                return;
+            }
+
+            float warningTime = Mathf.Max(0f, _nextHordeRushTimeSeconds - leadSeconds);
+            if (RunTimeSeconds < warningTime || RunTimeSeconds >= _nextHordeRushTimeSeconds)
+            {
+                return;
+            }
+
+            _hordeRushWarningShown = true;
+            _hordeRushWarningLabel = "HORDE RUSH INCOMING";
+            _hordeRushWarningTargetTimeSeconds = _nextHordeRushTimeSeconds;
+            HordeRushWarningCount++;
+            LastHordeRushFeedbackLabel = _hordeRushWarningLabel;
+            PlayFeedback(_bossPulse, PlayerPosition, 22, _dangerClip);
+        }
+
+        private int SpawnHordeRushBurst()
+        {
+            int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.HordeRushExtraAliveAllowance) - _enemies.Count);
+            if (available <= 0)
+            {
+                return 0;
+            }
+
+            int targetCount = Mathf.Min(ResolveHordeRushEnemyCount(), available);
+            float radius = Mathf.Max(3f, CurrentTuning.HordeRushSpawnRadius);
+            int spawned = 0;
+            for (int i = 0; i < targetCount; i++)
+            {
+                float angle = ((i + 0.37f + _hordeRushSequence * 0.19f) / targetCount) * Mathf.PI * 2f;
+                float laneRadius = radius + ((i & 1) == 0 ? 0f : 1.35f);
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * laneRadius;
+                SurvivorsEnemyRole role = ResolveHordeRushRole(i);
+                if (SpawnEnemy(PlayerPosition + offset, explicitPosition: true, role) != null)
+                {
+                    spawned++;
+                }
+            }
+
+            return spawned;
+        }
+
+        private int ResolveHordeRushEnemyCount()
+        {
+            int baseCount = Mathf.Max(1, CurrentTuning.HordeRushBaseEnemyCount);
+            int increase = Mathf.Max(0, CurrentTuning.HordeRushEnemyCountIncreasePerRush);
+            int maxCount = Mathf.Max(baseCount, CurrentTuning.HordeRushMaxEnemyCount);
+            int escalationBonus = Mathf.Max(0, RunEscalationLevel);
+            return Mathf.Clamp(baseCount + _hordeRushSequence * increase + escalationBonus, 1, maxCount);
+        }
+
+        private SurvivorsEnemyRole ResolveHordeRushRole(int index)
+        {
+            if (RunTimeSeconds >= 150f && index % 11 == 0)
+            {
+                return SurvivorsEnemyRole.Splitter;
+            }
+
+            if (RunTimeSeconds >= 110f && index % 7 == 0)
+            {
+                return SurvivorsEnemyRole.Bruiser;
+            }
+
+            if (RunTimeSeconds >= 95f && index % 5 == 0)
+            {
+                return SurvivorsEnemyRole.Spitter;
+            }
+
+            if (index % 3 == 0)
+            {
+                return SurvivorsEnemyRole.Runner;
+            }
+
+            return SurvivorsEnemyRole.Swarm;
+        }
+
         private void EnterVictory()
         {
             if (State == SurvivorsRunState.Victory || State == SurvivorsRunState.GameOver)
@@ -5284,6 +5445,24 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.DrawTexture(panel, Texture2D.whiteTexture);
             GUI.color = new Color(1f, 1f, 1f, 0.96f);
             GUI.Label(panel, $"{CurrentMajorThreatWarningLabel}  {Mathf.CeilToInt(MajorThreatWarningRemainingSeconds)}s", _majorThreatWarningStyle);
+            GUI.color = oldColor;
+        }
+
+        private void DrawHordeRushWarning()
+        {
+            if (!IsHordeRushWarningActive)
+            {
+                return;
+            }
+
+            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 8.5f) * 0.28f;
+            float y = IsMajorThreatWarningActive ? 84f : 24f;
+            Rect panel = new Rect(Screen.width * 0.5f - 170f, y, 340f, 46f);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.28f, 0.08f, 0.02f, 0.52f + 0.18f * pulse);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 1f, 1f, 0.96f);
+            GUI.Label(panel, $"{CurrentHordeRushWarningLabel}  {Mathf.CeilToInt(HordeRushWarningRemainingSeconds)}s", _majorThreatWarningStyle);
             GUI.color = oldColor;
         }
 
