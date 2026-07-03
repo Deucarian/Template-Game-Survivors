@@ -46,6 +46,9 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemySpawnRadius = 13.75f;
         public float EnemySpawnIntervalSeconds = 1.15f;
         public int EnemyMaximumAlive = 34;
+        public int EnemySpawnPackBaseCount = 2;
+        public int EnemySpawnPackMaxCount = 5;
+        public int EnemySpawnPackIncreaseEveryEscalations = 2;
         public float EnemyMaxHealth = 14f;
         public float EnemyMoveSpeed = 1.35f;
         public float EnemyRadius = 0.48f;
@@ -377,6 +380,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemySpawnRadius = 13.5f;
             tuning.EnemySpawnIntervalSeconds = 0.9f;
             tuning.EnemyMaximumAlive = 48;
+            tuning.EnemySpawnPackBaseCount = 2;
+            tuning.EnemySpawnPackMaxCount = 6;
+            tuning.EnemySpawnPackIncreaseEveryEscalations = 2;
             tuning.EnemyMaxHealth = 12f;
             tuning.EnemyMoveSpeed = 1.45f;
             tuning.EnemyContactDamage = 5f;
@@ -440,6 +446,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemySpawnRadius = 11.5f;
             tuning.EnemySpawnIntervalSeconds = 0.35f;
             tuning.EnemyMaximumAlive = 96;
+            tuning.EnemySpawnPackBaseCount = 3;
+            tuning.EnemySpawnPackMaxCount = 8;
+            tuning.EnemySpawnPackIncreaseEveryEscalations = 1;
             tuning.EnemyMaxHealth = 10f;
             tuning.EnemyMoveSpeed = 2.4f;
             tuning.EnemyContactDamage = 6f;
@@ -503,6 +512,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemySpawnRadius = 12.5f;
             tuning.EnemySpawnIntervalSeconds = 0.72f;
             tuning.EnemyMaximumAlive = 56;
+            tuning.EnemySpawnPackBaseCount = 3;
+            tuning.EnemySpawnPackMaxCount = 7;
+            tuning.EnemySpawnPackIncreaseEveryEscalations = 2;
             tuning.EnemyMaxHealth = 11f;
             tuning.EnemyMoveSpeed = 2f;
             tuning.EnemyExperienceReward = 2;

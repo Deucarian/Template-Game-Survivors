@@ -330,6 +330,60 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator SpawnTicksCreateHordePacksAndRespectMaxAlive()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 0.1f;
+            controller.CurrentTuning.MinimumEnemySpawnIntervalSeconds = 0.05f;
+            controller.CurrentTuning.EnemyMaximumAlive = 5;
+            controller.CurrentTuning.EnemySpawnPackBaseCount = 3;
+            controller.CurrentTuning.EnemySpawnPackMaxCount = 3;
+            controller.CurrentTuning.EnemySpawnPackIncreaseEveryEscalations = 1;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.StartRun();
+
+            Assert.AreEqual(3, controller.CurrentEnemySpawnPackSize);
+
+            controller.Simulate(0.01f);
+            yield return null;
+
+            Assert.AreEqual(3, controller.SpawnedCount);
+            Assert.AreEqual(3, controller.ActiveEnemyCount);
+
+            controller.Simulate(0.11f);
+            yield return null;
+
+            Assert.AreEqual(5, controller.SpawnedCount);
+            Assert.AreEqual(5, controller.ActiveEnemyCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SpawnPackSizeScalesWithRunEscalation()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMaximumAlive = 20;
+            controller.CurrentTuning.EnemySpawnPackBaseCount = 1;
+            controller.CurrentTuning.EnemySpawnPackMaxCount = 4;
+            controller.CurrentTuning.EnemySpawnPackIncreaseEveryEscalations = 1;
+            controller.CurrentTuning.RunEscalationIntervalSeconds = 1f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.StartRun();
+
+            Assert.AreEqual(1, controller.CurrentEnemySpawnPackSize);
+
+            controller.Simulate(2.1f);
+            yield return null;
+
+            Assert.That(controller.RunEscalationLevel, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(3, controller.CurrentEnemySpawnPackSize);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator LevelUpChoiceAutoSelectsAfterTimeout()
         {
             SurvivorsTemplateController controller = CreateController();

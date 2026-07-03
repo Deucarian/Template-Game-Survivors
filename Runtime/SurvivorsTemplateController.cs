@@ -305,6 +305,7 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateTuning(pacingProfile));
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public float CurrentEnemySpawnIntervalSeconds => ResolveEnemySpawnIntervalSeconds();
+        public int CurrentEnemySpawnPackSize => ResolveEnemySpawnPackSize();
         public int CurrentEnemyMaximumAlive => ResolveEnemyMaximumAlive();
         public float CurrentEnemySpeedMultiplier => _runFlow == null ? 1f : _runFlow.ResolveEnemySpeedMultiplier();
         public IReadOnlyList<RunUpgradeDefinition> CurrentDraftChoices => _currentDraft == null ? EmptyChoices : _currentDraft.Choices;
@@ -3264,6 +3265,15 @@ namespace Deucarian.TemplateGameSurvivors
             return _victoryClearedThisRun ? maximumAlive + EndlessEnemyAliveBonus : maximumAlive;
         }
 
+        private int ResolveEnemySpawnPackSize()
+        {
+            int baseCount = Mathf.Max(1, CurrentTuning.EnemySpawnPackBaseCount);
+            int maxCount = Mathf.Max(baseCount, CurrentTuning.EnemySpawnPackMaxCount);
+            int escalationStep = Mathf.Max(1, CurrentTuning.EnemySpawnPackIncreaseEveryEscalations);
+            int escalationBonus = Mathf.Max(0, RunEscalationLevel) / escalationStep;
+            return Mathf.Clamp(baseCount + escalationBonus, 1, maxCount);
+        }
+
         private SurvivorsEnemyProfile ResolveEnemyProfile(SurvivorsEnemyRole role)
         {
             if (_runFlow != null && _runFlow.Definition != null)
@@ -3347,15 +3357,24 @@ namespace Deucarian.TemplateGameSurvivors
         private void TickEnemySpawning(float deltaTime)
         {
             _enemySpawnTimer -= deltaTime;
-            if (_enemySpawnTimer > 0f || _enemies.Count >= ResolveEnemyMaximumAlive())
+            int maximumAlive = ResolveEnemyMaximumAlive();
+            if (_enemySpawnTimer > 0f || _enemies.Count >= maximumAlive)
             {
                 return;
             }
 
-            SurvivorsEnemyRole role = _runFlow == null
-                ? SurvivorsEnemyRole.Swarm
-                : _runFlow.ResolveNextSwarmRole(RunTimeSeconds, _spawnSequence + 1);
-            SpawnEnemy(Vector3.zero, explicitPosition: false, role);
+            int packCount = Mathf.Min(ResolveEnemySpawnPackSize(), maximumAlive - _enemies.Count);
+            for (int i = 0; i < packCount; i++)
+            {
+                SurvivorsEnemyRole role = _runFlow == null
+                    ? SurvivorsEnemyRole.Swarm
+                    : _runFlow.ResolveNextSwarmRole(RunTimeSeconds, _spawnSequence + 1 + i);
+                if (SpawnEnemy(Vector3.zero, explicitPosition: false, role) == null)
+                {
+                    break;
+                }
+            }
+
             _enemySpawnTimer = ResolveEnemySpawnIntervalSeconds();
         }
 

@@ -213,6 +213,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.EnemySpawnIntervalSeconds, Is.InRange(0.9f, 1.4f));
             Assert.That(tuning.MinimumEnemySpawnIntervalSeconds, Is.GreaterThanOrEqualTo(0.3f));
             Assert.That(tuning.EnemyMaximumAlive, Is.InRange(24, 40));
+            Assert.That(tuning.EnemySpawnPackBaseCount, Is.InRange(2, 3));
+            Assert.That(tuning.EnemySpawnPackMaxCount, Is.GreaterThan(tuning.EnemySpawnPackBaseCount));
+            Assert.That(tuning.EnemySpawnPackIncreaseEveryEscalations, Is.GreaterThanOrEqualTo(1));
             Assert.That(swarm.MoveSpeed, Is.InRange(1.1f, 1.6f));
             Assert.That(swarm.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
             Assert.That(runner.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
@@ -263,6 +266,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.EnemySpawnIntervalSeconds, Is.LessThan(human.EnemySpawnIntervalSeconds));
             Assert.That(debugFast.MinimumEnemySpawnIntervalSeconds, Is.LessThan(human.MinimumEnemySpawnIntervalSeconds));
             Assert.That(debugFast.EnemyMaximumAlive, Is.GreaterThan(human.EnemyMaximumAlive));
+            Assert.That(debugFast.EnemySpawnPackBaseCount, Is.GreaterThanOrEqualTo(human.EnemySpawnPackBaseCount));
+            Assert.That(debugFast.EnemySpawnPackMaxCount, Is.GreaterThan(human.EnemySpawnPackMaxCount));
             Assert.That(debugFast.ExperienceRequiredBase, Is.LessThan(human.ExperienceRequiredBase));
             Assert.That(debugFast.FirstEliteSpawnTimeSeconds, Is.LessThan(human.FirstEliteSpawnTimeSeconds));
             Assert.That(debugFast.MinibossSpawnTimeSeconds, Is.LessThan(human.MinibossSpawnTimeSeconds));
