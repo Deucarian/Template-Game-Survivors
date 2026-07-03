@@ -640,6 +640,65 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator DefaultWeaponPathsRequireFiveRanksBeforeEvolution()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostSplinterUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostRicochetUpgradeId));
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
+            }
+
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostSplinterUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostRicochetUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostRicochetUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostSplinterUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostRicochetUpgradeId));
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostNeedleworkUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+
+            int previousFan = controller.ProjectileFanBonus;
+            int previousPierce = controller.ProjectilePierceBonus;
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+            Assert.That(controller.ProjectileFanBonus, Is.GreaterThan(previousFan));
+            Assert.That(controller.ProjectilePierceBonus, Is.GreaterThan(previousPierce));
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CinderEchoUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.TargetedSigilUpgradeId));
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.NovaEchoUpgradeId));
+            }
+
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CinderEchoUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.TargetedSigilUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.NovaEchoUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.TargetedSigilUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.CinderEchoUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.TargetedSigilUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.NovaEchoUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.NovaEchoUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.CinderScriptUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator OrbitWeaponCanDamageAndKillEnemy()
         {
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);

@@ -103,7 +103,7 @@ This is reusable Survivors template-kit code, not concrete product content.
 - `Content/DefaultClasses/classes.json`
 - `Content/DefaultProgression/progression.json`
 
-The sample includes basic swarm, runner, bruiser, ranged spitter, elite, scheduled miniboss, and final boss entries; blood shards; legacy XP; three persistent upgrades; boss/final-boss reward definitions; six boss relics; a default class with five core weapons; draftable Star Beam and Gravity Grenade weapon unlocks; a public Gravity Grenade rank/mutation/evolution path; one unlockable class with an advanced loadout/stat profile; draftable XP-gain and area-scaling passives; Epic upgrade spikes; normal/elite/boss rarity-weight tables; compact passive atlases; weapon skill tracks; and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
+The sample includes basic swarm, runner, bruiser, ranged spitter, elite, scheduled miniboss, and final boss entries; blood shards; legacy XP; three persistent upgrades; boss/final-boss reward definitions; six boss relics; a default class with five core weapons; deeper Frost Fan and Cinder Burst rank/mutation/evolution paths; draftable Star Beam and Gravity Grenade weapon unlocks; a public Gravity Grenade rank/mutation/evolution path; one unlockable class with an advanced loadout/stat profile; draftable XP-gain and area-scaling passives; Epic upgrade spikes; normal/elite/boss rarity-weight tables; compact passive atlases; weapon skill tracks; and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
 
 ## Tests
 

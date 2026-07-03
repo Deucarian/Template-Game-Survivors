@@ -46,8 +46,10 @@
       "classId": "",
       "targetWeaponId": "weapon.survivors.frost-fan",
       "nodes": [
-        { "id": "node.survivors.frost-fan.unlock", "displayName": "Frost Fan", "upgradeId": "upgrade.survivors.frost-fan", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 3 },
-        { "id": "node.survivors.frost-fan.needles", "displayName": "Frost Needlework", "upgradeId": "upgrade.survivors.frost-needlework", "kind": "WeaponMutation", "tier": 1, "pointCost": 1, "maxRank": 3 }
+        { "id": "node.survivors.frost-fan.unlock", "displayName": "Frost Fan", "upgradeId": "upgrade.survivors.frost-fan", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 5 },
+        { "id": "node.survivors.frost-fan.splinter", "displayName": "Frost Splinter", "upgradeId": "upgrade.survivors.frost-splinter", "kind": "WeaponMutation", "tier": 1, "pointCost": 1, "maxRank": 3 },
+        { "id": "node.survivors.frost-fan.ricochet", "displayName": "Frost Ricochet", "upgradeId": "upgrade.survivors.frost-ricochet", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 2 },
+        { "id": "node.survivors.frost-fan.needles", "displayName": "Frost Needlework", "upgradeId": "upgrade.survivors.frost-needlework", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 3 }
       ]
     },
     {
@@ -78,7 +80,7 @@
       "classId": "",
       "targetWeaponId": "weapon.survivors.star-nova",
       "nodes": [
-        { "id": "node.survivors.cinder-burst.nova-echo", "displayName": "Nova Echo", "upgradeId": "upgrade.survivors.nova-echo", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 3 },
+        { "id": "node.survivors.cinder-burst.nova-echo", "displayName": "Nova Echo", "upgradeId": "upgrade.survivors.nova-echo", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.cinder-burst.cinder-echoes", "displayName": "Cinder Echoes", "upgradeId": "upgrade.survivors.cinder-echoes", "kind": "WeaponMutation", "tier": 1, "pointCost": 2, "maxRank": 3 },
         { "id": "node.survivors.cinder-burst.targeted-sigils", "displayName": "Targeted Burst Sigils", "upgradeId": "upgrade.survivors.targeted-burst-sigils", "kind": "WeaponMutation", "tier": 2, "pointCost": 2, "maxRank": 1 }
       ]

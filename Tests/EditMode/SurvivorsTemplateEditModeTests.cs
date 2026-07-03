@@ -67,6 +67,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AstralConvergenceUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.StarBeamUnlockUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FrostSplinterUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FrostRicochetUpgradeId));
+            Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.FrostFanUpgradeId), Is.GreaterThanOrEqualTo(5));
+            Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.NovaEchoUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.ExtraPayloadUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(CountUpgradesByRarity(upgrades, RunUpgradeRarity.Epic), Is.GreaterThanOrEqualTo(2));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
