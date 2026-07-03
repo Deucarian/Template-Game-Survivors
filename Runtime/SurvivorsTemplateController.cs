@@ -184,6 +184,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ClassUnlockRewardCount { get; private set; }
         public int DamagePopupSpawnCount { get; private set; }
         public int PlayerDamageFeedbackCount { get; private set; }
+        public int WeaponEvolutionFeedbackCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -477,6 +478,7 @@ namespace Deucarian.TemplateGameSurvivors
             EliteRewardGrantCount = 0;
             MinibossRewardGrantCount = 0;
             BossRewardGrantCount = 0;
+            WeaponEvolutionFeedbackCount = 0;
             BossRelicDraftOpenCount = 0;
             EliteUpgradeDraftOpenCount = 0;
             BossUpgradeDraftOpenCount = 0;
@@ -2505,6 +2507,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (metadata.IsEvolution)
             {
                 _ownedEvolutionUpgradeIds.Add(upgrade.Id.Value);
+                WeaponEvolutionFeedbackCount++;
                 PlayFeedback(_levelUpPulse, PlayerPosition, 72, _levelUpClip);
             }
         }

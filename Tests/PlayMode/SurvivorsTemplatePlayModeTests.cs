@@ -717,7 +717,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            int beforeEvolutionFeedback = controller.WeaponEvolutionFeedbackCount;
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.AreEqual(beforeEvolutionFeedback + 1, controller.WeaponEvolutionFeedbackCount);
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4.4f, 0f, 0f), 100f);
             int beforeStormFire = controller.ProjectileLaunchCount;
