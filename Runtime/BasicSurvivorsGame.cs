@@ -306,8 +306,16 @@ namespace Deucarian.TemplateGameSurvivors
         public const string GiantRuneUpgradeId = "upgrade.survivors.giant-rune";
         public const string TwinCharmUpgradeId = "upgrade.survivors.twin-charm";
         public const string AstralConvergenceUpgradeId = "upgrade.survivors.astral-convergence";
+        public const string ArcaneWandUnlockUpgradeId = "upgrade.survivors.weapon.arcane-wand";
+        public const string FrostFanUnlockUpgradeId = "upgrade.survivors.weapon.frost-fan";
+        public const string OrbitWardUnlockUpgradeId = "upgrade.survivors.weapon.orbit-ward";
+        public const string ThornHaloUnlockUpgradeId = "upgrade.survivors.weapon.thorn-halo";
+        public const string MoonSlashUnlockUpgradeId = "upgrade.survivors.weapon.moon-slash";
+        public const string StarNovaUnlockUpgradeId = "upgrade.survivors.weapon.star-nova";
         public const string StarBeamUnlockUpgradeId = "upgrade.survivors.weapon.star-beam";
         public const string GravityGrenadeUnlockUpgradeId = "upgrade.survivors.weapon.gravity-grenade";
+        public const string RuneTrapUnlockUpgradeId = "upgrade.survivors.weapon.rune-trap";
+        public const string AetherMineUnlockUpgradeId = "upgrade.survivors.weapon.aether-mine";
         public const string ArcaneStormEvolutionUpgradeId = "upgrade.survivors.evolution.arcane-storm";
         public const string BlizzardCrownEvolutionUpgradeId = "upgrade.survivors.evolution.blizzard-crown";
         public const string CrimsonAegisEvolutionUpgradeId = "upgrade.survivors.evolution.crimson-aegis";
@@ -1059,8 +1067,16 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.swift-steps", RunUpgradeRarity.Uncommon, 44, 5, MoveSpeedEffect, PlayerTarget, 0.45d),
                 Upgrade("upgrade.survivors.gem-magnet", RunUpgradeRarity.Uncommon, 44, 5, MagnetRangeEffect, PickupTarget, 1.1d),
                 Upgrade("upgrade.survivors.iron-blood", RunUpgradeRarity.Rare, 28, 4, MaxHealthEffect, PlayerTarget, 8.0d),
+                Upgrade(ArcaneWandUnlockUpgradeId, RunUpgradeRarity.Common, 42, 1, WeaponUnlockEffect, WeaponTarget, 1.0d),
+                Upgrade(FrostFanUnlockUpgradeId, RunUpgradeRarity.Uncommon, 34, 1, WeaponUnlockEffect, FrostFanWeaponTarget, 1.0d),
+                Upgrade(OrbitWardUnlockUpgradeId, RunUpgradeRarity.Uncommon, 32, 1, WeaponUnlockEffect, OrbitWeaponTarget, 1.0d),
+                Upgrade(ThornHaloUnlockUpgradeId, RunUpgradeRarity.Rare, 22, 1, WeaponUnlockEffect, ThornHaloWeaponTarget, 1.0d),
+                Upgrade(StarNovaUnlockUpgradeId, RunUpgradeRarity.Rare, 24, 1, WeaponUnlockEffect, BurstWeaponTarget, 1.0d),
                 Upgrade(StarBeamUnlockUpgradeId, RunUpgradeRarity.Uncommon, 34, 1, WeaponUnlockEffect, HitscanWeaponTarget, 1.0d),
                 Upgrade(GravityGrenadeUnlockUpgradeId, RunUpgradeRarity.Rare, 18, 1, WeaponUnlockEffect, GrenadeWeaponTarget, 1.0d),
+                Upgrade(MoonSlashUnlockUpgradeId, RunUpgradeRarity.Uncommon, 24, 1, WeaponUnlockEffect, MeleeWeaponTarget, 1.0d),
+                Upgrade(RuneTrapUnlockUpgradeId, RunUpgradeRarity.Uncommon, 22, 1, WeaponUnlockEffect, TrapWeaponTarget, 1.0d),
+                Upgrade(AetherMineUnlockUpgradeId, RunUpgradeRarity.Uncommon, 20, 1, WeaponUnlockEffect, MineWeaponTarget, 1.0d),
                 Upgrade(FrostFanUpgradeId, RunUpgradeRarity.Uncommon, 40, 5, ProjectileFanEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(FrostSplinterUpgradeId, RunUpgradeRarity.Rare, 24, 3, ProjectileForkEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(FrostRicochetUpgradeId, RunUpgradeRarity.Rare, 22, 2, ProjectileChainEffect, FrostFanWeaponTarget, 1.0d),
@@ -1204,27 +1220,32 @@ namespace Deucarian.TemplateGameSurvivors
         {
             return new[]
             {
-                UpgradeMetadata("upgrade.survivors.arcane-damage", "Arcane Damage", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt deals more damage."),
-                UpgradeMetadata("upgrade.survivors.quick-casting", "Quick Casting", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt fires more often."),
+                UpgradeMetadata("upgrade.survivors.arcane-damage", "Arcane Damage", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt deals more damage.", ArcaneWandWeaponContentId),
+                UpgradeMetadata("upgrade.survivors.quick-casting", "Quick Casting", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt fires more often.", ArcaneWandWeaponContentId),
                 UpgradeMetadata("upgrade.survivors.swift-steps", "Swift Steps", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: move faster through horde pressure."),
                 UpgradeMetadata("upgrade.survivors.gem-magnet", "Gem Magnet", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PickupTarget.Value, "Passive: pull XP gems from farther away."),
                 UpgradeMetadata("upgrade.survivors.iron-blood", "Iron Blood", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: increase maximum health."),
-                UpgradeMetadata(FrostFanUpgradeId, "Frost Fan", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Add more frost shards to the fan pattern."),
+                UpgradeMetadata(ArcaneWandUnlockUpgradeId, "Arcane Wand", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, ArcaneWandWeaponContentId, "Unlock weapon: fire focused arcane bolts at nearby enemies."),
+                UpgradeMetadata(FrostFanUnlockUpgradeId, "Frost Fan", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, FrostFanWeaponContentId, "Unlock weapon: cast a cone of slowing frost shards."),
+                UpgradeMetadata(OrbitWardUnlockUpgradeId, "Blood Ring", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, OrbitWardWeaponContentId, "Unlock weapon: orbit blades around the player."),
+                UpgradeMetadata(ThornHaloUnlockUpgradeId, "Thorn Halo", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, ThornHaloWeaponContentId, "Unlock weapon: form a wider guard ring around the player."),
+                UpgradeMetadata(StarNovaUnlockUpgradeId, "Cinder Burst", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, StarNovaWeaponContentId, "Unlock weapon: pulse a fiery burst around the player."),
+                UpgradeMetadata(FrostFanUpgradeId, "Frost Fan", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Add more frost shards to the fan pattern.", FrostFanWeaponContentId),
                 UpgradeMetadata(FrostSplinterUpgradeId, "Frost Splinter", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Frost shards split into secondary shards after impact.", FrostFanWeaponContentId, FrostFanUpgradeId, 2),
                 UpgradeMetadata(FrostRicochetUpgradeId, "Frost Ricochet", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Frost shards jump between packed enemies.", FrostFanWeaponContentId, FrostFanUpgradeId, 3),
-                UpgradeMetadata(OrbitingFocusUpgradeId, "Orbiting Focus", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Add blades to the orbiting ward."),
+                UpgradeMetadata(OrbitingFocusUpgradeId, "Orbiting Focus", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Add blades to the orbiting ward.", OrbitWardWeaponContentId),
                 UpgradeMetadata(ThornHaloUpgradeId, "Thorn Halo Wall", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Push the halo outward and add another guard blade.", ThornHaloWeaponContentId, OrbitingFocusUpgradeId, 2),
                 UpgradeMetadata(HaloSpiralUpgradeId, "Halo Spiral", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Thorn Halo widens into a denser spiral.", ThornHaloWeaponContentId, OrbitingFocusUpgradeId, 3),
                 UpgradeMetadata(MoonlitEdgeUpgradeId, "Moonlit Edge", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Moon Slash cuts harder.", MoonSlashWeaponContentId),
                 UpgradeMetadata(CrescentChainUpgradeId, "Crescent Chain", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Let Moon Slash cut through more targets.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 2),
                 UpgradeMetadata(LunarTempoUpgradeId, "Lunar Tempo", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Moon Slash recovers faster between cuts.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 3),
-                UpgradeMetadata(NovaEchoUpgradeId, "Nova Echo", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Add another pulse to Cinder Burst."),
+                UpgradeMetadata(NovaEchoUpgradeId, "Nova Echo", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Add another pulse to Cinder Burst.", StarNovaWeaponContentId),
                 UpgradeMetadata(CinderEchoUpgradeId, "Cinder Echoes", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Repeat Cinder Burst with delayed echoes.", StarNovaWeaponContentId, NovaEchoUpgradeId, 2),
                 UpgradeMetadata(TargetedSigilUpgradeId, "Targeted Burst Sigils", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Cinder Burst leaves focused sigils on nearby enemies.", StarNovaWeaponContentId, NovaEchoUpgradeId, 3),
-                UpgradeMetadata("upgrade.survivors.piercing-bolts", "Piercing Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt pierces additional enemies."),
-                UpgradeMetadata("upgrade.survivors.chain-bolts", "Chain Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt jumps to a nearby enemy after impact."),
-                UpgradeMetadata("upgrade.survivors.forked-bolts", "Forked Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt splits after a hit."),
-                UpgradeMetadata("upgrade.survivors.returning-bolts", "Returning Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt boomerangs after impact."),
+                UpgradeMetadata("upgrade.survivors.piercing-bolts", "Piercing Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt pierces additional enemies.", ArcaneWandWeaponContentId),
+                UpgradeMetadata("upgrade.survivors.chain-bolts", "Chain Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt jumps to a nearby enemy after impact.", ArcaneWandWeaponContentId),
+                UpgradeMetadata("upgrade.survivors.forked-bolts", "Forked Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt splits after a hit.", ArcaneWandWeaponContentId),
+                UpgradeMetadata("upgrade.survivors.returning-bolts", "Returning Bolts", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt boomerangs after impact.", ArcaneWandWeaponContentId),
                 UpgradeMetadata("upgrade.survivors.distilled-poison", "Distilled Poison", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StatusTarget.Value, "Passive: weapon hits leave poison damage over time."),
                 UpgradeMetadata("upgrade.survivors.hemorrhage-edge", "Hemorrhage Edge", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StatusTarget.Value, "Passive: weapon hits add bleeding damage over time."),
                 UpgradeMetadata("upgrade.survivors.execution-rite", "Execution Rite", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StatusTarget.Value, "Passive: wounded enemies can be executed by weapon hits."),
@@ -1238,6 +1259,9 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(AstralConvergenceUpgradeId, "Astral Convergence", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, AreaTarget.Value, "Epic mutation: enlarge area weapons and sharpen global damage."),
                 UpgradeMetadata(StarBeamUnlockUpgradeId, "Star Beam", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, StarBeamWeaponContentId, "Unlock weapon: a focused beam that pierces the front line."),
                 UpgradeMetadata(GravityGrenadeUnlockUpgradeId, "Gravity Grenade", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, GravityGrenadeWeaponContentId, "Unlock weapon: lob a heavy payload that detonates inside the horde."),
+                UpgradeMetadata(MoonSlashUnlockUpgradeId, "Moon Slash", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, MoonSlashWeaponContentId, "Unlock weapon: sweep nearby enemies with arcing moon cuts."),
+                UpgradeMetadata(RuneTrapUnlockUpgradeId, "Rune Trap", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, RuneTrapWeaponContentId, "Unlock weapon: place traps that detonate under the horde."),
+                UpgradeMetadata(AetherMineUnlockUpgradeId, "Aether Mine", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, AetherMineWeaponContentId, "Unlock weapon: seed mines that punish packed enemies."),
                 UpgradeMetadata(ArcaneThesisUpgradeId, "Arcane Thesis", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, ArcaneWandWeaponContentId, "Passive: commit to Arc Bolt damage and unlock Arcane Storm."),
                 UpgradeMetadata(FrostNeedleworkUpgradeId, "Frost Needlework", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, FrostFanWeaponContentId, "Passive: sharpen frost shards and unlock Blizzard Crown."),
                 UpgradeMetadata(BloodRingCanticleUpgradeId, "Blood Ring Canticle", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, OrbitWardWeaponContentId, "Passive: deepen orbit damage and unlock Crimson Aegis."),
@@ -1425,45 +1449,50 @@ namespace Deucarian.TemplateGameSurvivors
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     string.Empty,
                     ArcaneWandWeaponContentId,
-                    Node("node.survivors.arc-bolt.damage", "Arcane Damage", "upgrade.survivors.arcane-damage", SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 8),
-                    Node("node.survivors.arc-bolt.pierce", "Piercing Bolts", "upgrade.survivors.piercing-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 4),
-                    Node("node.survivors.arc-bolt.chain", "Chain Bolts", "upgrade.survivors.chain-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 3),
-                    Node("node.survivors.arc-bolt.return", "Returning Bolts", "upgrade.survivors.returning-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 3, 2, 2)),
+                    Node("node.survivors.arc-bolt.unlock", "Arcane Wand", ArcaneWandUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.arc-bolt.damage", "Arcane Damage", "upgrade.survivors.arcane-damage", SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 8),
+                    Node("node.survivors.arc-bolt.pierce", "Piercing Bolts", "upgrade.survivors.piercing-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4),
+                    Node("node.survivors.arc-bolt.chain", "Chain Bolts", "upgrade.survivors.chain-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 3, 2, 3),
+                    Node("node.survivors.arc-bolt.return", "Returning Bolts", "upgrade.survivors.returning-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 4, 2, 2)),
                 Track(
                     "progression.survivors.frost-fan.weapon",
                     "Frost Fan Skill Track",
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     string.Empty,
                     FrostFanWeaponContentId,
-                    Node("node.survivors.frost-fan.unlock", "Frost Fan", FrostFanUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 5),
-                    Node("node.survivors.frost-fan.splinter", "Frost Splinter", FrostSplinterUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 3),
-                    Node("node.survivors.frost-fan.ricochet", "Frost Ricochet", FrostRicochetUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 2),
-                    Node("node.survivors.frost-fan.needles", "Frost Needlework", FrostNeedleworkUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 3)),
+                    Node("node.survivors.frost-fan.unlock", "Frost Fan", FrostFanUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.frost-fan.rank", "Frost Fan", FrostFanUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
+                    Node("node.survivors.frost-fan.splinter", "Frost Splinter", FrostSplinterUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 3),
+                    Node("node.survivors.frost-fan.ricochet", "Frost Ricochet", FrostRicochetUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2),
+                    Node("node.survivors.frost-fan.needles", "Frost Needlework", FrostNeedleworkUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 4, 1, 3)),
                 Track(
                     "progression.survivors.blood-ring.weapon",
                     "Blood Ring Skill Track",
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     string.Empty,
                     OrbitWardWeaponContentId,
-                    Node("node.survivors.blood-ring.focus", "Orbiting Focus", OrbitingFocusUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 5),
-                    Node("node.survivors.blood-ring.canticle", "Blood Ring Canticle", BloodRingCanticleUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 2, 3)),
+                    Node("node.survivors.blood-ring.unlock", "Blood Ring", OrbitWardUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.blood-ring.focus", "Orbiting Focus", OrbitingFocusUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
+                    Node("node.survivors.blood-ring.canticle", "Blood Ring Canticle", BloodRingCanticleUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 3)),
                 Track(
                     "progression.survivors.thorn-halo.weapon",
                     "Thorn Halo Skill Track",
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     string.Empty,
                     ThornHaloWeaponContentId,
-                    Node("node.survivors.thorn-halo.wall", "Thorn Halo Wall", ThornHaloUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 0, 1, 3),
-                    Node("node.survivors.thorn-halo.spiral", "Halo Spiral", HaloSpiralUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 2)),
+                    Node("node.survivors.thorn-halo.unlock", "Thorn Halo", ThornHaloUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.thorn-halo.wall", "Thorn Halo Wall", ThornHaloUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 3),
+                    Node("node.survivors.thorn-halo.spiral", "Halo Spiral", HaloSpiralUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 2)),
                 Track(
                     "progression.survivors.cinder-burst.weapon",
                     "Cinder Burst Skill Track",
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     string.Empty,
                     StarNovaWeaponContentId,
-                    Node("node.survivors.cinder-burst.nova-echo", "Nova Echo", NovaEchoUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 5),
-                    Node("node.survivors.cinder-burst.cinder-echoes", "Cinder Echoes", CinderEchoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 2, 3),
-                    Node("node.survivors.cinder-burst.targeted-sigils", "Targeted Burst Sigils", TargetedSigilUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 1)),
+                    Node("node.survivors.cinder-burst.unlock", "Cinder Burst", StarNovaUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.cinder-burst.nova-echo", "Nova Echo", NovaEchoUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
+                    Node("node.survivors.cinder-burst.cinder-echoes", "Cinder Echoes", CinderEchoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 3),
+                    Node("node.survivors.cinder-burst.targeted-sigils", "Targeted Burst Sigils", TargetedSigilUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 2, 1)),
                 Track(
                     "progression.survivors.star-beam.weapon",
                     "Star Beam Skill Track",
@@ -1480,9 +1509,10 @@ namespace Deucarian.TemplateGameSurvivors
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     EmberVanguardClassId,
                     MoonSlashWeaponContentId,
-                    Node("node.survivors.ember-vanguard.moon-slash.edge", "Moonlit Edge", MoonlitEdgeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 5),
-                    Node("node.survivors.ember-vanguard.moon-slash.crescent-chain", "Crescent Chain", CrescentChainUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 4),
-                    Node("node.survivors.ember-vanguard.moon-slash.tempo", "Lunar Tempo", LunarTempoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 2)),
+                    Node("node.survivors.ember-vanguard.moon-slash.unlock", "Moon Slash", MoonSlashUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.ember-vanguard.moon-slash.edge", "Moonlit Edge", MoonlitEdgeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
+                    Node("node.survivors.ember-vanguard.moon-slash.crescent-chain", "Crescent Chain", CrescentChainUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4),
+                    Node("node.survivors.ember-vanguard.moon-slash.tempo", "Lunar Tempo", LunarTempoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2)),
                 Track(
                     "progression.survivors.gravity-grenade.unlock",
                     "Gravity Grenade Skill Track",
@@ -1499,10 +1529,12 @@ namespace Deucarian.TemplateGameSurvivors
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     EmberVanguardClassId,
                     RuneTrapWeaponContentId,
-                    Node("node.survivors.ember-vanguard.payloads.rune-lattice", "Rune Lattice", RuneLatticeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 5),
-                    Node("node.survivors.ember-vanguard.payloads.snaring-runes", "Snaring Runes", SnaringRunesUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 3),
-                    Node("node.survivors.ember-vanguard.payloads.aether-bloom", "Aether Bloom", AetherBloomUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 3),
-                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 3, 2, 2))
+                    Node("node.survivors.ember-vanguard.payloads.rune-trap-unlock", "Rune Trap", RuneTrapUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.ember-vanguard.payloads.aether-mine-unlock", "Aether Mine", AetherMineUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 1, 1, 1),
+                    Node("node.survivors.ember-vanguard.payloads.rune-lattice", "Rune Lattice", RuneLatticeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 2, 1, 5),
+                    Node("node.survivors.ember-vanguard.payloads.snaring-runes", "Snaring Runes", SnaringRunesUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 3),
+                    Node("node.survivors.ember-vanguard.payloads.aether-bloom", "Aether Bloom", AetherBloomUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 4, 1, 3),
+                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 5, 2, 2))
             };
         }
 
@@ -1668,8 +1700,16 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == GiantRuneUpgradeId) return "Giant Rune";
             if (value == TwinCharmUpgradeId) return "Twin Charm";
             if (value == AstralConvergenceUpgradeId) return "Astral Convergence";
+            if (value == ArcaneWandUnlockUpgradeId) return "Arcane Wand";
+            if (value == FrostFanUnlockUpgradeId) return "Frost Fan";
+            if (value == OrbitWardUnlockUpgradeId) return "Blood Ring";
+            if (value == ThornHaloUnlockUpgradeId) return "Thorn Halo";
+            if (value == MoonSlashUnlockUpgradeId) return "Moon Slash";
+            if (value == StarNovaUnlockUpgradeId) return "Cinder Burst";
             if (value == StarBeamUnlockUpgradeId) return "Star Beam";
             if (value == GravityGrenadeUnlockUpgradeId) return "Gravity Grenade";
+            if (value == RuneTrapUnlockUpgradeId) return "Rune Trap";
+            if (value == AetherMineUnlockUpgradeId) return "Aether Mine";
             if (value == "upgrade.survivors.arcane-thesis") return "Arcane Thesis";
             if (value == "upgrade.survivors.frost-needlework") return "Frost Needlework";
             if (value == "upgrade.survivors.blood-ring-canticle") return "Blood Ring Canticle";

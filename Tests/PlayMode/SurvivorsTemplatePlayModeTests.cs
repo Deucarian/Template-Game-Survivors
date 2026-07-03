@@ -1026,6 +1026,14 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ThornHaloWeaponContentId));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarNovaWeaponContentId));
             Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
+            Assert.AreEqual(SurvivorsRunUpgradeCategory.Weapon, controller.GetUpgradeCategoryForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
             Assert.AreEqual(SurvivorsRunUpgradeCategory.Weapon, controller.GetUpgradeCategoryForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
@@ -2635,6 +2643,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
             Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonOathUpgradeId));
+            Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
             Object.Destroy(defaultController.gameObject);
             yield return null;
 
@@ -2642,6 +2651,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.MoonSlashWeaponContentId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CrescentChainUpgradeId));

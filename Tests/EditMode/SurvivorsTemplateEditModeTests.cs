@@ -73,10 +73,20 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GiantRuneUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.TwinCharmUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AstralConvergenceUpgradeId));
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.ArcaneWandUnlockUpgradeId, BasicSurvivorsGame.ArcaneWandWeaponContentId);
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.FrostFanUnlockUpgradeId, BasicSurvivorsGame.FrostFanWeaponContentId);
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.OrbitWardUnlockUpgradeId, BasicSurvivorsGame.OrbitWardWeaponContentId);
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.ThornHaloUnlockUpgradeId, BasicSurvivorsGame.ThornHaloWeaponContentId);
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.StarNovaUnlockUpgradeId, BasicSurvivorsGame.StarNovaWeaponContentId);
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.StarBeamUnlockUpgradeId, BasicSurvivorsGame.StarBeamWeaponContentId);
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.StarFocusUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.StarPulseUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId, BasicSurvivorsGame.GravityGrenadeWeaponContentId);
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.MoonSlashUnlockUpgradeId, BasicSurvivorsGame.MoonSlashWeaponContentId);
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.RuneTrapUnlockUpgradeId, BasicSurvivorsGame.RuneTrapWeaponContentId);
+            AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.AetherMineUnlockUpgradeId, BasicSurvivorsGame.AetherMineWeaponContentId);
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FrostSplinterUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FrostRicochetUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.HaloSpiralUpgradeId));
@@ -134,6 +144,39 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     : 0;
         }
 
+        private static void AssertWeaponUnlockMetadata(
+            RunUpgradeCatalog catalog,
+            IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata,
+            string upgradeId,
+            string weaponId)
+        {
+            Assert.IsTrue(ContainsUpgrade(catalog, upgradeId), "Missing weapon unlock: " + upgradeId);
+            Assert.That(GetMaxRank(catalog, upgradeId), Is.EqualTo(1));
+            SurvivorsRunUpgradeMetadata entry = FindMetadata(metadata, upgradeId);
+            Assert.NotNull(entry, "Missing metadata for " + upgradeId);
+            Assert.AreEqual(SurvivorsRunUpgradeCategory.Weapon, entry.Category);
+            Assert.AreEqual(SurvivorsRunBuildSlotKind.Weapon, entry.SlotKind);
+            Assert.AreEqual(weaponId, entry.AffectedContentId);
+        }
+
+        private static SurvivorsRunUpgradeMetadata FindMetadata(IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata, string upgradeId)
+        {
+            if (metadata == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < metadata.Count; i++)
+            {
+                if (metadata[i] != null && string.Equals(metadata[i].UpgradeId, upgradeId, StringComparison.Ordinal))
+                {
+                    return metadata[i];
+                }
+            }
+
+            return null;
+        }
+
         private static void AssertRunUpgradeMetadataCoversPassivesAndEvolutions(RunUpgradeCatalog upgrades, IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata)
         {
             Assert.NotNull(metadata);
@@ -179,7 +222,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             }
 
             Assert.That(passiveCount, Is.GreaterThanOrEqualTo(8));
-            Assert.That(weaponUnlockCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(weaponUnlockCount, Is.GreaterThanOrEqualTo(10));
             Assert.That(evolutionCount, Is.GreaterThanOrEqualTo(6));
         }
 
