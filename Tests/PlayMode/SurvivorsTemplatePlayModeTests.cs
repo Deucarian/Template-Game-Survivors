@@ -122,12 +122,29 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         public IEnumerator ImportedPlaytestSceneStartsControllerInHumanPlaytest()
         {
             const string sceneName = "PLAYTEST_THIS_SCENE_Survivors_Game";
+            const string scenePath = "Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity";
+#if UNITY_EDITOR
+            if (!System.IO.File.Exists(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), scenePath)))
+            {
+                Assert.Ignore("Imported playtest scene is not present in this project.");
+            }
+
+            AsyncOperation sceneLoad = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
+                scenePath,
+                new LoadSceneParameters(LoadSceneMode.Single));
+            Assert.NotNull(sceneLoad, "Imported playtest scene could not be loaded by path.");
+            while (!sceneLoad.isDone)
+            {
+                yield return null;
+            }
+#else
             if (!Application.CanStreamedLevelBeLoaded(sceneName))
             {
                 Assert.Ignore("Imported playtest scene is not in this project's build settings.");
             }
 
             SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
+#endif
             SurvivorsTemplateController controller = null;
             float deadline = Time.realtimeSinceStartup + 10f;
             while (Time.realtimeSinceStartup < deadline)
