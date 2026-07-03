@@ -29,6 +29,7 @@ First 30 seconds:
 - The scene starts in Human Playtest, not Debug Fast.
 - Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
 - XP gems should pulse while being pulled in; rapid clusters should show a Gem Rush banner, pickup-range upgrades should affect gems already on the ground, and magnet pickups or `M` should make distant XP gems spin and surge toward the player.
+- Sustained movement through the endless arena should drop small roaming XP caches; longer travel should eventually add a magnet recall pickup to a cache.
 - Sustained kill streaks should briefly announce bonus XP, vital-shard, magnet, and blood-shard drops when they trigger.
 - At longer streak milestones, Tempo Surge should appear and briefly make weapons hit harder, cool down faster, move the player faster, and pull new pickups from farther away.
 - When wounded, sustained kill streaks or major-enemy kills can leave vital shards; collecting one should restore health and clear the low-health warning if enough health returns.

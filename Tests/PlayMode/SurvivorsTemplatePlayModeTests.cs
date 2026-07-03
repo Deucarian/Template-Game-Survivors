@@ -746,6 +746,27 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator RoamingArenaTravelDropsRewardCaches()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.StartRun();
+            yield return null;
+
+            yield return SimulateFrames(controller, 660, Vector2.right);
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.That(controller.RoamingCacheDropCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(controller.RoamingCacheExperienceGemDropCount, Is.GreaterThanOrEqualTo(9));
+            Assert.That(controller.RoamingCacheMagnetDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Roaming Cache"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Roaming Cache"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RapidKillsCreateStreakBonusDropsAndMagnet()
         {
             SurvivorsTemplateController controller = CreateController();

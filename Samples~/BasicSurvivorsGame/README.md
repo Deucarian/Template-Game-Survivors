@@ -18,6 +18,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Enemies escalate from basic swarm pressure into fast runners, bruisers, ranged spitters, splitters that burst into smaller enemies, Blood Warden and Dread Lantern elite variants, minibosses, and a final boss.
 - Payload upgrades can add extra payloads, bigger explosions, wider trigger radii, and satellite hazard fields.
 - The run escalates over a 30-minute arc, adds a first elite around 3 minutes and a dread elite around 5 minutes, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
+- Long movement through the endless arena drops small roaming XP caches, and every few caches can add a magnet recall pickup so repositioning has a reward beat.
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary.
 - Elite and miniboss defeat open stronger upgrade reward drafts.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
@@ -43,6 +44,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 First run target:
 
 - Move through the opening horde and let the wand auto-fire.
+- Keep moving across the arena long enough to see roaming XP caches appear.
 - Collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
 - Pick Star Beam when it appears, rank Star Focus five times, branch into Prismatic Beam or Star Pulse, and take Twin Charm to build toward Tempest Prism side beams; or pick Gravity Grenade, rank Extra Payload and Bigger Booms, then take Giant Rune to build toward Gravefield Engine.
 - For a default-class evolution, rank Arcane Damage five times and take Arcane Thesis to build Arc Bolt toward Arcane Storm, rank Frost Fan five times and take Frost Needlework, rank Orbiting Focus five times and take Blood Ring Canticle, or rank Nova Echo five times and take Cinder Script.
