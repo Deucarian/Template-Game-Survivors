@@ -38,7 +38,7 @@ Use `#main` for stable package consumption and `#develop` when testing active pa
 2. Import the `Basic Survivors Game` sample.
 3. Open the imported sample scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
 4. Press Play.
-5. Move through the horde, collect XP gems, choose level-up options, take the elite reward after the miniboss, then build toward a boss evolution reward before defeating the final boss or reaching the survival-duration clear condition.
+5. Move through the horde, collect XP gems, choose level-up options, take the elite reward after the miniboss, then build toward a boss evolution reward before defeating the final boss; if no evolution is ready, the boss falls back to a stronger reward draft before victory.
 
 For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. More detail lives in `Documentation~/playtesting.md`.
 
@@ -89,7 +89,7 @@ The reference clone has a much larger authored project: class-owned content pack
 - five immediately active clone-spirit weapons instead of a single starter wand
 - six-plus enemy pressure types and long-run escalation instead of one swarm profile
 - 30+ meaningful upgrade choices with visible behavior changes, status/sustain hooks, passive requirements, and six legendary evolutions
-- elite upgrade rewards, boss evolution rewards, boss relic choices, multiple persistent meta upgrades, class loadouts, compact passive atlases, weapon skill tracks, and class-gated advanced tools
+- elite upgrade rewards, boss evolution rewards with rare-or-better fallback drafts, boss relic choices, multiple persistent meta upgrades, class loadouts, compact passive atlases, weapon skill tracks, and class-gated advanced tools
 - reroll, skip-for-shards, and banish controls for draft quality of life
 - reward-choice timeout behavior so long sessions keep moving if a choice is left open
 - runtime debug controls under Deucarian menu conventions

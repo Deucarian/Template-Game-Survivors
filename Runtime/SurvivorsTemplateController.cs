@@ -1094,7 +1094,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 BossKilledCount++;
                 GrantBossReward(SurvivorsEnemyRole.Boss);
-                if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Boss, requireEvolutionChoice: true))
+                if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false))
                 {
                     EnterVictory();
                 }
@@ -1894,8 +1894,7 @@ namespace Deucarian.TemplateGameSurvivors
                     resolvedLocks = CreateEligibleEvolutionChoiceLocks(CurrentTuning.DraftChoiceCount);
                     break;
                 case SurvivorsRewardSelectionKind.BossUpgrade:
-                    requireEvolutionChoice = true;
-                    draftCatalog = CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole.Boss, requireEvolutionChoice: true);
+                    draftCatalog = CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false);
                     resolvedLocks = CreateEligibleEvolutionChoiceLocks(CurrentTuning.DraftChoiceCount);
                     break;
                 default:

@@ -803,7 +803,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator BossCanDieAndTriggerVictory()
+        public IEnumerator BossDeathOpensFallbackRewardThenTriggersVictory()
         {
             SurvivorsTemplateController controller = CreateController();
             yield return null;
@@ -814,6 +814,15 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.That(controller.BossSpawnCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.BossKilledCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
+            Assert.That(controller.BossUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.AreEqual(-1, IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+
+            Assert.IsTrue(controller.SkipCurrentDraft());
+            yield return null;
+
             Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
             Assert.IsTrue(controller.IsVictory);
             Assert.That(controller.BossRewardGrantCount, Is.GreaterThanOrEqualTo(1));
@@ -871,9 +880,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController first = CreateController(storage, slot);
             yield return null;
 
-            SurvivorsEnemyActor boss = first.SpawnBossForTest(first.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
-            boss.ApplyDamage(100f, "test.boss");
-            yield return null;
+            yield return DefeatBossAndResolveReward(first);
             long savedBloodShards = first.MetaBloodShards;
 
             Object.Destroy(first.gameObject);
@@ -897,9 +904,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController first = CreateController(storage, slot);
             yield return null;
 
-            SurvivorsEnemyActor boss = first.SpawnBossForTest(first.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
-            boss.ApplyDamage(100f, "test.boss");
-            yield return null;
+            yield return DefeatBossAndResolveReward(first);
 
             long savedBloodShards = first.MetaBloodShards;
             long lifetimeBloodShards = first.LifetimeBloodShards;
@@ -930,9 +935,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateController(storage, "play-no-reset-normal-profile");
             yield return null;
 
-            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
-            boss.ApplyDamage(100f, "test.boss");
-            yield return null;
+            yield return DefeatBossAndResolveReward(controller);
 
             long savedBloodShards = controller.MetaBloodShards;
             long lifetimeBloodShards = controller.LifetimeBloodShards;
@@ -961,9 +964,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateController(storage, "play-no-reset-restart");
             yield return null;
 
-            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
-            boss.ApplyDamage(100f, "test.boss");
-            yield return null;
+            yield return DefeatBossAndResolveReward(controller);
 
             long savedBloodShards = controller.MetaBloodShards;
             long lifetimeBloodShards = controller.LifetimeBloodShards;
@@ -991,9 +992,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateController(storage, "play-explicit-reset");
             yield return null;
 
-            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
-            boss.ApplyDamage(100f, "test.boss");
-            yield return null;
+            yield return DefeatBossAndResolveReward(controller);
 
             Assert.That(controller.MetaBloodShards, Is.GreaterThan(0));
             Assert.That(controller.LifetimeBloodShards, Is.GreaterThan(0));
@@ -1076,9 +1075,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController first = CreateController(storage, slot);
             yield return null;
 
-            SurvivorsEnemyActor boss = first.SpawnBossForTest(first.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
-            boss.ApplyDamage(100f, "test.boss");
-            yield return null;
+            yield return DefeatBossAndResolveReward(first);
 
             Assert.IsTrue(first.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
             Object.Destroy(first.gameObject);
@@ -1102,9 +1099,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateController(storage, "play-meta-upgrade");
             yield return null;
 
-            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
-            boss.ApplyDamage(100f, "test.boss");
-            yield return null;
+            yield return DefeatBossAndResolveReward(controller);
 
             Assert.IsTrue(controller.TryPurchasePersistentUpgradeForTest(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
             Assert.AreEqual(1, controller.GetPersistentUpgradeRankForTest(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
@@ -1116,6 +1111,19 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ProjectileDamage, Is.GreaterThan(controller.CurrentTuning.ProjectileDamage));
 
             Object.Destroy(controller.gameObject);
+        }
+
+        private static IEnumerator DefeatBossAndResolveReward(SurvivorsTemplateController controller)
+        {
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss");
+            yield return null;
+
+            if (controller.IsUpgradeRewardChoiceOpen)
+            {
+                Assert.IsTrue(controller.SkipCurrentDraft());
+                yield return null;
+            }
         }
 
         private static SurvivorsTemplateController CreateController(InMemoryTextStorage storage = null, string slot = null, bool startRun = true)

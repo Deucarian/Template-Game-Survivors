@@ -17,7 +17,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - The run escalates over a 30-minute arc, spawns a miniboss around the 7-minute mark in Human Playtest, then pushes toward a final boss at the 20-minute mark and a survival clear at 30 minutes.
 - Minibosses and bosses add blood shard and legacy XP reward bonuses to the run summary.
 - Miniboss defeat opens a stronger elite upgrade reward draft.
-- Boss defeat strongly prefers an eligible legendary weapon evolution before resolving victory; if no evolution is ready, victory resolves normally.
+- Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - Defeating the final boss unlocks the Ember Vanguard sample class.
@@ -39,7 +39,7 @@ First run target:
 - Collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
 - Defeat the miniboss and pick an elite upgrade reward.
 - Build toward an evolution by ranking a weapon path and taking the matching passive.
-- Defeat the final boss; if an evolution is eligible, pick the boss evolution reward, otherwise victory resolves normally. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile.
+- Defeat the final boss; if an evolution is eligible, pick the boss evolution reward, otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile.
 
 For manual timing checks, use the host scene path above rather than the package source scene.
 
