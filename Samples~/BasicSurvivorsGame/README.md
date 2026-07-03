@@ -12,7 +12,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - The unlockable Ember Vanguard class starts with a broader loadout, different starting stats, and access to advanced class-gated upgrades, including a Moon Slash path from Moonlit Edge into Crescent Chain, Lunar Tempo, and Eclipse Waltz back sweeps plus a Rune Trap/Aether Mine path from Rune Lattice into Snaring Runes, Aether Bloom, and Aetherfield Matrix.
 - Each sample class owns a compact passive atlas, and the core weapons expose compact skill tracks that group rank and mutation upgrades.
 - Auto-attacks include projectile bolts, orbit blades, melee slashes, burst novas, a hitscan beam, grenades, traps, and mines.
-- Resolved enemy and player damage appears as short-lived numbers, XP gems pulse when pulled or magnet-recalled, low player health adds a red screen-edge warning, and scheduled elites/minibosses/bosses show incoming warnings before they enter.
+- Resolved enemy and player damage appears as short-lived numbers, XP gems pulse when pulled or magnet-recalled, rarity-tinted reward cards call out higher-value choices, selected rewards flash as a short banner, low player health adds a red screen-edge warning, and scheduled elites/minibosses/bosses show incoming warnings before they enter.
 - Projectile upgrades can add fan spread, pierce, chain, fork, and return behavior.
 - Status and sustain upgrades can add poison, bleed, execute, lifesteal, barrier capacity, barrier recovery, and barrier-on-damage loops.
 - Enemies escalate from basic swarm pressure into fast runners, bruisers, ranged spitters, splitters that burst into smaller enemies, Blood Warden and Dread Lantern elite variants, minibosses, and a final boss.
@@ -30,7 +30,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - The sample includes a default Arcane Initiate class, one unlockable class, class-owned loadouts, passive atlases, weapon skill tracks, and six boss relics.
 - XP gems pull into the player when close.
 - Press `M` to trigger a debug magnet recall.
-- Pick a level-up or reward choice with the mouse or number keys.
+- Pick a level-up or reward choice with the mouse or number keys; cards show rarity, category, affected build piece, rank, and description.
 - Press `R` during an upgrade draft to reroll while charges remain.
 - Press `S` during an upgrade draft to skip for a small blood shard bonus.
 - Press `Shift+1`, `Shift+2`, or `Shift+3` during an upgrade draft to banish a choice while charges remain.

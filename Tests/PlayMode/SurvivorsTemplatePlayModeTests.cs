@@ -48,8 +48,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(controller.LastRewardCardPresentationLabel, Does.Contain("Level Up"));
             Assert.IsTrue(controller.SelectUpgrade(0));
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.RewardSelectionFeedbackCount);
+            Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Level Up"));
+            Assert.That(controller.ActiveRewardFeedbackLabel, Does.Contain("Level Up"));
 
             Object.Destroy(controller.gameObject);
         }
@@ -1555,8 +1560,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.EliteUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(2));
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(controller.LastRewardCardPresentationLabel, Does.Contain("Elite Reward"));
             Assert.IsTrue(controller.SkipCurrentDraft());
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Elite Reward"));
+            Assert.That(controller.ActiveRewardFeedbackLabel, Does.Contain("skipped"));
 
             Object.Destroy(controller.gameObject);
         }
@@ -1629,6 +1638,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
                 controller.RelicCooldownMultiplierBonus != previousRelicCooldown ||
                 controller.RelicPickupRangeBonus != previousRelicPickup;
             Assert.IsTrue(relicChanged);
+            Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3));
+            Assert.AreEqual(1, controller.RewardSelectionFeedbackCount);
+            Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Boss Relic"));
+            Assert.That(controller.ActiveRewardFeedbackLabel, Does.Contain("Boss Relic"));
 
             Object.Destroy(controller.gameObject);
         }
@@ -1663,6 +1676,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.AreEqual(1, controller.SelectedRewardUpgradeCount);
+            Assert.AreEqual(1, controller.RewardSelectionFeedbackCount);
+            Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Boss Reward"));
+            Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Legendary"));
             Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
             Assert.IsTrue(controller.IsVictory);
             Assert.That(controller.BossRewardGrantCount, Is.GreaterThanOrEqualTo(1));

@@ -37,7 +37,7 @@ After 2 minutes:
 
 - The run should have opened at least one readable level-up choice, and most runs should have resolved multiple draft picks if the player keeps collecting gems.
 - Runners and bruisers should be present, but the screen should still be understandable.
-- Rewards should stay open until you choose with mouse, `1`, `2`, or `3`.
+- Rewards should stay open until you choose with mouse, `1`, `2`, or `3`, then briefly show a selected-reward banner after the overlay closes.
 - Restart after defeat should still work with `R` or the restart button.
 
 After 5 minutes:

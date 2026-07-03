@@ -35,6 +35,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const float DamagePopupRiseHeight = 1.25f;
         private const int DamagePopupLimit = 72;
         private const float LowHealthWarningThreshold = 0.3f;
+        private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
         private const int EndlessEnemyAliveBonus = 24;
 
@@ -104,6 +105,7 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _playerDamagePopupStyle;
         private GUIStyle _lowHealthStyle;
         private GUIStyle _majorThreatWarningStyle;
+        private GUIStyle _rewardFeedbackStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService;
         private HealthState _playerHealth;
@@ -144,6 +146,9 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _bossWarningShown;
         private string _majorThreatWarningLabel = string.Empty;
         private float _majorThreatWarningTargetTimeSeconds;
+        private string _rewardFeedbackLabel = string.Empty;
+        private Color _rewardFeedbackColor = Color.white;
+        private float _rewardFeedbackTimer;
         private int _bonusBloodShardsEarnedThisRun;
         private int _bonusLegacyExperienceEarnedThisRun;
 
@@ -196,6 +201,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int ExperiencePickupFeedbackCount { get; private set; }
         public int PickupAttractionFeedbackCount { get; private set; }
         public int MagnetRecallFeedbackCount { get; private set; }
+        public int RewardCardPresentationCount { get; private set; }
+        public int RewardSelectionFeedbackCount { get; private set; }
+        public string LastRewardCardPresentationLabel { get; private set; } = string.Empty;
+        public string LastRewardSelectionFeedbackLabel { get; private set; } = string.Empty;
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -307,6 +316,8 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsMajorThreatWarningActive => !string.IsNullOrEmpty(_majorThreatWarningLabel) && RunTimeSeconds < _majorThreatWarningTargetTimeSeconds;
         public string CurrentMajorThreatWarningLabel => IsMajorThreatWarningActive ? _majorThreatWarningLabel : string.Empty;
         public float MajorThreatWarningRemainingSeconds => IsMajorThreatWarningActive ? Mathf.Max(0f, _majorThreatWarningTargetTimeSeconds - RunTimeSeconds) : 0f;
+        public string ActiveRewardFeedbackLabel => _rewardFeedbackTimer > 0f ? _rewardFeedbackLabel : string.Empty;
+        public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
         public int DraftRerollsRemaining => Mathf.Max(0, CurrentTuning.DraftRerollCharges - DraftRerollCount);
         public int DraftBanishesRemaining => Mathf.Max(0, CurrentTuning.DraftBanishCharges - DraftBanishCount);
@@ -342,6 +353,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (State == SurvivorsRunState.LevelUp)
             {
                 TickDamagePopups(Time.deltaTime);
+                TickRewardFeedback(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
                 HandleLevelUpInput();
                 return;
@@ -350,6 +362,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
             {
                 TickDamagePopups(Time.deltaTime);
+                TickRewardFeedback(Time.deltaTime);
                 if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
                 {
                     ContinueAfterVictory();
@@ -410,6 +423,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
+            DrawRewardSelectionFeedback();
             DrawDamagePopups();
 
             if (State == SurvivorsRunState.LevelUp)
@@ -510,6 +524,10 @@ namespace Deucarian.TemplateGameSurvivors
             ExperiencePickupFeedbackCount = 0;
             PickupAttractionFeedbackCount = 0;
             MagnetRecallFeedbackCount = 0;
+            RewardCardPresentationCount = 0;
+            RewardSelectionFeedbackCount = 0;
+            LastRewardCardPresentationLabel = string.Empty;
+            LastRewardSelectionFeedbackLabel = string.Empty;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -562,6 +580,9 @@ namespace Deucarian.TemplateGameSurvivors
             _bossWarningShown = false;
             _majorThreatWarningLabel = string.Empty;
             _majorThreatWarningTargetTimeSeconds = 0f;
+            _rewardFeedbackLabel = string.Empty;
+            _rewardFeedbackTimer = 0f;
+            _rewardFeedbackColor = Color.white;
             _bonusBloodShardsEarnedThisRun = 0;
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
@@ -615,6 +636,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             float dt = Mathf.Max(0f, deltaTime);
             TickDamagePopups(dt);
+            TickRewardFeedback(dt);
             if (State == SurvivorsRunState.LevelUp)
             {
                 TickRewardSelectionTimeout(dt);
@@ -1156,6 +1178,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             ApplyUpgrade(selected);
             SelectedUpgradeCount++;
+            RecordRewardSelectionFeedback(selectionKind, selected);
             CompleteUpgradeDraftSelection(
                 selectionKind,
                 consumeLevelUp: selectionKind == SurvivorsRewardSelectionKind.LevelUp,
@@ -1181,6 +1204,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _currentDraftRerollIndex = nextRerollIndex;
             DraftRerollCount++;
+            RecordRewardCardPresentation(_rewardSelectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
             PlayFeedback(_levelUpPulse, PlayerPosition, 18, _levelUpClip);
             return true;
@@ -1196,6 +1220,7 @@ namespace Deucarian.TemplateGameSurvivors
             SurvivorsRewardSelectionKind selectionKind = _rewardSelectionKind;
             DraftSkipCount++;
             _bonusBloodShardsEarnedThisRun += DraftSkipBloodShards;
+            RecordRewardSkipFeedback(selectionKind);
             CompleteUpgradeDraftSelection(
                 selectionKind,
                 consumeLevelUp: selectionKind == SurvivorsRewardSelectionKind.LevelUp,
@@ -1224,6 +1249,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _currentDraft = rerolled;
                 _currentRelicDraft = null;
                 _currentDraftRerollIndex = nextRerollIndex;
+                RecordRewardCardPresentation(selectionKind, _currentDraft);
                 BeginRewardSelectionTimeout();
             }
             else
@@ -3220,6 +3246,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
+            RecordRewardCardPresentation(_rewardSelectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
             PlayFeedback(_levelUpPulse, PlayerPosition, 34, _levelUpClip);
         }
@@ -3261,6 +3288,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             State = SurvivorsRunState.LevelUp;
+            RecordRewardCardPresentation(selectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
             PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 72 : 54, _bossClip);
             return true;
@@ -3299,6 +3327,7 @@ namespace Deucarian.TemplateGameSurvivors
             _pendingVictoryAfterRewardDraft = false;
             BossRelicDraftOpenCount++;
             State = SurvivorsRunState.LevelUp;
+            RecordRewardCardPresentation(_currentRelicDraft);
             BeginRewardSelectionTimeout();
             PlayFeedback(_bossPulse, PlayerPosition, 44, _bossClip);
             return true;
@@ -3308,6 +3337,91 @@ namespace Deucarian.TemplateGameSurvivors
         {
             float timeout = CurrentTuning.RewardSelectionTimeoutSeconds;
             _rewardSelectionTimer = timeout > 0f ? timeout : 0f;
+        }
+
+        private void RecordRewardCardPresentation(SurvivorsRewardSelectionKind selectionKind, RunUpgradeDraft draft)
+        {
+            int choiceCount = draft == null ? 0 : draft.Choices.Count;
+            if (choiceCount <= 0)
+            {
+                return;
+            }
+
+            RewardCardPresentationCount += choiceCount;
+            RunUpgradeRarity highestRarity = ResolveHighestRarity(draft.Choices);
+            LastRewardCardPresentationLabel = $"{ResolveRewardKindLabel(selectionKind)} - {choiceCount} cards, best {highestRarity}";
+        }
+
+        private void RecordRewardCardPresentation(SurvivorsRelicDraft draft)
+        {
+            int choiceCount = draft == null ? 0 : draft.Choices.Count;
+            if (choiceCount <= 0)
+            {
+                return;
+            }
+
+            RewardCardPresentationCount += choiceCount;
+            LastRewardCardPresentationLabel = $"Boss Relic - {choiceCount} cards";
+        }
+
+        private void RecordRewardSelectionFeedback(SurvivorsRewardSelectionKind selectionKind, RunUpgradeDefinition selected)
+        {
+            if (selected == null)
+            {
+                return;
+            }
+
+            string name = BasicSurvivorsGame.GetUpgradeDisplayName(selected.Id);
+            string category = ResolveCurrentUpgradeCategory(selected).ToString();
+            string affected = ResolveUpgradeAffectedLabel(selected);
+            LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)}: {selected.Rarity} {category} - {name} ({affected})";
+            RewardSelectionFeedbackCount++;
+            _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
+            _rewardFeedbackColor = ResolveRarityAccentColor(selected.Rarity);
+            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+        }
+
+        private void RecordRelicSelectionFeedback(SurvivorsRelicDefinition selected)
+        {
+            if (selected == null)
+            {
+                return;
+            }
+
+            LastRewardSelectionFeedbackLabel = $"Boss Relic: {selected.DisplayName} - {FormatRelicEffectSummary(selected)}";
+            RewardSelectionFeedbackCount++;
+            _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
+            _rewardFeedbackColor = ResolveRelicAccentColor(selected);
+            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+        }
+
+        private void RecordRewardSkipFeedback(SurvivorsRewardSelectionKind selectionKind)
+        {
+            LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)} skipped +{DraftSkipBloodShards} shards";
+            RewardSelectionFeedbackCount++;
+            _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
+            _rewardFeedbackColor = new Color(0.72f, 0.84f, 0.9f);
+            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+        }
+
+        private static RunUpgradeRarity ResolveHighestRarity(IReadOnlyList<RunUpgradeDefinition> choices)
+        {
+            RunUpgradeRarity highest = RunUpgradeRarity.Common;
+            if (choices == null)
+            {
+                return highest;
+            }
+
+            for (int i = 0; i < choices.Count; i++)
+            {
+                RunUpgradeDefinition choice = choices[i];
+                if (choice != null && (int)choice.Rarity > (int)highest)
+                {
+                    highest = choice.Rarity;
+                }
+            }
+
+            return highest;
         }
 
         private float ResolveEndlessSpawnInterval(float interval)
@@ -3400,8 +3514,10 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
-            ApplyRelic(_currentRelicDraft.Choices[index]);
+            SurvivorsRelicDefinition selected = _currentRelicDraft.Choices[index];
+            ApplyRelic(selected);
             SelectedRelicCount++;
+            RecordRelicSelectionFeedback(selected);
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             _rewardSelectionTimer = 0f;
@@ -3625,7 +3741,7 @@ namespace Deucarian.TemplateGameSurvivors
             bool upgradeDraftOpen = !IsRelicChoiceOpen;
             float width = upgradeDraftOpen ? 660f : 560f;
             int choiceCount = IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
-            float rowHeight = IsRelicChoiceOpen ? 48f : 72f;
+            float rowHeight = IsRelicChoiceOpen ? 60f : 78f;
             float footerHeight = upgradeDraftOpen ? 48f : 0f;
             float height = 112f + choiceCount * rowHeight + footerHeight;
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
@@ -3641,24 +3757,32 @@ namespace Deucarian.TemplateGameSurvivors
                     ? new Rect(rowRect.x, rowRect.y, rowRect.width - 88f, rowRect.height)
                     : rowRect;
                 string label;
+                Color cardAccent;
                 if (IsRelicChoiceOpen)
                 {
                     SurvivorsRelicDefinition relic = CurrentRelicChoices[i];
-                    label = $"{i + 1}. {relic.DisplayName}";
+                    label = FormatRelicChoiceLabel(i, relic);
+                    cardAccent = ResolveRelicAccentColor(relic);
                 }
                 else
                 {
                     RunUpgradeDefinition choice = CurrentDraftChoices[i];
                     label = FormatUpgradeChoiceLabel(i, choice);
+                    cardAccent = choice == null ? Color.white : ResolveRarityAccentColor(choice.Rarity);
                 }
 
+                DrawRewardChoiceCard(rowRect, cardAccent);
+                Color previousBackgroundColor = GUI.backgroundColor;
+                GUI.backgroundColor = ResolveRewardButtonBackgroundColor(cardAccent);
                 if (GUI.Button(buttonRect, label))
                 {
+                    GUI.backgroundColor = previousBackgroundColor;
                     if (SelectUpgrade(i))
                     {
                         return;
                     }
                 }
+                GUI.backgroundColor = previousBackgroundColor;
 
                 if (upgradeDraftOpen)
                 {
@@ -3803,7 +3927,116 @@ namespace Deucarian.TemplateGameSurvivors
                 : name;
             int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(choice.Id);
             int nextRank = Mathf.Min(choice.MaxRank, currentRank + 1);
-            return $"{index + 1}. [{category}] {name} ({choice.Rarity})\n{affected}  Rank {nextRank}/{choice.MaxRank} - {description}";
+            return $"{index + 1}. {choice.Rarity} {category}: {name}\n{affected}  Rank {nextRank}/{choice.MaxRank} - {description}";
+        }
+
+        private string FormatRelicChoiceLabel(int index, SurvivorsRelicDefinition relic)
+        {
+            if (relic == null)
+            {
+                return (index + 1).ToString() + ". Missing Relic";
+            }
+
+            return $"{index + 1}. Boss Relic: {relic.DisplayName}\n{FormatRelicEffectSummary(relic)}";
+        }
+
+        private string FormatRelicEffectSummary(SurvivorsRelicDefinition relic)
+        {
+            if (relic == null)
+            {
+                return "Missing effect";
+            }
+
+            string target = ShortWeaponName(relic.TargetId);
+            switch (relic.EffectKind)
+            {
+                case SurvivorsRelicEffectKind.DamageBonus:
+                    return $"+{relic.Amount:0.#} damage to {target}";
+                case SurvivorsRelicEffectKind.CooldownMultiplier:
+                    return $"{Mathf.Abs(relic.Amount):P0} faster cooldown on {target}";
+                case SurvivorsRelicEffectKind.PickupRange:
+                    return $"+{relic.Amount:0.#} pickup range";
+                default:
+                    return target;
+            }
+        }
+
+        private static string ResolveRewardKindLabel(SurvivorsRewardSelectionKind selectionKind)
+        {
+            switch (selectionKind)
+            {
+                case SurvivorsRewardSelectionKind.LevelUp:
+                    return "Level Up";
+                case SurvivorsRewardSelectionKind.BossRelic:
+                    return "Boss Relic";
+                case SurvivorsRewardSelectionKind.EliteUpgrade:
+                    return "Elite Reward";
+                case SurvivorsRewardSelectionKind.BossUpgrade:
+                    return "Boss Reward";
+                default:
+                    return "Reward";
+            }
+        }
+
+        private static Color ResolveRarityAccentColor(RunUpgradeRarity rarity)
+        {
+            switch (rarity)
+            {
+                case RunUpgradeRarity.Common:
+                    return new Color(0.78f, 0.84f, 0.88f);
+                case RunUpgradeRarity.Uncommon:
+                    return new Color(0.34f, 0.94f, 0.56f);
+                case RunUpgradeRarity.Rare:
+                    return new Color(0.34f, 0.7f, 1f);
+                case RunUpgradeRarity.Epic:
+                    return new Color(0.9f, 0.46f, 1f);
+                case RunUpgradeRarity.Legendary:
+                    return new Color(1f, 0.76f, 0.2f);
+                default:
+                    return Color.white;
+            }
+        }
+
+        private static Color ResolveRelicAccentColor(SurvivorsRelicDefinition relic)
+        {
+            if (relic == null)
+            {
+                return Color.white;
+            }
+
+            switch (relic.EffectKind)
+            {
+                case SurvivorsRelicEffectKind.DamageBonus:
+                    return new Color(1f, 0.45f, 0.28f);
+                case SurvivorsRelicEffectKind.CooldownMultiplier:
+                    return new Color(0.34f, 0.88f, 1f);
+                case SurvivorsRelicEffectKind.PickupRange:
+                    return new Color(0.42f, 1f, 0.6f);
+                default:
+                    return new Color(1f, 0.76f, 0.2f);
+            }
+        }
+
+        private static Color ResolveRewardButtonBackgroundColor(Color accent)
+        {
+            return new Color(
+                Mathf.Lerp(1f, accent.r, 0.28f),
+                Mathf.Lerp(1f, accent.g, 0.28f),
+                Mathf.Lerp(1f, accent.b, 0.28f),
+                1f);
+        }
+
+        private static void DrawRewardChoiceCard(Rect rect, Color accent)
+        {
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.015f, 0.02f, 0.028f, 0.82f);
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = new Color(accent.r, accent.g, accent.b, 0.22f);
+            GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, rect.height), Texture2D.whiteTexture);
+            GUI.color = new Color(accent.r, accent.g, accent.b, 0.96f);
+            GUI.DrawTexture(new Rect(rect.x, rect.y, 6f, rect.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 2f), Texture2D.whiteTexture);
+            GUI.color = oldColor;
         }
 
         private string ResolveRewardOverlayTitle()
@@ -3876,6 +4109,14 @@ namespace Deucarian.TemplateGameSurvivors
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(1f, 0.78f, 0.24f) }
             };
+            _rewardFeedbackStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 15,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white },
+                wordWrap = true
+            };
         }
 
         private void DrawHudBar(Rect rect, string label, float value, Color fill)
@@ -3922,6 +4163,33 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.DrawTexture(panel, Texture2D.whiteTexture);
             GUI.color = new Color(1f, 1f, 1f, 0.96f);
             GUI.Label(panel, $"{CurrentMajorThreatWarningLabel}  {Mathf.CeilToInt(MajorThreatWarningRemainingSeconds)}s", _majorThreatWarningStyle);
+            GUI.color = oldColor;
+        }
+
+        private void DrawRewardSelectionFeedback()
+        {
+            if (_rewardFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_rewardFeedbackLabel))
+            {
+                return;
+            }
+
+            float width = Mathf.Min(500f, Mathf.Max(0f, Screen.width - 32f));
+            if (width <= 0f)
+            {
+                return;
+            }
+
+            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 9f) * 0.28f;
+            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, 84f, width, 46f);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.015f, 0.02f, 0.028f, 0.74f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(_rewardFeedbackColor.r, _rewardFeedbackColor.g, _rewardFeedbackColor.b, 0.2f + 0.14f * pulse);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(_rewardFeedbackColor.r, _rewardFeedbackColor.g, _rewardFeedbackColor.b, 0.96f);
+            GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 6f, panel.width - 24f, panel.height - 12f), _rewardFeedbackLabel, _rewardFeedbackStyle);
             GUI.color = oldColor;
         }
 
@@ -3978,6 +4246,20 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     _damagePopups[i] = popup;
                 }
+            }
+        }
+
+        private void TickRewardFeedback(float deltaTime)
+        {
+            if (_rewardFeedbackTimer <= 0f)
+            {
+                return;
+            }
+
+            _rewardFeedbackTimer = Mathf.Max(0f, _rewardFeedbackTimer - Mathf.Max(0f, deltaTime));
+            if (_rewardFeedbackTimer <= 0f)
+            {
+                _rewardFeedbackLabel = string.Empty;
             }
         }
 
