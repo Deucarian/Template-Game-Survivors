@@ -1536,6 +1536,8 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "roaming cache travel interval", profile.roamingCacheTravelInterval, result);
             ValidatePositive(profileId, "roaming cache XP gem count", profile.roamingCacheExperienceGemCount, result);
             ValidatePositive(profileId, "draft choice count", profile.draftChoiceCount, result);
+            ValidatePositive(profileId, "max weapon slots", profile.maxWeaponSlots, result);
+            ValidatePositive(profileId, "max passive slots", profile.maxPassiveSlots, result);
             ValidatePositive(profileId, "draft mid rarity level", profile.draftMidRarityLevel, result);
             ValidatePositive(profileId, "draft late rarity level", profile.draftLateRarityLevel, result);
             if (profile.draftLateRarityLevel <= profile.draftMidRarityLevel)
@@ -2498,6 +2500,8 @@ namespace Deucarian.TemplateGameSurvivors
             public float roamingCacheTravelInterval;
             public int roamingCacheExperienceGemCount;
             public int draftChoiceCount;
+            public int maxWeaponSlots;
+            public int maxPassiveSlots;
             public int draftMidRarityLevel;
             public int draftLateRarityLevel;
             public RarityTableRecordJson[] rarityTables;

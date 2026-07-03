@@ -1240,6 +1240,31 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator TunedSlotLimitsBlockNewSlotsButAllowOwnedRanks()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.CurrentTuning.MaxWeaponSlots = controller.ActiveWeaponCount;
+            Assert.AreEqual(controller.ActiveWeaponCount, controller.MaxWeaponSlots);
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            Assert.IsFalse(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+
+            controller.CurrentTuning.MaxPassiveSlots = 1;
+            Assert.AreEqual(1, controller.MaxPassiveSlots);
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.swift-steps"));
+            Assert.AreEqual(1, controller.ActivePassiveCount);
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest("upgrade.survivors.gem-magnet"));
+            Assert.IsFalse(controller.ApplyUpgradeByIdForTest("upgrade.survivors.gem-magnet"));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest("upgrade.survivors.swift-steps"));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.swift-steps"));
+            Assert.AreEqual(1, controller.ActivePassiveCount);
+            Assert.AreEqual(2, controller.GetRunUpgradeRankForTest("upgrade.survivors.swift-steps"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator WeaponEvolutionRequiresRankedWeaponPathAndPassive()
         {
             SurvivorsTemplateController controller = CreateController();

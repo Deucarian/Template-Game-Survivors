@@ -412,8 +412,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
         public int ActivePassiveCount => _ownedPassiveUpgradeIds.Count;
         public int EvolvedWeaponCount => _ownedEvolutionUpgradeIds.Count;
-        public int MaxWeaponSlots => DefaultMaxWeaponSlots;
-        public int MaxPassiveSlots => DefaultMaxPassiveSlots;
+        public int MaxWeaponSlots => CurrentTuning.MaxWeaponSlots > 0 ? CurrentTuning.MaxWeaponSlots : DefaultMaxWeaponSlots;
+        public int MaxPassiveSlots => CurrentTuning.MaxPassiveSlots > 0 ? CurrentTuning.MaxPassiveSlots : DefaultMaxPassiveSlots;
         public int InfiniteArenaTileCountForTest => _arenaTiles.Count;
         public Vector3 ArenaPresentationCenterForTest => _arenaFollowRoot == null ? Vector3.zero : _arenaFollowRoot.position;
         public Vector3 FirstInfiniteArenaTilePositionForTest => _arenaTiles.Count == 0 || _arenaTiles[0] == null ? Vector3.zero : _arenaTiles[0].position;

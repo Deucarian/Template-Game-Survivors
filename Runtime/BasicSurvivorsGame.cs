@@ -187,6 +187,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftRerollCharges = 2;
         public int DraftBanishCharges = 2;
         public int DraftSkipBloodShards = 1;
+        public int MaxWeaponSlots = 6;
+        public int MaxPassiveSlots = 6;
         public int DraftMidRarityLevel = 6;
         public int DraftLateRarityLevel = 12;
         public int NormalEarlyCommonWeight = 120;
