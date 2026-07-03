@@ -1117,13 +1117,13 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade(ArcaneThesisUpgradeId, RunUpgradeRarity.Uncommon, 34, 4, DamageBonusEffect, WeaponTarget, 1.6d),
                 Upgrade(FrostNeedleworkUpgradeId, RunUpgradeRarity.Uncommon, 32, 3, ProjectilePierceEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(BloodRingCanticleUpgradeId, RunUpgradeRarity.Rare, 22, 3, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
-                Upgrade(CinderScriptUpgradeId, RunUpgradeRarity.Rare, 22, 2, TargetedBurstEffect, BurstWeaponTarget, 1.0d),
+                Upgrade(CinderScriptUpgradeId, RunUpgradeRarity.Rare, 22, 3, TargetedBurstEffect, BurstWeaponTarget, 1.0d),
                 Upgrade(EmberForgeHeartUpgradeId, RunUpgradeRarity.Uncommon, 34, 4, DamageBonusEffect, BurstWeaponTarget, 2.2d),
                 Upgrade(EmberTempoUpgradeId, RunUpgradeRarity.Uncommon, 30, 3, FireRateEffect, HitscanWeaponTarget, -0.06d),
                 Upgrade(MoonOathUpgradeId, RunUpgradeRarity.Rare, 22, 3, DamageBonusEffect, MeleeWeaponTarget, 1.8d),
                 Upgrade(StarFocusUpgradeId, RunUpgradeRarity.Uncommon, 30, 5, DamageBonusEffect, HitscanWeaponTarget, 1.4d),
                 Upgrade(StarPulseUpgradeId, RunUpgradeRarity.Rare, 20, 2, FireRateEffect, HitscanWeaponTarget, -0.05d),
-                Upgrade(SiegePayloadsUpgradeId, RunUpgradeRarity.Rare, 20, 2, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
+                Upgrade(SiegePayloadsUpgradeId, RunUpgradeRarity.Rare, 20, 3, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
                 Upgrade(EmberWardUpgradeId, RunUpgradeRarity.Rare, 20, 3, BarrierCapacityEffect, BarrierTarget, 8.0d),
                 Upgrade(PrismaticBeamUpgradeId, RunUpgradeRarity.Uncommon, 30, 3, HitscanPierceEffect, HitscanWeaponTarget, 1.0d),
                 Upgrade(ExtraPayloadUpgradeId, RunUpgradeRarity.Rare, 22, 5, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
@@ -1437,7 +1437,7 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.arcane-initiate.arcane-thesis", "Arcane Thesis", ArcaneThesisUpgradeId, SurvivorsProgressionNodeKind.Passive, 0, 1, 4),
                     Node("node.survivors.arcane-initiate.frost-needlework", "Frost Needlework", FrostNeedleworkUpgradeId, SurvivorsProgressionNodeKind.Passive, 1, 1, 3),
                     Node("node.survivors.arcane-initiate.blood-ring-canticle", "Blood Ring Canticle", BloodRingCanticleUpgradeId, SurvivorsProgressionNodeKind.Passive, 2, 2, 3),
-                    Node("node.survivors.arcane-initiate.cinder-script", "Cinder Script", CinderScriptUpgradeId, SurvivorsProgressionNodeKind.Passive, 3, 2, 2)),
+                    Node("node.survivors.arcane-initiate.cinder-script", "Cinder Script", CinderScriptUpgradeId, SurvivorsProgressionNodeKind.Passive, 3, 2, 3)),
                 Track(
                     "progression.survivors.ember-vanguard.passives",
                     "Ember Vanguard Passive Atlas",
@@ -1447,7 +1447,7 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.ember-vanguard.forge-heart", "Forge Heart", EmberForgeHeartUpgradeId, SurvivorsProgressionNodeKind.Passive, 0, 1, 4),
                     Node("node.survivors.ember-vanguard.battle-tempo", "Ember Tempo", EmberTempoUpgradeId, SurvivorsProgressionNodeKind.Passive, 1, 1, 3),
                     Node("node.survivors.ember-vanguard.moon-oath", "Moon Oath", MoonOathUpgradeId, SurvivorsProgressionNodeKind.Passive, 2, 1, 3),
-                    Node("node.survivors.ember-vanguard.siege-payloads", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.Passive, 3, 2, 2),
+                    Node("node.survivors.ember-vanguard.siege-payloads", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.Passive, 3, 2, 3),
                     Node("node.survivors.ember-vanguard.ember-ward", "Ember Ward", EmberWardUpgradeId, SurvivorsProgressionNodeKind.Passive, 4, 2, 3)),
                 Track(
                     "progression.survivors.arc-bolt.weapon",
@@ -1542,7 +1542,7 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.ember-vanguard.payloads.rune-lattice", "Rune Lattice", RuneLatticeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 2, 1, 5),
                     Node("node.survivors.ember-vanguard.payloads.snaring-runes", "Snaring Runes", SnaringRunesUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 3),
                     Node("node.survivors.ember-vanguard.payloads.aether-bloom", "Aether Bloom", AetherBloomUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 4, 1, 3),
-                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 5, 2, 2))
+                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 5, 2, 3))
             };
         }
 

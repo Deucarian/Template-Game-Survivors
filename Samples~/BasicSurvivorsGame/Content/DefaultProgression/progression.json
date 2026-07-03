@@ -10,7 +10,7 @@
         { "id": "node.survivors.arcane-initiate.arcane-thesis", "displayName": "Arcane Thesis", "upgradeId": "upgrade.survivors.arcane-thesis", "kind": "Passive", "tier": 0, "pointCost": 1, "maxRank": 4 },
         { "id": "node.survivors.arcane-initiate.frost-needlework", "displayName": "Frost Needlework", "upgradeId": "upgrade.survivors.frost-needlework", "kind": "Passive", "tier": 1, "pointCost": 1, "maxRank": 3 },
         { "id": "node.survivors.arcane-initiate.blood-ring-canticle", "displayName": "Blood Ring Canticle", "upgradeId": "upgrade.survivors.blood-ring-canticle", "kind": "Passive", "tier": 2, "pointCost": 2, "maxRank": 3 },
-        { "id": "node.survivors.arcane-initiate.cinder-script", "displayName": "Cinder Script", "upgradeId": "upgrade.survivors.cinder-script", "kind": "Passive", "tier": 3, "pointCost": 2, "maxRank": 2 }
+        { "id": "node.survivors.arcane-initiate.cinder-script", "displayName": "Cinder Script", "upgradeId": "upgrade.survivors.cinder-script", "kind": "Passive", "tier": 3, "pointCost": 2, "maxRank": 3 }
       ]
     },
     {
@@ -23,7 +23,7 @@
         { "id": "node.survivors.ember-vanguard.forge-heart", "displayName": "Forge Heart", "upgradeId": "upgrade.survivors.ember-forge-heart", "kind": "Passive", "tier": 0, "pointCost": 1, "maxRank": 4 },
         { "id": "node.survivors.ember-vanguard.battle-tempo", "displayName": "Ember Tempo", "upgradeId": "upgrade.survivors.ember-tempo", "kind": "Passive", "tier": 1, "pointCost": 1, "maxRank": 3 },
         { "id": "node.survivors.ember-vanguard.moon-oath", "displayName": "Moon Oath", "upgradeId": "upgrade.survivors.moon-oath", "kind": "Passive", "tier": 2, "pointCost": 1, "maxRank": 3 },
-        { "id": "node.survivors.ember-vanguard.siege-payloads", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "Passive", "tier": 3, "pointCost": 2, "maxRank": 2 },
+        { "id": "node.survivors.ember-vanguard.siege-payloads", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "Passive", "tier": 3, "pointCost": 2, "maxRank": 3 },
         { "id": "node.survivors.ember-vanguard.ember-ward", "displayName": "Ember Ward", "upgradeId": "upgrade.survivors.ember-ward", "kind": "Passive", "tier": 4, "pointCost": 2, "maxRank": 3 }
       ]
     },
@@ -145,7 +145,7 @@
         { "id": "node.survivors.ember-vanguard.payloads.rune-lattice", "displayName": "Rune Lattice", "upgradeId": "upgrade.survivors.rune-lattice", "kind": "WeaponRank", "tier": 2, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.ember-vanguard.payloads.snaring-runes", "displayName": "Snaring Runes", "upgradeId": "upgrade.survivors.snaring-runes", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 3 },
         { "id": "node.survivors.ember-vanguard.payloads.aether-bloom", "displayName": "Aether Bloom", "upgradeId": "upgrade.survivors.aether-bloom", "kind": "WeaponMutation", "tier": 4, "pointCost": 1, "maxRank": 3 },
-        { "id": "node.survivors.ember-vanguard.payloads.siege", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "WeaponRank", "tier": 5, "pointCost": 2, "maxRank": 2 }
+        { "id": "node.survivors.ember-vanguard.payloads.siege", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "WeaponRank", "tier": 5, "pointCost": 2, "maxRank": 3 }
       ]
     }
   ]

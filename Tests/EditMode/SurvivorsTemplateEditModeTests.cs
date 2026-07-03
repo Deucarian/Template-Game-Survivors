@@ -231,6 +231,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 if (entry.UsesPassiveSlot)
                 {
                     passiveCount++;
+                    Assert.IsTrue(
+                        upgrades.TryGet(new RunUpgradeId(entry.UpgradeId), out RunUpgradeDefinition passiveDefinition),
+                        "Missing passive upgrade definition for " + entry.UpgradeId);
+                    Assert.That(
+                        passiveDefinition.MaxRank,
+                        Is.InRange(3, 5),
+                        entry.DisplayName + " should use 3-5 passive ranks.");
                 }
 
                 if (entry.UsesWeaponSlot)
