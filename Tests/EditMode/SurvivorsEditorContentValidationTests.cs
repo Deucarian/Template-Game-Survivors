@@ -44,6 +44,22 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void EditorValidationRunnerReportsInvalidPickupContentThroughAuthoringAdapter()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
+            string pickupJson = "{\"pickups\":[{\"id\":\"pickup.dup\",\"displayName\":\"\",\"attractRange\":-1,\"attractionSpeed\":-2},{\"id\":\"pickup.dup\",\"displayName\":\"Duplicate\"}]}";
+
+            ContentValidationReport report = SurvivorsEditorContentValidation.ValidateJsonContent(weaponJson, upgradeJson, pickupJson: pickupJson);
+            string markdown = SurvivorsEditorContentValidation.BuildMarkdownReport(report);
+
+            Assert.That(report.ErrorCount, Is.GreaterThan(0));
+            StringAssert.Contains("Duplicate pickup id", markdown);
+            StringAssert.Contains("missing required pickup id", markdown);
+            StringAssert.Contains("Survivors.SampleContent", markdown);
+        }
+
+        [Test]
         public void RuntimeAssemblyDoesNotReferenceEditorOnlyAuthoringPackages()
         {
             PackageInfo packageInfo = PackageInfo.FindForAssembly(typeof(BasicSurvivorsGame).Assembly);

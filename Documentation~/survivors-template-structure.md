@@ -82,6 +82,7 @@
 - valid projectile references from projectile weapons
 - valid payload timing/radius values
 - valid boss/miniboss enemy roles, spawn times, and combat stats
+- valid pickup IDs, display names, attraction values, and behavior descriptions
 - valid run-upgrade target references
 - valid reward currency, legacy XP, persistent upgrade, rank cost, and target references
 - valid relic IDs, effect kinds, targets, weights, and amounts
@@ -109,5 +110,5 @@ The sample includes basic swarm, runner, bruiser, ranged spitter, elite, schedul
 
 ## Tests
 
-- `Tests/EditMode` covers descriptors, archetype config, expanded enemy profiles, barrier/status behavior, content validation, reward/meta validation, class unlock persistence, locked/missing class fallback, class loadout/gate validation, progression atlas validation, save migration, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
+- `Tests/EditMode` covers descriptors, archetype config, expanded enemy profiles, barrier/status behavior, content validation, pickup validation, reward/meta validation, class unlock persistence, locked/missing class fallback, class loadout/gate validation, progression atlas validation, save migration, payload config validation, run-flow config validation, draft choice determinism, spawn flow, weapon death/drop, XP collection, level-up choice, archetype upgrade hooks, projectile modifier upgrade hooks, payload upgrade hooks, and magnet recall.
 - `Tests/PlayMode` covers first playable runtime boot, death/restart, Human Playtest defaults, selected class loadouts, draftable weapon unlocks, atlas-derived class-gated upgrade availability, class-gated Moon Slash and placed-hazard rank/evolution eligibility, default reward choices waiting for the player, timed level-up/relic auto-pick when configured, enemy hit flashes, enemy death bursts, ranged enemy shot cues, health pickup recovery, blood-shard pickup currency, major reward-cache beacons, rarity-card presentation and selected reward banners, Arcane Storm, Blizzard Crown, and Inferno Heart evolution behavior, explicit weapon-evolution feedback, orbit damage, melee/burst damage, hitscan damage, projectile pierce/chain/fork/return smoke, grenade payload damage, placed trap trigger damage, splitter child spawns, elite reward drafts, timed miniboss/boss spawning, boss/miniboss death, relic choice/application, victory, endless continuation with recurring major threats, reward grants, class unlock persistence, save/load persistence, no-reset persistence behavior for play start/profile application/restart, explicit reset behavior, persistent upgrade effects, XP-gain and area-scaling passives, early/boss rarity weighting, and run upgrades affecting new archetypes/modifiers.

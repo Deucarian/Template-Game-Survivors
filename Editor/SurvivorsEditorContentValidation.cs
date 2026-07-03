@@ -46,6 +46,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string weaponJson = ReadRequiredText(sampleRoot, "Content/DefaultWeapons/weapons.json", report);
             string upgradeJson = ReadRequiredText(sampleRoot, "Content/DefaultUpgrades/upgrades.json", report);
             string enemyJson = ReadRequiredText(sampleRoot, "Content/DefaultEnemies/enemies.json", report);
+            string pickupJson = ReadRequiredText(sampleRoot, "Content/DefaultPickups/pickups.json", report);
             string rewardJson = ReadRequiredText(sampleRoot, "Content/DefaultRewards/rewards.json", report);
             string relicJson = ReadRequiredText(sampleRoot, "Content/DefaultRelics/relics.json", report);
             string classJson = ReadRequiredText(sampleRoot, "Content/DefaultClasses/classes.json", report);
@@ -56,7 +57,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return report;
             }
 
-            Merge(report, ValidateJsonContent(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson));
+            Merge(report, ValidateJsonContent(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson, pickupJson));
             return report;
         }
 
@@ -67,7 +68,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string rewardJson = null,
             string relicJson = null,
             string classJson = null,
-            string progressionJson = null)
+            string progressionJson = null,
+            string pickupJson = null)
         {
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(
                 weaponJson,
@@ -76,7 +78,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 rewardJson,
                 relicJson,
                 classJson,
-                progressionJson);
+                progressionJson,
+                pickupJson);
 
             var report = new ContentValidationReport();
             for (int index = 0; index < result.Errors.Count; index++)

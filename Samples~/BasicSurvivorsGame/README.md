@@ -54,4 +54,4 @@ First run target:
 
 For manual timing checks, use the host scene path above rather than the package source scene.
 
-Run `Tools > Deucarian > Templates > Survivors > Validate Content` after editing sample weapons, upgrades, enemies, rewards, relics, classes, or progression tracks.
+Run `Tools > Deucarian > Templates > Survivors > Validate Content` after editing sample weapons, upgrades, enemies, pickups, rewards, relics, classes, or progression tracks.

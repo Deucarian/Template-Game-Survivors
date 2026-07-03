@@ -286,12 +286,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
             string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
             string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string pickupJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultPickups", "pickups.json"));
             string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
             string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
             string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
             string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
 
-            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson);
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson, pickupJson);
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -332,6 +333,25 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("hazard duration", errors);
             StringAssert.Contains("hazard tick interval", errors);
             StringAssert.Contains("negative hazard damage ratio", errors);
+        }
+
+        [Test]
+        public void InvalidPickupSampleContentReportsPickupErrors()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
+            string pickupJson = "{\"pickups\":[{\"id\":\"pickup.dup\",\"displayName\":\"\",\"attractRange\":-1,\"attractionSpeed\":-2},{\"id\":\"pickup.dup\",\"displayName\":\"Duplicate\"}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, pickupJson: pickupJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("Duplicate pickup id", errors);
+            StringAssert.Contains("missing a display name", errors);
+            StringAssert.Contains("negative attract range", errors);
+            StringAssert.Contains("negative attraction speed", errors);
+            StringAssert.Contains("requires behavior text", errors);
+            StringAssert.Contains("missing required pickup id", errors);
         }
 
         [Test]

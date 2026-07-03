@@ -86,7 +86,8 @@ namespace Deucarian.TemplateGameSurvivors
             string rewardJson = null,
             string relicJson = null,
             string classJson = null,
-            string progressionJson = null)
+            string progressionJson = null,
+            string pickupJson = null)
         {
             var result = new SurvivorsContentValidationResult();
             WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
@@ -106,9 +107,13 @@ namespace Deucarian.TemplateGameSurvivors
             ProgressionLibraryJson progressionLibrary = string.IsNullOrWhiteSpace(progressionJson)
                 ? null
                 : ParseJson<ProgressionLibraryJson>(progressionJson, "progression library", result);
+            PickupLibraryJson pickupLibrary = string.IsNullOrWhiteSpace(pickupJson)
+                ? null
+                : ParseJson<PickupLibraryJson>(pickupJson, "pickup library", result);
             ValidateWeaponLibrary(weaponLibrary, result);
             ValidateUpgradeLibrary(upgradeLibrary, classLibrary, result);
             ValidateEnemyLibrary(enemyLibrary, result);
+            ValidatePickupLibrary(pickupLibrary, result);
             ValidateRewardLibrary(rewardLibrary, result);
             ValidateRelicLibrary(relicLibrary, result);
             ValidateClassLibraryJson(classLibrary, result);
@@ -1344,6 +1349,81 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static void ValidatePickupLibrary(PickupLibraryJson library, SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            if (library.pickups == null || library.pickups.Length == 0)
+            {
+                result.AddError("Sample pickup library must contain at least one pickup.");
+                return;
+            }
+
+            var pickupIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < library.pickups.Length; i++)
+            {
+                PickupRecordJson pickup = library.pickups[i];
+                if (pickup == null || string.IsNullOrWhiteSpace(pickup.id))
+                {
+                    result.AddError($"Pickup record at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!pickupIds.Add(pickup.id))
+                {
+                    result.AddError($"Duplicate pickup id: {pickup.id}");
+                }
+
+                if (string.IsNullOrWhiteSpace(pickup.displayName))
+                {
+                    result.AddError($"Pickup {pickup.id} is missing a display name.");
+                }
+
+                if (pickup.attractRange < 0f)
+                {
+                    result.AddError($"Pickup {pickup.id} cannot use negative attract range.");
+                }
+
+                if (pickup.attractionSpeed < 0f)
+                {
+                    result.AddError($"Pickup {pickup.id} cannot use negative attraction speed.");
+                }
+
+                if (pickup.id == BasicSurvivorsGame.ExperiencePickupSpawnableId.Value)
+                {
+                    if (pickup.attractRange <= 0f)
+                    {
+                        result.AddError($"Pickup {pickup.id} requires attract range above zero.");
+                    }
+
+                    if (pickup.attractionSpeed <= 0f)
+                    {
+                        result.AddError($"Pickup {pickup.id} requires attraction speed above zero.");
+                    }
+                }
+                else if (string.IsNullOrWhiteSpace(pickup.behavior))
+                {
+                    result.AddError($"Pickup {pickup.id} requires behavior text.");
+                }
+            }
+
+            RequirePickupId(pickupIds, BasicSurvivorsGame.ExperiencePickupSpawnableId.Value, result);
+            RequirePickupId(pickupIds, BasicSurvivorsGame.MagnetPickupSpawnableId.Value, result);
+            RequirePickupId(pickupIds, BasicSurvivorsGame.HealthPickupSpawnableId.Value, result);
+            RequirePickupId(pickupIds, BasicSurvivorsGame.BloodShardPickupSpawnableId.Value, result);
+        }
+
+        private static void RequirePickupId(HashSet<string> pickupIds, string requiredId, SurvivorsContentValidationResult result)
+        {
+            if (pickupIds == null || string.IsNullOrWhiteSpace(requiredId) || !pickupIds.Contains(requiredId))
+            {
+                result.AddError($"Sample pickup library is missing required pickup id: {requiredId}");
+            }
+        }
+
         private static void ValidateRelicRecord(
             string id,
             string targetId,
@@ -1966,6 +2046,22 @@ namespace Deucarian.TemplateGameSurvivors
             public int experienceDrop;
             public float spawnTimeSeconds;
             public bool finalBoss;
+        }
+
+        [Serializable]
+        private sealed class PickupLibraryJson
+        {
+            public PickupRecordJson[] pickups;
+        }
+
+        [Serializable]
+        private sealed class PickupRecordJson
+        {
+            public string id;
+            public string displayName;
+            public float attractRange;
+            public float attractionSpeed;
+            public string behavior;
         }
 
         [Serializable]

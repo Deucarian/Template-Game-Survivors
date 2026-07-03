@@ -110,6 +110,7 @@ Phase 3E adds editor-side validation adoption:
 
 - `Tools > Deucarian > Templates > Survivors > Validate Content` validates the package `Samples~/BasicSurvivorsGame` JSON libraries.
 - The menu action runs the local `SurvivorsContentValidator`; Survivors-specific rules remain in this template.
+- The editor report includes pickup JSON validation for required pickup ids, duplicate ids, display names, attraction values, and behavior text.
 - The editor runner converts local validation errors to Gameplay Foundation `ContentValidationReport` issues.
 - Game Content Authoring formats and summarizes that report for console output only. Runtime assemblies do not reference editor-only authoring packages.
 - EditMode coverage checks that the editor runner builds a report, valid sample content has no errors, invalid sample content appears through the shared authoring report path, and the runtime asmdef has no editor-only authoring references.
