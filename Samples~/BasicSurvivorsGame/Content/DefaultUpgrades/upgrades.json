@@ -16,6 +16,7 @@
     { "id": "upgrade.survivors.frost-ricochet", "rarity": "Rare", "effect": "survivors.projectile.chain_count", "target": "survivors.weapon.frost-fan" },
     { "id": "upgrade.survivors.orbiting-focus", "rarity": "Uncommon", "effect": "survivors.orbit.blade_count", "target": "survivors.weapon.orbit-ward" },
     { "id": "upgrade.survivors.thorn-halo-wall", "rarity": "Rare", "effect": "survivors.orbit.radius", "target": "survivors.weapon.thorn-halo" },
+    { "id": "upgrade.survivors.halo-spiral", "rarity": "Rare", "effect": "survivors.orbit.radius", "target": "survivors.weapon.thorn-halo" },
     { "id": "upgrade.survivors.crescent-chain", "rarity": "Uncommon", "effect": "survivors.melee.target_count", "target": "survivors.weapon.moon-slash", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.nova-echo", "rarity": "Rare", "effect": "survivors.burst.count", "target": "survivors.weapon.star-nova" },
     { "id": "upgrade.survivors.cinder-echoes", "rarity": "Rare", "effect": "survivors.burst.echo_count", "target": "survivors.weapon.star-nova" },

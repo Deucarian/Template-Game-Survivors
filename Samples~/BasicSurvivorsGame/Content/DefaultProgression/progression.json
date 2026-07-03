@@ -59,7 +59,7 @@
       "classId": "",
       "targetWeaponId": "weapon.survivors.orbit-ward",
       "nodes": [
-        { "id": "node.survivors.blood-ring.focus", "displayName": "Orbiting Focus", "upgradeId": "upgrade.survivors.orbiting-focus", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 4 },
+        { "id": "node.survivors.blood-ring.focus", "displayName": "Orbiting Focus", "upgradeId": "upgrade.survivors.orbiting-focus", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.blood-ring.canticle", "displayName": "Blood Ring Canticle", "upgradeId": "upgrade.survivors.blood-ring-canticle", "kind": "WeaponMutation", "tier": 1, "pointCost": 2, "maxRank": 3 }
       ]
     },
@@ -70,7 +70,8 @@
       "classId": "",
       "targetWeaponId": "weapon.survivors.thorn-halo",
       "nodes": [
-        { "id": "node.survivors.thorn-halo.wall", "displayName": "Thorn Halo Wall", "upgradeId": "upgrade.survivors.thorn-halo-wall", "kind": "WeaponMutation", "tier": 0, "pointCost": 1, "maxRank": 3 }
+        { "id": "node.survivors.thorn-halo.wall", "displayName": "Thorn Halo Wall", "upgradeId": "upgrade.survivors.thorn-halo-wall", "kind": "WeaponMutation", "tier": 0, "pointCost": 1, "maxRank": 3 },
+        { "id": "node.survivors.thorn-halo.spiral", "displayName": "Halo Spiral", "upgradeId": "upgrade.survivors.halo-spiral", "kind": "WeaponMutation", "tier": 1, "pointCost": 1, "maxRank": 2 }
       ]
     },
     {

@@ -224,6 +224,7 @@ namespace Deucarian.TemplateGameSurvivors
         public const string FrostSplinterUpgradeId = "upgrade.survivors.frost-splinter";
         public const string FrostRicochetUpgradeId = "upgrade.survivors.frost-ricochet";
         public const string ThornHaloUpgradeId = "upgrade.survivors.thorn-halo-wall";
+        public const string HaloSpiralUpgradeId = "upgrade.survivors.halo-spiral";
         public const string CrescentChainUpgradeId = "upgrade.survivors.crescent-chain";
         public const string NovaEchoUpgradeId = "upgrade.survivors.nova-echo";
         public const string CinderEchoUpgradeId = "upgrade.survivors.cinder-echoes";
@@ -911,8 +912,9 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade(FrostFanUpgradeId, RunUpgradeRarity.Uncommon, 40, 5, ProjectileFanEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(FrostSplinterUpgradeId, RunUpgradeRarity.Rare, 24, 3, ProjectileForkEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(FrostRicochetUpgradeId, RunUpgradeRarity.Rare, 22, 2, ProjectileChainEffect, FrostFanWeaponTarget, 1.0d),
-                Upgrade(OrbitingFocusUpgradeId, RunUpgradeRarity.Uncommon, 38, 4, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
+                Upgrade(OrbitingFocusUpgradeId, RunUpgradeRarity.Uncommon, 38, 5, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
                 Upgrade(ThornHaloUpgradeId, RunUpgradeRarity.Rare, 30, 3, OrbitRadiusEffect, ThornHaloWeaponTarget, 0.35d),
+                Upgrade(HaloSpiralUpgradeId, RunUpgradeRarity.Rare, 22, 2, OrbitRadiusEffect, ThornHaloWeaponTarget, 0.3d),
                 Upgrade(CrescentChainUpgradeId, RunUpgradeRarity.Uncommon, 34, 4, MeleeTargetEffect, MeleeWeaponTarget, 1.0d),
                 Upgrade(NovaEchoUpgradeId, RunUpgradeRarity.Rare, 24, 5, BurstCountEffect, BurstWeaponTarget, 1.0d),
                 Upgrade(CinderEchoUpgradeId, RunUpgradeRarity.Rare, 24, 3, BurstEchoEffect, BurstWeaponTarget, 1.0d),
@@ -1037,7 +1039,8 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(FrostSplinterUpgradeId, "Frost Splinter", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Frost shards split into secondary shards after impact.", FrostFanWeaponContentId, FrostFanUpgradeId, 2),
                 UpgradeMetadata(FrostRicochetUpgradeId, "Frost Ricochet", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Frost shards jump between packed enemies.", FrostFanWeaponContentId, FrostFanUpgradeId, 3),
                 UpgradeMetadata(OrbitingFocusUpgradeId, "Orbiting Focus", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Add blades to the orbiting ward."),
-                UpgradeMetadata(ThornHaloUpgradeId, "Thorn Halo Wall", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Push the halo outward and add another guard blade."),
+                UpgradeMetadata(ThornHaloUpgradeId, "Thorn Halo Wall", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Push the halo outward and add another guard blade.", ThornHaloWeaponContentId, OrbitingFocusUpgradeId, 2),
+                UpgradeMetadata(HaloSpiralUpgradeId, "Halo Spiral", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Thorn Halo widens into a denser spiral.", ThornHaloWeaponContentId, OrbitingFocusUpgradeId, 3),
                 UpgradeMetadata(CrescentChainUpgradeId, "Crescent Chain", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Let Moon Slash cut through more targets."),
                 UpgradeMetadata(NovaEchoUpgradeId, "Nova Echo", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Add another pulse to Cinder Burst."),
                 UpgradeMetadata(CinderEchoUpgradeId, "Cinder Echoes", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Repeat Cinder Burst with delayed echoes.", StarNovaWeaponContentId, NovaEchoUpgradeId, 2),
@@ -1075,7 +1078,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(WiderTriggersUpgradeId, "Wider Triggers", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Payloads trigger from farther away.", GravityGrenadeWeaponContentId, ExtraPayloadUpgradeId, 2),
                 UpgradeMetadata(ArcaneStormEvolutionUpgradeId, "Arcane Storm", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Evolution: Arc Bolt becomes a storm of chaining, forking bolts.", ArcaneWandWeaponContentId, "upgrade.survivors.arcane-damage", 5, ArcaneThesisUpgradeId),
                 UpgradeMetadata(BlizzardCrownEvolutionUpgradeId, "Blizzard Crown", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Evolution: Frost Fan expands into a piercing crown of shards.", FrostFanWeaponContentId, FrostFanUpgradeId, 5, FrostNeedleworkUpgradeId),
-                UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo become a dense orbit shield.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 4, BloodRingCanticleUpgradeId),
+                UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo become a dense orbit shield.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 5, BloodRingCanticleUpgradeId),
                 UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 5, CinderScriptUpgradeId),
                 UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam turns into a rapid piercing prism.", StarBeamWeaponContentId, StarFocusUpgradeId, 5, TwinCharmUpgradeId),
                 UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload weapons flood the arena with larger danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, GiantRuneUpgradeId)
@@ -1259,7 +1262,7 @@ namespace Deucarian.TemplateGameSurvivors
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     string.Empty,
                     OrbitWardWeaponContentId,
-                    Node("node.survivors.blood-ring.focus", "Orbiting Focus", OrbitingFocusUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 4),
+                    Node("node.survivors.blood-ring.focus", "Orbiting Focus", OrbitingFocusUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 5),
                     Node("node.survivors.blood-ring.canticle", "Blood Ring Canticle", BloodRingCanticleUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 2, 3)),
                 Track(
                     "progression.survivors.thorn-halo.weapon",
@@ -1267,7 +1270,8 @@ namespace Deucarian.TemplateGameSurvivors
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     string.Empty,
                     ThornHaloWeaponContentId,
-                    Node("node.survivors.thorn-halo.wall", "Thorn Halo Wall", ThornHaloUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 0, 1, 3)),
+                    Node("node.survivors.thorn-halo.wall", "Thorn Halo Wall", ThornHaloUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 0, 1, 3),
+                    Node("node.survivors.thorn-halo.spiral", "Halo Spiral", HaloSpiralUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 2)),
                 Track(
                     "progression.survivors.cinder-burst.weapon",
                     "Cinder Burst Skill Track",
@@ -1422,6 +1426,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == FrostRicochetUpgradeId) return "Frost Ricochet";
             if (value == "upgrade.survivors.orbiting-focus") return "Orbiting Focus";
             if (value == "upgrade.survivors.thorn-halo-wall") return "Thorn Halo Wall";
+            if (value == HaloSpiralUpgradeId) return "Halo Spiral";
             if (value == "upgrade.survivors.crescent-chain") return "Crescent Chain";
             if (value == "upgrade.survivors.nova-echo") return "Nova Echo";
             if (value == "upgrade.survivors.cinder-echoes") return "Cinder Echoes";

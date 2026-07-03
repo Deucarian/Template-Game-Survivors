@@ -707,6 +707,35 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
 
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ThornHaloUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.HaloSpiralUpgradeId));
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
+            }
+
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ThornHaloUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.HaloSpiralUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.HaloSpiralUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ThornHaloUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.HaloSpiralUpgradeId));
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
+            Assert.AreEqual(5, controller.GetRunUpgradeRankForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BloodRingCanticleUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+
+            int previousOrbitBlades = controller.OrbitBladeBonus;
+            float previousOrbitRadius = controller.OrbitRadiusBonus;
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+            Assert.That(controller.OrbitBladeBonus, Is.GreaterThan(previousOrbitBlades));
+            Assert.That(controller.OrbitRadiusBonus, Is.GreaterThan(previousOrbitRadius));
+
             Object.Destroy(controller.gameObject);
         }
 
