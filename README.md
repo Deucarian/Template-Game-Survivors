@@ -1,6 +1,6 @@
 # Deucarian Template Game - Survivors
 
-Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, level-up choices, miniboss and boss pressure, elite upgrade rewards, boss evolution rewards, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
+Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, level-up choices, readable damage feedback, low-health warnings, miniboss and boss pressure, elite upgrade rewards, boss evolution rewards, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
 
 The `Basic Survivors Game` sample is tuned as a small complete template game rather than a toy package demo: the default class starts with five distinct weapons, extra weapons can enter through the draft pool, the horde grows through seven enemy roles, the level-up pool includes 30+ authored choices with behavior mutations, passives, status effects, and six legendary evolutions, class passive atlases group class identity, weapon skill tracks group upgrade routes, and the run paces toward a 30-minute clear with continuing escalation.
 
@@ -169,6 +169,7 @@ No screenshot or GIF assets are committed yet. Add `Documentation~/media/` captu
 
 - Sample scene is missing: import `Basic Survivors Game` from Package Manager, then open the imported playtest scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
 - Weapons do not fire: enemies must be in range; move near the horde and wait for auto-fire cadence.
+- Combat feedback is hard to read: confirm the imported sample is current, then damage enemies or take a hit; resolved damage should appear as short-lived numbers and low health should pulse a red screen-edge warning.
 - Draft choices do not appear: collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
 - Relic choices do not appear: defeat the miniboss first.
 - Persistent class or meta state looks stale: use the template reset/debug hooks from tests or clear the local sample save before validating a fresh profile.

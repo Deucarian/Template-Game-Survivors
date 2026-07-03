@@ -54,6 +54,52 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator EnemyDamageSpawnsShortLivedFeedbackNumbers()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8f, 0f, 0f), 25f);
+            Assert.AreEqual(0, controller.DamagePopupSpawnCount);
+            Assert.AreEqual(0, controller.ActiveDamagePopupCount);
+
+            enemy.ApplyDamage(7.2f, "test.status.damage-popup");
+            yield return null;
+
+            Assert.AreEqual(1, controller.DamagePopupSpawnCount);
+            Assert.AreEqual(1, controller.ActiveDamagePopupCount);
+
+            controller.ForceLevelUp();
+            controller.Simulate(1.1f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveDamagePopupCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator PlayerDamageShowsFeedbackAndLowHealthWarning()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.StartingBarrierCapacity = 0f;
+            controller.StartRun();
+            yield return null;
+
+            Assert.IsFalse(controller.IsLowHealthWarningActive);
+
+            controller.ApplyDamageToPlayer(controller.MaxHealth * 0.78f, "test.player-feedback");
+            yield return null;
+
+            Assert.AreEqual(1, controller.PlayerDamageFeedbackCount);
+            Assert.AreEqual(1, controller.DamagePopupSpawnCount);
+            Assert.AreEqual(1, controller.ActiveDamagePopupCount);
+            Assert.IsTrue(controller.IsLowHealthWarningActive);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ControllerUsesHumanPlaytestPacingByDefault()
         {
             SurvivorsTemplateController controller = CreateController();

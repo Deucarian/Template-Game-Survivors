@@ -10,6 +10,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - The unlockable Ember Vanguard class starts with a broader loadout, different starting stats, and access to advanced class-gated upgrades.
 - Each sample class owns a compact passive atlas, and the core weapons expose compact skill tracks that group rank and mutation upgrades.
 - Auto-attacks include projectile bolts, orbit blades, melee slashes, burst novas, a hitscan beam, grenades, traps, and mines.
+- Resolved enemy and player damage appears as short-lived numbers, and low player health adds a red screen-edge warning.
 - Projectile upgrades can add fan spread, pierce, chain, fork, and return behavior.
 - Status and sustain upgrades can add poison, bleed, execute, lifesteal, barrier capacity, barrier recovery, and barrier-on-damage loops.
 - Enemies escalate from basic swarm pressure into fast runners, bruisers, ranged spitters, elites, minibosses, and a final boss.

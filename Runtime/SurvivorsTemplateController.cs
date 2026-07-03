@@ -30,6 +30,10 @@ namespace Deucarian.TemplateGameSurvivors
         private const int KillStreakMagnetInterval = 24;
         private const int DefaultMaxWeaponSlots = 6;
         private const int DefaultMaxPassiveSlots = 6;
+        private const float DamagePopupLifetimeSeconds = 0.9f;
+        private const float DamagePopupRiseHeight = 1.25f;
+        private const int DamagePopupLimit = 72;
+        private const float LowHealthWarningThreshold = 0.3f;
 
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
@@ -51,6 +55,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsPickupActor> _pickups = new List<SurvivorsPickupActor>(128);
         private readonly List<SurvivorsProjectileActor> _projectiles = new List<SurvivorsProjectileActor>(64);
         private readonly List<Transform> _arenaTiles = new List<Transform>(25);
+        private readonly List<SurvivorsDamagePopup> _damagePopups = new List<SurvivorsDamagePopup>(DamagePopupLimit);
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -83,6 +88,9 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _hudTitleStyle;
         private GUIStyle _hudLabelStyle;
         private GUIStyle _hudSmallStyle;
+        private GUIStyle _damagePopupStyle;
+        private GUIStyle _playerDamagePopupStyle;
+        private GUIStyle _lowHealthStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService;
         private HealthState _playerHealth;
@@ -157,6 +165,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftBanishCount { get; private set; }
         public int DraftSkipCount { get; private set; }
         public int ClassUnlockRewardCount { get; private set; }
+        public int DamagePopupSpawnCount { get; private set; }
+        public int PlayerDamageFeedbackCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -210,6 +220,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
         public int ActivePickupCount => _pickups.Count;
         public int ActiveProjectileCount => _projectiles.Count;
+        public int ActiveDamagePopupCount => _damagePopups.Count;
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
         public int ActivePassiveCount => _ownedPassiveUpgradeIds.Count;
         public int EvolvedWeaponCount => _ownedEvolutionUpgradeIds.Count;
@@ -257,6 +268,7 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsUpgradeRewardChoiceOpen => State == SurvivorsRunState.LevelUp && IsRewardUpgradeSelectionKind(_rewardSelectionKind);
         public bool IsGameOver => State == SurvivorsRunState.GameOver;
         public bool IsVictory => State == SurvivorsRunState.Victory;
+        public bool IsLowHealthWarningActive => (State == SurvivorsRunState.Playing || State == SurvivorsRunState.LevelUp) && MaxHealth > 0f && CurrentHealth / MaxHealth <= LowHealthWarningThreshold;
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
         public int DraftRerollsRemaining => Mathf.Max(0, CurrentTuning.DraftRerollCharges - DraftRerollCount);
         public int DraftBanishesRemaining => Mathf.Max(0, CurrentTuning.DraftBanishCharges - DraftBanishCount);
@@ -291,6 +303,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (State == SurvivorsRunState.LevelUp)
             {
+                TickDamagePopups(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
                 HandleLevelUpInput();
                 return;
@@ -298,6 +311,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
             {
+                TickDamagePopups(Time.deltaTime);
                 if (Input.GetKeyDown(KeyCode.R))
                 {
                     RestartRun();
@@ -335,7 +349,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureHudStyles();
-            GUI.Box(new Rect(12, 12, 356, 352), string.Empty);
+            GUI.Box(new Rect(12, 12, 356, 376), string.Empty);
             GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
             DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
             DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
@@ -350,6 +364,8 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 280, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
             GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}", _hudSmallStyle);
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
+            DrawLowHealthWarning();
+            DrawDamagePopups();
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -434,6 +450,8 @@ namespace Deucarian.TemplateGameSurvivors
             DraftBanishCount = 0;
             DraftSkipCount = 0;
             ClassUnlockRewardCount = 0;
+            DamagePopupSpawnCount = 0;
+            PlayerDamageFeedbackCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -486,6 +504,7 @@ namespace Deucarian.TemplateGameSurvivors
             _spawnSequence = 0;
             _currentDraft = null;
             _currentRelicDraft = null;
+            _damagePopups.Clear();
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             _rewardSelectionTimer = 0f;
             _currentDraftRerollIndex = 0;
@@ -512,6 +531,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             float dt = Mathf.Max(0f, deltaTime);
+            TickDamagePopups(dt);
             if (State == SurvivorsRunState.LevelUp)
             {
                 TickRewardSelectionTimeout(dt);
@@ -878,7 +898,8 @@ namespace Deucarian.TemplateGameSurvivors
                 new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, incoming) },
                 sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.enemy" : source),
                 preResolvedCritical: false);
-            CombatDamageResolver.Resolve(_combatCatalog, _playerHealth, null, request);
+            DamageResolutionResult result = CombatDamageResolver.Resolve(_combatCatalog, _playerHealth, null, request);
+            RecordPlayerDamageFeedback(result == null ? null : result.Damage, PlayerPosition);
             if (!_playerHealth.IsAlive)
             {
                 GrantRunRewards(victory: false);
@@ -1059,6 +1080,22 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 enemy.ExecuteFromAugment(source);
             }
+        }
+
+        internal void RecordEnemyDamageFeedback(SurvivorsEnemyActor enemy, DamageResult damage)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            float resolvedDamage = ResolveDamagePopupAmount(damage);
+            if (resolvedDamage <= 0f)
+            {
+                return;
+            }
+
+            RecordDamagePopup(enemy.transform.position, resolvedDamage, playerDamage: false, critical: damage.Critical.IsCritical);
         }
 
         internal void HandleEnemyKilled(SurvivorsEnemyActor enemy)
@@ -3124,6 +3161,25 @@ namespace Deucarian.TemplateGameSurvivors
                 normal = { textColor = new Color(0.78f, 0.88f, 0.95f) },
                 wordWrap = true
             };
+            _damagePopupStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 15,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(1f, 0.9f, 0.35f) }
+            };
+            _playerDamagePopupStyle = new GUIStyle(_damagePopupStyle)
+            {
+                fontSize = 17,
+                normal = { textColor = new Color(1f, 0.24f, 0.18f) }
+            };
+            _lowHealthStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = 12,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(1f, 0.3f, 0.24f) }
+            };
         }
 
         private void DrawHudBar(Rect rect, string label, float value, Color fill)
@@ -3135,6 +3191,133 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.DrawTexture(fillRect, Texture2D.whiteTexture);
             GUI.color = oldColor;
             GUI.Label(rect, label + " " + Mathf.RoundToInt(Mathf.Clamp01(value) * 100f).ToString() + "%", _hudSmallStyle);
+        }
+
+        private void DrawLowHealthWarning()
+        {
+            if (!IsLowHealthWarningActive)
+            {
+                return;
+            }
+
+            float pulse = 0.75f + Mathf.Sin(Time.unscaledTime * 7f) * 0.25f;
+            Color oldColor = GUI.color;
+            GUI.color = new Color(1f, 0.04f, 0.04f, 0.12f + 0.08f * pulse);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, 12f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(0f, Screen.height - 12f, Screen.width, 12f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(0f, 0f, 12f, Screen.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(Screen.width - 12f, 0f, 12f, Screen.height), Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 1f, 1f, 0.95f);
+            GUI.Label(new Rect(24, 346, 318, 22), "LOW HEALTH", _lowHealthStyle);
+            GUI.color = oldColor;
+        }
+
+        private void DrawDamagePopups()
+        {
+            if (_damagePopups.Count == 0)
+            {
+                return;
+            }
+
+            Camera popupCamera = _camera != null ? _camera : Camera.main;
+            if (popupCamera == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _damagePopups.Count; i++)
+            {
+                SurvivorsDamagePopup popup = _damagePopups[i];
+                float normalizedAge = Mathf.Clamp01(popup.ElapsedSeconds / DamagePopupLifetimeSeconds);
+                Vector3 world = popup.WorldPosition + Vector3.up * (DamagePopupRiseHeight * normalizedAge);
+                Vector3 screen = popupCamera.WorldToScreenPoint(world);
+                if (screen.z <= 0f)
+                {
+                    continue;
+                }
+
+                GUIStyle style = popup.PlayerDamage ? _playerDamagePopupStyle : _damagePopupStyle;
+                Color color = popup.Color;
+                color.a *= 1f - normalizedAge;
+                style.normal.textColor = color;
+                Rect rect = new Rect(screen.x - 40f, Screen.height - screen.y - 14f, 80f, 24f);
+                GUI.Label(rect, popup.Label, style);
+            }
+        }
+
+        private void TickDamagePopups(float deltaTime)
+        {
+            if (_damagePopups.Count == 0)
+            {
+                return;
+            }
+
+            float dt = Mathf.Max(0f, deltaTime);
+            for (int i = _damagePopups.Count - 1; i >= 0; i--)
+            {
+                SurvivorsDamagePopup popup = _damagePopups[i];
+                popup.ElapsedSeconds += dt;
+                if (popup.ElapsedSeconds >= DamagePopupLifetimeSeconds)
+                {
+                    _damagePopups.RemoveAt(i);
+                }
+                else
+                {
+                    _damagePopups[i] = popup;
+                }
+            }
+        }
+
+        private void RecordPlayerDamageFeedback(DamageResult damage, Vector3 position)
+        {
+            float resolvedDamage = ResolveDamagePopupAmount(damage);
+            if (resolvedDamage <= 0f)
+            {
+                return;
+            }
+
+            PlayerDamageFeedbackCount++;
+            RecordDamagePopup(position, resolvedDamage, playerDamage: true, critical: damage.Critical.IsCritical);
+        }
+
+        private void RecordDamagePopup(Vector3 worldPosition, float amount, bool playerDamage, bool critical)
+        {
+            if (amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount))
+            {
+                return;
+            }
+
+            if (_damagePopups.Count >= DamagePopupLimit)
+            {
+                _damagePopups.RemoveAt(0);
+            }
+
+            int sequence = DamagePopupSpawnCount++;
+            float lane = ((sequence % 5) - 2) * 0.18f;
+            float lift = 1.1f + (sequence % 3) * 0.12f;
+            string label = (playerDamage ? "-" : string.Empty) + Mathf.CeilToInt(amount).ToString();
+            Color color = playerDamage
+                ? new Color(1f, 0.24f, 0.18f, 1f)
+                : critical
+                    ? new Color(1f, 0.68f, 0.12f, 1f)
+                    : new Color(1f, 0.92f, 0.42f, 1f);
+            _damagePopups.Add(new SurvivorsDamagePopup(label, worldPosition + new Vector3(lane, lift, 0f), color, playerDamage));
+        }
+
+        private static float ResolveDamagePopupAmount(DamageResult damage)
+        {
+            if (damage == null || !damage.Succeeded)
+            {
+                return 0f;
+            }
+
+            double amount = damage.HealthDamage > 0d ? damage.HealthDamage : damage.FinalDamage;
+            if (amount <= 0d || double.IsNaN(amount) || double.IsInfinity(amount))
+            {
+                return 0f;
+            }
+
+            return (float)Math.Min(float.MaxValue, amount);
         }
 
         private string ResolveWeaponHudLabel()
@@ -3280,6 +3463,24 @@ namespace Deucarian.TemplateGameSurvivors
         {
             ClearRun();
             ReleaseMetaProgressionService();
+        }
+
+        private struct SurvivorsDamagePopup
+        {
+            public SurvivorsDamagePopup(string label, Vector3 worldPosition, Color color, bool playerDamage)
+            {
+                Label = label;
+                WorldPosition = worldPosition;
+                Color = color;
+                PlayerDamage = playerDamage;
+                ElapsedSeconds = 0f;
+            }
+
+            public string Label { get; }
+            public Vector3 WorldPosition { get; }
+            public Color Color { get; }
+            public bool PlayerDamage { get; }
+            public float ElapsedSeconds;
         }
     }
 
@@ -3427,6 +3628,11 @@ namespace Deucarian.TemplateGameSurvivors
                 sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.player" : source),
                 preResolvedCritical: false);
             DamageResolutionResult result = CombatDamageResolver.Resolve(_controller.CombatCatalog, _health, null, request);
+            if (result != null)
+            {
+                _controller.RecordEnemyDamageFeedback(this, result.Damage);
+            }
+
             if (applyAugments && result != null && result.Damage != null && IsAlive)
             {
                 _controller.ApplyDamageAugmentsToEnemy(this, result.Damage, source);
