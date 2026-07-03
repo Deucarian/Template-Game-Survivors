@@ -928,6 +928,11 @@ namespace Deucarian.TemplateGameSurvivors
             return !string.IsNullOrWhiteSpace(upgradeId) && _ownedEvolutionUpgradeIds.Contains(upgradeId);
         }
 
+        internal bool IsEvolutionActive(string upgradeId)
+        {
+            return !string.IsNullOrWhiteSpace(upgradeId) && _ownedEvolutionUpgradeIds.Contains(upgradeId);
+        }
+
         public IReadOnlyList<string> DebugDescribeCurrentBuild()
         {
             EnsureRunStartedForTest();

@@ -339,6 +339,7 @@ namespace Deucarian.TemplateGameSurvivors
 
     internal sealed class SurvivorsProjectileWeaponRuntime : SurvivorsWeaponRuntimeBase
     {
+        private const int ArcaneStormRingProjectileCount = 8;
         private float _cooldownRemaining = 0.08f;
 
         public SurvivorsProjectileWeaponRuntime(SurvivorsTemplateController controller, SurvivorsWeaponArchetypeDefinition definition)
@@ -393,6 +394,26 @@ namespace Deucarian.TemplateGameSurvivors
                 float angle = Mathf.Lerp(-spreadDegrees * 0.5f, spreadDegrees * 0.5f, normalizedIndex);
                 Vector3 resolvedDirection = Quaternion.Euler(0f, angle, 0f) * direction.normalized;
                 fired |= Controller.LaunchProjectile(Definition, resolvedDirection);
+            }
+
+            if (Definition.Id == BasicSurvivorsGame.ArcaneWandWeaponContentId &&
+                Controller.IsEvolutionActive(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId))
+            {
+                fired |= FireArcaneStormRing(direction.normalized);
+            }
+
+            return fired;
+        }
+
+        private bool FireArcaneStormRing(Vector3 forward)
+        {
+            Vector3 resolvedForward = forward.sqrMagnitude <= 0.001f ? Vector3.forward : forward.normalized;
+            bool fired = false;
+            for (int index = 0; index < ArcaneStormRingProjectileCount; index++)
+            {
+                float angle = (360f / ArcaneStormRingProjectileCount) * index;
+                Vector3 direction = Quaternion.Euler(0f, angle, 0f) * resolvedForward;
+                fired |= Controller.LaunchProjectile(Definition, direction);
             }
 
             return fired;

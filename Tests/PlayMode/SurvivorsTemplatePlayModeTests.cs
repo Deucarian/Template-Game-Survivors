@@ -652,6 +652,39 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ArcaneStormEvolutionAddsRadialBoltRing()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureProjectileModifierOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
+            yield return null;
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4f, 0f, 0f), 100f);
+            int beforeBaselineFire = controller.ProjectileLaunchCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            int baselineLaunches = controller.ProjectileLaunchCount - beforeBaselineFire;
+            Assert.That(baselineLaunches, Is.GreaterThanOrEqualTo(1));
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4.4f, 0f, 0f), 100f);
+            int beforeStormFire = controller.ProjectileLaunchCount;
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            int evolvedLaunches = controller.ProjectileLaunchCount - beforeStormFire;
+
+            Assert.That(evolvedLaunches, Is.GreaterThanOrEqualTo(baselineLaunches + 8));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DefaultWeaponPathsRequireFiveRanksBeforeEvolution()
         {
             SurvivorsTemplateController controller = CreateController();

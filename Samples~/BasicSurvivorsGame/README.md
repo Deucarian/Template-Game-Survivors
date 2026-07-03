@@ -8,7 +8,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - The sample defaults to `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` stays at `1`, opening spawns use a `3.35` second interval, the opening max alive cap is `10`, and reward choices stay open until the player chooses.
 - The default Arcane Initiate class starts with Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst so the first minute already feels like a real Survivors run.
 - Level-up drafts can unlock Star Beam or Gravity Grenade when weapon slots are open; once Star Beam is owned, Star Focus ranks open Prismatic Beam, Star Pulse, and Tempest Prism build goals, while Gravity Grenade can rank Extra Payload, branch into Bigger Booms or Wider Triggers, and evolve through Giant Rune.
-- Default weapons have deeper paths too: Frost Fan ranks into Frost Splinter, Frost Ricochet, and Blizzard Crown; Blood Ring and Thorn Halo rank into Thorn Halo Wall, Halo Spiral, and Crimson Aegis; and Cinder Burst ranks into Cinder Echoes, Targeted Burst Sigils, and Inferno Heart.
+- Default weapons have deeper paths too: Arc Bolt evolves into Arcane Storm with a radial bolt ring; Frost Fan ranks into Frost Splinter, Frost Ricochet, and Blizzard Crown; Blood Ring and Thorn Halo rank into Thorn Halo Wall, Halo Spiral, and Crimson Aegis; and Cinder Burst ranks into Cinder Echoes, Targeted Burst Sigils, and Inferno Heart.
 - The unlockable Ember Vanguard class starts with a broader loadout, different starting stats, and access to advanced class-gated upgrades, including a Moon Slash path from Moonlit Edge into Crescent Chain, Lunar Tempo, and Eclipse Waltz plus a Rune Trap/Aether Mine path from Rune Lattice into Snaring Runes, Aether Bloom, and Aetherfield Matrix.
 - Each sample class owns a compact passive atlas, and the core weapons expose compact skill tracks that group rank and mutation upgrades.
 - Auto-attacks include projectile bolts, orbit blades, melee slashes, burst novas, a hitscan beam, grenades, traps, and mines.
@@ -43,7 +43,7 @@ First run target:
 - Move through the opening horde and let the wand auto-fire.
 - Collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
 - Pick Star Beam when it appears, rank Star Focus five times, branch into Prismatic Beam or Star Pulse, and take Twin Charm to build toward Tempest Prism; or pick Gravity Grenade, rank Extra Payload and Bigger Booms, then take Giant Rune to build toward Gravefield Engine.
-- For a default-class evolution, rank Frost Fan five times and take Frost Needlework, rank Orbiting Focus five times and take Blood Ring Canticle, or rank Nova Echo five times and take Cinder Script.
+- For a default-class evolution, rank Arcane Damage five times and take Arcane Thesis to build Arc Bolt toward Arcane Storm, rank Frost Fan five times and take Frost Needlework, rank Orbiting Focus five times and take Blood Ring Canticle, or rank Nova Echo five times and take Cinder Script.
 - After unlocking Ember Vanguard, rank Moonlit Edge five times and take Moon Oath to build Moon Slash toward Eclipse Waltz.
 - For the Ember Vanguard hazard build, rank Rune Lattice five times and take Siege Payloads to build Rune Trap and Aether Mine toward Aetherfield Matrix.
 - Defeat the miniboss and pick an elite upgrade reward.
