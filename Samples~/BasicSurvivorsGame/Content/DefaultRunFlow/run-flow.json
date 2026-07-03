@@ -31,6 +31,13 @@
       "draftChoiceCount": 3,
       "draftMidRarityLevel": 6,
       "draftLateRarityLevel": 12,
+      "rarityTables": [
+        { "id": "NormalEarly", "common": 120, "uncommon": 60, "rare": 12, "epic": 1, "legendary": 0 },
+        { "id": "NormalMid", "common": 80, "uncommon": 90, "rare": 38, "epic": 8, "legendary": 0 },
+        { "id": "NormalLate", "common": 55, "uncommon": 80, "rare": 60, "epic": 22, "legendary": 4 },
+        { "id": "Elite", "common": 0, "uncommon": 80, "rare": 80, "epic": 35, "legendary": 8 },
+        { "id": "Boss", "common": 0, "uncommon": 0, "rare": 90, "epic": 85, "legendary": 90 }
+      ],
       "endlessEliteSpawnIntervalSeconds": 90,
       "endlessMinibossSpawnIntervalSeconds": 180,
       "endlessBossSpawnIntervalSeconds": 300
@@ -66,6 +73,13 @@
       "draftChoiceCount": 3,
       "draftMidRarityLevel": 6,
       "draftLateRarityLevel": 12,
+      "rarityTables": [
+        { "id": "NormalEarly", "common": 120, "uncommon": 60, "rare": 12, "epic": 1, "legendary": 0 },
+        { "id": "NormalMid", "common": 80, "uncommon": 90, "rare": 38, "epic": 8, "legendary": 0 },
+        { "id": "NormalLate", "common": 55, "uncommon": 80, "rare": 60, "epic": 22, "legendary": 4 },
+        { "id": "Elite", "common": 0, "uncommon": 80, "rare": 80, "epic": 35, "legendary": 8 },
+        { "id": "Boss", "common": 0, "uncommon": 0, "rare": 90, "epic": 85, "legendary": 90 }
+      ],
       "endlessEliteSpawnIntervalSeconds": 105,
       "endlessMinibossSpawnIntervalSeconds": 180,
       "endlessBossSpawnIntervalSeconds": 300
@@ -101,6 +115,13 @@
       "draftChoiceCount": 3,
       "draftMidRarityLevel": 6,
       "draftLateRarityLevel": 12,
+      "rarityTables": [
+        { "id": "NormalEarly", "common": 120, "uncommon": 60, "rare": 12, "epic": 1, "legendary": 0 },
+        { "id": "NormalMid", "common": 80, "uncommon": 90, "rare": 38, "epic": 8, "legendary": 0 },
+        { "id": "NormalLate", "common": 55, "uncommon": 80, "rare": 60, "epic": 22, "legendary": 4 },
+        { "id": "Elite", "common": 0, "uncommon": 80, "rare": 80, "epic": 35, "legendary": 8 },
+        { "id": "Boss", "common": 0, "uncommon": 0, "rare": 90, "epic": 85, "legendary": 90 }
+      ],
       "endlessEliteSpawnIntervalSeconds": 35,
       "endlessMinibossSpawnIntervalSeconds": 70,
       "endlessBossSpawnIntervalSeconds": 120
@@ -136,6 +157,13 @@
       "draftChoiceCount": 3,
       "draftMidRarityLevel": 6,
       "draftLateRarityLevel": 12,
+      "rarityTables": [
+        { "id": "NormalEarly", "common": 120, "uncommon": 60, "rare": 12, "epic": 1, "legendary": 0 },
+        { "id": "NormalMid", "common": 80, "uncommon": 90, "rare": 38, "epic": 8, "legendary": 0 },
+        { "id": "NormalLate", "common": 55, "uncommon": 80, "rare": 60, "epic": 22, "legendary": 4 },
+        { "id": "Elite", "common": 0, "uncommon": 80, "rare": 80, "epic": 35, "legendary": 8 },
+        { "id": "Boss", "common": 0, "uncommon": 0, "rare": 90, "epic": 85, "legendary": 90 }
+      ],
       "endlessEliteSpawnIntervalSeconds": 70,
       "endlessMinibossSpawnIntervalSeconds": 120,
       "endlessBossSpawnIntervalSeconds": 210

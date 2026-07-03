@@ -25,6 +25,15 @@ namespace Deucarian.TemplateGameSurvivors
 
     public static class SurvivorsContentValidator
     {
+        private static readonly string[] RequiredRunFlowRarityTableIds =
+        {
+            "NormalEarly",
+            "NormalMid",
+            "NormalLate",
+            "Elite",
+            "Boss"
+        };
+
         public static SurvivorsContentValidationResult ValidateRuntimeContent(
             IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons,
             RunUpgradeCatalog upgrades,
@@ -1534,6 +1543,8 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError($"Run flow profile {profileId} late rarity level must be after mid rarity level.");
             }
 
+            ValidateRunFlowRarityTables(profile.rarityTables, profileId, result);
+
             ValidatePositive(profileId, "endless elite interval", profile.endlessEliteSpawnIntervalSeconds, result);
             ValidatePositive(profileId, "endless miniboss interval", profile.endlessMinibossSpawnIntervalSeconds, result);
             ValidatePositive(profileId, "endless boss interval", profile.endlessBossSpawnIntervalSeconds, result);
@@ -1545,6 +1556,148 @@ namespace Deucarian.TemplateGameSurvivors
             if (profile.endlessBossSpawnIntervalSeconds <= profile.endlessMinibossSpawnIntervalSeconds)
             {
                 result.AddError($"Run flow profile {profileId} endless boss interval must be longer than miniboss interval.");
+            }
+        }
+
+        private static void ValidateRunFlowRarityTables(
+            RarityTableRecordJson[] rarityTables,
+            string profileId,
+            SurvivorsContentValidationResult result)
+        {
+            if (rarityTables == null || rarityTables.Length == 0)
+            {
+                result.AddError($"Run flow profile {profileId} must define rarity tables for draft odds.");
+                return;
+            }
+
+            var tableIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < rarityTables.Length; i++)
+            {
+                RarityTableRecordJson table = rarityTables[i];
+                if (table == null)
+                {
+                    result.AddError($"Run flow profile {profileId} rarity table at index {i} is null.");
+                    continue;
+                }
+
+                string tableId = string.IsNullOrWhiteSpace(table.id) ? $"index {i}" : table.id;
+                if (string.IsNullOrWhiteSpace(table.id))
+                {
+                    result.AddError($"Run flow profile {profileId} rarity table at index {i} is missing an id.");
+                }
+                else if (!tableIds.Add(table.id))
+                {
+                    result.AddError($"Run flow profile {profileId} has duplicate rarity table id: {table.id}");
+                }
+
+                ValidateRarityTableWeight(profileId, tableId, "common", table.common, result);
+                ValidateRarityTableWeight(profileId, tableId, "uncommon", table.uncommon, result);
+                ValidateRarityTableWeight(profileId, tableId, "rare", table.rare, result);
+                ValidateRarityTableWeight(profileId, tableId, "epic", table.epic, result);
+                ValidateRarityTableWeight(profileId, tableId, "legendary", table.legendary, result);
+
+                long totalWeight =
+                    (long)table.common +
+                    table.uncommon +
+                    table.rare +
+                    table.epic +
+                    table.legendary;
+                if (totalWeight <= 0)
+                {
+                    result.AddError($"Run flow profile {profileId} rarity table {tableId} requires at least one positive weight.");
+                }
+
+                ValidateRarityTableCurve(profileId, table, tableId, result);
+            }
+
+            for (int i = 0; i < RequiredRunFlowRarityTableIds.Length; i++)
+            {
+                string requiredId = RequiredRunFlowRarityTableIds[i];
+                if (!tableIds.Contains(requiredId))
+                {
+                    result.AddError($"Run flow profile {profileId} is missing rarity table {requiredId}.");
+                }
+            }
+        }
+
+        private static void ValidateRarityTableCurve(
+            string profileId,
+            RarityTableRecordJson table,
+            string tableId,
+            SurvivorsContentValidationResult result)
+        {
+            switch (table.id)
+            {
+                case "NormalEarly":
+                    RequirePositiveRarityWeight(profileId, tableId, "common", table.common, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "uncommon", table.uncommon, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "rare", table.rare, result);
+                    RequireZeroRarityWeight(profileId, tableId, "legendary", table.legendary, result);
+                    break;
+                case "NormalMid":
+                    RequirePositiveRarityWeight(profileId, tableId, "uncommon", table.uncommon, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "rare", table.rare, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "epic", table.epic, result);
+                    RequireZeroRarityWeight(profileId, tableId, "legendary", table.legendary, result);
+                    break;
+                case "NormalLate":
+                    RequirePositiveRarityWeight(profileId, tableId, "rare", table.rare, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "epic", table.epic, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "legendary", table.legendary, result);
+                    break;
+                case "Elite":
+                    RequireZeroRarityWeight(profileId, tableId, "common", table.common, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "uncommon", table.uncommon, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "rare", table.rare, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "epic", table.epic, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "legendary", table.legendary, result);
+                    break;
+                case "Boss":
+                    RequireZeroRarityWeight(profileId, tableId, "common", table.common, result);
+                    RequireZeroRarityWeight(profileId, tableId, "uncommon", table.uncommon, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "rare", table.rare, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "epic", table.epic, result);
+                    RequirePositiveRarityWeight(profileId, tableId, "legendary", table.legendary, result);
+                    break;
+            }
+        }
+
+        private static void ValidateRarityTableWeight(
+            string profileId,
+            string tableId,
+            string rarity,
+            int weight,
+            SurvivorsContentValidationResult result)
+        {
+            if (weight < 0)
+            {
+                result.AddError($"Run flow profile {profileId} rarity table {tableId} cannot use negative {rarity} weight.");
+            }
+        }
+
+        private static void RequirePositiveRarityWeight(
+            string profileId,
+            string tableId,
+            string rarity,
+            int weight,
+            SurvivorsContentValidationResult result)
+        {
+            if (weight <= 0)
+            {
+                result.AddError($"Run flow profile {profileId} rarity table {tableId} requires {rarity} weight above zero.");
+            }
+        }
+
+        private static void RequireZeroRarityWeight(
+            string profileId,
+            string tableId,
+            string rarity,
+            int weight,
+            SurvivorsContentValidationResult result)
+        {
+            if (weight != 0)
+            {
+                result.AddError($"Run flow profile {profileId} rarity table {tableId} requires {rarity} weight to be zero.");
             }
         }
 
@@ -2347,9 +2500,21 @@ namespace Deucarian.TemplateGameSurvivors
             public int draftChoiceCount;
             public int draftMidRarityLevel;
             public int draftLateRarityLevel;
+            public RarityTableRecordJson[] rarityTables;
             public float endlessEliteSpawnIntervalSeconds;
             public float endlessMinibossSpawnIntervalSeconds;
             public float endlessBossSpawnIntervalSeconds;
+        }
+
+        [Serializable]
+        private sealed class RarityTableRecordJson
+        {
+            public string id;
+            public int common;
+            public int uncommon;
+            public int rare;
+            public int epic;
+            public int legendary;
         }
 
         [Serializable]
