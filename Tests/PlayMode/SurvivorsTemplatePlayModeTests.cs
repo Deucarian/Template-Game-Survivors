@@ -262,6 +262,39 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator RapidExperiencePickupShowsGemRushFeedback()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.StartRun();
+            yield return null;
+
+            controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.15f, 0f, 0.15f), 1);
+            controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(-0.15f, 0f, 0.12f), 1);
+            controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.08f, 0f, -0.15f), 1);
+
+            controller.Simulate(0.2f);
+            yield return null;
+
+            Assert.AreEqual(3, controller.ExperiencePickupFeedbackCount);
+            Assert.AreEqual(3, controller.CurrentExperienceComboPickupCount);
+            Assert.AreEqual(3, controller.CurrentExperienceComboAmount);
+            Assert.That(controller.ExperienceComboFeedbackCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastExperienceComboFeedbackLabel, Does.Contain("Gem Rush"));
+            Assert.That(controller.ActiveExperienceComboFeedbackLabel, Does.Contain("Gem Rush"));
+            Assert.That(controller.ExperienceComboFeedbackRemainingSeconds, Is.GreaterThan(0f));
+
+            controller.Simulate(1.5f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.CurrentExperienceComboPickupCount);
+            Assert.AreEqual(0, controller.CurrentExperienceComboAmount);
+            Assert.IsEmpty(controller.ActiveExperienceComboFeedbackLabel);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ControllerUsesHumanPlaytestPacingByDefault()
         {
             SurvivorsTemplateController controller = CreateController();

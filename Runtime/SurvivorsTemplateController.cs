@@ -46,6 +46,9 @@ namespace Deucarian.TemplateGameSurvivors
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
+        private const float ExperienceComboWindowSeconds = 0.85f;
+        private const float ExperienceComboFeedbackDurationSeconds = 1.35f;
+        private const int ExperienceComboMinimumPickupCount = 3;
         private const float EnemyHitFlashSeconds = 0.13f;
         private const float EnemyDeathEffectLifetimeSeconds = 0.42f;
         private const int EnemyDeathEffectLimit = 56;
@@ -182,6 +185,11 @@ namespace Deucarian.TemplateGameSurvivors
         private string _streakRewardFeedbackLabel = string.Empty;
         private Color _streakRewardFeedbackColor = Color.white;
         private float _streakRewardFeedbackTimer;
+        private string _experienceComboFeedbackLabel = string.Empty;
+        private float _experienceComboTimer;
+        private float _experienceComboFeedbackTimer;
+        private int _experienceComboPickupCount;
+        private int _experienceComboAmount;
         private int _bonusBloodShardsEarnedThisRun;
         private int _bonusLegacyExperienceEarnedThisRun;
 
@@ -237,6 +245,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int MajorThreatWarningCount { get; private set; }
         public int ExperiencePickupFeedbackCount { get; private set; }
+        public int ExperienceComboFeedbackCount { get; private set; }
+        public string LastExperienceComboFeedbackLabel { get; private set; } = string.Empty;
         public int HealthPickupCollectedCount { get; private set; }
         public float HealthRestoredByPickups { get; private set; }
         public int BloodShardPickupCollectedCount { get; private set; }
@@ -384,6 +394,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
         public string ActiveStreakRewardFeedbackLabel => _streakRewardFeedbackTimer > 0f ? _streakRewardFeedbackLabel : string.Empty;
         public float StreakRewardFeedbackRemainingSeconds => Mathf.Max(0f, _streakRewardFeedbackTimer);
+        public string ActiveExperienceComboFeedbackLabel => _experienceComboFeedbackTimer > 0f ? _experienceComboFeedbackLabel : string.Empty;
+        public float ExperienceComboFeedbackRemainingSeconds => Mathf.Max(0f, _experienceComboFeedbackTimer);
+        public int CurrentExperienceComboPickupCount => _experienceComboTimer > 0f ? _experienceComboPickupCount : 0;
+        public int CurrentExperienceComboAmount => _experienceComboTimer > 0f ? _experienceComboAmount : 0;
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
         public int TotalDraftRerollCharges => Mathf.Max(0, CurrentTuning.DraftRerollCharges + PersistentDraftRerollBonus);
         public int DraftRerollsRemaining => Mathf.Max(0, TotalDraftRerollCharges - DraftRerollCount);
@@ -425,6 +439,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickStreakRewardFeedback(Time.deltaTime);
+                TickExperienceComboFeedback(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
                 HandleLevelUpInput();
                 return;
@@ -438,6 +453,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickStreakRewardFeedback(Time.deltaTime);
+                TickExperienceComboFeedback(Time.deltaTime);
                 if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
                 {
                     ContinueAfterVictory();
@@ -501,6 +517,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawMajorThreatWarning();
             DrawRewardSelectionFeedback();
             DrawStreakRewardFeedback();
+            DrawExperienceComboFeedback();
             DrawDamagePopups();
 
             if (State == SurvivorsRunState.LevelUp)
@@ -604,6 +621,8 @@ namespace Deucarian.TemplateGameSurvivors
             MajorRewardDropFeedbackCount = 0;
             MajorThreatWarningCount = 0;
             ExperiencePickupFeedbackCount = 0;
+            ExperienceComboFeedbackCount = 0;
+            LastExperienceComboFeedbackLabel = string.Empty;
             HealthPickupCollectedCount = 0;
             HealthRestoredByPickups = 0f;
             BloodShardPickupCollectedCount = 0;
@@ -684,6 +703,11 @@ namespace Deucarian.TemplateGameSurvivors
             _streakRewardFeedbackLabel = string.Empty;
             _streakRewardFeedbackTimer = 0f;
             _streakRewardFeedbackColor = Color.white;
+            _experienceComboFeedbackLabel = string.Empty;
+            _experienceComboTimer = 0f;
+            _experienceComboFeedbackTimer = 0f;
+            _experienceComboPickupCount = 0;
+            _experienceComboAmount = 0;
             _bonusBloodShardsEarnedThisRun = 0;
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
@@ -744,6 +768,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickMajorRewardDropFeedbackEffects(dt);
             TickRewardFeedback(dt);
             TickStreakRewardFeedback(dt);
+            TickExperienceComboFeedback(dt);
             if (State == SurvivorsRunState.LevelUp)
             {
                 TickRewardSelectionTimeout(dt);
@@ -1577,7 +1602,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
             else
             {
-                GainExperience(Mathf.Max(1, pickup.Amount));
+                int gained = GainExperience(Mathf.Max(1, pickup.Amount));
+                RecordExperienceCombo(gained);
                 ExperiencePickupFeedbackCount++;
             }
 
@@ -3966,7 +3992,7 @@ namespace Deucarian.TemplateGameSurvivors
             _pendingVictoryAfterRewardDraft = false;
         }
 
-        private void GainExperience(int amount)
+        private int GainExperience(int amount)
         {
             int baseAmount = Mathf.Max(1, amount);
             int gained = Mathf.Max(1, Mathf.RoundToInt(baseAmount * Mathf.Max(0.1f, 1f + ExperienceGainMultiplierBonus)));
@@ -3983,6 +4009,36 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 OpenLevelUpDraft();
             }
+
+            return gained;
+        }
+
+        private void RecordExperienceCombo(int gained)
+        {
+            if (gained <= 0)
+            {
+                return;
+            }
+
+            if (_experienceComboTimer <= 0f)
+            {
+                _experienceComboPickupCount = 0;
+                _experienceComboAmount = 0;
+            }
+
+            _experienceComboPickupCount++;
+            _experienceComboAmount += gained;
+            _experienceComboTimer = ExperienceComboWindowSeconds;
+
+            if (_experienceComboPickupCount < ExperienceComboMinimumPickupCount)
+            {
+                return;
+            }
+
+            ExperienceComboFeedbackCount++;
+            _experienceComboFeedbackLabel = $"{_experienceComboPickupCount} Gem Rush: +{_experienceComboAmount} XP";
+            LastExperienceComboFeedbackLabel = _experienceComboFeedbackLabel;
+            _experienceComboFeedbackTimer = ExperienceComboFeedbackDurationSeconds;
         }
 
         private void OpenLevelUpDraft(IReadOnlyList<RunUpgradeId> lockedChoices = null)
@@ -4993,6 +5049,33 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
         }
 
+        private void DrawExperienceComboFeedback()
+        {
+            if (_experienceComboFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_experienceComboFeedbackLabel))
+            {
+                return;
+            }
+
+            float width = Mathf.Min(420f, Mathf.Max(0f, Screen.width - 32f));
+            if (width <= 0f)
+            {
+                return;
+            }
+
+            float pulse = 0.74f + Mathf.Sin(Time.unscaledTime * 11f) * 0.26f;
+            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, 136f, width, 42f);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.018f, 0.024f, 0.03f, 0.7f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(0.22f, 0.9f, 1f, 0.2f + 0.16f * pulse);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(0.22f, 0.9f, 1f, 0.96f);
+            GUI.DrawTexture(new Rect(panel.x, panel.y + panel.height - 3f, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 5f, panel.width - 24f, panel.height - 10f), _experienceComboFeedbackLabel, _rewardFeedbackStyle);
+            GUI.color = oldColor;
+        }
+
         private void DrawDamagePopups()
         {
             if (_damagePopups.Count == 0)
@@ -5074,6 +5157,31 @@ namespace Deucarian.TemplateGameSurvivors
             if (_streakRewardFeedbackTimer <= 0f)
             {
                 _streakRewardFeedbackLabel = string.Empty;
+            }
+        }
+
+        private void TickExperienceComboFeedback(float deltaTime)
+        {
+            float dt = Mathf.Max(0f, deltaTime);
+            if (_experienceComboTimer > 0f)
+            {
+                _experienceComboTimer = Mathf.Max(0f, _experienceComboTimer - dt);
+                if (_experienceComboTimer <= 0f)
+                {
+                    _experienceComboPickupCount = 0;
+                    _experienceComboAmount = 0;
+                }
+            }
+
+            if (_experienceComboFeedbackTimer <= 0f)
+            {
+                return;
+            }
+
+            _experienceComboFeedbackTimer = Mathf.Max(0f, _experienceComboFeedbackTimer - dt);
+            if (_experienceComboFeedbackTimer <= 0f)
+            {
+                _experienceComboFeedbackLabel = string.Empty;
             }
         }
 
