@@ -23,6 +23,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
+- After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure.
 - Defeating the final boss unlocks the Ember Vanguard sample class.
 - Victory or defeat persists the run summary to a local meta profile.
 - The sample includes three persistent meta upgrades that increase later-run damage.
@@ -33,6 +34,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Press `R` during an upgrade draft to reroll while charges remain.
 - Press `S` during an upgrade draft to skip for a small blood shard bonus.
 - Press `Shift+1`, `Shift+2`, or `Shift+3` during an upgrade draft to banish a choice while charges remain.
+- Press `C` after victory to continue into endless escalation.
 - Press `R` after death or victory to restart.
 - Use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to force XP, grant blood shards, force level-up, force elite/miniboss/boss spawns, spawn bursts, fill the arena, switch pacing profiles with a current-run restart, apply stress targets, trigger magnet recall, inspect live build ranks, eligible evolutions, current drafts, or explicitly reset save/progress.
 
@@ -46,7 +48,7 @@ First run target:
 - For the Ember Vanguard hazard build, rank Rune Lattice five times and take Siege Payloads to build Rune Trap and Aether Mine toward Aetherfield Matrix.
 - Defeat the miniboss and pick an elite upgrade reward.
 - Build toward an evolution by ranking a weapon path and taking the matching passive.
-- Defeat the final boss; if an evolution is eligible, pick the boss evolution reward, otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile.
+- Defeat the final boss; if an evolution is eligible, pick the boss evolution reward, otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile, then `C` continues the same build into endless escalation.
 
 For manual timing checks, use the host scene path above rather than the package source scene.
 

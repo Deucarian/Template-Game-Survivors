@@ -1312,6 +1312,49 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator VictoryCanContinueIntoEndlessEscalation()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 0.5f;
+            controller.StartRun();
+            yield return null;
+
+            int baseMaximumAlive = controller.CurrentEnemyMaximumAlive;
+            float baseSpawnInterval = controller.CurrentEnemySpawnIntervalSeconds;
+
+            controller.Simulate(0.6f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.IsTrue(controller.HasClearedVictoryThisRun);
+            Assert.IsFalse(controller.IsEndlessRun);
+            long shardsAfterVictory = controller.MetaBloodShards;
+            int completedRunsAfterVictory = controller.MetaCompletedRuns;
+
+            Assert.IsTrue(controller.ContinueAfterVictory());
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.IsFalse(controller.IsVictory);
+            Assert.IsTrue(controller.IsEndlessRun);
+            Assert.That(controller.CurrentEnemyMaximumAlive, Is.GreaterThan(baseMaximumAlive));
+            Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.LessThan(baseSpawnInterval));
+
+            float timeBefore = controller.RunTimeSeconds;
+            controller.Simulate(0.25f, Vector2.right);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.That(controller.RunTimeSeconds, Is.GreaterThan(timeBefore));
+            Assert.That(controller.PlayerPosition.x, Is.GreaterThan(0f));
+            Assert.AreEqual(shardsAfterVictory, controller.MetaBloodShards);
+            Assert.AreEqual(completedRunsAfterVictory, controller.MetaCompletedRuns);
+            Assert.IsFalse(controller.ContinueAfterVictory());
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MinibossRewardIsGrantedWhenRunEndsInDefeat()
         {
             SurvivorsTemplateController controller = CreateController();

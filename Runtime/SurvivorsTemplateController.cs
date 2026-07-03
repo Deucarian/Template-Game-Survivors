@@ -35,6 +35,8 @@ namespace Deucarian.TemplateGameSurvivors
         private const float DamagePopupRiseHeight = 1.25f;
         private const int DamagePopupLimit = 72;
         private const float LowHealthWarningThreshold = 0.3f;
+        private const float EndlessSpawnIntervalMultiplier = 0.82f;
+        private const int EndlessEnemyAliveBonus = 24;
 
         private enum DraftRarityProfile
         {
@@ -134,6 +136,7 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _metaProfileLoaded;
         private bool _runRewardsGranted;
         private bool _pendingVictoryAfterRewardDraft;
+        private bool _victoryClearedThisRun;
         private int _bonusBloodShardsEarnedThisRun;
         private int _bonusLegacyExperienceEarnedThisRun;
 
@@ -286,6 +289,8 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsUpgradeRewardChoiceOpen => State == SurvivorsRunState.LevelUp && IsRewardUpgradeSelectionKind(_rewardSelectionKind);
         public bool IsGameOver => State == SurvivorsRunState.GameOver;
         public bool IsVictory => State == SurvivorsRunState.Victory;
+        public bool HasClearedVictoryThisRun => _victoryClearedThisRun;
+        public bool IsEndlessRun => State == SurvivorsRunState.Playing && _victoryClearedThisRun;
         public bool IsLowHealthWarningActive => (State == SurvivorsRunState.Playing || State == SurvivorsRunState.LevelUp) && MaxHealth > 0f && CurrentHealth / MaxHealth <= LowHealthWarningThreshold;
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
         public int DraftRerollsRemaining => Mathf.Max(0, CurrentTuning.DraftRerollCharges - DraftRerollCount);
@@ -330,6 +335,12 @@ namespace Deucarian.TemplateGameSurvivors
             if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
             {
                 TickDamagePopups(Time.deltaTime);
+                if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
+                {
+                    ContinueAfterVictory();
+                    return;
+                }
+
                 if (Input.GetKeyDown(KeyCode.R))
                 {
                     RestartRun();
@@ -373,7 +384,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
             DrawHudBar(new Rect(24, 98, 318, 18), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
             DrawHudBar(new Rect(24, 122, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
-            GUI.Label(new Rect(24, 148, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {RunPhase} +{RunEscalationLevel}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 148, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}", _hudLabelStyle);
             GUI.Label(new Rect(24, 170, 318, 22), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
             GUI.Label(new Rect(24, 192, 318, 22), $"Split {ActiveSplitterCount}   Elite {ActiveEliteCount}   Miniboss {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
             GUI.Label(new Rect(24, 214, 318, 22), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
@@ -403,7 +414,12 @@ namespace Deucarian.TemplateGameSurvivors
                 GUI.Box(new Rect(Screen.width * 0.5f - 150f, Screen.height * 0.5f - 82f, 300f, 164f), "Victory");
                 GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 28f, 232f, 22f), $"Run cleared in {RunTimeSeconds:0}s");
                 GUI.Label(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f - 6f, 232f, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP");
-                if (GUI.Button(new Rect(Screen.width * 0.5f - 70f, Screen.height * 0.5f + 30f, 140f, 34f), "Restart"))
+                if (GUI.Button(new Rect(Screen.width * 0.5f - 116f, Screen.height * 0.5f + 30f, 106f, 34f), "Continue"))
+                {
+                    ContinueAfterVictory();
+                }
+
+                if (GUI.Button(new Rect(Screen.width * 0.5f + 10f, Screen.height * 0.5f + 30f, 106f, 34f), "Restart"))
                 {
                     RestartRun();
                 }
@@ -518,6 +534,7 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadTriggerRadiusBonus = 0f;
             _runRewardsGranted = false;
             _pendingVictoryAfterRewardDraft = false;
+            _victoryClearedThisRun = false;
             _bonusBloodShardsEarnedThisRun = 0;
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
@@ -545,6 +562,21 @@ namespace Deucarian.TemplateGameSurvivors
         public void RestartRun()
         {
             StartRun();
+        }
+
+        public bool ContinueAfterVictory()
+        {
+            if (State != SurvivorsRunState.Victory || !_runStarted)
+            {
+                return false;
+            }
+
+            _victoryClearedThisRun = true;
+            ClearRewardDrafts();
+            State = SurvivorsRunState.Playing;
+            _enemySpawnTimer = 0f;
+            PlayFeedback(_levelUpPulse, PlayerPosition, 32, _levelUpClip);
+            return true;
         }
 
         public void Simulate(float deltaTime, Vector2 movementInput = default)
@@ -1292,7 +1324,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 BossKilledCount++;
                 GrantMajorEnemyReward(SurvivorsEnemyRole.Boss);
-                if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false))
+                if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false) && !_victoryClearedThisRun)
                 {
                     EnterVictory();
                 }
@@ -2778,22 +2810,25 @@ namespace Deucarian.TemplateGameSurvivors
 
             GrantRunRewards(victory: true);
             ClearRewardDrafts();
+            _victoryClearedThisRun = true;
             State = SurvivorsRunState.Victory;
             PlayFeedback(_levelUpPulse, PlayerPosition, 42, _levelUpClip);
         }
 
         private float ResolveEnemySpawnIntervalSeconds()
         {
-            return _runFlow == null
+            float interval = _runFlow == null
                 ? Mathf.Max(0.05f, CurrentTuning.EnemySpawnIntervalSeconds)
                 : _runFlow.ResolveSpawnInterval(CurrentTuning.EnemySpawnIntervalSeconds);
+            return ResolveEndlessSpawnInterval(interval);
         }
 
         private int ResolveEnemyMaximumAlive()
         {
-            return _runFlow == null
+            int maximumAlive = _runFlow == null
                 ? Mathf.Max(1, CurrentTuning.EnemyMaximumAlive)
                 : _runFlow.ResolveMaximumAlive(CurrentTuning.EnemyMaximumAlive);
+            return _victoryClearedThisRun ? maximumAlive + EndlessEnemyAliveBonus : maximumAlive;
         }
 
         private SurvivorsEnemyProfile ResolveEnemyProfile(SurvivorsEnemyRole role)
@@ -3102,7 +3137,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentDraft = draft;
             _currentRelicDraft = null;
             _rewardSelectionKind = selectionKind;
-            _pendingVictoryAfterRewardDraft = role == SurvivorsEnemyRole.Boss;
+            _pendingVictoryAfterRewardDraft = role == SurvivorsEnemyRole.Boss && !_victoryClearedThisRun;
             if (role == SurvivorsEnemyRole.Boss)
             {
                 BossUpgradeDraftOpenCount++;
@@ -3160,6 +3195,20 @@ namespace Deucarian.TemplateGameSurvivors
         {
             float timeout = CurrentTuning.RewardSelectionTimeoutSeconds;
             _rewardSelectionTimer = timeout > 0f ? timeout : 0f;
+        }
+
+        private float ResolveEndlessSpawnInterval(float interval)
+        {
+            float resolved = Mathf.Max(0.05f, interval);
+            if (!_victoryClearedThisRun)
+            {
+                return resolved;
+            }
+
+            float minimum = _runFlow == null || _runFlow.Definition == null
+                ? 0.05f
+                : _runFlow.Definition.MinimumEnemySpawnIntervalSeconds;
+            return Mathf.Max(minimum, resolved * EndlessSpawnIntervalMultiplier);
         }
 
         private void TickRewardSelectionTimeout(float deltaTime)
@@ -3873,6 +3922,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return label;
+        }
+
+        private string ResolveRunPhaseHudLabel()
+        {
+            return IsEndlessRun ? "Endless" : RunPhase.ToString();
         }
 
         private string ResolveUpgradeAffectedLabel(RunUpgradeDefinition choice)
