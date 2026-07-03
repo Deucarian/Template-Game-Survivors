@@ -656,6 +656,18 @@ namespace Deucarian.TemplateGameSurvivors
             GainExperience(Mathf.Max(1, amount));
         }
 
+        public bool DebugGrantBloodShards(int amount)
+        {
+            EnsureMetaProgressionLoaded();
+            bool granted = _metaProgression.GrantBloodShardsForDebug(Mathf.Max(1, amount)).Succeeded;
+            if (granted && _runStarted)
+            {
+                ApplyPersistentMetaBonuses();
+            }
+
+            return granted;
+        }
+
         public int DebugSpawnEnemyBurst(SurvivorsEnemyRole role, int count, float radius)
         {
             EnsureRunStartedForTest();
@@ -673,6 +685,40 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return spawned;
+        }
+
+        public SurvivorsEnemyActor DebugSpawnElite(float radius)
+        {
+            return DebugSpawnMajorEnemy(SurvivorsEnemyRole.Elite, radius);
+        }
+
+        public SurvivorsEnemyActor DebugSpawnDreadElite(float radius)
+        {
+            return DebugSpawnMajorEnemy(SurvivorsEnemyRole.DreadElite, radius);
+        }
+
+        public SurvivorsEnemyActor DebugSpawnMiniboss(float radius)
+        {
+            return DebugSpawnMajorEnemy(SurvivorsEnemyRole.Miniboss, radius);
+        }
+
+        public SurvivorsEnemyActor DebugSpawnBoss(float radius)
+        {
+            return DebugSpawnMajorEnemy(SurvivorsEnemyRole.Boss, radius);
+        }
+
+        public SurvivorsEnemyActor DebugSpawnMajorEnemy(SurvivorsEnemyRole role, float radius)
+        {
+            EnsureRunStartedForTest();
+            SurvivorsEnemyRole resolvedRole = ResolveDebugMajorEnemyRole(role);
+            Vector3 forward = PlayerForward;
+            if (forward.sqrMagnitude <= 0.001f)
+            {
+                forward = Vector3.forward;
+            }
+
+            float resolvedRadius = Mathf.Clamp(radius, 2f, 40f);
+            return SpawnEnemy(PlayerPosition + (forward.normalized * resolvedRadius), explicitPosition: true, resolvedRole);
         }
 
         public int DebugFillArenaToTarget(SurvivorsEnemyRole role, int targetAlive, float radius)
@@ -833,6 +879,87 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureRunStartedForTest();
             return !string.IsNullOrWhiteSpace(upgradeId) && _ownedEvolutionUpgradeIds.Contains(upgradeId);
+        }
+
+        public IReadOnlyList<string> DebugDescribeCurrentBuild()
+        {
+            EnsureRunStartedForTest();
+            var lines = new List<string>
+            {
+                $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
+                $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
+                $"Stats: damage +{DamageBonus:0.#}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup +{PickupRangeBonus:0.#}",
+                $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
+                $"Orbit/Burst/Payload: orbit +{OrbitBladeBonus}, radius +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}",
+                $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
+            };
+
+            AppendSelectedUpgradeRankLines(lines);
+            return lines;
+        }
+
+        public IReadOnlyList<string> DebugDescribeEligibleEvolutionPool()
+        {
+            EnsureRunStartedForTest();
+            if (_upgradeCatalog == null)
+            {
+                return Array.Empty<string>();
+            }
+
+            var lines = new List<string>();
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                if (definition != null && IsEvolutionUpgrade(definition) && IsUpgradeEligibleForCurrentBuild(definition))
+                {
+                    lines.Add(FormatDebugUpgradeLine(-1, definition));
+                }
+            }
+
+            if (lines.Count == 0)
+            {
+                lines.Add("No eligible evolutions yet. Max a weapon path and own its matching passive.");
+            }
+
+            return lines;
+        }
+
+        public IReadOnlyList<string> DebugDescribeCurrentDraftPool()
+        {
+            EnsureRunStartedForTest();
+            var lines = new List<string>();
+            if (_currentDraft != null && _currentDraft.Choices.Count > 0)
+            {
+                lines.Add(ResolveRewardOverlayTitle());
+                for (int i = 0; i < _currentDraft.Choices.Count; i++)
+                {
+                    lines.Add(FormatDebugUpgradeLine(i, _currentDraft.Choices[i]));
+                }
+            }
+
+            if (_currentRelicDraft != null && _currentRelicDraft.Choices.Count > 0)
+            {
+                lines.Add("Boss Relics");
+                for (int i = 0; i < _currentRelicDraft.Choices.Count; i++)
+                {
+                    SurvivorsRelicDefinition relic = _currentRelicDraft.Choices[i];
+                    if (relic == null)
+                    {
+                        lines.Add($"{i + 1}. Missing relic");
+                    }
+                    else
+                    {
+                        lines.Add($"{i + 1}. {relic.DisplayName} [{relic.EffectKind}] +{relic.Amount:0.##} {ShortWeaponName(relic.TargetId)}");
+                    }
+                }
+            }
+
+            if (lines.Count == 0)
+            {
+                lines.Add("No draft or reward pool is currently open.");
+            }
+
+            return lines;
         }
 
         public bool OpenBossRelicDraftForTest()
@@ -1459,6 +1586,16 @@ namespace Deucarian.TemplateGameSurvivors
         private static bool IsEliteRole(SurvivorsEnemyRole role)
         {
             return role == SurvivorsEnemyRole.Elite || role == SurvivorsEnemyRole.DreadElite;
+        }
+
+        private static SurvivorsEnemyRole ResolveDebugMajorEnemyRole(SurvivorsEnemyRole role)
+        {
+            if (IsEliteRole(role) || role == SurvivorsEnemyRole.Miniboss || role == SurvivorsEnemyRole.Boss)
+            {
+                return role;
+            }
+
+            return SurvivorsEnemyRole.Elite;
         }
 
         private void EnsureRunStartedForTest()
@@ -3178,6 +3315,84 @@ namespace Deucarian.TemplateGameSurvivors
                     $"Banishes {DraftBanishesRemaining}",
                     _hudSmallStyle);
             }
+        }
+
+        private string FormatActiveWeaponList()
+        {
+            IReadOnlyList<string> weaponIds = ActiveWeaponIds;
+            if (weaponIds == null || weaponIds.Count == 0)
+            {
+                return "None";
+            }
+
+            var labels = new List<string>(weaponIds.Count);
+            for (int i = 0; i < weaponIds.Count; i++)
+            {
+                labels.Add(ShortWeaponName(weaponIds[i]));
+            }
+
+            return string.Join(", ", labels);
+        }
+
+        private void AppendSelectedUpgradeRankLines(List<string> lines)
+        {
+            if (lines == null || _upgradeCatalog == null || _upgradeState == null)
+            {
+                return;
+            }
+
+            bool addedHeader = false;
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                int rank = definition == null ? 0 : _upgradeState.GetRank(definition.Id);
+                if (rank <= 0)
+                {
+                    continue;
+                }
+
+                if (!addedHeader)
+                {
+                    lines.Add("Ranks");
+                    addedHeader = true;
+                }
+
+                lines.Add("  " + FormatDebugRankLine(definition, rank));
+            }
+        }
+
+        private string FormatDebugRankLine(RunUpgradeDefinition definition, int rank)
+        {
+            if (definition == null)
+            {
+                return "Missing upgrade";
+            }
+
+            string name = BasicSurvivorsGame.GetUpgradeDisplayName(definition.Id);
+            SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(definition);
+            string affected = TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
+                ? ShortWeaponName(metadata.AffectedContentId)
+                : "Build";
+            return $"{name} [{category}] rank {rank}/{definition.MaxRank} ({definition.Rarity}) - {affected}";
+        }
+
+        private string FormatDebugUpgradeLine(int index, RunUpgradeDefinition definition)
+        {
+            if (definition == null)
+            {
+                return index >= 0 ? $"{index + 1}. Missing upgrade" : "Missing upgrade";
+            }
+
+            string prefix = index >= 0 ? $"{index + 1}. " : string.Empty;
+            string name = BasicSurvivorsGame.GetUpgradeDisplayName(definition.Id);
+            SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(definition);
+            int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(definition.Id);
+            int nextRank = Mathf.Min(definition.MaxRank, currentRank + 1);
+            string description = TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
+                ? metadata.Description
+                : name;
+            string affected = metadata == null ? "Build" : ShortWeaponName(metadata.AffectedContentId);
+            return $"{prefix}{name} [{category}/{definition.Rarity}] rank {currentRank}->{nextRank}/{definition.MaxRank} - {affected}: {description}";
         }
 
         private string FormatUpgradeChoiceLabel(int index, RunUpgradeDefinition choice)

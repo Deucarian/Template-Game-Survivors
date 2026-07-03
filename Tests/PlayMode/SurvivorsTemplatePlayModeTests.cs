@@ -293,6 +293,46 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator RuntimeDebuggerActionsExposeBuildDraftEvolutionAndCurrency()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            long startingShards = controller.MetaBloodShards;
+            Assert.IsTrue(controller.DebugGrantBloodShards(25));
+            Assert.AreEqual(startingShards + 25L, controller.MetaBloodShards);
+
+            SurvivorsEnemyActor elite = controller.DebugSpawnElite(3f);
+            SurvivorsEnemyActor dreadElite = controller.DebugSpawnDreadElite(4f);
+            SurvivorsEnemyActor boss = controller.DebugSpawnBoss(5f);
+            Assert.IsNotNull(elite);
+            Assert.IsNotNull(dreadElite);
+            Assert.IsNotNull(boss);
+            Assert.AreEqual(SurvivorsEnemyRole.Elite, elite.Role);
+            Assert.AreEqual(SurvivorsEnemyRole.DreadElite, dreadElite.Role);
+            Assert.AreEqual(SurvivorsEnemyRole.Boss, boss.Role);
+            Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(1, controller.ActiveBossCount);
+
+            var buildLines = controller.DebugDescribeCurrentBuild();
+            string buildSummary = string.Join("\n", buildLines);
+            Assert.That(buildSummary, Does.Contain("Weapons"));
+            Assert.That(buildSummary, Does.Contain("Stats:"));
+
+            var evolutionLines = controller.DebugDescribeEligibleEvolutionPool();
+            Assert.That(evolutionLines.Count, Is.GreaterThanOrEqualTo(1));
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            var draftLines = controller.DebugDescribeCurrentDraftPool();
+            Assert.That(string.Join("\n", draftLines), Does.Contain("Level Up"));
+            Assert.That(draftLines.Count, Is.GreaterThanOrEqualTo(4));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator BossRelicChoiceAutoSelectsAfterTimeout()
         {
             SurvivorsTemplateController controller = CreateController();

@@ -241,6 +241,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly SurvivorsMetaProgressionDefinition _definition;
         private ProgressionState _state;
         private SurvivorsMetaProfileDocument _profile;
+        private int _debugGrantSequence;
         private bool _disposed;
 
         public SurvivorsMetaProgressionService(
@@ -348,6 +349,31 @@ namespace Deucarian.TemplateGameSurvivors
                 _profile.BossVictories++;
             }
 
+            Save();
+            return result;
+        }
+
+        public ProgressionResult GrantBloodShardsForDebug(int amount)
+        {
+            ThrowIfDisposed();
+            int grant = Math.Max(0, amount);
+            if (grant <= 0)
+            {
+                return ProgressionResult.Fail(ProgressionStatus.InvalidAmount, default);
+            }
+
+            ProgressionResult result = _state.ApplyReward(
+                _definition.ProgressionCatalog,
+                new ProgressionOperationId("op.survivors.debug.blood-shards." + (++_debugGrantSequence)),
+                new RewardBundle(
+                    new[] { new CurrencyLine(_definition.BloodShardsCurrencyId, new ProgressionAmount(grant), isCredit: true) }));
+            if (!result.Succeeded)
+            {
+                return result;
+            }
+
+            _profile.LifetimeBloodShards += grant;
+            _profile.UnspentBloodShards = _state.GetBalance(_definition.BloodShardsCurrencyId).Value;
             Save();
             return result;
         }

@@ -51,7 +51,7 @@ Enter Play Mode, then open:
 
 `Tools > Deucarian > Templates > Survivors > Runtime Debugger`
 
-Click `Explicitly Reset Save / Progress`. Restart Play Mode to confirm the sample starts from a fresh local meta profile. Entering Play Mode, restarting the current run, and applying a pacing profile should not wipe saved meta progress.
+Click `Explicitly Reset Save / Progress`. Restart Play Mode to confirm the sample starts from a fresh local meta profile. The same window can grant blood shards for meta-upgrade checks and inspect the current build ranks, eligible evolutions, and current draft pool. Entering Play Mode, restarting the current run, and applying a pacing profile should not wipe saved meta progress.
 
 ## Enable Debug Fast
 

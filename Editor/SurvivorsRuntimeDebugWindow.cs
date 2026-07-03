@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -10,8 +11,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         private int _burstCount = 24;
         private int _fillTarget = 120;
         private int _stressTarget = 250;
+        private int _bloodShardAmount = 25;
         private float _spawnRadius = 10f;
+        private float _majorEnemyRadius = 8f;
         private SurvivorsPacingProfile _pacingProfile = SurvivorsPacingProfile.HumanPlaytest;
+        private Vector2 _scroll;
 
         [MenuItem("Tools/Deucarian/Templates/Survivors/Runtime Debugger", priority = 340)]
         public static void Open()
@@ -35,6 +39,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return;
             }
 
+            _scroll = EditorGUILayout.BeginScrollView(_scroll);
             DrawSnapshot(controller);
             EditorGUILayout.Space(8f);
             _experienceAmount = EditorGUILayout.IntSlider("Grant XP", _experienceAmount, 1, 250);
@@ -46,6 +51,12 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             if (GUILayout.Button("Force Level-Up"))
             {
                 controller.ForceLevelUp();
+            }
+
+            _bloodShardAmount = EditorGUILayout.IntSlider("Grant Blood Shards", _bloodShardAmount, 1, 500);
+            if (GUILayout.Button("Grant Blood Shards"))
+            {
+                controller.DebugGrantBloodShards(_bloodShardAmount);
             }
 
             EditorGUILayout.Space(8f);
@@ -63,6 +74,31 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 controller.DebugFillArenaToTarget(_spawnRole, _fillTarget, _spawnRadius);
             }
 
+            _majorEnemyRadius = EditorGUILayout.Slider("Major Enemy Radius", _majorEnemyRadius, 2f, 24f);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Force Elite"))
+            {
+                controller.DebugSpawnElite(_majorEnemyRadius);
+            }
+
+            if (GUILayout.Button("Force Dread Elite"))
+            {
+                controller.DebugSpawnDreadElite(_majorEnemyRadius);
+            }
+
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Force Miniboss"))
+            {
+                controller.DebugSpawnMiniboss(_majorEnemyRadius);
+            }
+
+            if (GUILayout.Button("Force Boss"))
+            {
+                controller.DebugSpawnBoss(_majorEnemyRadius);
+            }
+
+            EditorGUILayout.EndHorizontal();
             EditorGUILayout.Space(8f);
             _stressTarget = EditorGUILayout.IntSlider("Stress Target", _stressTarget, 50, 512);
             if (GUILayout.Button("Apply Stress Profile"))
@@ -86,6 +122,12 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             {
                 controller.DebugResetMetaProgression();
             }
+
+            EditorGUILayout.Space(8f);
+            DrawDebugLines("Current Build", controller.DebugDescribeCurrentBuild());
+            DrawDebugLines("Eligible Evolutions", controller.DebugDescribeEligibleEvolutionPool());
+            DrawDebugLines("Current Draft Pool", controller.DebugDescribeCurrentDraftPool());
+            EditorGUILayout.EndScrollView();
         }
 
         private static void DrawSnapshot(SurvivorsTemplateController controller)
@@ -106,6 +148,21 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             EditorGUILayout.LabelField("Build", $"Weapons {controller.ActiveWeaponCount}, Upgrades {controller.SelectedUpgradeCount}, Relics {controller.SelectedRelicCount}");
             EditorGUILayout.LabelField("Survivability", $"Health {controller.CurrentHealth:0}/{controller.MaxHealth:0}, Barrier {controller.BarrierValue:0}/{controller.BarrierCapacity:0}");
             EditorGUILayout.LabelField("Pools", $"Projectiles {controller.ActiveProjectileCount}, Pickups {controller.ActivePickupCount}");
+        }
+
+        private static void DrawDebugLines(string title, IReadOnlyList<string> lines)
+        {
+            EditorGUILayout.LabelField(title, EditorStyles.boldLabel);
+            if (lines == null || lines.Count == 0)
+            {
+                EditorGUILayout.LabelField("None");
+                return;
+            }
+
+            for (int i = 0; i < lines.Count; i++)
+            {
+                EditorGUILayout.LabelField(lines[i], EditorStyles.wordWrappedLabel);
+            }
         }
 
         private static SurvivorsTemplateController FindController()

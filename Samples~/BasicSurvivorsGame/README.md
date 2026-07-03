@@ -32,7 +32,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Press `S` during an upgrade draft to skip for a small blood shard bonus.
 - Press `Shift+1`, `Shift+2`, or `Shift+3` during an upgrade draft to banish a choice while charges remain.
 - Press `R` after death or victory to restart.
-- Use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to force XP, force level-up, spawn bursts, fill the arena, switch pacing profiles with a current-run restart, apply stress targets, trigger magnet recall, inspect live stats, or explicitly reset save/progress.
+- Use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to force XP, grant blood shards, force level-up, force elite/miniboss/boss spawns, spawn bursts, fill the arena, switch pacing profiles with a current-run restart, apply stress targets, trigger magnet recall, inspect live build ranks, eligible evolutions, current drafts, or explicitly reset save/progress.
 
 First run target:
 
