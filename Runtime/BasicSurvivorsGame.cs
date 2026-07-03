@@ -211,6 +211,8 @@ namespace Deucarian.TemplateGameSurvivors
         public const string EmberTempoUpgradeId = "upgrade.survivors.ember-tempo";
         public const string SiegePayloadsUpgradeId = "upgrade.survivors.siege-payloads";
         public const string EmberWardUpgradeId = "upgrade.survivors.ember-ward";
+        public const string ScholarsLensUpgradeId = "upgrade.survivors.scholars-lens";
+        public const string GiantRuneUpgradeId = "upgrade.survivors.giant-rune";
         public const string ArcaneStormEvolutionUpgradeId = "upgrade.survivors.evolution.arcane-storm";
         public const string BlizzardCrownEvolutionUpgradeId = "upgrade.survivors.evolution.blizzard-crown";
         public const string CrimsonAegisEvolutionUpgradeId = "upgrade.survivors.evolution.crimson-aegis";
@@ -244,6 +246,8 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly RunUpgradeEffectId BarrierCapacityEffect = new RunUpgradeEffectId("survivors.barrier.capacity");
         public static readonly RunUpgradeEffectId BarrierRegenEffect = new RunUpgradeEffectId("survivors.barrier.regen");
         public static readonly RunUpgradeEffectId BarrierOnDamageEffect = new RunUpgradeEffectId("survivors.barrier.on_damage_ratio");
+        public static readonly RunUpgradeEffectId ExperienceGainEffect = new RunUpgradeEffectId("survivors.experience.gain_multiplier");
+        public static readonly RunUpgradeEffectId AreaRadiusEffect = new RunUpgradeEffectId("survivors.area.radius");
         public static readonly RunUpgradeTargetId PlayerTarget = new RunUpgradeTargetId("survivors.player");
         public static readonly RunUpgradeTargetId WeaponTarget = new RunUpgradeTargetId("survivors.weapon.arcane-wand");
         public static readonly RunUpgradeTargetId FrostFanWeaponTarget = new RunUpgradeTargetId("survivors.weapon.frost-fan");
@@ -259,6 +263,8 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly RunUpgradeTargetId PickupTarget = new RunUpgradeTargetId("survivors.pickups");
         public static readonly RunUpgradeTargetId StatusTarget = new RunUpgradeTargetId("survivors.status");
         public static readonly RunUpgradeTargetId BarrierTarget = new RunUpgradeTargetId("survivors.barrier");
+        public static readonly RunUpgradeTargetId ExperienceTarget = new RunUpgradeTargetId("survivors.experience");
+        public static readonly RunUpgradeTargetId AreaTarget = new RunUpgradeTargetId("survivors.area");
 
         public static SurvivorsTemplateTuning CreateDefaultTuning()
         {
@@ -882,6 +888,8 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.guardian-barrier", RunUpgradeRarity.Uncommon, 30, 4, BarrierCapacityEffect, BarrierTarget, 6.0d),
                 Upgrade("upgrade.survivors.ward-recovery", RunUpgradeRarity.Uncommon, 28, 4, BarrierRegenEffect, BarrierTarget, 0.18d),
                 Upgrade("upgrade.survivors.mirror-bulwark", RunUpgradeRarity.Rare, 20, 3, BarrierOnDamageEffect, BarrierTarget, 0.04d),
+                Upgrade(ScholarsLensUpgradeId, RunUpgradeRarity.Uncommon, 36, 5, ExperienceGainEffect, ExperienceTarget, 0.12d),
+                Upgrade(GiantRuneUpgradeId, RunUpgradeRarity.Uncommon, 34, 5, AreaRadiusEffect, AreaTarget, 0.22d),
                 Upgrade(ArcaneThesisUpgradeId, RunUpgradeRarity.Uncommon, 34, 4, DamageBonusEffect, WeaponTarget, 1.6d),
                 Upgrade(FrostNeedleworkUpgradeId, RunUpgradeRarity.Uncommon, 32, 3, ProjectilePierceEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(BloodRingCanticleUpgradeId, RunUpgradeRarity.Rare, 22, 3, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
@@ -960,7 +968,9 @@ namespace Deucarian.TemplateGameSurvivors
                 PayloadWeaponTarget,
                 PickupTarget,
                 StatusTarget,
-                BarrierTarget
+                BarrierTarget,
+                ExperienceTarget,
+                AreaTarget
             };
         }
 
@@ -991,6 +1001,8 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata("upgrade.survivors.guardian-barrier", "Guardian Barrier", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: increase starting barrier capacity."),
                 UpgradeMetadata("upgrade.survivors.ward-recovery", "Ward Recovery", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: regenerate barrier during the run."),
                 UpgradeMetadata("upgrade.survivors.mirror-bulwark", "Mirror Bulwark", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: weapon damage restores a little barrier."),
+                UpgradeMetadata(ScholarsLensUpgradeId, "Scholar's Lens", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, ExperienceTarget.Value, "Passive: increase XP gained from gems and debug grants."),
+                UpgradeMetadata(GiantRuneUpgradeId, "Giant Rune", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, AreaTarget.Value, "Passive: enlarge bursts, orbit paths, payload explosions, and close-range swings."),
                 UpgradeMetadata(ArcaneThesisUpgradeId, "Arcane Thesis", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, ArcaneWandWeaponContentId, "Passive: commit to Arc Bolt damage and unlock Arcane Storm."),
                 UpgradeMetadata(FrostNeedleworkUpgradeId, "Frost Needlework", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, FrostFanWeaponContentId, "Passive: sharpen frost shards and unlock Blizzard Crown."),
                 UpgradeMetadata(BloodRingCanticleUpgradeId, "Blood Ring Canticle", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, OrbitWardWeaponContentId, "Passive: deepen orbit damage and unlock Crimson Aegis."),
@@ -1353,6 +1365,8 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.guardian-barrier") return "Guardian Barrier";
             if (value == "upgrade.survivors.ward-recovery") return "Ward Recovery";
             if (value == "upgrade.survivors.mirror-bulwark") return "Mirror Bulwark";
+            if (value == ScholarsLensUpgradeId) return "Scholar's Lens";
+            if (value == GiantRuneUpgradeId) return "Giant Rune";
             if (value == "upgrade.survivors.arcane-thesis") return "Arcane Thesis";
             if (value == "upgrade.survivors.frost-needlework") return "Frost Needlework";
             if (value == "upgrade.survivors.blood-ring-canticle") return "Blood Ring Canticle";

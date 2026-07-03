@@ -200,6 +200,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float BleedDamageRatio { get; private set; }
         public float ExecuteThresholdNormalized { get; private set; }
         public float LifestealRatio { get; private set; }
+        public float ExperienceGainMultiplierBonus { get; private set; }
+        public float AreaRadiusBonus { get; private set; }
         public int ProjectileFanBonus { get; private set; }
         public int OrbitBladeBonus { get; private set; }
         public float OrbitRadiusBonus { get; private set; }
@@ -487,6 +489,8 @@ namespace Deucarian.TemplateGameSurvivors
             BleedDamageRatio = 0f;
             ExecuteThresholdNormalized = 0f;
             LifestealRatio = 0f;
+            ExperienceGainMultiplierBonus = 0f;
+            AreaRadiusBonus = 0f;
             ProjectileFanBonus = 0;
             OrbitBladeBonus = 0;
             OrbitRadiusBonus = 0f;
@@ -888,9 +892,9 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
-                $"Stats: damage +{DamageBonus:0.#}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup +{PickupRangeBonus:0.#}",
+                $"Stats: damage +{DamageBonus:0.#}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup +{PickupRangeBonus:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
-                $"Orbit/Burst/Payload: orbit +{OrbitBladeBonus}, radius +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}",
+                $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
             };
 
@@ -2820,8 +2824,10 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void GainExperience(int amount)
         {
-            ExperienceCollected += Mathf.Max(1, amount);
-            Experience += Mathf.Max(1, amount);
+            int baseAmount = Mathf.Max(1, amount);
+            int gained = Mathf.Max(1, Mathf.RoundToInt(baseAmount * Mathf.Max(0.1f, 1f + ExperienceGainMultiplierBonus)));
+            ExperienceCollected += gained;
+            Experience += gained;
             while (Experience >= RequiredExperienceForNextLevel)
             {
                 Experience -= RequiredExperienceForNextLevel;
@@ -3221,6 +3227,14 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierOnDamageEffect))
                 {
                     BarrierOnDamageRatio += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.ExperienceGainEffect))
+                {
+                    ExperienceGainMultiplierBonus += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.AreaRadiusEffect))
+                {
+                    AreaRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
                 }
             }
 
@@ -3676,6 +3690,8 @@ namespace Deucarian.TemplateGameSurvivors
             if (weaponId == BasicSurvivorsGame.StatusTarget.Value) return "Status";
             if (weaponId == BasicSurvivorsGame.BarrierTarget.Value) return "Barrier";
             if (weaponId == BasicSurvivorsGame.PayloadWeaponTarget.Value) return "Payloads";
+            if (weaponId == BasicSurvivorsGame.ExperienceTarget.Value) return "XP";
+            if (weaponId == BasicSurvivorsGame.AreaTarget.Value) return "Area";
             return string.IsNullOrWhiteSpace(weaponId) ? "unknown" : weaponId;
         }
 

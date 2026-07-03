@@ -762,6 +762,39 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ExperienceAndAreaPassivesCreateReadablePowerGains()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GiantRuneUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GiantRuneUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GiantRuneUpgradeId));
+            Assert.That(controller.AreaRadiusBonus, Is.GreaterThan(0.5f));
+
+            float baseBurstRadius = controller.CurrentTuning.BurstRadius;
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1f, 0f, 0f), 100f);
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(baseBurstRadius + controller.AreaRadiusBonus - 0.08f, 0f, 0f), 100f);
+            int hitsBeforeBurst = controller.BurstHitCount;
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Burst));
+            yield return null;
+
+            Assert.That(controller.BurstHitCount - hitsBeforeBurst, Is.GreaterThanOrEqualTo(2));
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ScholarsLensUpgradeId));
+            Assert.That(controller.ExperienceGainMultiplierBonus, Is.GreaterThan(0f));
+
+            int experienceBeforePickup = controller.ExperienceCollected;
+            controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.15f, 0f, 0.15f), 10);
+            yield return SimulateFrames(controller, 8);
+
+            Assert.That(controller.ExperienceCollected - experienceBeforePickup, Is.GreaterThan(10));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator SplitterDeathSpawnsSwarmChildren()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

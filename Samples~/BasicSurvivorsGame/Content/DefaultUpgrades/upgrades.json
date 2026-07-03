@@ -5,6 +5,8 @@
     { "id": "upgrade.survivors.swift-steps", "rarity": "Uncommon", "effect": "survivors.player.move_speed", "target": "survivors.player" },
     { "id": "upgrade.survivors.gem-magnet", "rarity": "Uncommon", "effect": "survivors.pickup.range", "target": "survivors.pickups" },
     { "id": "upgrade.survivors.iron-blood", "rarity": "Rare", "effect": "survivors.player.max_health", "target": "survivors.player" },
+    { "id": "upgrade.survivors.scholars-lens", "rarity": "Uncommon", "effect": "survivors.experience.gain_multiplier", "target": "survivors.experience" },
+    { "id": "upgrade.survivors.giant-rune", "rarity": "Uncommon", "effect": "survivors.area.radius", "target": "survivors.area" },
     { "id": "upgrade.survivors.frost-fan", "rarity": "Uncommon", "effect": "survivors.projectile.fan_count", "target": "survivors.weapon.frost-fan" },
     { "id": "upgrade.survivors.orbiting-focus", "rarity": "Uncommon", "effect": "survivors.orbit.blade_count", "target": "survivors.weapon.orbit-ward" },
     { "id": "upgrade.survivors.thorn-halo-wall", "rarity": "Rare", "effect": "survivors.orbit.radius", "target": "survivors.weapon.thorn-halo" },

@@ -604,7 +604,7 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureBladeCount(desiredCount);
             _rotationDegrees += Definition.OrbitDegreesPerSecond * deltaTime;
 
-            float radius = Definition.OrbitRadius + Controller.OrbitRadiusBonus;
+            float radius = Definition.OrbitRadius + Controller.OrbitRadiusBonus + Controller.AreaRadiusBonus;
             float hitRadius = Mathf.Max(0.18f, Definition.Range);
             float damage = Controller.ResolveWeaponDamage(Definition);
             for (int i = 0; i < _blades.Count; i++)
@@ -703,7 +703,8 @@ namespace Deucarian.TemplateGameSurvivors
 
             facing.Normalize();
             float halfArc = Mathf.Clamp(Definition.MeleeArcDegrees * 0.5f, 1f, 180f);
-            float rangeSquared = Definition.Range * Definition.Range;
+            float range = Definition.Range + Controller.AreaRadiusBonus;
+            float rangeSquared = range * range;
             _candidates.Clear();
             IReadOnlyList<SurvivorsEnemyActor> enemies = Controller.ActiveEnemies;
             for (int i = 0; i < enemies.Count; i++)
@@ -767,7 +768,7 @@ namespace Deucarian.TemplateGameSurvivors
             slashObject.transform.position = Controller.PlayerPosition + Vector3.up * 0.35f;
             slashObject.transform.rotation = Quaternion.LookRotation(facing, Vector3.up);
             SurvivorsTimedVisual visual = slashObject.AddComponent<SurvivorsTimedVisual>();
-            visual.Initialize(new Vector3(Definition.Range * 2f, 0.12f, Mathf.Max(0.45f, Definition.Range * 0.85f)), Definition.MeleeVisualDurationSeconds, Definition.Tint);
+            visual.Initialize(new Vector3(range * 2f, 0.12f, Mathf.Max(0.45f, range * 0.85f)), Definition.MeleeVisualDurationSeconds, Definition.Tint);
             Controller.RecordMeleeSwing();
             return true;
         }
@@ -844,7 +845,7 @@ namespace Deucarian.TemplateGameSurvivors
             _timeUntilNextBurst -= deltaTime;
             while (_pendingBursts > 0 && _timeUntilNextBurst <= 0f)
             {
-                EmitBurst(_sequenceOrigin, Definition.Range);
+                EmitBurst(_sequenceOrigin, Definition.Range + Controller.AreaRadiusBonus);
                 _pendingBursts--;
                 if (_pendingBursts > 0)
                 {

@@ -34,12 +34,12 @@ namespace Deucarian.TemplateGameSurvivors
 
         protected float ResolveExplosionRadius()
         {
-            return Mathf.Max(0.1f, Definition.PayloadExplosionRadius + Controller.PayloadExplosionRadiusBonus);
+            return Mathf.Max(0.1f, Definition.PayloadExplosionRadius + Controller.PayloadExplosionRadiusBonus + Controller.AreaRadiusBonus);
         }
 
         protected float ResolveTriggerRadius()
         {
-            return Mathf.Max(0.1f, Definition.PayloadTriggerRadius + Controller.PayloadTriggerRadiusBonus);
+            return Mathf.Max(0.1f, Definition.PayloadTriggerRadius + Controller.PayloadTriggerRadiusBonus + Controller.AreaRadiusBonus * 0.5f);
         }
 
         protected void RegisterPayload(SurvivorsPayloadActorBase payload)

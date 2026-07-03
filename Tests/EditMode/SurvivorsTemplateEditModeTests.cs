@@ -61,7 +61,16 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(progressionTracks[0].Nodes.Count, Is.GreaterThanOrEqualTo(4));
             Assert.That(BasicSurvivorsGame.CreateClassUpgradeGates().Count, Is.GreaterThanOrEqualTo(13));
             AssertRunUpgradeMetadataCoversPassivesAndEvolutions(upgrades, upgradeMetadata);
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.ScholarsLensUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GiantRuneUpgradeId));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
+        }
+
+        private static bool ContainsUpgrade(RunUpgradeCatalog catalog, string upgradeId)
+        {
+            return catalog != null &&
+                !string.IsNullOrWhiteSpace(upgradeId) &&
+                catalog.TryGet(new RunUpgradeId(upgradeId), out _);
         }
 
         private static void AssertRunUpgradeMetadataCoversPassivesAndEvolutions(RunUpgradeCatalog upgrades, IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata)
@@ -683,6 +692,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 float previousBleed = controller.BleedDamageRatio;
                 float previousExecute = controller.ExecuteThresholdNormalized;
                 float previousLifesteal = controller.LifestealRatio;
+                float previousExperienceGain = controller.ExperienceGainMultiplierBonus;
+                float previousAreaRadius = controller.AreaRadiusBonus;
                 float previousBarrierCapacity = controller.BarrierCapacityBonus;
                 float previousBarrierRegen = controller.BarrierRegenPerSecondBonus;
                 float previousBarrierOnDamage = controller.BarrierOnDamageRatio;
@@ -712,6 +723,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     controller.BleedDamageRatio > previousBleed ||
                     controller.ExecuteThresholdNormalized > previousExecute ||
                     controller.LifestealRatio > previousLifesteal ||
+                    controller.ExperienceGainMultiplierBonus > previousExperienceGain ||
+                    controller.AreaRadiusBonus > previousAreaRadius ||
                     controller.BarrierCapacityBonus > previousBarrierCapacity ||
                     controller.BarrierRegenPerSecondBonus > previousBarrierRegen ||
                     controller.BarrierOnDamageRatio > previousBarrierOnDamage;

@@ -119,7 +119,7 @@ Phase 3F adds reference-parity gameplay validation:
 - Default runtime content includes five starting weapons, ten local weapon archetypes, nine enemy roles, six relics, and three persistent upgrades.
 - Run flow validation covers timed swarm, runner, bruiser, spitter, elite, miniboss, and boss pressure over a 30-minute sample arc.
 - EditMode coverage checks expanded enemy profiles plus barrier absorption and poison damage-over-time behavior.
-- PlayMode coverage checks the expanded default loadout while preserving class-gated advanced weapon availability.
+- PlayMode coverage checks the expanded default loadout, XP-gain and area-scaling passives, and class-gated advanced weapon availability.
 - `Tools > Deucarian > Templates > Survivors > Runtime Debugger` provides Play Mode controls for forced XP, shard grants, level-ups, elite/miniboss/boss spawns, enemy bursts, arena fill, stress profiles, magnet recall, build/evolution/draft inspection, and meta reset.
 
 Full graph-editor passive skill trees, production class content packs, production UI, monetization, networking, and shared package extraction remain deferred.
