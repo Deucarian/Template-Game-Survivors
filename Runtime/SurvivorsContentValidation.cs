@@ -87,7 +87,8 @@ namespace Deucarian.TemplateGameSurvivors
             string relicJson = null,
             string classJson = null,
             string progressionJson = null,
-            string pickupJson = null)
+            string pickupJson = null,
+            string runFlowJson = null)
         {
             var result = new SurvivorsContentValidationResult();
             WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
@@ -110,6 +111,9 @@ namespace Deucarian.TemplateGameSurvivors
             PickupLibraryJson pickupLibrary = string.IsNullOrWhiteSpace(pickupJson)
                 ? null
                 : ParseJson<PickupLibraryJson>(pickupJson, "pickup library", result);
+            RunFlowLibraryJson runFlowLibrary = string.IsNullOrWhiteSpace(runFlowJson)
+                ? null
+                : ParseJson<RunFlowLibraryJson>(runFlowJson, "run flow library", result);
             ValidateWeaponLibrary(weaponLibrary, result);
             ValidateUpgradeLibrary(upgradeLibrary, classLibrary, result);
             ValidateEnemyLibrary(enemyLibrary, result);
@@ -118,6 +122,7 @@ namespace Deucarian.TemplateGameSurvivors
             ValidateRelicLibrary(relicLibrary, result);
             ValidateClassLibraryJson(classLibrary, result);
             ValidateProgressionLibrary(progressionLibrary, upgradeLibrary, classLibrary, result);
+            ValidateRunFlowLibrary(runFlowLibrary, result);
             return result;
         }
 
@@ -1426,6 +1431,139 @@ namespace Deucarian.TemplateGameSurvivors
             RequirePickupId(pickupIds, BasicSurvivorsGame.BloodShardPickupSpawnableId.Value, result);
         }
 
+        private static void ValidateRunFlowLibrary(RunFlowLibraryJson library, SurvivorsContentValidationResult result)
+        {
+            if (library == null)
+            {
+                return;
+            }
+
+            if (library.profiles == null || library.profiles.Length == 0)
+            {
+                result.AddError("Sample run flow library must contain at least one pacing profile.");
+                return;
+            }
+
+            var profileIds = new HashSet<string>(StringComparer.Ordinal);
+            bool containsHumanPlaytest = false;
+            for (int i = 0; i < library.profiles.Length; i++)
+            {
+                RunFlowProfileRecordJson profile = library.profiles[i];
+                if (profile == null)
+                {
+                    result.AddError($"Run flow profile at index {i} is null.");
+                    continue;
+                }
+
+                string resolvedId = string.IsNullOrWhiteSpace(profile.id) ? "unknown profile" : profile.id;
+                if (string.IsNullOrWhiteSpace(profile.id))
+                {
+                    result.AddError($"Run flow profile at index {i} is missing an id.");
+                }
+                else if (!profileIds.Add(profile.id))
+                {
+                    result.AddError($"Duplicate run flow profile id: {profile.id}");
+                }
+
+                if (string.Equals(profile.id, SurvivorsPacingProfile.HumanPlaytest.ToString(), StringComparison.Ordinal))
+                {
+                    containsHumanPlaytest = true;
+                }
+
+                ValidateRunFlowDefinition(CreateRunFlowDefinition(profile), result);
+                ValidateRunFlowPacingRecord(profile, resolvedId, result);
+            }
+
+            if (!containsHumanPlaytest)
+            {
+                result.AddError("Sample run flow library must include a HumanPlaytest profile.");
+            }
+        }
+
+        private static SurvivorsRunFlowDefinition CreateRunFlowDefinition(RunFlowProfileRecordJson profile)
+        {
+            SurvivorsTemplateTuning tuning = BasicSurvivorsGame.CreateDefaultTuning();
+            return new SurvivorsRunFlowDefinition(
+                profile.escalationIntervalSeconds,
+                profile.minimumEnemySpawnIntervalSeconds,
+                profile.enemySpawnIntervalReductionPerEscalation,
+                profile.enemyMaximumAliveIncreasePerEscalation,
+                profile.enemyHealthMultiplierPerEscalation,
+                profile.enemyMoveSpeedMultiplierPerEscalation,
+                profile.enemyExperienceMultiplierPerEscalation,
+                profile.minibossSpawnTimeSeconds,
+                BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Miniboss, tuning),
+                profile.bossSpawnTimeSeconds,
+                BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Boss, tuning),
+                profile.survivalVictoryTimeSeconds,
+                BasicSurvivorsGame.CreateEnemyProfileDefinitions(tuning),
+                profile.firstEliteSpawnTimeSeconds,
+                profile.eliteSpawnIntervalSeconds,
+                profile.firstDreadEliteSpawnTimeSeconds,
+                profile.dreadEliteSpawnIntervalSeconds);
+        }
+
+        private static void ValidateRunFlowPacingRecord(RunFlowProfileRecordJson profile, string profileId, SurvivorsContentValidationResult result)
+        {
+            ValidatePositive(profileId, "enemy spawn interval", profile.enemySpawnIntervalSeconds, result);
+            ValidatePositive(profileId, "enemy maximum alive", profile.enemyMaximumAlive, result);
+            ValidatePositive(profileId, "enemy spawn pack base count", profile.enemySpawnPackBaseCount, result);
+            ValidatePositive(profileId, "enemy spawn pack max count", profile.enemySpawnPackMaxCount, result);
+            if (profile.enemySpawnPackMaxCount < profile.enemySpawnPackBaseCount)
+            {
+                result.AddError($"Run flow profile {profileId} max spawn pack count must be at least the base spawn pack count.");
+            }
+
+            ValidatePositive(profileId, "horde rush first time", profile.hordeRushFirstTimeSeconds, result);
+            ValidatePositive(profileId, "horde rush interval", profile.hordeRushIntervalSeconds, result);
+            ValidatePositive(profileId, "horde rush warning lead", profile.hordeRushWarningLeadSeconds, result);
+            ValidatePositive(profileId, "horde rush base enemy count", profile.hordeRushBaseEnemyCount, result);
+            ValidatePositive(profileId, "horde rush max enemy count", profile.hordeRushMaxEnemyCount, result);
+            if (profile.hordeRushMaxEnemyCount < profile.hordeRushBaseEnemyCount)
+            {
+                result.AddError($"Run flow profile {profileId} horde rush max enemy count must be at least the base count.");
+            }
+
+            ValidatePositive(profileId, "roaming cache travel interval", profile.roamingCacheTravelInterval, result);
+            ValidatePositive(profileId, "roaming cache XP gem count", profile.roamingCacheExperienceGemCount, result);
+            ValidatePositive(profileId, "draft choice count", profile.draftChoiceCount, result);
+            ValidatePositive(profileId, "draft mid rarity level", profile.draftMidRarityLevel, result);
+            ValidatePositive(profileId, "draft late rarity level", profile.draftLateRarityLevel, result);
+            if (profile.draftLateRarityLevel <= profile.draftMidRarityLevel)
+            {
+                result.AddError($"Run flow profile {profileId} late rarity level must be after mid rarity level.");
+            }
+
+            ValidatePositive(profileId, "endless elite interval", profile.endlessEliteSpawnIntervalSeconds, result);
+            ValidatePositive(profileId, "endless miniboss interval", profile.endlessMinibossSpawnIntervalSeconds, result);
+            ValidatePositive(profileId, "endless boss interval", profile.endlessBossSpawnIntervalSeconds, result);
+            if (profile.endlessMinibossSpawnIntervalSeconds <= profile.endlessEliteSpawnIntervalSeconds)
+            {
+                result.AddError($"Run flow profile {profileId} endless miniboss interval must be longer than elite interval.");
+            }
+
+            if (profile.endlessBossSpawnIntervalSeconds <= profile.endlessMinibossSpawnIntervalSeconds)
+            {
+                result.AddError($"Run flow profile {profileId} endless boss interval must be longer than miniboss interval.");
+            }
+        }
+
+        private static void ValidatePositive(string profileId, string label, float value, SurvivorsContentValidationResult result)
+        {
+            if (value <= 0f)
+            {
+                result.AddError($"Run flow profile {profileId} requires {label} above zero.");
+            }
+        }
+
+        private static void ValidatePositive(string profileId, string label, int value, SurvivorsContentValidationResult result)
+        {
+            if (value <= 0)
+            {
+                result.AddError($"Run flow profile {profileId} requires {label} above zero.");
+            }
+        }
+
         private static void RequirePickupId(HashSet<string> pickupIds, string requiredId, SurvivorsContentValidationResult result)
         {
             if (pickupIds == null || string.IsNullOrWhiteSpace(requiredId) || !pickupIds.Contains(requiredId))
@@ -2168,6 +2306,50 @@ namespace Deucarian.TemplateGameSurvivors
         private sealed class ProgressionLibraryJson
         {
             public ProgressionTrackRecordJson[] tracks;
+        }
+
+        [Serializable]
+        private sealed class RunFlowLibraryJson
+        {
+            public RunFlowProfileRecordJson[] profiles;
+        }
+
+        [Serializable]
+        private sealed class RunFlowProfileRecordJson
+        {
+            public string id;
+            public string displayName;
+            public float enemySpawnIntervalSeconds;
+            public int enemyMaximumAlive;
+            public int enemySpawnPackBaseCount;
+            public int enemySpawnPackMaxCount;
+            public float escalationIntervalSeconds;
+            public float minimumEnemySpawnIntervalSeconds;
+            public float enemySpawnIntervalReductionPerEscalation;
+            public int enemyMaximumAliveIncreasePerEscalation;
+            public float enemyHealthMultiplierPerEscalation;
+            public float enemyMoveSpeedMultiplierPerEscalation;
+            public float enemyExperienceMultiplierPerEscalation;
+            public float firstEliteSpawnTimeSeconds;
+            public float eliteSpawnIntervalSeconds;
+            public float firstDreadEliteSpawnTimeSeconds;
+            public float dreadEliteSpawnIntervalSeconds;
+            public float minibossSpawnTimeSeconds;
+            public float bossSpawnTimeSeconds;
+            public float survivalVictoryTimeSeconds;
+            public float hordeRushFirstTimeSeconds;
+            public float hordeRushIntervalSeconds;
+            public float hordeRushWarningLeadSeconds;
+            public int hordeRushBaseEnemyCount;
+            public int hordeRushMaxEnemyCount;
+            public float roamingCacheTravelInterval;
+            public int roamingCacheExperienceGemCount;
+            public int draftChoiceCount;
+            public int draftMidRarityLevel;
+            public int draftLateRarityLevel;
+            public float endlessEliteSpawnIntervalSeconds;
+            public float endlessMinibossSpawnIntervalSeconds;
+            public float endlessBossSpawnIntervalSeconds;
         }
 
         [Serializable]
