@@ -540,6 +540,30 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator EmptyLevelUpDraftAutoSkipsAndResumes()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.DraftChoiceCount = 0;
+            controller.StartRun();
+            yield return null;
+
+            int skipReward = controller.DraftSkipBloodShards;
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(0, controller.PendingLevelUps);
+            Assert.AreEqual(0, controller.CurrentDraftChoices.Count);
+            Assert.AreEqual(0, controller.SelectedUpgradeCount);
+            Assert.AreEqual(1, controller.DraftSkipCount);
+            Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(skipReward));
+            Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Level Up skipped"));
+            Assert.That(controller.ActiveRewardFeedbackLabel, Does.Contain("skipped"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator EarlyLevelUpDraftSuppressesLegendaryRarity()
         {
             SurvivorsTemplateController controller = CreateController();

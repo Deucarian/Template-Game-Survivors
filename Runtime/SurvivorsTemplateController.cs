@@ -1393,10 +1393,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SurvivorsRewardSelectionKind selectionKind = _rewardSelectionKind;
-            DraftSkipCount++;
-            _bonusBloodShardsEarnedThisRun += DraftSkipBloodShards;
-            RecordRewardSkipFeedback(selectionKind);
-            CompleteUpgradeDraftSelection(
+            CompleteSkippedUpgradeDraft(
                 selectionKind,
                 consumeLevelUp: selectionKind == SurvivorsRewardSelectionKind.LevelUp,
                 selectedRewardUpgrade: false);
@@ -3043,11 +3040,17 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
+            int choiceCount = Mathf.Max(0, CurrentTuning.DraftChoiceCount);
+            if (choiceCount <= 0)
+            {
+                return false;
+            }
+
             draft = RunUpgradeDraftService.Generate(
                 draftCatalog,
                 _upgradeState,
                 new RunUpgradeDraftRequest(
-                    CurrentTuning.DraftChoiceCount,
+                    choiceCount,
                     ResolveDraftSeed(selectionKind),
                     Mathf.Max(0, rerollIndex),
                     resolvedLocks == null || resolvedLocks.Count == 0 ? null : resolvedLocks));
@@ -4191,13 +4194,23 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _currentDraftRerollIndex = 0;
-            _currentDraft = TryGenerateCurrentUpgradeDraft(
+            if (!TryGenerateCurrentUpgradeDraft(
                 SurvivorsRewardSelectionKind.LevelUp,
                 _currentDraftRerollIndex,
                 lockedChoices,
-                out RunUpgradeDraft draft)
-                ? draft
-                : new RunUpgradeDraft(Array.Empty<RunUpgradeDefinition>());
+                out RunUpgradeDraft draft))
+            {
+                _currentDraft = null;
+                _currentRelicDraft = null;
+                _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
+                CompleteSkippedUpgradeDraft(
+                    SurvivorsRewardSelectionKind.LevelUp,
+                    consumeLevelUp: true,
+                    selectedRewardUpgrade: false);
+                return;
+            }
+
+            _currentDraft = draft;
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
@@ -4406,6 +4419,20 @@ namespace Deucarian.TemplateGameSurvivors
                 _rewardSelectionTimer = 0f;
                 AutoSelectRewardChoice();
             }
+        }
+
+        private void CompleteSkippedUpgradeDraft(
+            SurvivorsRewardSelectionKind selectionKind,
+            bool consumeLevelUp,
+            bool selectedRewardUpgrade)
+        {
+            DraftSkipCount++;
+            _bonusBloodShardsEarnedThisRun += DraftSkipBloodShards;
+            RecordRewardSkipFeedback(selectionKind);
+            CompleteUpgradeDraftSelection(
+                selectionKind,
+                consumeLevelUp,
+                selectedRewardUpgrade);
         }
 
         private void AutoSelectRewardChoice()

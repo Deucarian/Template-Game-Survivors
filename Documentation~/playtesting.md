@@ -37,6 +37,7 @@ First 30 seconds:
 - Longer kill streaks can leave blood shards; collecting one should increase the bonus blood shards counted in the run summary.
 - Opening spawns should arrive as small packs, while runners should not appear until about 35 seconds.
 - The first level-up draft should appear within about 30-60 seconds once the player moves through XP gems.
+- If no valid upgrade choices are available, the run should automatically use the skip fallback, grant the small shard reward, and resume instead of leaving an empty choice overlay open.
 - No console errors, missing scripts, missing materials, or missing package references should appear.
 
 After 2 minutes:
