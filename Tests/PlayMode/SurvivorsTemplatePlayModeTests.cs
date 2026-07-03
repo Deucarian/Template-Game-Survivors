@@ -315,7 +315,6 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator ImportedPlaytestSceneStartsControllerInHumanPlaytest()
         {
-            const string sceneName = "PLAYTEST_THIS_SCENE_Survivors_Game";
             const string scenePath = "Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity";
 #if UNITY_EDITOR
             if (!System.IO.File.Exists(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), scenePath)))
@@ -332,6 +331,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
                 yield return null;
             }
 #else
+            const string sceneName = "PLAYTEST_THIS_SCENE_Survivors_Game";
             if (!Application.CanStreamedLevelBeLoaded(sceneName))
             {
                 Assert.Ignore("Imported playtest scene is not in this project's build settings.");
@@ -358,6 +358,28 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1f, Time.timeScale);
             Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(0.9f, 1.4f));
             Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(24, 40));
+
+            for (int i = 0; i < 240 && controller.SpawnedCount <= 0; i++)
+            {
+                controller.Simulate(1f / 60f, Vector2.right);
+                yield return null;
+            }
+
+            Assert.That(controller.SpawnedCount, Is.GreaterThan(0), "Imported playtest scene did not advance into horde spawning.");
+            Assert.That(controller.ActiveEnemyCount, Is.GreaterThan(0));
+
+            int startingLevel = controller.Level;
+            controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.2f, 0f, 0.2f), controller.RequiredExperienceForNextLevel);
+            for (int i = 0; i < 30 && controller.State != SurvivorsRunState.LevelUp; i++)
+            {
+                controller.Simulate(1f / 60f);
+                yield return null;
+            }
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State, "Imported playtest scene did not open a level-up draft after XP collection.");
+            Assert.That(controller.Level, Is.GreaterThan(startingLevel));
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3));
 
             Object.Destroy(controller.gameObject);
         }
