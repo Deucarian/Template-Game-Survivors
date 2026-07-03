@@ -239,6 +239,35 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator OpeningHumanPlaytestCollectsFirstExperienceWithinSeconds()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            const float deltaTime = 0.1f;
+            float elapsed = 0f;
+            int steps = 0;
+            while (elapsed < 20f && controller.ExperienceCollected <= 0)
+            {
+                Vector2 movement = new Vector2(Mathf.Sin(elapsed * 0.65f), Mathf.Cos(elapsed * 0.8f));
+                controller.Simulate(deltaTime, movement);
+                elapsed += deltaTime;
+                steps++;
+                if (steps % 10 == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            string openingState = $"elapsed={elapsed:0.0}s, kills={controller.KilledCount}, activePickups={controller.ActivePickupCount}, xpCollected={controller.ExperienceCollected}, state={controller.State}";
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1), openingState);
+            Assert.That(controller.ExperienceCollected, Is.GreaterThan(0), openingState);
+            Assert.That(elapsed, Is.LessThanOrEqualTo(20f), openingState);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator LevelUpChoiceAutoSelectsAfterTimeout()
         {
             SurvivorsTemplateController controller = CreateController();

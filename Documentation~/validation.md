@@ -150,7 +150,7 @@ Phase 3I adds human-readable pacing validation:
 - Human Playtest max alive rises by `8` about every `45` seconds, the spawn interval drops by `0.08` seconds per escalation, and the miniboss waits until `180` seconds.
 - `SurvivorsPacingProfile.Normal`, `SurvivorsPacingProfile.DebugFast`, and `SurvivorsPacingProfile.Showcase` are explicit profiles for validation and demo work, not sample defaults.
 - EditMode coverage checks Human Playtest readability thresholds and Debug Fast acceleration as opt-in tuning.
-- PlayMode coverage checks the controller starts in Human Playtest, the imported scene starts by path, the first draft can open within one minute, reward choices wait for the player by default, and Debug Fast only appears through an explicit profile switch.
+- PlayMode coverage checks the controller starts in Human Playtest, the imported scene starts by path, the first XP pickup can be collected within seconds, the first draft can open within one minute, reward choices wait for the player by default, and Debug Fast only appears through an explicit profile switch.
 - PlayMode persistence coverage uses isolated in-memory save slots to prove normal start, Normal profile application, and run restart do not wipe meta progression, while explicit reset does wipe it.
 - `Documentation~/playtesting.md` documents the local playtest host project, renamed imported sample scene, timing expectations, explicit save reset, and Debug Fast workflow.
 
