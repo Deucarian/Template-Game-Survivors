@@ -96,6 +96,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
         private readonly List<string> _lastRunSummaryLines = new List<string>(8);
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
+        private readonly HashSet<SurvivorsEnemyActor> _activeRoamingCacheAmbushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -301,7 +302,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int RoamingCacheBloodShardDropCount { get; private set; }
         public int RoamingCacheAmbushCount { get; private set; }
         public int RoamingCacheAmbushEnemySpawnCount { get; private set; }
+        public int RoamingCacheAmbushClearRewardCount { get; private set; }
+        public int RoamingCacheAmbushClearExperienceGemDropCount { get; private set; }
         public string LastRoamingCacheFeedbackLabel { get; private set; } = string.Empty;
+        public string LastRoamingCacheAmbushClearFeedbackLabel { get; private set; } = string.Empty;
         public int BestKillStreak { get; private set; }
         public int StreakBonusDropCount { get; private set; }
         public int StreakHealthDropCount { get; private set; }
@@ -396,6 +400,7 @@ namespace Deucarian.TemplateGameSurvivors
         }
         public int ActivePickupCount => _pickups.Count;
         public int ActiveHordeRushEnemyCount => _activeHordeRushEnemies.Count;
+        public int ActiveRoamingCacheAmbushEnemyCount => _activeRoamingCacheAmbushEnemies.Count;
         public int ActiveProjectileCount => _projectiles.Count;
         public int ActiveDamagePopupCount => _damagePopups.Count;
         public int ActiveEnemyDeathEffectCount => _worldFeedbackEffects.Count;
@@ -724,7 +729,10 @@ namespace Deucarian.TemplateGameSurvivors
             RoamingCacheBloodShardDropCount = 0;
             RoamingCacheAmbushCount = 0;
             RoamingCacheAmbushEnemySpawnCount = 0;
+            RoamingCacheAmbushClearRewardCount = 0;
+            RoamingCacheAmbushClearExperienceGemDropCount = 0;
             LastRoamingCacheFeedbackLabel = string.Empty;
+            LastRoamingCacheAmbushClearFeedbackLabel = string.Empty;
             BestKillStreak = 0;
             StreakBonusDropCount = 0;
             StreakHealthDropCount = 0;
@@ -970,6 +978,31 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 enemy.ApplyDamage(10000f, "test.horde-rush-clear");
+                killed++;
+            }
+
+            return killed;
+        }
+
+        public int KillActiveRoamingCacheAmbushEnemiesForTest()
+        {
+            EnsureRunStartedForTest();
+            if (_activeRoamingCacheAmbushEnemies.Count == 0)
+            {
+                return 0;
+            }
+
+            var enemies = new List<SurvivorsEnemyActor>(_activeRoamingCacheAmbushEnemies);
+            int killed = 0;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                enemy.ApplyDamage(10000f, "test.roaming-cache-ambush-clear");
                 killed++;
             }
 
@@ -1664,6 +1697,7 @@ namespace Deucarian.TemplateGameSurvivors
             float radius = enemy.Radius;
             _enemies.Remove(enemy);
             bool clearedHordeRushEnemy = _activeHordeRushEnemies.Remove(enemy) && _activeHordeRushEnemies.Count == 0;
+            bool clearedRoamingCacheAmbushEnemy = _activeRoamingCacheAmbushEnemies.Remove(enemy) && _activeRoamingCacheAmbushEnemies.Count == 0;
             _enragedMajorThreats.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
@@ -1714,6 +1748,11 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 SpawnHordeRushClearReward(position);
             }
+
+            if (clearedRoamingCacheAmbushEnemy)
+            {
+                SpawnRoamingCacheAmbushClearReward(position);
+            }
         }
 
         internal void ReleaseEnemy(SurvivorsEnemyActor enemy, DespawnReason reason)
@@ -1725,6 +1764,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             _enemies.Remove(enemy);
             _activeHordeRushEnemies.Remove(enemy);
+            _activeRoamingCacheAmbushEnemies.Remove(enemy);
             _enragedMajorThreats.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
@@ -3091,6 +3131,7 @@ namespace Deucarian.TemplateGameSurvivors
             _runFlow = null;
             _enemies.Clear();
             _activeHordeRushEnemies.Clear();
+            _activeRoamingCacheAmbushEnemies.Clear();
             _enragedMajorThreats.Clear();
             _pickups.Clear();
             _projectiles.Clear();
@@ -4140,8 +4181,10 @@ namespace Deucarian.TemplateGameSurvivors
                 float angle = ((i + 0.5f) / targetCount) * Mathf.PI * 2f;
                 Vector3 offset = side * (Mathf.Cos(angle) * radius) + forward * (Mathf.Sin(angle) * radius);
                 SurvivorsEnemyRole role = ResolveRoamingCacheAmbushRole(i, cacheNumber);
-                if (SpawnEnemy(center + offset, explicitPosition: true, role) != null)
+                SurvivorsEnemyActor enemy = SpawnEnemy(center + offset, explicitPosition: true, role);
+                if (enemy != null)
                 {
+                    _activeRoamingCacheAmbushEnemies.Add(enemy);
                     spawned++;
                 }
             }
@@ -4182,6 +4225,36 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return seed % 3 == 0 ? SurvivorsEnemyRole.Runner : SurvivorsEnemyRole.Swarm;
+        }
+
+        private void SpawnRoamingCacheAmbushClearReward(Vector3 position)
+        {
+            int gemCount = Mathf.Max(1, CurrentTuning.RoamingCacheExperienceGemCount + 1);
+            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.35f + RunEscalationLevel * 0.08f)));
+            float radius = 0.72f + Mathf.Min(0.9f, gemCount * 0.08f);
+            int spawnedExperience = 0;
+            for (int i = 0; i < gemCount; i++)
+            {
+                float angle = ((i + 0.2f) / gemCount) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
+                {
+                    spawnedExperience += xpPerGem;
+                    RoamingCacheAmbushClearExperienceGemDropCount++;
+                }
+            }
+
+            if (spawnedExperience <= 0)
+            {
+                return;
+            }
+
+            RoamingCacheAmbushClearRewardCount++;
+            string label = $"Roaming Ambush Cleared: +{spawnedExperience} XP";
+            LastRoamingCacheAmbushClearFeedbackLabel = label;
+            LastRoamingCacheFeedbackLabel = label;
+            RecordStreakRewardFeedback(label, new Color(0.5f, 1f, 0.68f));
+            PlayFeedback(_levelUpPulse, position, 18, _pickupClip);
         }
 
         private void UpdateArenaPresentation()

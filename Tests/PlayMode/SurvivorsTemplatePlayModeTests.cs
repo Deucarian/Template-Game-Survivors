@@ -890,6 +890,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
             controller.CurrentTuning.EnemyMoveSpeed = 0f;
             controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ProjectileDamage = 0f;
+            controller.CurrentTuning.OrbitDamage = 0f;
+            controller.CurrentTuning.MeleeDamage = 0f;
+            controller.CurrentTuning.BurstDamage = 0f;
+            controller.CurrentTuning.HitscanDamage = 0f;
+            controller.CurrentTuning.GrenadeDamage = 0f;
+            controller.CurrentTuning.PlacedPayloadDamage = 0f;
             controller.CurrentTuning.ExperienceRequiredBase = 999;
             controller.CurrentTuning.RoamingCacheTravelInterval = 2f;
             controller.CurrentTuning.RoamingCacheExperienceGemCount = 1;
@@ -911,8 +918,18 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.RoamingCacheBloodShardDropCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.RoamingCacheAmbushCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.RoamingCacheAmbushEnemySpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.ActiveRoamingCacheAmbushEnemyCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Roaming Cache"));
             Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Ambush"));
+
+            int killed = controller.KillActiveRoamingCacheAmbushEnemiesForTest();
+            yield return null;
+
+            Assert.That(killed, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(0, controller.ActiveRoamingCacheAmbushEnemyCount);
+            Assert.AreEqual(1, controller.RoamingCacheAmbushClearRewardCount);
+            Assert.That(controller.RoamingCacheAmbushClearExperienceGemDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastRoamingCacheAmbushClearFeedbackLabel, Does.Contain("Roaming Ambush Cleared"));
 
             Object.Destroy(controller.gameObject);
         }
