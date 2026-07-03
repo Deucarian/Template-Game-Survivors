@@ -68,18 +68,50 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8f, 0f, 0f), 25f);
             Assert.AreEqual(0, controller.DamagePopupSpawnCount);
             Assert.AreEqual(0, controller.ActiveDamagePopupCount);
+            Assert.AreEqual(0, controller.EnemyHitFlashFeedbackCount);
 
             enemy.ApplyDamage(7.2f, "test.status.damage-popup");
             yield return null;
 
             Assert.AreEqual(1, controller.DamagePopupSpawnCount);
             Assert.AreEqual(1, controller.ActiveDamagePopupCount);
+            Assert.AreEqual(1, controller.EnemyHitFlashFeedbackCount);
+            Assert.IsTrue(enemy.IsHitFlashActive);
+
+            controller.Simulate(0.2f);
+            yield return null;
+
+            Assert.IsFalse(enemy.IsHitFlashActive);
 
             controller.ForceLevelUp();
             controller.Simulate(1.1f);
             yield return null;
 
             Assert.AreEqual(0, controller.ActiveDamagePopupCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator EnemyDeathCreatesShortLivedWorldFeedback()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8f, 0f, 0f), 4f);
+            Assert.AreEqual(0, controller.EnemyDeathEffectCount);
+            Assert.AreEqual(0, controller.ActiveEnemyDeathEffectCount);
+
+            enemy.ApplyDamage(12f, "test.enemy-death-feedback");
+            yield return null;
+
+            Assert.AreEqual(1, controller.EnemyDeathEffectCount);
+            Assert.AreEqual(1, controller.ActiveEnemyDeathEffectCount);
+
+            controller.Simulate(0.5f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveEnemyDeathEffectCount);
 
             Object.Destroy(controller.gameObject);
         }

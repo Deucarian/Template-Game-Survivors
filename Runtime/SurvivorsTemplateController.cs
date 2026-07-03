@@ -36,6 +36,9 @@ namespace Deucarian.TemplateGameSurvivors
         private const int DamagePopupLimit = 72;
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
+        private const float EnemyHitFlashSeconds = 0.13f;
+        private const float EnemyDeathEffectLifetimeSeconds = 0.42f;
+        private const int EnemyDeathEffectLimit = 56;
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
         private const int EndlessEnemyAliveBonus = 24;
 
@@ -69,6 +72,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsProjectileActor> _projectiles = new List<SurvivorsProjectileActor>(64);
         private readonly List<Transform> _arenaTiles = new List<Transform>(25);
         private readonly List<SurvivorsDamagePopup> _damagePopups = new List<SurvivorsDamagePopup>(DamagePopupLimit);
+        private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -196,6 +200,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ClassUnlockRewardCount { get; private set; }
         public int DamagePopupSpawnCount { get; private set; }
         public int PlayerDamageFeedbackCount { get; private set; }
+        public int EnemyHitFlashFeedbackCount { get; private set; }
+        public int EnemyDeathEffectCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int MajorThreatWarningCount { get; private set; }
         public int ExperiencePickupFeedbackCount { get; private set; }
@@ -267,6 +273,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActivePickupCount => _pickups.Count;
         public int ActiveProjectileCount => _projectiles.Count;
         public int ActiveDamagePopupCount => _damagePopups.Count;
+        public int ActiveEnemyDeathEffectCount => _worldFeedbackEffects.Count;
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
         public int ActivePassiveCount => _ownedPassiveUpgradeIds.Count;
         public int EvolvedWeaponCount => _ownedEvolutionUpgradeIds.Count;
@@ -358,6 +365,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (State == SurvivorsRunState.LevelUp)
             {
                 TickDamagePopups(Time.deltaTime);
+                TickWorldFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
                 HandleLevelUpInput();
@@ -367,6 +375,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
             {
                 TickDamagePopups(Time.deltaTime);
+                TickWorldFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
                 {
@@ -525,6 +534,8 @@ namespace Deucarian.TemplateGameSurvivors
             ClassUnlockRewardCount = 0;
             DamagePopupSpawnCount = 0;
             PlayerDamageFeedbackCount = 0;
+            EnemyHitFlashFeedbackCount = 0;
+            EnemyDeathEffectCount = 0;
             MajorThreatWarningCount = 0;
             ExperiencePickupFeedbackCount = 0;
             PickupAttractionFeedbackCount = 0;
@@ -645,6 +656,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             float dt = Mathf.Max(0f, deltaTime);
             TickDamagePopups(dt);
+            TickWorldFeedbackEffects(dt);
             TickRewardFeedback(dt);
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -1355,6 +1367,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             RecordDamagePopup(enemy.transform.position, resolvedDamage, playerDamage: false, critical: damage.Critical.IsCritical);
+            enemy.TriggerHitFlash(damage.Critical.IsCritical, EnemyHitFlashSeconds);
+            EnemyHitFlashFeedbackCount++;
         }
 
         internal void HandleEnemyKilled(SurvivorsEnemyActor enemy)
@@ -1368,6 +1382,7 @@ namespace Deucarian.TemplateGameSurvivors
             Vector3 position = enemy.transform.position;
             SurvivorsEnemyRole role = enemy.Role;
             int xp = Mathf.Max(1, enemy.ExperienceReward);
+            float radius = enemy.Radius;
             _enemies.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
@@ -1376,6 +1391,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
             RegisterKillStreak(position);
+            RecordEnemyDeathEffect(position, role, radius);
             PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip);
             if (role == SurvivorsEnemyRole.Splitter)
             {
@@ -1984,6 +2000,106 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void RecordEnemyDeathEffect(Vector3 position, SurvivorsEnemyRole role, float radius)
+        {
+            if (_feedbackRoot == null)
+            {
+                return;
+            }
+
+            while (_worldFeedbackEffects.Count >= EnemyDeathEffectLimit)
+            {
+                ReleaseWorldFeedbackEffect(0);
+            }
+
+            Color color = ResolveEnemyDeathEffectColor(role);
+            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            instance.name = "Survivors Enemy Death Burst";
+            instance.transform.SetParent(_feedbackRoot, false);
+            instance.transform.position = position + Vector3.up * 0.16f;
+            Vector3 baseScale = Vector3.one * Mathf.Max(0.35f, radius * 1.7f);
+            instance.transform.localScale = baseScale;
+
+            Collider collider = instance.GetComponent<Collider>();
+            if (collider != null)
+            {
+                ReleaseTemplateObject(collider);
+            }
+
+            Renderer renderer = instance.GetComponentInChildren<Renderer>();
+            Material material = ApplyColor(renderer, color);
+            _worldFeedbackEffects.Add(new SurvivorsWorldFeedbackEffect(instance, renderer, material, color, baseScale));
+            EnemyDeathEffectCount++;
+        }
+
+        private void TickWorldFeedbackEffects(float deltaTime)
+        {
+            if (_worldFeedbackEffects.Count == 0)
+            {
+                return;
+            }
+
+            float dt = Mathf.Max(0f, deltaTime);
+            for (int i = _worldFeedbackEffects.Count - 1; i >= 0; i--)
+            {
+                SurvivorsWorldFeedbackEffect effect = _worldFeedbackEffects[i];
+                effect.ElapsedSeconds += dt;
+                if (effect.Instance == null || effect.ElapsedSeconds >= EnemyDeathEffectLifetimeSeconds)
+                {
+                    ReleaseWorldFeedbackEffect(i);
+                    continue;
+                }
+
+                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / EnemyDeathEffectLifetimeSeconds);
+                float scale = Mathf.Lerp(1f, 2.65f, normalizedAge);
+                effect.Instance.transform.localScale = effect.BaseScale * scale;
+                if (effect.Material != null)
+                {
+                    Color color = effect.Color;
+                    color.a = Mathf.Lerp(0.72f, 0.04f, normalizedAge);
+                    effect.Material.color = color;
+                }
+
+                _worldFeedbackEffects[i] = effect;
+            }
+        }
+
+        private void ReleaseWorldFeedbackEffect(int index)
+        {
+            if (index < 0 || index >= _worldFeedbackEffects.Count)
+            {
+                return;
+            }
+
+            SurvivorsWorldFeedbackEffect effect = _worldFeedbackEffects[index];
+            _worldFeedbackEffects.RemoveAt(index);
+            if (effect.Material != null)
+            {
+                ReleaseTemplateObject(effect.Material);
+            }
+
+            if (effect.Instance != null)
+            {
+                ReleaseTemplateObject(effect.Instance);
+            }
+        }
+
+        private static Color ResolveEnemyDeathEffectColor(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Elite:
+                case SurvivorsEnemyRole.DreadElite:
+                    return new Color(1f, 0.62f, 0.18f, 0.72f);
+                case SurvivorsEnemyRole.Miniboss:
+                    return new Color(1f, 0.3f, 0.74f, 0.72f);
+                case SurvivorsEnemyRole.Boss:
+                    return new Color(1f, 0.15f, 0.22f, 0.76f);
+                default:
+                    return new Color(0.35f, 0.95f, 1f, 0.68f);
+            }
+        }
+
         private static AudioClip CreateTone(string name, float frequency, float durationSeconds, float volume)
         {
             const int sampleRate = 22050;
@@ -2035,6 +2151,7 @@ namespace Deucarian.TemplateGameSurvivors
             _enemies.Clear();
             _pickups.Clear();
             _projectiles.Clear();
+            _worldFeedbackEffects.Clear();
             _arenaTiles.Clear();
             _ownedPassiveUpgradeIds.Clear();
             _ownedEvolutionUpgradeIds.Clear();
@@ -4472,16 +4589,17 @@ namespace Deucarian.TemplateGameSurvivors
             return new Vector2(x, y);
         }
 
-        private static void ApplyColor(Renderer renderer, Color color)
+        private static Material ApplyColor(Renderer renderer, Color color)
         {
             if (renderer == null)
             {
-                return;
+                return null;
             }
 
             Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            renderer.sharedMaterial = new Material(shader);
-            renderer.sharedMaterial.color = color;
+            Material material = new Material(shader) { color = color };
+            renderer.sharedMaterial = material;
+            return material;
         }
 
         private static void ReleaseTemplateObject(UnityEngine.Object target)
@@ -4512,6 +4630,26 @@ namespace Deucarian.TemplateGameSurvivors
             public bool PlayerDamage { get; }
             public float ElapsedSeconds;
         }
+
+        private struct SurvivorsWorldFeedbackEffect
+        {
+            public SurvivorsWorldFeedbackEffect(GameObject instance, Renderer renderer, Material material, Color color, Vector3 baseScale)
+            {
+                Instance = instance;
+                Renderer = renderer;
+                Material = material;
+                Color = color;
+                BaseScale = baseScale;
+                ElapsedSeconds = 0f;
+            }
+
+            public GameObject Instance { get; }
+            public Renderer Renderer { get; }
+            public Material Material { get; }
+            public Color Color { get; }
+            public Vector3 BaseScale { get; }
+            public float ElapsedSeconds;
+        }
     }
 
     public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
@@ -4531,9 +4669,17 @@ namespace Deucarian.TemplateGameSurvivors
         private float _poisonRemainingSeconds;
         private float _bleedDamagePerSecond;
         private float _bleedRemainingSeconds;
+        private Renderer _renderer;
+        private Material _runtimeMaterial;
+        private Color _baseTint;
+        private Vector3 _baseScale = Vector3.one;
+        private float _hitFlashTimer;
+        private float _hitFlashDuration;
+        private bool _hitFlashCritical;
 
         public SpawnInstanceId InstanceId { get; private set; }
         public bool IsAlive => _health != null && _health.IsAlive;
+        public bool IsHitFlashActive => _hitFlashTimer > 0f;
         public SurvivorsEnemyRole Role { get; private set; }
         public string ProfileId { get; private set; }
         public float Radius { get; private set; }
@@ -4566,6 +4712,10 @@ namespace Deucarian.TemplateGameSurvivors
             float maxHealth = Mathf.Max(1f, profile.MaxHealth);
             _health = new HealthState(new CombatantId(id), maxHealth, maxHealth);
             transform.localScale = Vector3.one * (Radius * 2f);
+            _baseScale = transform.localScale;
+            _hitFlashTimer = 0f;
+            _hitFlashDuration = 0f;
+            _hitFlashCritical = false;
             ApplyTint(profile.Tint);
         }
 
@@ -4576,6 +4726,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            TickHitFlash(deltaTime);
             TickDamageOverTime(deltaTime);
             if (!IsAlive)
             {
@@ -4676,6 +4827,39 @@ namespace Deucarian.TemplateGameSurvivors
             return result.Damage;
         }
 
+        public void TriggerHitFlash(bool critical, float durationSeconds)
+        {
+            _hitFlashCritical = critical;
+            _hitFlashDuration = Mathf.Max(0.01f, durationSeconds);
+            _hitFlashTimer = _hitFlashDuration;
+            ApplyHitFlashPresentation(1f);
+        }
+
+        private void TickHitFlash(float deltaTime)
+        {
+            if (_hitFlashTimer <= 0f)
+            {
+                return;
+            }
+
+            _hitFlashTimer = Mathf.Max(0f, _hitFlashTimer - Mathf.Max(0f, deltaTime));
+            float intensity = _hitFlashDuration <= 0f ? 0f : Mathf.Clamp01(_hitFlashTimer / _hitFlashDuration);
+            ApplyHitFlashPresentation(intensity);
+        }
+
+        private void ApplyHitFlashPresentation(float intensity)
+        {
+            if (_runtimeMaterial != null)
+            {
+                Color flash = _hitFlashCritical
+                    ? new Color(1f, 0.86f, 0.25f)
+                    : Color.white;
+                _runtimeMaterial.color = Color.Lerp(_baseTint, flash, Mathf.Clamp01(intensity));
+            }
+
+            transform.localScale = _baseScale * (1f + 0.18f * Mathf.Clamp01(intensity));
+        }
+
         private Vector3 ResolveMoveDirection(Vector3 normalizedToPlayer, float distance)
         {
             if (_preferredRange <= 0f)
@@ -4764,6 +4948,15 @@ namespace Deucarian.TemplateGameSurvivors
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;
             _bleedRemainingSeconds = 0f;
+            _hitFlashTimer = 0f;
+            _hitFlashDuration = 0f;
+            _hitFlashCritical = false;
+            if (_runtimeMaterial != null)
+            {
+                _runtimeMaterial.color = _baseTint;
+            }
+
+            transform.localScale = _baseScale;
         }
 
         public void ResetForWorldSpawn()
@@ -4780,6 +4973,15 @@ namespace Deucarian.TemplateGameSurvivors
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;
             _bleedRemainingSeconds = 0f;
+            _hitFlashTimer = 0f;
+            _hitFlashDuration = 0f;
+            _hitFlashCritical = false;
+            if (_runtimeMaterial != null)
+            {
+                _runtimeMaterial.color = _baseTint;
+            }
+
+            transform.localScale = _baseScale;
             Role = SurvivorsEnemyRole.Swarm;
             ProfileId = null;
             InstanceId = default;
@@ -4794,7 +4996,15 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            renderer.material = new Material(shader) { color = tint };
+            _renderer = renderer;
+            _baseTint = tint;
+            if (_runtimeMaterial == null || _runtimeMaterial.shader != shader)
+            {
+                _runtimeMaterial = new Material(shader);
+            }
+
+            _runtimeMaterial.color = tint;
+            _renderer.sharedMaterial = _runtimeMaterial;
         }
     }
 

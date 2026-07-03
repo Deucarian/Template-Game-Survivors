@@ -1,6 +1,6 @@
 # Deucarian Template Game - Survivors
 
-Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, rarity-tinted reward cards, level-up choices, readable damage feedback, reward-pick banners, low-health warnings, major-threat telegraphs, miniboss and boss pressure, elite upgrade rewards, boss evolution rewards, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
+Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, auto-attacks, XP gems, rarity-tinted reward cards, level-up choices, readable damage feedback, enemy hit flashes, death bursts, reward-pick banners, low-health warnings, major-threat telegraphs, miniboss and boss pressure, elite upgrade rewards, boss evolution rewards, relic rewards, class unlocks, persistent meta progression, victory, defeat, and restart flow.
 
 The `Basic Survivors Game` sample is tuned as a small complete template game rather than a toy package demo: the default class starts with five distinct weapons, extra weapons such as Star Beam and Gravity Grenade can enter through the draft pool, the horde grows through nine enemy roles including splitter pressure and two reward-bearing elite variants, the level-up pool includes 30+ authored choices with weapon unlocks, behavior mutations, passives, status effects, and eight legendary evolutions, class passive atlases group class identity, weapon skill tracks group upgrade routes, and the run paces toward a 30-minute clear with continuing escalation.
 
@@ -170,7 +170,7 @@ No screenshot or GIF assets are committed yet. Add `Documentation~/media/` captu
 
 - Sample scene is missing: import `Basic Survivors Game` from Package Manager, then open the imported playtest scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
 - Weapons do not fire: enemies must be in range; move near the horde and wait for auto-fire cadence.
-- Combat feedback is hard to read: confirm the imported sample is current, then damage enemies or take a hit; resolved damage should appear as short-lived numbers and low health should pulse a red screen-edge warning.
+- Combat feedback is hard to read: confirm the imported sample is current, then damage enemies or take a hit; enemies should flash on hit, deaths should leave a short burst, resolved damage should appear as short-lived numbers, and low health should pulse a red screen-edge warning.
 - Draft choices do not appear: collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
 - Relic choices do not appear: defeat the miniboss first.
 - Persistent class or meta state looks stale: use the template reset/debug hooks from tests or clear the local sample save before validating a fresh profile.
