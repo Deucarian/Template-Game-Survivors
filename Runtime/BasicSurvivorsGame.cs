@@ -242,6 +242,8 @@ namespace Deucarian.TemplateGameSurvivors
         public const string GiantRuneUpgradeId = "upgrade.survivors.giant-rune";
         public const string TwinCharmUpgradeId = "upgrade.survivors.twin-charm";
         public const string AstralConvergenceUpgradeId = "upgrade.survivors.astral-convergence";
+        public const string StarBeamUnlockUpgradeId = "upgrade.survivors.weapon.star-beam";
+        public const string GravityGrenadeUnlockUpgradeId = "upgrade.survivors.weapon.gravity-grenade";
         public const string ArcaneStormEvolutionUpgradeId = "upgrade.survivors.evolution.arcane-storm";
         public const string BlizzardCrownEvolutionUpgradeId = "upgrade.survivors.evolution.blizzard-crown";
         public const string CrimsonAegisEvolutionUpgradeId = "upgrade.survivors.evolution.crimson-aegis";
@@ -277,6 +279,7 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly RunUpgradeEffectId BarrierOnDamageEffect = new RunUpgradeEffectId("survivors.barrier.on_damage_ratio");
         public static readonly RunUpgradeEffectId ExperienceGainEffect = new RunUpgradeEffectId("survivors.experience.gain_multiplier");
         public static readonly RunUpgradeEffectId AreaRadiusEffect = new RunUpgradeEffectId("survivors.area.radius");
+        public static readonly RunUpgradeEffectId WeaponUnlockEffect = new RunUpgradeEffectId("survivors.weapon.unlock");
         public static readonly RunUpgradeTargetId PlayerTarget = new RunUpgradeTargetId("survivors.player");
         public static readonly RunUpgradeTargetId WeaponTarget = new RunUpgradeTargetId("survivors.weapon.arcane-wand");
         public static readonly RunUpgradeTargetId FrostFanWeaponTarget = new RunUpgradeTargetId("survivors.weapon.frost-fan");
@@ -899,6 +902,8 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.swift-steps", RunUpgradeRarity.Uncommon, 44, 5, MoveSpeedEffect, PlayerTarget, 0.45d),
                 Upgrade("upgrade.survivors.gem-magnet", RunUpgradeRarity.Uncommon, 44, 5, MagnetRangeEffect, PickupTarget, 1.1d),
                 Upgrade("upgrade.survivors.iron-blood", RunUpgradeRarity.Rare, 28, 4, MaxHealthEffect, PlayerTarget, 8.0d),
+                Upgrade(StarBeamUnlockUpgradeId, RunUpgradeRarity.Uncommon, 34, 1, WeaponUnlockEffect, HitscanWeaponTarget, 1.0d),
+                Upgrade(GravityGrenadeUnlockUpgradeId, RunUpgradeRarity.Rare, 18, 1, WeaponUnlockEffect, GrenadeWeaponTarget, 1.0d),
                 Upgrade(FrostFanUpgradeId, RunUpgradeRarity.Uncommon, 40, 3, ProjectileFanEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(OrbitingFocusUpgradeId, RunUpgradeRarity.Uncommon, 38, 4, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
                 Upgrade(ThornHaloUpgradeId, RunUpgradeRarity.Rare, 30, 3, OrbitRadiusEffect, ThornHaloWeaponTarget, 0.35d),
@@ -1042,6 +1047,8 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(GiantRuneUpgradeId, "Giant Rune", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, AreaTarget.Value, "Passive: enlarge bursts, orbit paths, payload explosions, and close-range swings."),
                 UpgradeMetadata(TwinCharmUpgradeId, "Twin Charm", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, WeaponTarget.Value, "Epic passive: duplicate projectile-style attacks with extra fan shots."),
                 UpgradeMetadata(AstralConvergenceUpgradeId, "Astral Convergence", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, AreaTarget.Value, "Epic mutation: enlarge area weapons and sharpen global damage."),
+                UpgradeMetadata(StarBeamUnlockUpgradeId, "Star Beam", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, StarBeamWeaponContentId, "Unlock weapon: a focused beam that pierces the front line."),
+                UpgradeMetadata(GravityGrenadeUnlockUpgradeId, "Gravity Grenade", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, GravityGrenadeWeaponContentId, "Unlock weapon: lob a heavy payload that detonates inside the horde."),
                 UpgradeMetadata(ArcaneThesisUpgradeId, "Arcane Thesis", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, ArcaneWandWeaponContentId, "Passive: commit to Arc Bolt damage and unlock Arcane Storm."),
                 UpgradeMetadata(FrostNeedleworkUpgradeId, "Frost Needlework", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, FrostFanWeaponContentId, "Passive: sharpen frost shards and unlock Blizzard Crown."),
                 UpgradeMetadata(BloodRingCanticleUpgradeId, "Blood Ring Canticle", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, OrbitWardWeaponContentId, "Passive: deepen orbit damage and unlock Crimson Aegis."),
@@ -1050,7 +1057,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(EmberTempoUpgradeId, "Ember Tempo", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarBeamWeaponContentId, "Passive: quicken Star Beam and unlock Tempest Prism."),
                 UpgradeMetadata(SiegePayloadsUpgradeId, "Siege Payloads", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PayloadWeaponTarget.Value, "Passive: carry heavier payloads and unlock Gravefield Engine."),
                 UpgradeMetadata(EmberWardUpgradeId, "Ember Ward", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: add a larger defensive barrier."),
-                UpgradeMetadata(PrismaticBeamUpgradeId, "Prismatic Beam", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Star Beam pierces more enemies."),
+                UpgradeMetadata(PrismaticBeamUpgradeId, "Prismatic Beam", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Star Beam pierces more enemies.", StarBeamWeaponContentId),
                 UpgradeMetadata(ExtraPayloadUpgradeId, "Extra Payload", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Throw or place additional payloads."),
                 UpgradeMetadata(BiggerBoomsUpgradeId, "Bigger Booms", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Payload explosions cover a wider area."),
                 UpgradeMetadata(WiderTriggersUpgradeId, "Wider Triggers", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Payloads trigger from farther away."),
@@ -1058,7 +1065,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(BlizzardCrownEvolutionUpgradeId, "Blizzard Crown", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Evolution: Frost Fan expands into a piercing crown of shards.", FrostFanWeaponContentId, FrostFanUpgradeId, 3, FrostNeedleworkUpgradeId),
                 UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo become a dense orbit shield.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 4, BloodRingCanticleUpgradeId),
                 UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 3, CinderScriptUpgradeId),
-                UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam turns into a rapid piercing prism.", StarBeamWeaponContentId, PrismaticBeamUpgradeId, 3, EmberTempoUpgradeId),
+                UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam turns into a rapid piercing prism.", StarBeamWeaponContentId, PrismaticBeamUpgradeId, 3, TwinCharmUpgradeId),
                 UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload weapons flood the arena with larger danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, SiegePayloadsUpgradeId)
             };
         }
@@ -1257,12 +1264,13 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.cinder-burst.cinder-echoes", "Cinder Echoes", CinderEchoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 2, 3),
                     Node("node.survivors.cinder-burst.targeted-sigils", "Targeted Burst Sigils", TargetedSigilUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 1)),
                 Track(
-                    "progression.survivors.ember-vanguard.star-beam.weapon",
-                    "Ember Vanguard Star Beam Track",
+                    "progression.survivors.star-beam.weapon",
+                    "Star Beam Skill Track",
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
-                    EmberVanguardClassId,
+                    string.Empty,
                     StarBeamWeaponContentId,
-                    Node("node.survivors.ember-vanguard.star-beam.prismatic-beam", "Prismatic Beam", PrismaticBeamUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 0, 1, 3)),
+                    Node("node.survivors.star-beam.unlock", "Star Beam", StarBeamUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.star-beam.prismatic-beam", "Prismatic Beam", PrismaticBeamUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 3)),
                 Track(
                     "progression.survivors.ember-vanguard.moon-slash.weapon",
                     "Ember Vanguard Moon Slash Track",
@@ -1270,6 +1278,13 @@ namespace Deucarian.TemplateGameSurvivors
                     EmberVanguardClassId,
                     MoonSlashWeaponContentId,
                     Node("node.survivors.ember-vanguard.moon-slash.crescent-chain", "Crescent Chain", CrescentChainUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 0, 1, 4)),
+                Track(
+                    "progression.survivors.gravity-grenade.unlock",
+                    "Gravity Grenade Unlock Track",
+                    SurvivorsProgressionTrackKind.WeaponSkillTrack,
+                    string.Empty,
+                    GravityGrenadeWeaponContentId,
+                    Node("node.survivors.gravity-grenade.unlock", "Gravity Grenade", GravityGrenadeUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1)),
                 Track(
                     "progression.survivors.ember-vanguard.payloads.weapon",
                     "Ember Vanguard Payload Track",
@@ -1408,6 +1423,8 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == GiantRuneUpgradeId) return "Giant Rune";
             if (value == TwinCharmUpgradeId) return "Twin Charm";
             if (value == AstralConvergenceUpgradeId) return "Astral Convergence";
+            if (value == StarBeamUnlockUpgradeId) return "Star Beam";
+            if (value == GravityGrenadeUnlockUpgradeId) return "Gravity Grenade";
             if (value == "upgrade.survivors.arcane-thesis") return "Arcane Thesis";
             if (value == "upgrade.survivors.frost-needlework") return "Frost Needlework";
             if (value == "upgrade.survivors.blood-ring-canticle") return "Blood Ring Canticle";

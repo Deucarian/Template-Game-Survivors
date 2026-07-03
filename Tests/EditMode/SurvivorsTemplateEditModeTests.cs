@@ -59,12 +59,14 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(SurvivorsProgressionTrackKind.PassiveAtlas, progressionTracks[0].Kind);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, progressionTracks[0].ClassId);
             Assert.That(progressionTracks[0].Nodes.Count, Is.GreaterThanOrEqualTo(4));
-            Assert.That(BasicSurvivorsGame.CreateClassUpgradeGates().Count, Is.GreaterThanOrEqualTo(13));
+            Assert.That(BasicSurvivorsGame.CreateClassUpgradeGates().Count, Is.GreaterThanOrEqualTo(12));
             AssertRunUpgradeMetadataCoversPassivesAndEvolutions(upgrades, upgradeMetadata);
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.ScholarsLensUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GiantRuneUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.TwinCharmUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AstralConvergenceUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
             Assert.That(CountUpgradesByRarity(upgrades, RunUpgradeRarity.Epic), Is.GreaterThanOrEqualTo(2));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
@@ -101,6 +103,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(metadata.Count, Is.GreaterThanOrEqualTo(upgrades.Definitions.Count));
 
             int passiveCount = 0;
+            int weaponUnlockCount = 0;
             int evolutionCount = 0;
             var metadataIds = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < metadata.Count; i++)
@@ -114,6 +117,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 if (entry.UsesPassiveSlot)
                 {
                     passiveCount++;
+                }
+
+                if (entry.UsesWeaponSlot)
+                {
+                    weaponUnlockCount++;
+                    Assert.AreEqual(SurvivorsRunUpgradeCategory.Weapon, entry.Category);
+                    Assert.IsFalse(string.IsNullOrWhiteSpace(entry.AffectedContentId));
                 }
 
                 if (entry.IsEvolution)
@@ -132,6 +142,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             }
 
             Assert.That(passiveCount, Is.GreaterThanOrEqualTo(8));
+            Assert.That(weaponUnlockCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(evolutionCount, Is.GreaterThanOrEqualTo(6));
         }
 

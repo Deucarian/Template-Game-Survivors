@@ -483,7 +483,46 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ThornHaloWeaponContentId));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarNovaWeaponContentId));
             Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
-            Assert.IsFalse(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            Assert.AreEqual(SurvivorsRunUpgradeCategory.Weapon, controller.GetUpgradeCategoryForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator DraftedWeaponUnlockAddsLiveWeaponAndUnlocksItsPath()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
+            Assert.AreEqual(controller.MaxWeaponSlots, controller.ActiveWeaponCount);
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            Assert.IsFalse(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Hitscan));
+            yield return null;
+
+            Assert.That(controller.HitscanFireCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.HitscanHitCount, Is.GreaterThanOrEqualTo(1));
+
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            }
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.TwinCharmUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
 
             Object.Destroy(controller.gameObject);
         }
@@ -1257,28 +1296,30 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController defaultController = CreateController();
             yield return null;
 
-            defaultController.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId);
+            defaultController.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId);
             yield return null;
 
-            Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            Assert.IsTrue(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            Assert.IsFalse(defaultController.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
             Assert.IsTrue(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
             Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId));
-            Assert.AreEqual(-1, IndexOfDraftChoice(defaultController, BasicSurvivorsGame.PrismaticBeamUpgradeId));
+            Assert.AreEqual(-1, IndexOfDraftChoice(defaultController, BasicSurvivorsGame.EmberForgeHeartUpgradeId));
             Object.Destroy(defaultController.gameObject);
             yield return null;
 
             SurvivorsTemplateController emberController = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
-            emberController.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId);
+            emberController.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId);
             yield return null;
 
-            int gatedChoiceIndex = IndexOfDraftChoice(emberController, BasicSurvivorsGame.PrismaticBeamUpgradeId);
+            int gatedChoiceIndex = IndexOfDraftChoice(emberController, BasicSurvivorsGame.EmberForgeHeartUpgradeId);
             Assert.That(gatedChoiceIndex, Is.GreaterThanOrEqualTo(0));
             Assert.IsFalse(emberController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
             Assert.IsTrue(emberController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId));
+            float previousDamage = emberController.DamageBonus;
             Assert.IsTrue(emberController.SelectUpgrade(gatedChoiceIndex));
-            Assert.That(emberController.HitscanPierceBonus, Is.GreaterThanOrEqualTo(1));
+            Assert.That(emberController.DamageBonus, Is.GreaterThan(previousDamage));
 
             Object.Destroy(emberController.gameObject);
         }

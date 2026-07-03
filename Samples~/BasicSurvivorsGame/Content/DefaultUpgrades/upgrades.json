@@ -9,6 +9,8 @@
     { "id": "upgrade.survivors.giant-rune", "rarity": "Uncommon", "effect": "survivors.area.radius", "target": "survivors.area" },
     { "id": "upgrade.survivors.twin-charm", "rarity": "Epic", "effect": "survivors.projectile.fan_count", "target": "survivors.weapon.arcane-wand" },
     { "id": "upgrade.survivors.astral-convergence", "rarity": "Epic", "effect": "survivors.area.radius", "target": "survivors.area" },
+    { "id": "upgrade.survivors.weapon.star-beam", "rarity": "Uncommon", "effect": "survivors.weapon.unlock", "target": "survivors.weapon.star-beam" },
+    { "id": "upgrade.survivors.weapon.gravity-grenade", "rarity": "Rare", "effect": "survivors.weapon.unlock", "target": "survivors.weapon.gravity-grenade" },
     { "id": "upgrade.survivors.frost-fan", "rarity": "Uncommon", "effect": "survivors.projectile.fan_count", "target": "survivors.weapon.frost-fan" },
     { "id": "upgrade.survivors.orbiting-focus", "rarity": "Uncommon", "effect": "survivors.orbit.blade_count", "target": "survivors.weapon.orbit-ward" },
     { "id": "upgrade.survivors.thorn-halo-wall", "rarity": "Rare", "effect": "survivors.orbit.radius", "target": "survivors.weapon.thorn-halo" },
@@ -35,7 +37,7 @@
     { "id": "upgrade.survivors.ember-tempo", "rarity": "Uncommon", "effect": "survivors.weapon.cooldown_multiplier", "target": "survivors.weapon.star-beam", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.siege-payloads", "rarity": "Rare", "effect": "survivors.payload.count", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.ember-ward", "rarity": "Rare", "effect": "survivors.barrier.capacity", "target": "survivors.barrier", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
-    { "id": "upgrade.survivors.prismatic-beam", "rarity": "Uncommon", "effect": "survivors.hitscan.pierce", "target": "survivors.weapon.star-beam", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
+    { "id": "upgrade.survivors.prismatic-beam", "rarity": "Uncommon", "effect": "survivors.hitscan.pierce", "target": "survivors.weapon.star-beam" },
     { "id": "upgrade.survivors.extra-payload", "rarity": "Rare", "effect": "survivors.payload.count", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.bigger-booms", "rarity": "Uncommon", "effect": "survivors.payload.radius", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] },
     { "id": "upgrade.survivors.wider-triggers", "rarity": "Uncommon", "effect": "survivors.payload.trigger_radius", "target": "survivors.weapon.payloads", "allowedClasses": [ "class.survivors.ember-vanguard" ] }

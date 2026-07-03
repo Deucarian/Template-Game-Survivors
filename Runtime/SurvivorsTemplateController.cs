@@ -113,6 +113,7 @@ namespace Deucarian.TemplateGameSurvivors
         private WeaponDefinition _weaponDefinition;
         private ProjectileDefinition _projectileDefinition;
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
+        private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> _weaponArchetypeDefinitions = Array.Empty<SurvivorsWeaponArchetypeDefinition>();
         private SurvivorsRunFlowRuntime _runFlow;
         private IReadOnlyList<SurvivorsRelicDefinition> _relicDefinitions;
         private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> _upgradeClassGates;
@@ -535,7 +536,8 @@ namespace Deucarian.TemplateGameSurvivors
             BarrierValue = BarrierCapacity;
             BuildRuntimeWorld();
             _runFlow = new SurvivorsRunFlowRuntime(BasicSurvivorsGame.CreateRunFlowDefinition(resolved));
-            _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved)));
+            _weaponArchetypeDefinitions = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved);
+            _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(_weaponArchetypeDefinitions));
             State = SurvivorsRunState.Playing;
             _runStarted = true;
         }
@@ -2390,9 +2392,17 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
-            if (metadata.UsesWeaponSlot && _upgradeState.GetRank(upgrade.Id) <= 0 && ActiveWeaponCount >= MaxWeaponSlots)
+            if (metadata.UsesWeaponSlot && _upgradeState.GetRank(upgrade.Id) <= 0)
             {
-                return false;
+                if (ActiveWeaponCount >= MaxWeaponSlots)
+                {
+                    return false;
+                }
+
+                if (!string.IsNullOrWhiteSpace(metadata.AffectedContentId) && HasWeaponInLoadoutForTest(metadata.AffectedContentId))
+                {
+                    return false;
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(metadata.RequiredOwnedWeaponId) && !HasWeaponInLoadoutForTest(metadata.RequiredOwnedWeaponId))
@@ -2450,6 +2460,11 @@ namespace Deucarian.TemplateGameSurvivors
                 _ownedPassiveUpgradeIds.Add(upgrade.Id.Value);
             }
 
+            if (metadata.UsesWeaponSlot)
+            {
+                TryAddWeaponToLoadout(metadata.AffectedContentId);
+            }
+
             if (metadata.IsEvolution)
             {
                 _ownedEvolutionUpgradeIds.Add(upgrade.Id.Value);
@@ -2504,6 +2519,48 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return selected.Count == 0 ? new[] { allDefinitions[0] } : selected;
+        }
+
+        private bool TryAddWeaponToLoadout(string weaponId)
+        {
+            if (_weaponLoadout == null || string.IsNullOrWhiteSpace(weaponId) || ActiveWeaponCount >= MaxWeaponSlots)
+            {
+                return false;
+            }
+
+            if (_weaponLoadout.ContainsWeapon(weaponId))
+            {
+                return false;
+            }
+
+            SurvivorsWeaponArchetypeDefinition definition = FindWeaponDefinition(weaponId);
+            return definition != null && _weaponLoadout.TryAddWeapon(definition);
+        }
+
+        private SurvivorsWeaponArchetypeDefinition FindWeaponDefinition(string weaponId)
+        {
+            if (string.IsNullOrWhiteSpace(weaponId))
+            {
+                return null;
+            }
+
+            IReadOnlyList<SurvivorsWeaponArchetypeDefinition> definitions = _weaponArchetypeDefinitions;
+            if (definitions == null || definitions.Count == 0)
+            {
+                definitions = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(CurrentTuning);
+                _weaponArchetypeDefinitions = definitions;
+            }
+
+            for (int i = 0; i < definitions.Count; i++)
+            {
+                SurvivorsWeaponArchetypeDefinition definition = definitions[i];
+                if (definition != null && string.Equals(definition.Id, weaponId, StringComparison.Ordinal))
+                {
+                    return definition;
+                }
+            }
+
+            return null;
         }
 
         private void ApplyPersistentMetaBonuses()
@@ -3391,6 +3448,10 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.AreaRadiusEffect))
                 {
                     AreaRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.WeaponUnlockEffect))
+                {
+                    // Weapon unlocks are applied through run-build metadata so slot rules stay centralized.
                 }
             }
 

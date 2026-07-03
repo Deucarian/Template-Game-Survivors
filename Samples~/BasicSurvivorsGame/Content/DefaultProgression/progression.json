@@ -84,13 +84,14 @@
       ]
     },
     {
-      "id": "progression.survivors.ember-vanguard.star-beam.weapon",
-      "displayName": "Ember Vanguard Star Beam Track",
+      "id": "progression.survivors.star-beam.weapon",
+      "displayName": "Star Beam Skill Track",
       "kind": "WeaponSkillTrack",
-      "classId": "class.survivors.ember-vanguard",
+      "classId": "",
       "targetWeaponId": "weapon.survivors.star-beam",
       "nodes": [
-        { "id": "node.survivors.ember-vanguard.star-beam.prismatic-beam", "displayName": "Prismatic Beam", "upgradeId": "upgrade.survivors.prismatic-beam", "kind": "WeaponMutation", "tier": 0, "pointCost": 1, "maxRank": 3 }
+        { "id": "node.survivors.star-beam.unlock", "displayName": "Star Beam", "upgradeId": "upgrade.survivors.weapon.star-beam", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
+        { "id": "node.survivors.star-beam.prismatic-beam", "displayName": "Prismatic Beam", "upgradeId": "upgrade.survivors.prismatic-beam", "kind": "WeaponMutation", "tier": 1, "pointCost": 1, "maxRank": 3 }
       ]
     },
     {
@@ -101,6 +102,16 @@
       "targetWeaponId": "weapon.survivors.moon-slash",
       "nodes": [
         { "id": "node.survivors.ember-vanguard.moon-slash.crescent-chain", "displayName": "Crescent Chain", "upgradeId": "upgrade.survivors.crescent-chain", "kind": "WeaponMutation", "tier": 0, "pointCost": 1, "maxRank": 4 }
+      ]
+    },
+    {
+      "id": "progression.survivors.gravity-grenade.unlock",
+      "displayName": "Gravity Grenade Unlock Track",
+      "kind": "WeaponSkillTrack",
+      "classId": "",
+      "targetWeaponId": "weapon.survivors.gravity-grenade",
+      "nodes": [
+        { "id": "node.survivors.gravity-grenade.unlock", "displayName": "Gravity Grenade", "upgradeId": "upgrade.survivors.weapon.gravity-grenade", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 }
       ]
     },
     {
