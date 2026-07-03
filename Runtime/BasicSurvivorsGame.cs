@@ -225,7 +225,9 @@ namespace Deucarian.TemplateGameSurvivors
         public const string FrostRicochetUpgradeId = "upgrade.survivors.frost-ricochet";
         public const string ThornHaloUpgradeId = "upgrade.survivors.thorn-halo-wall";
         public const string HaloSpiralUpgradeId = "upgrade.survivors.halo-spiral";
+        public const string MoonlitEdgeUpgradeId = "upgrade.survivors.moonlit-edge";
         public const string CrescentChainUpgradeId = "upgrade.survivors.crescent-chain";
+        public const string LunarTempoUpgradeId = "upgrade.survivors.lunar-tempo";
         public const string NovaEchoUpgradeId = "upgrade.survivors.nova-echo";
         public const string CinderEchoUpgradeId = "upgrade.survivors.cinder-echoes";
         public const string TargetedSigilUpgradeId = "upgrade.survivors.targeted-burst-sigils";
@@ -241,6 +243,7 @@ namespace Deucarian.TemplateGameSurvivors
         public const string CinderScriptUpgradeId = "upgrade.survivors.cinder-script";
         public const string EmberForgeHeartUpgradeId = "upgrade.survivors.ember-forge-heart";
         public const string EmberTempoUpgradeId = "upgrade.survivors.ember-tempo";
+        public const string MoonOathUpgradeId = "upgrade.survivors.moon-oath";
         public const string SiegePayloadsUpgradeId = "upgrade.survivors.siege-payloads";
         public const string EmberWardUpgradeId = "upgrade.survivors.ember-ward";
         public const string ScholarsLensUpgradeId = "upgrade.survivors.scholars-lens";
@@ -255,6 +258,7 @@ namespace Deucarian.TemplateGameSurvivors
         public const string InfernoHeartEvolutionUpgradeId = "upgrade.survivors.evolution.inferno-heart";
         public const string TempestPrismEvolutionUpgradeId = "upgrade.survivors.evolution.tempest-prism";
         public const string GravefieldEngineEvolutionUpgradeId = "upgrade.survivors.evolution.gravefield-engine";
+        public const string EclipseWaltzEvolutionUpgradeId = "upgrade.survivors.evolution.eclipse-waltz";
         public static readonly RunUpgradeEffectId DamageBonusEffect = new RunUpgradeEffectId("survivors.damage.flat");
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
@@ -915,7 +919,9 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade(OrbitingFocusUpgradeId, RunUpgradeRarity.Uncommon, 38, 5, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
                 Upgrade(ThornHaloUpgradeId, RunUpgradeRarity.Rare, 30, 3, OrbitRadiusEffect, ThornHaloWeaponTarget, 0.35d),
                 Upgrade(HaloSpiralUpgradeId, RunUpgradeRarity.Rare, 22, 2, OrbitRadiusEffect, ThornHaloWeaponTarget, 0.3d),
+                Upgrade(MoonlitEdgeUpgradeId, RunUpgradeRarity.Uncommon, 30, 5, DamageBonusEffect, MeleeWeaponTarget, 1.5d),
                 Upgrade(CrescentChainUpgradeId, RunUpgradeRarity.Uncommon, 34, 4, MeleeTargetEffect, MeleeWeaponTarget, 1.0d),
+                Upgrade(LunarTempoUpgradeId, RunUpgradeRarity.Rare, 22, 2, FireRateEffect, MeleeWeaponTarget, -0.05d),
                 Upgrade(NovaEchoUpgradeId, RunUpgradeRarity.Rare, 24, 5, BurstCountEffect, BurstWeaponTarget, 1.0d),
                 Upgrade(CinderEchoUpgradeId, RunUpgradeRarity.Rare, 24, 3, BurstEchoEffect, BurstWeaponTarget, 1.0d),
                 Upgrade(TargetedSigilUpgradeId, RunUpgradeRarity.Rare, 22, 1, TargetedBurstEffect, BurstWeaponTarget, 1.0d),
@@ -946,6 +952,7 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade(CinderScriptUpgradeId, RunUpgradeRarity.Rare, 22, 2, TargetedBurstEffect, BurstWeaponTarget, 1.0d),
                 Upgrade(EmberForgeHeartUpgradeId, RunUpgradeRarity.Uncommon, 34, 4, DamageBonusEffect, BurstWeaponTarget, 2.2d),
                 Upgrade(EmberTempoUpgradeId, RunUpgradeRarity.Uncommon, 30, 3, FireRateEffect, HitscanWeaponTarget, -0.06d),
+                Upgrade(MoonOathUpgradeId, RunUpgradeRarity.Rare, 22, 3, DamageBonusEffect, MeleeWeaponTarget, 1.8d),
                 Upgrade(StarFocusUpgradeId, RunUpgradeRarity.Uncommon, 30, 5, DamageBonusEffect, HitscanWeaponTarget, 1.4d),
                 Upgrade(StarPulseUpgradeId, RunUpgradeRarity.Rare, 20, 2, FireRateEffect, HitscanWeaponTarget, -0.05d),
                 Upgrade(SiegePayloadsUpgradeId, RunUpgradeRarity.Rare, 20, 2, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
@@ -998,7 +1005,15 @@ namespace Deucarian.TemplateGameSurvivors
                     1,
                     new RunUpgradeEffectDescriptor(PayloadCountEffect, PayloadWeaponTarget, 2.0d),
                     new RunUpgradeEffectDescriptor(PayloadRadiusEffect, PayloadWeaponTarget, 0.85d),
-                    new RunUpgradeEffectDescriptor(PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.65d))
+                    new RunUpgradeEffectDescriptor(PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.65d)),
+                UpgradeMulti(
+                    EclipseWaltzEvolutionUpgradeId,
+                    RunUpgradeRarity.Legendary,
+                    10,
+                    1,
+                    new RunUpgradeEffectDescriptor(MeleeTargetEffect, MeleeWeaponTarget, 3.0d),
+                    new RunUpgradeEffectDescriptor(FireRateEffect, MeleeWeaponTarget, -0.1d),
+                    new RunUpgradeEffectDescriptor(DamageBonusEffect, MeleeWeaponTarget, 4.0d))
             });
         }
 
@@ -1041,7 +1056,9 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(OrbitingFocusUpgradeId, "Orbiting Focus", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Add blades to the orbiting ward."),
                 UpgradeMetadata(ThornHaloUpgradeId, "Thorn Halo Wall", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Push the halo outward and add another guard blade.", ThornHaloWeaponContentId, OrbitingFocusUpgradeId, 2),
                 UpgradeMetadata(HaloSpiralUpgradeId, "Halo Spiral", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, ThornHaloWeaponContentId, "Thorn Halo widens into a denser spiral.", ThornHaloWeaponContentId, OrbitingFocusUpgradeId, 3),
-                UpgradeMetadata(CrescentChainUpgradeId, "Crescent Chain", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Let Moon Slash cut through more targets."),
+                UpgradeMetadata(MoonlitEdgeUpgradeId, "Moonlit Edge", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Moon Slash cuts harder.", MoonSlashWeaponContentId),
+                UpgradeMetadata(CrescentChainUpgradeId, "Crescent Chain", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Let Moon Slash cut through more targets.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 2),
+                UpgradeMetadata(LunarTempoUpgradeId, "Lunar Tempo", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Moon Slash recovers faster between cuts.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 3),
                 UpgradeMetadata(NovaEchoUpgradeId, "Nova Echo", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Add another pulse to Cinder Burst."),
                 UpgradeMetadata(CinderEchoUpgradeId, "Cinder Echoes", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Repeat Cinder Burst with delayed echoes.", StarNovaWeaponContentId, NovaEchoUpgradeId, 2),
                 UpgradeMetadata(TargetedSigilUpgradeId, "Targeted Burst Sigils", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Cinder Burst leaves focused sigils on nearby enemies.", StarNovaWeaponContentId, NovaEchoUpgradeId, 3),
@@ -1068,6 +1085,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(CinderScriptUpgradeId, "Cinder Script", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarNovaWeaponContentId, "Passive: focus burst sigils and unlock Inferno Heart."),
                 UpgradeMetadata(EmberForgeHeartUpgradeId, "Ember Forge Heart", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarBeamWeaponContentId, "Passive: raise Ember weapon damage."),
                 UpgradeMetadata(EmberTempoUpgradeId, "Ember Tempo", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarBeamWeaponContentId, "Passive: quicken Star Beam for Ember builds."),
+                UpgradeMetadata(MoonOathUpgradeId, "Moon Oath", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, MoonSlashWeaponContentId, "Passive: sharpen Moon Slash and unlock Eclipse Waltz."),
                 UpgradeMetadata(SiegePayloadsUpgradeId, "Siege Payloads", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PayloadWeaponTarget.Value, "Passive: carry heavier payloads for Ember payload builds."),
                 UpgradeMetadata(EmberWardUpgradeId, "Ember Ward", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: add a larger defensive barrier."),
                 UpgradeMetadata(StarFocusUpgradeId, "Star Focus", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Star Beam deals more damage.", StarBeamWeaponContentId),
@@ -1081,7 +1099,8 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo become a dense orbit shield.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 5, BloodRingCanticleUpgradeId),
                 UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 5, CinderScriptUpgradeId),
                 UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam turns into a rapid piercing prism.", StarBeamWeaponContentId, StarFocusUpgradeId, 5, TwinCharmUpgradeId),
-                UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload weapons flood the arena with larger danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, GiantRuneUpgradeId)
+                UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload weapons flood the arena with larger danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, GiantRuneUpgradeId),
+                UpgradeMetadata(EclipseWaltzEvolutionUpgradeId, "Eclipse Waltz", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Evolution: Moon Slash becomes a rapid sweeping dance.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 5, MoonOathUpgradeId)
             };
         }
 
@@ -1234,8 +1253,9 @@ namespace Deucarian.TemplateGameSurvivors
                     string.Empty,
                     Node("node.survivors.ember-vanguard.forge-heart", "Forge Heart", EmberForgeHeartUpgradeId, SurvivorsProgressionNodeKind.Passive, 0, 1, 4),
                     Node("node.survivors.ember-vanguard.battle-tempo", "Ember Tempo", EmberTempoUpgradeId, SurvivorsProgressionNodeKind.Passive, 1, 1, 3),
-                    Node("node.survivors.ember-vanguard.siege-payloads", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.Passive, 2, 2, 2),
-                    Node("node.survivors.ember-vanguard.ember-ward", "Ember Ward", EmberWardUpgradeId, SurvivorsProgressionNodeKind.Passive, 3, 2, 3)),
+                    Node("node.survivors.ember-vanguard.moon-oath", "Moon Oath", MoonOathUpgradeId, SurvivorsProgressionNodeKind.Passive, 2, 1, 3),
+                    Node("node.survivors.ember-vanguard.siege-payloads", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.Passive, 3, 2, 2),
+                    Node("node.survivors.ember-vanguard.ember-ward", "Ember Ward", EmberWardUpgradeId, SurvivorsProgressionNodeKind.Passive, 4, 2, 3)),
                 Track(
                     "progression.survivors.arc-bolt.weapon",
                     "Arc Bolt Skill Track",
@@ -1297,7 +1317,9 @@ namespace Deucarian.TemplateGameSurvivors
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     EmberVanguardClassId,
                     MoonSlashWeaponContentId,
-                    Node("node.survivors.ember-vanguard.moon-slash.crescent-chain", "Crescent Chain", CrescentChainUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 0, 1, 4)),
+                    Node("node.survivors.ember-vanguard.moon-slash.edge", "Moonlit Edge", MoonlitEdgeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 5),
+                    Node("node.survivors.ember-vanguard.moon-slash.crescent-chain", "Crescent Chain", CrescentChainUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 1, 1, 4),
+                    Node("node.survivors.ember-vanguard.moon-slash.tempo", "Lunar Tempo", LunarTempoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 2)),
                 Track(
                     "progression.survivors.gravity-grenade.unlock",
                     "Gravity Grenade Skill Track",
@@ -1427,7 +1449,9 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.orbiting-focus") return "Orbiting Focus";
             if (value == "upgrade.survivors.thorn-halo-wall") return "Thorn Halo Wall";
             if (value == HaloSpiralUpgradeId) return "Halo Spiral";
+            if (value == MoonlitEdgeUpgradeId) return "Moonlit Edge";
             if (value == "upgrade.survivors.crescent-chain") return "Crescent Chain";
+            if (value == LunarTempoUpgradeId) return "Lunar Tempo";
             if (value == "upgrade.survivors.nova-echo") return "Nova Echo";
             if (value == "upgrade.survivors.cinder-echoes") return "Cinder Echoes";
             if (value == "upgrade.survivors.targeted-burst-sigils") return "Targeted Burst Sigils";
@@ -1454,6 +1478,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.cinder-script") return "Cinder Script";
             if (value == "upgrade.survivors.ember-forge-heart") return "Ember Forge Heart";
             if (value == "upgrade.survivors.ember-tempo") return "Ember Tempo";
+            if (value == MoonOathUpgradeId) return "Moon Oath";
             if (value == "upgrade.survivors.siege-payloads") return "Siege Payloads";
             if (value == "upgrade.survivors.ember-ward") return "Ember Ward";
             if (value == StarFocusUpgradeId) return "Star Focus";
@@ -1468,6 +1493,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == InfernoHeartEvolutionUpgradeId) return "Inferno Heart";
             if (value == TempestPrismEvolutionUpgradeId) return "Tempest Prism";
             if (value == GravefieldEngineEvolutionUpgradeId) return "Gravefield Engine";
+            if (value == EclipseWaltzEvolutionUpgradeId) return "Eclipse Waltz";
             return value;
         }
 

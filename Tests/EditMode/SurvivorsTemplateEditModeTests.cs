@@ -72,8 +72,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FrostSplinterUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FrostRicochetUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.HaloSpiralUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.LunarTempoUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.MoonOathUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.FrostFanUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.OrbitingFocusUpgradeId), Is.GreaterThanOrEqualTo(5));
+            Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.MoonlitEdgeUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.NovaEchoUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.StarFocusUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.ExtraPayloadUpgradeId), Is.GreaterThanOrEqualTo(5));

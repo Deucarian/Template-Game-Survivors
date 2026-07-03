@@ -1437,6 +1437,63 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator EmberVanguardMoonSlashPathRequiresRanksBeforeEvolution()
+        {
+            SurvivorsTemplateController defaultController = CreateController();
+            yield return null;
+
+            Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonOathUpgradeId));
+            Object.Destroy(defaultController.gameObject);
+            yield return null;
+
+            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
+            yield return null;
+
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.MoonSlashWeaponContentId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CrescentChainUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.LunarTempoUpgradeId));
+
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            }
+
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CrescentChainUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.LunarTempoUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.LunarTempoUpgradeId));
+
+            int previousTargets = controller.MeleeTargetBonus;
+            float previousCooldown = controller.WeaponCooldownMultiplierBonus;
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.CrescentChainUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.LunarTempoUpgradeId));
+            Assert.That(controller.MeleeTargetBonus, Is.GreaterThan(previousTargets));
+            Assert.That(controller.WeaponCooldownMultiplierBonus, Is.LessThan(previousCooldown));
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            Assert.AreEqual(5, controller.GetRunUpgradeRankForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonOathUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
+
+            previousTargets = controller.MeleeTargetBonus;
+            previousCooldown = controller.WeaponCooldownMultiplierBonus;
+            float previousDamage = controller.DamageBonus;
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId));
+            Assert.That(controller.MeleeTargetBonus, Is.GreaterThan(previousTargets));
+            Assert.That(controller.WeaponCooldownMultiplierBonus, Is.LessThan(previousCooldown));
+            Assert.That(controller.DamageBonus, Is.GreaterThan(previousDamage));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ClassSpecificUpgradeAppearsOnlyWhenValid()
         {
             SurvivorsTemplateController defaultController = CreateController();

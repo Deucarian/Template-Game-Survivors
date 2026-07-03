@@ -22,8 +22,9 @@
       "nodes": [
         { "id": "node.survivors.ember-vanguard.forge-heart", "displayName": "Forge Heart", "upgradeId": "upgrade.survivors.ember-forge-heart", "kind": "Passive", "tier": 0, "pointCost": 1, "maxRank": 4 },
         { "id": "node.survivors.ember-vanguard.battle-tempo", "displayName": "Ember Tempo", "upgradeId": "upgrade.survivors.ember-tempo", "kind": "Passive", "tier": 1, "pointCost": 1, "maxRank": 3 },
-        { "id": "node.survivors.ember-vanguard.siege-payloads", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "Passive", "tier": 2, "pointCost": 2, "maxRank": 2 },
-        { "id": "node.survivors.ember-vanguard.ember-ward", "displayName": "Ember Ward", "upgradeId": "upgrade.survivors.ember-ward", "kind": "Passive", "tier": 3, "pointCost": 2, "maxRank": 3 }
+        { "id": "node.survivors.ember-vanguard.moon-oath", "displayName": "Moon Oath", "upgradeId": "upgrade.survivors.moon-oath", "kind": "Passive", "tier": 2, "pointCost": 1, "maxRank": 3 },
+        { "id": "node.survivors.ember-vanguard.siege-payloads", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "Passive", "tier": 3, "pointCost": 2, "maxRank": 2 },
+        { "id": "node.survivors.ember-vanguard.ember-ward", "displayName": "Ember Ward", "upgradeId": "upgrade.survivors.ember-ward", "kind": "Passive", "tier": 4, "pointCost": 2, "maxRank": 3 }
       ]
     },
     {
@@ -106,7 +107,9 @@
       "classId": "class.survivors.ember-vanguard",
       "targetWeaponId": "weapon.survivors.moon-slash",
       "nodes": [
-        { "id": "node.survivors.ember-vanguard.moon-slash.crescent-chain", "displayName": "Crescent Chain", "upgradeId": "upgrade.survivors.crescent-chain", "kind": "WeaponMutation", "tier": 0, "pointCost": 1, "maxRank": 4 }
+        { "id": "node.survivors.ember-vanguard.moon-slash.edge", "displayName": "Moonlit Edge", "upgradeId": "upgrade.survivors.moonlit-edge", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 5 },
+        { "id": "node.survivors.ember-vanguard.moon-slash.crescent-chain", "displayName": "Crescent Chain", "upgradeId": "upgrade.survivors.crescent-chain", "kind": "WeaponMutation", "tier": 1, "pointCost": 1, "maxRank": 4 },
+        { "id": "node.survivors.ember-vanguard.moon-slash.tempo", "displayName": "Lunar Tempo", "upgradeId": "upgrade.survivors.lunar-tempo", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 2 }
       ]
     },
     {
