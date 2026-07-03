@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using Deucarian.Persistence;
+using Deucarian.RunUpgrades;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -211,6 +212,25 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.SelectedUpgradeCount);
             Assert.AreEqual(1, controller.RewardAutoSelectCount);
             Assert.AreEqual(0f, controller.RewardSelectionRemainingSeconds);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator EarlyLevelUpDraftSuppressesLegendaryRarity()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
+            {
+                Assert.AreNotEqual(RunUpgradeRarity.Legendary, controller.CurrentDraftChoices[i].Rarity);
+            }
 
             Object.Destroy(controller.gameObject);
         }
@@ -1011,6 +1031,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.BossUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
             Assert.AreEqual(-1, IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
+            {
+                Assert.That((int)controller.CurrentDraftChoices[i].Rarity, Is.GreaterThanOrEqualTo((int)RunUpgradeRarity.Rare));
+            }
 
             Assert.IsTrue(controller.SkipCurrentDraft());
             yield return null;

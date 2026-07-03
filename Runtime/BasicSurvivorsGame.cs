@@ -142,6 +142,33 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftRerollCharges = 2;
         public int DraftBanishCharges = 2;
         public int DraftSkipBloodShards = 1;
+        public int DraftMidRarityLevel = 6;
+        public int DraftLateRarityLevel = 12;
+        public int NormalEarlyCommonWeight = 120;
+        public int NormalEarlyUncommonWeight = 60;
+        public int NormalEarlyRareWeight = 12;
+        public int NormalEarlyEpicWeight = 1;
+        public int NormalEarlyLegendaryWeight = 0;
+        public int NormalMidCommonWeight = 80;
+        public int NormalMidUncommonWeight = 90;
+        public int NormalMidRareWeight = 38;
+        public int NormalMidEpicWeight = 8;
+        public int NormalMidLegendaryWeight = 0;
+        public int NormalLateCommonWeight = 55;
+        public int NormalLateUncommonWeight = 80;
+        public int NormalLateRareWeight = 60;
+        public int NormalLateEpicWeight = 22;
+        public int NormalLateLegendaryWeight = 4;
+        public int EliteCommonWeight = 0;
+        public int EliteUncommonWeight = 80;
+        public int EliteRareWeight = 80;
+        public int EliteEpicWeight = 35;
+        public int EliteLegendaryWeight = 8;
+        public int BossCommonWeight = 0;
+        public int BossUncommonWeight = 0;
+        public int BossRareWeight = 90;
+        public int BossEpicWeight = 85;
+        public int BossLegendaryWeight = 90;
         public float RewardSelectionTimeoutSeconds = 0f;
         public int RunSeed = 20260624;
 
@@ -213,6 +240,8 @@ namespace Deucarian.TemplateGameSurvivors
         public const string EmberWardUpgradeId = "upgrade.survivors.ember-ward";
         public const string ScholarsLensUpgradeId = "upgrade.survivors.scholars-lens";
         public const string GiantRuneUpgradeId = "upgrade.survivors.giant-rune";
+        public const string TwinCharmUpgradeId = "upgrade.survivors.twin-charm";
+        public const string AstralConvergenceUpgradeId = "upgrade.survivors.astral-convergence";
         public const string ArcaneStormEvolutionUpgradeId = "upgrade.survivors.evolution.arcane-storm";
         public const string BlizzardCrownEvolutionUpgradeId = "upgrade.survivors.evolution.blizzard-crown";
         public const string CrimsonAegisEvolutionUpgradeId = "upgrade.survivors.evolution.crimson-aegis";
@@ -890,6 +919,14 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.mirror-bulwark", RunUpgradeRarity.Rare, 20, 3, BarrierOnDamageEffect, BarrierTarget, 0.04d),
                 Upgrade(ScholarsLensUpgradeId, RunUpgradeRarity.Uncommon, 36, 5, ExperienceGainEffect, ExperienceTarget, 0.12d),
                 Upgrade(GiantRuneUpgradeId, RunUpgradeRarity.Uncommon, 34, 5, AreaRadiusEffect, AreaTarget, 0.22d),
+                Upgrade(TwinCharmUpgradeId, RunUpgradeRarity.Epic, 16, 4, ProjectileFanEffect, WeaponTarget, 1.0d),
+                UpgradeMulti(
+                    AstralConvergenceUpgradeId,
+                    RunUpgradeRarity.Epic,
+                    12,
+                    2,
+                    new RunUpgradeEffectDescriptor(AreaRadiusEffect, AreaTarget, 0.36d),
+                    new RunUpgradeEffectDescriptor(DamageBonusEffect, WeaponTarget, 3.0d)),
                 Upgrade(ArcaneThesisUpgradeId, RunUpgradeRarity.Uncommon, 34, 4, DamageBonusEffect, WeaponTarget, 1.6d),
                 Upgrade(FrostNeedleworkUpgradeId, RunUpgradeRarity.Uncommon, 32, 3, ProjectilePierceEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(BloodRingCanticleUpgradeId, RunUpgradeRarity.Rare, 22, 3, OrbitBladeEffect, OrbitWeaponTarget, 1.0d),
@@ -1003,6 +1040,8 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata("upgrade.survivors.mirror-bulwark", "Mirror Bulwark", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: weapon damage restores a little barrier."),
                 UpgradeMetadata(ScholarsLensUpgradeId, "Scholar's Lens", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, ExperienceTarget.Value, "Passive: increase XP gained from gems and debug grants."),
                 UpgradeMetadata(GiantRuneUpgradeId, "Giant Rune", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, AreaTarget.Value, "Passive: enlarge bursts, orbit paths, payload explosions, and close-range swings."),
+                UpgradeMetadata(TwinCharmUpgradeId, "Twin Charm", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, WeaponTarget.Value, "Epic passive: duplicate projectile-style attacks with extra fan shots."),
+                UpgradeMetadata(AstralConvergenceUpgradeId, "Astral Convergence", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, AreaTarget.Value, "Epic mutation: enlarge area weapons and sharpen global damage."),
                 UpgradeMetadata(ArcaneThesisUpgradeId, "Arcane Thesis", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, ArcaneWandWeaponContentId, "Passive: commit to Arc Bolt damage and unlock Arcane Storm."),
                 UpgradeMetadata(FrostNeedleworkUpgradeId, "Frost Needlework", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, FrostFanWeaponContentId, "Passive: sharpen frost shards and unlock Blizzard Crown."),
                 UpgradeMetadata(BloodRingCanticleUpgradeId, "Blood Ring Canticle", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, OrbitWardWeaponContentId, "Passive: deepen orbit damage and unlock Crimson Aegis."),
@@ -1367,6 +1406,8 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.mirror-bulwark") return "Mirror Bulwark";
             if (value == ScholarsLensUpgradeId) return "Scholar's Lens";
             if (value == GiantRuneUpgradeId) return "Giant Rune";
+            if (value == TwinCharmUpgradeId) return "Twin Charm";
+            if (value == AstralConvergenceUpgradeId) return "Astral Convergence";
             if (value == "upgrade.survivors.arcane-thesis") return "Arcane Thesis";
             if (value == "upgrade.survivors.frost-needlework") return "Frost Needlework";
             if (value == "upgrade.survivors.blood-ring-canticle") return "Blood Ring Canticle";

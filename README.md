@@ -56,7 +56,7 @@ The scene contains a tiny bootstrap object. At runtime it creates the arena, pla
 
 Weapons auto-fire toward nearby targets. XP gems pull toward the player when close; magnet pickups and the debug recall pull XP from farther away.
 
-The default playable kit recreates the spirit of the reference clone's Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst weapons while keeping stable Deucarian template IDs. Upgrade choices can add poison, bleed, execute, lifesteal, barrier, XP gain, area scaling, fan spread, pierce, chain, fork, return, orbit wall, targeted burst, burst echo, payload mutations, passive build requirements, and legendary weapon evolutions. Human Playtest leaves level-up and reward choices open until the player chooses; faster validation profiles can use timed auto-pick.
+The default playable kit recreates the spirit of the reference clone's Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst weapons while keeping stable Deucarian template IDs. Upgrade choices can add poison, bleed, execute, lifesteal, barrier, XP gain, area scaling, fan spread, pierce, chain, fork, return, orbit wall, targeted burst, burst echo, payload mutations, passive build requirements, Epic build spikes, and legendary weapon evolutions. Normal, elite, and boss drafts use separate rarity-weight tables so early level-ups lean Common/Uncommon while boss rewards prefer Rare/Epic/Legendary choices. Human Playtest leaves level-up and reward choices open until the player chooses; faster validation profiles can use timed auto-pick.
 
 Default play uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` is reset to `1`, opening enemy spawns use a `3.35` second interval, the opening max-alive cap is `10`, basic enemy speed is `1.0` versus player speed `5.4`, reward auto-pick is off, and the miniboss waits until `420` seconds. `Normal`, `DebugFast`, and `Showcase` profiles exist for validation and demos, but must be selected deliberately through the runtime debugger.
 
@@ -67,7 +67,7 @@ Default play uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` is re
 - Enemies, miniboss, boss, and rewards: edit `Samples~/BasicSurvivorsGame/Content/DefaultEnemies/enemies.json`, `Samples~/BasicSurvivorsGame/Content/DefaultRewards/rewards.json`, and `CreateRunFlowDefinition`.
 - Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
 - Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.
-- Run tuning, pacing profiles, reward timeout, draft rerolls, draft banishes, and skip rewards: start with `CreateDefaultTuning` and `CreateTuning(SurvivorsPacingProfile)` before changing controller internals.
+- Run tuning, pacing profiles, reward timeout, draft rarity weights, draft rerolls, draft banishes, and skip rewards: start with `CreateDefaultTuning` and `CreateTuning(SurvivorsPacingProfile)` before changing controller internals.
 - Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to grant XP or blood shards, force level-ups, force elite/miniboss/boss spawns, spawn bursts, fill the arena, switch pacing profiles with a restart, apply stress profiles, inspect live build ranks/evolutions/drafts, trigger magnet recall, or reset meta progression.
 
 ## Asset Flip Shape
@@ -88,7 +88,7 @@ The reference clone has a much larger authored project: class-owned content pack
 
 - five immediately active clone-spirit weapons instead of a single starter wand
 - nine enemy pressure types with splitters, ranged pressure, two elite variants, and long-run escalation instead of one swarm profile
-- 30+ meaningful upgrade choices with visible behavior changes, status/sustain hooks, passive requirements, and six legendary evolutions
+- 30+ meaningful upgrade choices with visible behavior changes, status/sustain hooks, passive requirements, Epic spikes, and six legendary evolutions
 - elite kill reward drafts, miniboss rewards, boss evolution rewards with rare-or-better fallback drafts, boss relic choices, multiple persistent meta upgrades, class loadouts, compact passive atlases, weapon skill tracks, and class-gated advanced tools
 - reroll, skip-for-shards, and banish controls for draft quality of life
 - reward-choice timeout behavior so long sessions keep moving if a choice is left open

@@ -63,6 +63,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             AssertRunUpgradeMetadataCoversPassivesAndEvolutions(upgrades, upgradeMetadata);
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.ScholarsLensUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GiantRuneUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.TwinCharmUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AstralConvergenceUpgradeId));
+            Assert.That(CountUpgradesByRarity(upgrades, RunUpgradeRarity.Epic), Is.GreaterThanOrEqualTo(2));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
 
@@ -71,6 +74,25 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             return catalog != null &&
                 !string.IsNullOrWhiteSpace(upgradeId) &&
                 catalog.TryGet(new RunUpgradeId(upgradeId), out _);
+        }
+
+        private static int CountUpgradesByRarity(RunUpgradeCatalog catalog, RunUpgradeRarity rarity)
+        {
+            if (catalog == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+            for (int i = 0; i < catalog.Definitions.Count; i++)
+            {
+                if (catalog.Definitions[i] != null && catalog.Definitions[i].Rarity == rarity)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private static void AssertRunUpgradeMetadataCoversPassivesAndEvolutions(RunUpgradeCatalog upgrades, IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata)

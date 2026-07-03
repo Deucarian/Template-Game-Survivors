@@ -36,6 +36,15 @@ namespace Deucarian.TemplateGameSurvivors
         private const int DamagePopupLimit = 72;
         private const float LowHealthWarningThreshold = 0.3f;
 
+        private enum DraftRarityProfile
+        {
+            NormalEarly = 0,
+            NormalMid = 1,
+            NormalLate = 2,
+            Elite = 3,
+            Boss = 4
+        }
+
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
         private static readonly string[] EmptyWeaponIds = Array.Empty<string>();
@@ -2003,7 +2012,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            return eligible.Count == 0 ? null : new RunUpgradeCatalog(eligible);
+            return CreateWeightedDraftCatalog(eligible, ResolveNormalDraftRarityProfile());
         }
 
         private RunUpgradeCatalog CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole role, bool requireEvolutionChoice)
@@ -2037,7 +2046,154 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             List<RunUpgradeDefinition> selected = preferred.Count >= CurrentTuning.DraftChoiceCount ? preferred : allEligible;
-            return selected.Count == 0 ? null : new RunUpgradeCatalog(selected);
+            DraftRarityProfile profile = role == SurvivorsEnemyRole.Boss ? DraftRarityProfile.Boss : DraftRarityProfile.Elite;
+            return CreateWeightedDraftCatalog(selected, profile);
+        }
+
+        private DraftRarityProfile ResolveNormalDraftRarityProfile()
+        {
+            if (Level >= Mathf.Max(1, CurrentTuning.DraftLateRarityLevel))
+            {
+                return DraftRarityProfile.NormalLate;
+            }
+
+            if (Level >= Mathf.Max(1, CurrentTuning.DraftMidRarityLevel))
+            {
+                return DraftRarityProfile.NormalMid;
+            }
+
+            return DraftRarityProfile.NormalEarly;
+        }
+
+        private RunUpgradeCatalog CreateWeightedDraftCatalog(IReadOnlyList<RunUpgradeDefinition> definitions, DraftRarityProfile profile)
+        {
+            if (definitions == null || definitions.Count == 0)
+            {
+                return null;
+            }
+
+            var weighted = new List<RunUpgradeDefinition>(definitions.Count);
+            for (int i = 0; i < definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = definitions[i];
+                if (definition == null)
+                {
+                    continue;
+                }
+
+                int rarityWeight = ResolveDraftRarityWeight(profile, definition.Rarity);
+                if (rarityWeight <= 0)
+                {
+                    continue;
+                }
+
+                weighted.Add(CloneUpgradeWithDraftWeight(definition, ResolveWeightedDraftWeight(definition.Weight, rarityWeight)));
+            }
+
+            return weighted.Count == 0 ? null : new RunUpgradeCatalog(weighted);
+        }
+
+        private int ResolveWeightedDraftWeight(int baseWeight, int rarityWeight)
+        {
+            long resolved = (long)Mathf.Max(1, baseWeight) * Mathf.Max(0, rarityWeight);
+            resolved = Mathf.Max(1, Mathf.RoundToInt(resolved / 100f));
+            return resolved > int.MaxValue ? int.MaxValue : (int)resolved;
+        }
+
+        private RunUpgradeDefinition CloneUpgradeWithDraftWeight(RunUpgradeDefinition definition, int weight)
+        {
+            return new RunUpgradeDefinition(
+                definition.Id,
+                definition.Rarity,
+                Mathf.Max(1, weight),
+                definition.MaxRank,
+                definition.Effects,
+                definition.Prerequisites,
+                definition.Exclusions);
+        }
+
+        private int ResolveDraftRarityWeight(DraftRarityProfile profile, RunUpgradeRarity rarity)
+        {
+            switch (profile)
+            {
+                case DraftRarityProfile.NormalEarly:
+                    return ResolveNormalEarlyRarityWeight(rarity);
+                case DraftRarityProfile.NormalMid:
+                    return ResolveNormalMidRarityWeight(rarity);
+                case DraftRarityProfile.NormalLate:
+                    return ResolveNormalLateRarityWeight(rarity);
+                case DraftRarityProfile.Elite:
+                    return ResolveEliteRarityWeight(rarity);
+                case DraftRarityProfile.Boss:
+                    return ResolveBossRarityWeight(rarity);
+                default:
+                    return 100;
+            }
+        }
+
+        private int ResolveNormalEarlyRarityWeight(RunUpgradeRarity rarity)
+        {
+            switch (rarity)
+            {
+                case RunUpgradeRarity.Common: return CurrentTuning.NormalEarlyCommonWeight;
+                case RunUpgradeRarity.Uncommon: return CurrentTuning.NormalEarlyUncommonWeight;
+                case RunUpgradeRarity.Rare: return CurrentTuning.NormalEarlyRareWeight;
+                case RunUpgradeRarity.Epic: return CurrentTuning.NormalEarlyEpicWeight;
+                case RunUpgradeRarity.Legendary: return CurrentTuning.NormalEarlyLegendaryWeight;
+                default: return 0;
+            }
+        }
+
+        private int ResolveNormalMidRarityWeight(RunUpgradeRarity rarity)
+        {
+            switch (rarity)
+            {
+                case RunUpgradeRarity.Common: return CurrentTuning.NormalMidCommonWeight;
+                case RunUpgradeRarity.Uncommon: return CurrentTuning.NormalMidUncommonWeight;
+                case RunUpgradeRarity.Rare: return CurrentTuning.NormalMidRareWeight;
+                case RunUpgradeRarity.Epic: return CurrentTuning.NormalMidEpicWeight;
+                case RunUpgradeRarity.Legendary: return CurrentTuning.NormalMidLegendaryWeight;
+                default: return 0;
+            }
+        }
+
+        private int ResolveNormalLateRarityWeight(RunUpgradeRarity rarity)
+        {
+            switch (rarity)
+            {
+                case RunUpgradeRarity.Common: return CurrentTuning.NormalLateCommonWeight;
+                case RunUpgradeRarity.Uncommon: return CurrentTuning.NormalLateUncommonWeight;
+                case RunUpgradeRarity.Rare: return CurrentTuning.NormalLateRareWeight;
+                case RunUpgradeRarity.Epic: return CurrentTuning.NormalLateEpicWeight;
+                case RunUpgradeRarity.Legendary: return CurrentTuning.NormalLateLegendaryWeight;
+                default: return 0;
+            }
+        }
+
+        private int ResolveEliteRarityWeight(RunUpgradeRarity rarity)
+        {
+            switch (rarity)
+            {
+                case RunUpgradeRarity.Common: return CurrentTuning.EliteCommonWeight;
+                case RunUpgradeRarity.Uncommon: return CurrentTuning.EliteUncommonWeight;
+                case RunUpgradeRarity.Rare: return CurrentTuning.EliteRareWeight;
+                case RunUpgradeRarity.Epic: return CurrentTuning.EliteEpicWeight;
+                case RunUpgradeRarity.Legendary: return CurrentTuning.EliteLegendaryWeight;
+                default: return 0;
+            }
+        }
+
+        private int ResolveBossRarityWeight(RunUpgradeRarity rarity)
+        {
+            switch (rarity)
+            {
+                case RunUpgradeRarity.Common: return CurrentTuning.BossCommonWeight;
+                case RunUpgradeRarity.Uncommon: return CurrentTuning.BossUncommonWeight;
+                case RunUpgradeRarity.Rare: return CurrentTuning.BossRareWeight;
+                case RunUpgradeRarity.Epic: return CurrentTuning.BossEpicWeight;
+                case RunUpgradeRarity.Legendary: return CurrentTuning.BossLegendaryWeight;
+                default: return 0;
+            }
         }
 
         private IReadOnlyList<RunUpgradeId> CreateEligibleEvolutionChoiceLocks(int maxCount)
