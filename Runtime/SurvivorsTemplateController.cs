@@ -103,6 +103,7 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _damagePopupStyle;
         private GUIStyle _playerDamagePopupStyle;
         private GUIStyle _lowHealthStyle;
+        private GUIStyle _majorThreatWarningStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService;
         private HealthState _playerHealth;
@@ -137,6 +138,12 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _runRewardsGranted;
         private bool _pendingVictoryAfterRewardDraft;
         private bool _victoryClearedThisRun;
+        private bool _firstEliteWarningShown;
+        private bool _firstDreadEliteWarningShown;
+        private bool _minibossWarningShown;
+        private bool _bossWarningShown;
+        private string _majorThreatWarningLabel = string.Empty;
+        private float _majorThreatWarningTargetTimeSeconds;
         private int _bonusBloodShardsEarnedThisRun;
         private int _bonusLegacyExperienceEarnedThisRun;
 
@@ -185,6 +192,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int DamagePopupSpawnCount { get; private set; }
         public int PlayerDamageFeedbackCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
+        public int MajorThreatWarningCount { get; private set; }
         public int ExperienceCollected { get; private set; }
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
@@ -293,6 +301,9 @@ namespace Deucarian.TemplateGameSurvivors
         public bool HasClearedVictoryThisRun => _victoryClearedThisRun;
         public bool IsEndlessRun => State == SurvivorsRunState.Playing && _victoryClearedThisRun;
         public bool IsLowHealthWarningActive => (State == SurvivorsRunState.Playing || State == SurvivorsRunState.LevelUp) && MaxHealth > 0f && CurrentHealth / MaxHealth <= LowHealthWarningThreshold;
+        public bool IsMajorThreatWarningActive => !string.IsNullOrEmpty(_majorThreatWarningLabel) && RunTimeSeconds < _majorThreatWarningTargetTimeSeconds;
+        public string CurrentMajorThreatWarningLabel => IsMajorThreatWarningActive ? _majorThreatWarningLabel : string.Empty;
+        public float MajorThreatWarningRemainingSeconds => IsMajorThreatWarningActive ? Mathf.Max(0f, _majorThreatWarningTargetTimeSeconds - RunTimeSeconds) : 0f;
         public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
         public int DraftRerollsRemaining => Mathf.Max(0, CurrentTuning.DraftRerollCharges - DraftRerollCount);
         public int DraftBanishesRemaining => Mathf.Max(0, CurrentTuning.DraftBanishCharges - DraftBanishCount);
@@ -395,6 +406,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}", _hudSmallStyle);
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
             DrawLowHealthWarning();
+            DrawMajorThreatWarning();
             DrawDamagePopups();
 
             if (State == SurvivorsRunState.LevelUp)
@@ -491,6 +503,7 @@ namespace Deucarian.TemplateGameSurvivors
             ClassUnlockRewardCount = 0;
             DamagePopupSpawnCount = 0;
             PlayerDamageFeedbackCount = 0;
+            MajorThreatWarningCount = 0;
             ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
@@ -537,6 +550,12 @@ namespace Deucarian.TemplateGameSurvivors
             _runRewardsGranted = false;
             _pendingVictoryAfterRewardDraft = false;
             _victoryClearedThisRun = false;
+            _firstEliteWarningShown = false;
+            _firstDreadEliteWarningShown = false;
+            _minibossWarningShown = false;
+            _bossWarningShown = false;
+            _majorThreatWarningLabel = string.Empty;
+            _majorThreatWarningTargetTimeSeconds = 0f;
             _bonusBloodShardsEarnedThisRun = 0;
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
@@ -602,6 +621,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             RunTimeSeconds += dt;
+            TickMajorThreatWarnings();
             TickRunFlow();
             if (State != SurvivorsRunState.Playing)
             {
@@ -2809,6 +2829,56 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void TickMajorThreatWarnings()
+        {
+            if (_runFlow == null || _runFlow.Definition == null)
+            {
+                return;
+            }
+
+            SurvivorsRunFlowDefinition definition = _runFlow.Definition;
+            TryBeginMajorThreatWarning(ref _firstEliteWarningShown, definition.FirstEliteSpawnTimeSeconds, SurvivorsEnemyRole.Elite);
+            TryBeginMajorThreatWarning(ref _firstDreadEliteWarningShown, definition.FirstDreadEliteSpawnTimeSeconds, SurvivorsEnemyRole.DreadElite);
+            TryBeginMajorThreatWarning(ref _minibossWarningShown, definition.MinibossSpawnTimeSeconds, SurvivorsEnemyRole.Miniboss);
+            TryBeginMajorThreatWarning(ref _bossWarningShown, definition.BossSpawnTimeSeconds, SurvivorsEnemyRole.Boss);
+        }
+
+        private void TryBeginMajorThreatWarning(ref bool warningShown, float targetTimeSeconds, SurvivorsEnemyRole role)
+        {
+            float leadSeconds = Mathf.Max(0f, CurrentTuning.MajorThreatWarningLeadSeconds);
+            if (warningShown || leadSeconds <= 0f || targetTimeSeconds <= 0f)
+            {
+                return;
+            }
+
+            float warningTime = Mathf.Max(0f, targetTimeSeconds - leadSeconds);
+            if (RunTimeSeconds < warningTime || RunTimeSeconds >= targetTimeSeconds)
+            {
+                return;
+            }
+
+            warningShown = true;
+            _majorThreatWarningLabel = ResolveMajorThreatWarningLabel(role);
+            _majorThreatWarningTargetTimeSeconds = targetTimeSeconds;
+            MajorThreatWarningCount++;
+            PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 44 : 28, _dangerClip);
+        }
+
+        private static string ResolveMajorThreatWarningLabel(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.DreadElite:
+                    return "DREAD ELITE INCOMING";
+                case SurvivorsEnemyRole.Miniboss:
+                    return "MINIBOSS INCOMING";
+                case SurvivorsEnemyRole.Boss:
+                    return "FINAL BOSS INCOMING";
+                default:
+                    return "ELITE INCOMING";
+            }
+        }
+
         private void EnterVictory()
         {
             if (State == SurvivorsRunState.Victory || State == SurvivorsRunState.GameOver)
@@ -3773,6 +3843,13 @@ namespace Deucarian.TemplateGameSurvivors
                 fontStyle = FontStyle.Bold,
                 normal = { textColor = new Color(1f, 0.3f, 0.24f) }
             };
+            _majorThreatWarningStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 19,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(1f, 0.78f, 0.24f) }
+            };
         }
 
         private void DrawHudBar(Rect rect, string label, float value, Color fill)
@@ -3802,6 +3879,23 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.DrawTexture(new Rect(Screen.width - 12f, 0f, 12f, Screen.height), Texture2D.whiteTexture);
             GUI.color = new Color(1f, 1f, 1f, 0.95f);
             GUI.Label(new Rect(24, 346, 318, 22), "LOW HEALTH", _lowHealthStyle);
+            GUI.color = oldColor;
+        }
+
+        private void DrawMajorThreatWarning()
+        {
+            if (!IsMajorThreatWarningActive)
+            {
+                return;
+            }
+
+            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 8f) * 0.28f;
+            Rect panel = new Rect(Screen.width * 0.5f - 184f, 24f, 368f, 52f);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.22f, 0.05f, 0.04f, 0.56f + 0.18f * pulse);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 1f, 1f, 0.96f);
+            GUI.Label(panel, $"{CurrentMajorThreatWarningLabel}  {Mathf.CeilToInt(MajorThreatWarningRemainingSeconds)}s", _majorThreatWarningStyle);
             GUI.color = oldColor;
         }
 

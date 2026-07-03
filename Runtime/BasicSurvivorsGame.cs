@@ -59,6 +59,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemyHealthMultiplierPerEscalation = 0.12f;
         public float EnemyMoveSpeedMultiplierPerEscalation = 0.02f;
         public float EnemyExperienceMultiplierPerEscalation = 0.08f;
+        public float MajorThreatWarningLeadSeconds = 8f;
         public float FirstEliteSpawnTimeSeconds = 180f;
         public float FirstDreadEliteSpawnTimeSeconds = 300f;
         public float MinibossSpawnTimeSeconds = 420f;

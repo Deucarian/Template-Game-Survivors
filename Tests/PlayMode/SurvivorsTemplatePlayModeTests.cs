@@ -1422,6 +1422,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
             controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.MajorThreatWarningLeadSeconds = 0.5f;
             controller.CurrentTuning.FirstEliteSpawnTimeSeconds = 2f;
             controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds = 4f;
             controller.CurrentTuning.MinibossSpawnTimeSeconds = 6f;
@@ -1430,31 +1431,63 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
-            controller.Simulate(controller.CurrentTuning.FirstEliteSpawnTimeSeconds + 0.1f);
+            controller.Simulate(1.5f);
+            yield return null;
+
+            Assert.IsTrue(controller.IsMajorThreatWarningActive);
+            Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("ELITE"));
+            Assert.AreEqual(1, controller.MajorThreatWarningCount);
+            Assert.AreEqual(0, controller.ActiveEliteCount);
+
+            controller.Simulate(controller.CurrentTuning.FirstEliteSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f);
             yield return null;
 
             Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(1));
             Assert.AreEqual(0, controller.ActiveDreadEliteCount);
             Assert.AreEqual(0, controller.MinibossSpawnCount);
+            Assert.IsFalse(controller.IsMajorThreatWarningActive);
+
+            controller.Simulate(controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds - controller.CurrentTuning.MajorThreatWarningLeadSeconds - controller.RunTimeSeconds);
+            yield return null;
+
+            Assert.IsTrue(controller.IsMajorThreatWarningActive);
+            Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("DREAD ELITE"));
+            Assert.AreEqual(2, controller.MajorThreatWarningCount);
 
             controller.Simulate(controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f);
             yield return null;
 
             Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(2));
             Assert.AreEqual(1, controller.ActiveDreadEliteCount);
+            Assert.IsFalse(controller.IsMajorThreatWarningActive);
+
+            controller.Simulate(controller.CurrentTuning.MinibossSpawnTimeSeconds - controller.CurrentTuning.MajorThreatWarningLeadSeconds - controller.RunTimeSeconds);
+            yield return null;
+
+            Assert.IsTrue(controller.IsMajorThreatWarningActive);
+            Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("MINIBOSS"));
+            Assert.AreEqual(3, controller.MajorThreatWarningCount);
 
             controller.Simulate(controller.CurrentTuning.MinibossSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f);
             yield return null;
 
             Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.ActiveMinibossCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsFalse(controller.IsMajorThreatWarningActive);
 
-            float bossDelta = controller.CurrentTuning.BossSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f;
-            controller.Simulate(bossDelta);
+            controller.Simulate(controller.CurrentTuning.BossSpawnTimeSeconds - controller.CurrentTuning.MajorThreatWarningLeadSeconds - controller.RunTimeSeconds);
+            yield return null;
+
+            Assert.IsTrue(controller.IsMajorThreatWarningActive);
+            Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("FINAL BOSS"));
+            Assert.AreEqual(4, controller.MajorThreatWarningCount);
+
+            controller.Simulate(controller.CurrentTuning.BossSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f);
             yield return null;
 
             Assert.That(controller.BossSpawnCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.ActiveBossCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsFalse(controller.IsMajorThreatWarningActive);
 
             Object.Destroy(controller.gameObject);
         }

@@ -147,10 +147,10 @@ Phase 3I adds human-readable pacing validation:
 
 - `SurvivorsPacingProfile.HumanPlaytest` is the default profile and keeps `Time.timeScale` at `1`.
 - Human Playtest opening spawns use a `1.15` second interval, `34` maximum alive enemies, `1.35` basic enemy speed against `5.4` player speed, readable `8.5` projectile speed, `2.5` pickup magnet range, and no reward timeout.
-- Human Playtest max alive rises by `8` about every `45` seconds, the spawn interval drops by `0.08` seconds per escalation, the first elite arrives around `180` seconds, the dread elite arrives around `300` seconds, the miniboss waits until `420` seconds, the final boss appears around `1200` seconds, and survival victory lands at `1800` seconds.
+- Human Playtest max alive rises by `8` about every `45` seconds, the spawn interval drops by `0.08` seconds per escalation, major threats warn before they enter, the first elite arrives around `180` seconds, the dread elite arrives around `300` seconds, the miniboss waits until `420` seconds, the final boss appears around `1200` seconds, and survival victory lands at `1800` seconds.
 - `SurvivorsPacingProfile.Normal`, `SurvivorsPacingProfile.DebugFast`, and `SurvivorsPacingProfile.Showcase` are explicit profiles for validation and demo work, not sample defaults.
 - EditMode coverage checks Human Playtest readability thresholds and Debug Fast acceleration as opt-in tuning.
-- PlayMode coverage checks the controller starts in Human Playtest, the imported scene starts by path, the first XP pickup can be collected within seconds, the first draft can open within one minute, reward choices wait for the player by default, and Debug Fast only appears through an explicit profile switch.
+- PlayMode coverage checks the controller starts in Human Playtest, the imported scene starts by path, the first XP pickup can be collected within seconds, the first draft can open within one minute, major-threat warnings appear before timed elites/miniboss/boss, reward choices wait for the player by default, and Debug Fast only appears through an explicit profile switch.
 - PlayMode persistence coverage uses isolated in-memory save slots to prove normal start, Normal profile application, and run restart do not wipe meta progression, while explicit reset does wipe it.
 - `Documentation~/playtesting.md` documents the local playtest host project, renamed imported sample scene, timing expectations, explicit save reset, and Debug Fast workflow.
 
