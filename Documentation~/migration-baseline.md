@@ -146,7 +146,7 @@ The 2S template slice adds local template-kit implementations for:
 - selected class controlling starting move speed, damage, and max health
 - default Arcane Initiate fallback when a saved selected class is locked or missing
 - persisted unlock/selection behavior for the Ember Vanguard sample class
-- class-gated advanced upgrade availability for Ember-only weapon/payload upgrades
+- class-gated advanced upgrade availability for Ember-only passive tools, with public draft-owned weapon paths where the default class can unlock them
 - sample JSON metadata for default class, class loadouts, and allowed upgrade classes
 - content validation for class loadouts, default class references, and class-gated upgrade references
 

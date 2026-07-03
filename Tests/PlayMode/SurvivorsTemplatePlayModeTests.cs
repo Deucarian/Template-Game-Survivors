@@ -528,6 +528,50 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator DraftedPayloadWeaponUnlockOpensPayloadPathAndEvolution()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
+            Assert.AreEqual(controller.MaxWeaponSlots, controller.ActiveWeaponCount);
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
+
+            for (int i = 0; i < 4; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
+            }
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GiantRuneUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
+
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 100f);
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));
+            yield return SimulateFrames(controller, 80);
+
+            Assert.That(controller.PayloadCountBonus, Is.GreaterThanOrEqualTo(4));
+            Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(0f));
+            Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadExplosionHitCount, Is.GreaterThanOrEqualTo(1));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator PassiveSlotsBlockNewPassivesButAllowOwnedRanks()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -807,7 +851,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
-            Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.bigger-booms"));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 100f);
 
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));

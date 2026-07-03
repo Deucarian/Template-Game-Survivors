@@ -941,7 +941,7 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade(SiegePayloadsUpgradeId, RunUpgradeRarity.Rare, 20, 2, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
                 Upgrade(EmberWardUpgradeId, RunUpgradeRarity.Rare, 20, 3, BarrierCapacityEffect, BarrierTarget, 8.0d),
                 Upgrade(PrismaticBeamUpgradeId, RunUpgradeRarity.Uncommon, 30, 3, HitscanPierceEffect, HitscanWeaponTarget, 1.0d),
-                Upgrade(ExtraPayloadUpgradeId, RunUpgradeRarity.Rare, 22, 2, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
+                Upgrade(ExtraPayloadUpgradeId, RunUpgradeRarity.Rare, 22, 5, PayloadCountEffect, PayloadWeaponTarget, 1.0d),
                 Upgrade(BiggerBoomsUpgradeId, RunUpgradeRarity.Uncommon, 32, 4, PayloadRadiusEffect, PayloadWeaponTarget, 0.45d),
                 Upgrade(WiderTriggersUpgradeId, RunUpgradeRarity.Uncommon, 28, 4, PayloadTriggerRadiusEffect, PayloadWeaponTarget, 0.35d),
                 UpgradeMulti(
@@ -1055,18 +1055,18 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(CinderScriptUpgradeId, "Cinder Script", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarNovaWeaponContentId, "Passive: focus burst sigils and unlock Inferno Heart."),
                 UpgradeMetadata(EmberForgeHeartUpgradeId, "Ember Forge Heart", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarBeamWeaponContentId, "Passive: raise Ember weapon damage."),
                 UpgradeMetadata(EmberTempoUpgradeId, "Ember Tempo", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, StarBeamWeaponContentId, "Passive: quicken Star Beam and unlock Tempest Prism."),
-                UpgradeMetadata(SiegePayloadsUpgradeId, "Siege Payloads", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PayloadWeaponTarget.Value, "Passive: carry heavier payloads and unlock Gravefield Engine."),
+                UpgradeMetadata(SiegePayloadsUpgradeId, "Siege Payloads", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PayloadWeaponTarget.Value, "Passive: carry heavier payloads for Ember payload builds."),
                 UpgradeMetadata(EmberWardUpgradeId, "Ember Ward", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, BarrierTarget.Value, "Passive: add a larger defensive barrier."),
                 UpgradeMetadata(PrismaticBeamUpgradeId, "Prismatic Beam", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Star Beam pierces more enemies.", StarBeamWeaponContentId),
-                UpgradeMetadata(ExtraPayloadUpgradeId, "Extra Payload", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Throw or place additional payloads."),
-                UpgradeMetadata(BiggerBoomsUpgradeId, "Bigger Booms", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Payload explosions cover a wider area."),
-                UpgradeMetadata(WiderTriggersUpgradeId, "Wider Triggers", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, PayloadWeaponTarget.Value, "Payloads trigger from farther away."),
+                UpgradeMetadata(ExtraPayloadUpgradeId, "Extra Payload", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Throw or place additional payloads.", GravityGrenadeWeaponContentId),
+                UpgradeMetadata(BiggerBoomsUpgradeId, "Bigger Booms", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Payload explosions cover a wider area.", GravityGrenadeWeaponContentId, ExtraPayloadUpgradeId, 2),
+                UpgradeMetadata(WiderTriggersUpgradeId, "Wider Triggers", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Payloads trigger from farther away.", GravityGrenadeWeaponContentId, ExtraPayloadUpgradeId, 2),
                 UpgradeMetadata(ArcaneStormEvolutionUpgradeId, "Arcane Storm", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Evolution: Arc Bolt becomes a storm of chaining, forking bolts.", ArcaneWandWeaponContentId, "upgrade.survivors.arcane-damage", 5, ArcaneThesisUpgradeId),
                 UpgradeMetadata(BlizzardCrownEvolutionUpgradeId, "Blizzard Crown", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Evolution: Frost Fan expands into a piercing crown of shards.", FrostFanWeaponContentId, FrostFanUpgradeId, 3, FrostNeedleworkUpgradeId),
                 UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo become a dense orbit shield.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 4, BloodRingCanticleUpgradeId),
                 UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 3, CinderScriptUpgradeId),
                 UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam turns into a rapid piercing prism.", StarBeamWeaponContentId, PrismaticBeamUpgradeId, 3, TwinCharmUpgradeId),
-                UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload weapons flood the arena with larger danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, SiegePayloadsUpgradeId)
+                UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload weapons flood the arena with larger danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, GiantRuneUpgradeId)
             };
         }
 
@@ -1280,21 +1280,21 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.ember-vanguard.moon-slash.crescent-chain", "Crescent Chain", CrescentChainUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 0, 1, 4)),
                 Track(
                     "progression.survivors.gravity-grenade.unlock",
-                    "Gravity Grenade Unlock Track",
+                    "Gravity Grenade Skill Track",
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     string.Empty,
                     GravityGrenadeWeaponContentId,
-                    Node("node.survivors.gravity-grenade.unlock", "Gravity Grenade", GravityGrenadeUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1)),
+                    Node("node.survivors.gravity-grenade.unlock", "Gravity Grenade", GravityGrenadeUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
+                    Node("node.survivors.gravity-grenade.extra", "Extra Payload", ExtraPayloadUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
+                    Node("node.survivors.gravity-grenade.bigger-booms", "Bigger Booms", BiggerBoomsUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4),
+                    Node("node.survivors.gravity-grenade.wider-triggers", "Wider Triggers", WiderTriggersUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4)),
                 Track(
                     "progression.survivors.ember-vanguard.payloads.weapon",
                     "Ember Vanguard Payload Track",
                     SurvivorsProgressionTrackKind.WeaponSkillTrack,
                     EmberVanguardClassId,
                     GravityGrenadeWeaponContentId,
-                    Node("node.survivors.ember-vanguard.payloads.extra", "Extra Payload", ExtraPayloadUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 0, 1, 2),
-                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 2, 2),
-                    Node("node.survivors.ember-vanguard.payloads.bigger-booms", "Bigger Booms", BiggerBoomsUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4),
-                    Node("node.survivors.ember-vanguard.payloads.wider-triggers", "Wider Triggers", WiderTriggersUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4))
+                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 2, 2))
             };
         }
 

@@ -59,7 +59,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(SurvivorsProgressionTrackKind.PassiveAtlas, progressionTracks[0].Kind);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, progressionTracks[0].ClassId);
             Assert.That(progressionTracks[0].Nodes.Count, Is.GreaterThanOrEqualTo(4));
-            Assert.That(BasicSurvivorsGame.CreateClassUpgradeGates().Count, Is.GreaterThanOrEqualTo(12));
+            Assert.That(BasicSurvivorsGame.CreateClassUpgradeGates().Count, Is.GreaterThanOrEqualTo(9));
             AssertRunUpgradeMetadataCoversPassivesAndEvolutions(upgrades, upgradeMetadata);
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.ScholarsLensUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GiantRuneUpgradeId));
@@ -67,6 +67,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AstralConvergenceUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.StarBeamUnlockUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.ExtraPayloadUpgradeId), Is.GreaterThanOrEqualTo(5));
             Assert.That(CountUpgradesByRarity(upgrades, RunUpgradeRarity.Epic), Is.GreaterThanOrEqualTo(2));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
@@ -95,6 +96,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             }
 
             return count;
+        }
+
+        private static int GetMaxRank(RunUpgradeCatalog catalog, string upgradeId)
+        {
+            return catalog != null &&
+                !string.IsNullOrWhiteSpace(upgradeId) &&
+                catalog.TryGet(new RunUpgradeId(upgradeId), out RunUpgradeDefinition definition)
+                    ? definition.MaxRank
+                    : 0;
         }
 
         private static void AssertRunUpgradeMetadataCoversPassivesAndEvolutions(RunUpgradeCatalog upgrades, IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata)
@@ -819,10 +829,12 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             {
                 Assert.AreEqual(0f, controller.PayloadExplosionRadiusBonus);
 
-                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.bigger-booms"));
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
 
                 Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(0f));
-                Assert.AreEqual(1, controller.SelectedUpgradeCount);
+                Assert.AreEqual(3, controller.SelectedUpgradeCount);
             }
             finally
             {

@@ -106,12 +106,15 @@
     },
     {
       "id": "progression.survivors.gravity-grenade.unlock",
-      "displayName": "Gravity Grenade Unlock Track",
+      "displayName": "Gravity Grenade Skill Track",
       "kind": "WeaponSkillTrack",
       "classId": "",
       "targetWeaponId": "weapon.survivors.gravity-grenade",
       "nodes": [
-        { "id": "node.survivors.gravity-grenade.unlock", "displayName": "Gravity Grenade", "upgradeId": "upgrade.survivors.weapon.gravity-grenade", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 }
+        { "id": "node.survivors.gravity-grenade.unlock", "displayName": "Gravity Grenade", "upgradeId": "upgrade.survivors.weapon.gravity-grenade", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
+        { "id": "node.survivors.gravity-grenade.extra", "displayName": "Extra Payload", "upgradeId": "upgrade.survivors.extra-payload", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
+        { "id": "node.survivors.gravity-grenade.bigger-booms", "displayName": "Bigger Booms", "upgradeId": "upgrade.survivors.bigger-booms", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 },
+        { "id": "node.survivors.gravity-grenade.wider-triggers", "displayName": "Wider Triggers", "upgradeId": "upgrade.survivors.wider-triggers", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 }
       ]
     },
     {
@@ -121,10 +124,7 @@
       "classId": "class.survivors.ember-vanguard",
       "targetWeaponId": "weapon.survivors.gravity-grenade",
       "nodes": [
-        { "id": "node.survivors.ember-vanguard.payloads.extra", "displayName": "Extra Payload", "upgradeId": "upgrade.survivors.extra-payload", "kind": "WeaponRank", "tier": 0, "pointCost": 1, "maxRank": 2 },
-        { "id": "node.survivors.ember-vanguard.payloads.siege", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "WeaponRank", "tier": 1, "pointCost": 2, "maxRank": 2 },
-        { "id": "node.survivors.ember-vanguard.payloads.bigger-booms", "displayName": "Bigger Booms", "upgradeId": "upgrade.survivors.bigger-booms", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 },
-        { "id": "node.survivors.ember-vanguard.payloads.wider-triggers", "displayName": "Wider Triggers", "upgradeId": "upgrade.survivors.wider-triggers", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 }
+        { "id": "node.survivors.ember-vanguard.payloads.siege", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "WeaponRank", "tier": 1, "pointCost": 2, "maxRank": 2 }
       ]
     }
   ]
