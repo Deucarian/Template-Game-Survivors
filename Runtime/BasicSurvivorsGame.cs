@@ -311,6 +311,7 @@ namespace Deucarian.TemplateGameSurvivors
         public const string ScholarsLensUpgradeId = "upgrade.survivors.scholars-lens";
         public const string GiantRuneUpgradeId = "upgrade.survivors.giant-rune";
         public const string TwinCharmUpgradeId = "upgrade.survivors.twin-charm";
+        public const string KeenEdgeUpgradeId = "upgrade.survivors.keen-edge";
         public const string AstralConvergenceUpgradeId = "upgrade.survivors.astral-convergence";
         public const string ArcaneWandUnlockUpgradeId = "upgrade.survivors.weapon.arcane-wand";
         public const string FrostFanUnlockUpgradeId = "upgrade.survivors.weapon.frost-fan";
@@ -353,6 +354,8 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly RunUpgradeEffectId PoisonEffect = new RunUpgradeEffectId("survivors.status.poison_ratio");
         public static readonly RunUpgradeEffectId BleedEffect = new RunUpgradeEffectId("survivors.status.bleed_ratio");
         public static readonly RunUpgradeEffectId ExecuteEffect = new RunUpgradeEffectId("survivors.status.execute_threshold");
+        public static readonly RunUpgradeEffectId CriticalChanceEffect = new RunUpgradeEffectId("survivors.critical.chance");
+        public static readonly RunUpgradeEffectId CriticalDamageEffect = new RunUpgradeEffectId("survivors.critical.damage_multiplier");
         public static readonly RunUpgradeEffectId LifestealEffect = new RunUpgradeEffectId("survivors.sustain.lifesteal_ratio");
         public static readonly RunUpgradeEffectId BarrierCapacityEffect = new RunUpgradeEffectId("survivors.barrier.capacity");
         public static readonly RunUpgradeEffectId BarrierRegenEffect = new RunUpgradeEffectId("survivors.barrier.regen");
@@ -374,6 +377,7 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly RunUpgradeTargetId PayloadWeaponTarget = new RunUpgradeTargetId("survivors.weapon.payloads");
         public static readonly RunUpgradeTargetId PickupTarget = new RunUpgradeTargetId("survivors.pickups");
         public static readonly RunUpgradeTargetId StatusTarget = new RunUpgradeTargetId("survivors.status");
+        public static readonly RunUpgradeTargetId CriticalTarget = new RunUpgradeTargetId("survivors.critical");
         public static readonly RunUpgradeTargetId BarrierTarget = new RunUpgradeTargetId("survivors.barrier");
         public static readonly RunUpgradeTargetId ExperienceTarget = new RunUpgradeTargetId("survivors.experience");
         public static readonly RunUpgradeTargetId AreaTarget = new RunUpgradeTargetId("survivors.area");
@@ -1081,6 +1085,13 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.swift-steps", RunUpgradeRarity.Uncommon, 44, 5, MoveSpeedEffect, PlayerTarget, 0.45d),
                 Upgrade("upgrade.survivors.gem-magnet", RunUpgradeRarity.Uncommon, 44, 5, MagnetRangeEffect, PickupTarget, 1.1d),
                 Upgrade("upgrade.survivors.iron-blood", RunUpgradeRarity.Rare, 28, 4, MaxHealthEffect, PlayerTarget, 8.0d),
+                UpgradeMulti(
+                    KeenEdgeUpgradeId,
+                    RunUpgradeRarity.Rare,
+                    24,
+                    4,
+                    new RunUpgradeEffectDescriptor(CriticalChanceEffect, CriticalTarget, 0.25d),
+                    new RunUpgradeEffectDescriptor(CriticalDamageEffect, CriticalTarget, 0.15d)),
                 Upgrade(ArcaneWandUnlockUpgradeId, RunUpgradeRarity.Common, 42, 1, WeaponUnlockEffect, WeaponTarget, 1.0d),
                 Upgrade(FrostFanUnlockUpgradeId, RunUpgradeRarity.Uncommon, 34, 1, WeaponUnlockEffect, FrostFanWeaponTarget, 1.0d),
                 Upgrade(OrbitWardUnlockUpgradeId, RunUpgradeRarity.Uncommon, 32, 1, WeaponUnlockEffect, OrbitWeaponTarget, 1.0d),
@@ -1226,6 +1237,7 @@ namespace Deucarian.TemplateGameSurvivors
                 PayloadWeaponTarget,
                 PickupTarget,
                 StatusTarget,
+                CriticalTarget,
                 BarrierTarget,
                 ExperienceTarget,
                 AreaTarget
@@ -1241,6 +1253,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata("upgrade.survivors.swift-steps", "Swift Steps", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: move faster through horde pressure."),
                 UpgradeMetadata("upgrade.survivors.gem-magnet", "Gem Magnet", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PickupTarget.Value, "Passive: pull XP gems from farther away."),
                 UpgradeMetadata("upgrade.survivors.iron-blood", "Iron Blood", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: increase maximum health."),
+                UpgradeMetadata(KeenEdgeUpgradeId, "Keen Edge", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, CriticalTarget.Value, "Passive: weapon hits can critically strike for higher damage."),
                 UpgradeMetadata(ArcaneWandUnlockUpgradeId, "Arcane Wand", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, ArcaneWandWeaponContentId, "Unlock weapon: fire focused arcane bolts at nearby enemies."),
                 UpgradeMetadata(FrostFanUnlockUpgradeId, "Frost Fan", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, FrostFanWeaponContentId, "Unlock weapon: cast a cone of slowing frost shards."),
                 UpgradeMetadata(OrbitWardUnlockUpgradeId, "Blood Ring", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, OrbitWardWeaponContentId, "Unlock weapon: orbit blades around the player."),
@@ -1693,6 +1706,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.swift-steps") return "Swift Steps";
             if (value == "upgrade.survivors.gem-magnet") return "Gem Magnet";
             if (value == "upgrade.survivors.iron-blood") return "Iron Blood";
+            if (value == KeenEdgeUpgradeId) return "Keen Edge";
             if (value == "upgrade.survivors.frost-fan") return "Frost Fan";
             if (value == FrostSplinterUpgradeId) return "Frost Splinter";
             if (value == FrostRicochetUpgradeId) return "Frost Ricochet";

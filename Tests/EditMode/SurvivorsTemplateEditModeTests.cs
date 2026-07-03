@@ -945,6 +945,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 float previousPoison = controller.PoisonDamageRatio;
                 float previousBleed = controller.BleedDamageRatio;
                 float previousExecute = controller.ExecuteThresholdNormalized;
+                float previousCriticalChance = controller.CriticalChanceNormalized;
+                float previousCriticalDamageMultiplier = controller.CriticalDamageMultiplier;
                 float previousLifesteal = controller.LifestealRatio;
                 float previousExperienceGain = controller.ExperienceGainMultiplierBonus;
                 float previousAreaRadius = controller.AreaRadiusBonus;
@@ -976,6 +978,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     controller.PoisonDamageRatio > previousPoison ||
                     controller.BleedDamageRatio > previousBleed ||
                     controller.ExecuteThresholdNormalized > previousExecute ||
+                    controller.CriticalChanceNormalized > previousCriticalChance ||
+                    controller.CriticalDamageMultiplier > previousCriticalDamageMultiplier ||
                     controller.LifestealRatio > previousLifesteal ||
                     controller.ExperienceGainMultiplierBonus > previousExperienceGain ||
                     controller.AreaRadiusBonus > previousAreaRadius ||

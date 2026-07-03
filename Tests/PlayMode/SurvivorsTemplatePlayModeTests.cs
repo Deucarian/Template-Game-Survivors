@@ -93,6 +93,36 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator KeenEdgeMakesWeaponHitsCriticallyStrike()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            for (int i = 0; i < 4; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.KeenEdgeUpgradeId));
+            }
+
+            Assert.AreEqual(1f, controller.CriticalChanceNormalized, 0.001f);
+            Assert.That(controller.CriticalDamageMultiplier, Is.GreaterThan(1.5f));
+
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(5f, 0f, 0f), 40f);
+            float healthBefore = enemy.CurrentHealth;
+            var damage = enemy.ApplyDamage(6f, "weapon.survivors.arcane-wand");
+            yield return null;
+
+            Assert.IsNotNull(damage);
+            Assert.IsTrue(damage.Critical.IsCritical);
+            Assert.That(damage.FinalDamage, Is.GreaterThan(6d));
+            Assert.That(enemy.CurrentHealth, Is.LessThan(healthBefore - 6f));
+            Assert.AreEqual(1, controller.CriticalHitFeedbackCount);
+            Assert.AreEqual(1, controller.DamagePopupSpawnCount);
+            Assert.AreEqual(1, controller.EnemyHitFlashFeedbackCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator EnemyDeathCreatesShortLivedWorldFeedback()
         {
             SurvivorsTemplateController controller = CreateController();

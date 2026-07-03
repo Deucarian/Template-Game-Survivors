@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Deucarian.Common;
 using Deucarian.Combat;
+using Deucarian.GameplayFoundation;
 using Deucarian.Persistence;
 using Deucarian.Persistence.Unity;
 using Deucarian.Projectiles;
@@ -148,6 +149,7 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsRelicDraft _currentRelicDraft;
         private SurvivorsRewardSelectionKind _rewardSelectionKind;
         private CombatCatalog _combatCatalog;
+        private DeterministicRandom _combatRandom;
         private WeaponDefinition _weaponDefinition;
         private ProjectileDefinition _projectileDefinition;
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
@@ -265,6 +267,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int DamagePopupSpawnCount { get; private set; }
         public int PlayerDamageFeedbackCount { get; private set; }
         public int EnemyHitFlashFeedbackCount { get; private set; }
+        public int CriticalHitFeedbackCount { get; private set; }
         public int EnemyDeathEffectCount { get; private set; }
         public int EnemyRangedAttackFeedbackCount { get; private set; }
         public int MajorRewardDropFeedbackCount { get; private set; }
@@ -351,6 +354,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float PoisonDamageRatio { get; private set; }
         public float BleedDamageRatio { get; private set; }
         public float ExecuteThresholdNormalized { get; private set; }
+        public float CriticalChanceBonus { get; private set; }
+        public float CriticalDamageMultiplierBonus { get; private set; }
         public float LifestealRatio { get; private set; }
         public float ExperienceGainMultiplierBonus { get; private set; }
         public float AreaRadiusBonus { get; private set; }
@@ -423,6 +428,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus);
         public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus));
         public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus);
+        public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
+        public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
         public float CurrentHealth => _playerHealth == null ? 0f : (float)_playerHealth.CurrentHealth;
         public float MaxHealth => _playerHealth == null ? 0f : (float)_playerHealth.MaximumHealth;
         public float BarrierCapacity => Mathf.Max(0f, CurrentTuning.StartingBarrierCapacity + BarrierCapacityBonus);
@@ -626,6 +633,7 @@ namespace Deucarian.TemplateGameSurvivors
             ClearRun();
             SurvivorsTemplateTuning resolved = CurrentTuning;
             _combatCatalog = BasicSurvivorsGame.CreateCombatCatalog();
+            _combatRandom = new DeterministicRandom(resolved.RunSeed + 4049);
             _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
             _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
             _upgradeState = new RunUpgradeState();
@@ -699,6 +707,7 @@ namespace Deucarian.TemplateGameSurvivors
             DamagePopupSpawnCount = 0;
             PlayerDamageFeedbackCount = 0;
             EnemyHitFlashFeedbackCount = 0;
+            CriticalHitFeedbackCount = 0;
             EnemyDeathEffectCount = 0;
             EnemyRangedAttackFeedbackCount = 0;
             MajorRewardDropFeedbackCount = 0;
@@ -770,6 +779,8 @@ namespace Deucarian.TemplateGameSurvivors
             PoisonDamageRatio = 0f;
             BleedDamageRatio = 0f;
             ExecuteThresholdNormalized = 0f;
+            CriticalChanceBonus = 0f;
+            CriticalDamageMultiplierBonus = 0f;
             LifestealRatio = 0f;
             ExperienceGainMultiplierBonus = 0f;
             AreaRadiusBonus = 0f;
@@ -1331,7 +1342,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
-                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus:0.#}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
+                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
@@ -1686,7 +1697,30 @@ namespace Deucarian.TemplateGameSurvivors
             RecordDamagePopup(enemy.transform.position, resolvedDamage, playerDamage: false, critical: damage.Critical.IsCritical);
             enemy.TriggerHitFlash(damage.Critical.IsCritical, EnemyHitFlashSeconds);
             EnemyHitFlashFeedbackCount++;
+            if (damage.Critical.IsCritical)
+            {
+                CriticalHitFeedbackCount++;
+            }
+
             TryTriggerMajorThreatEnrage(enemy);
+        }
+
+        internal DamageResolutionResult ResolveEnemyDamage(HealthState health, float amount, string source, bool applyAugments)
+        {
+            if (health == null)
+            {
+                return null;
+            }
+
+            CombatSourceSnapshot combatSource = CreateEnemyDamageSourceSnapshot(source, applyAugments);
+            bool allowCritical = combatSource != null;
+            DamageRequest request = new DamageRequest(
+                health.Id,
+                new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, amount) },
+                source: combatSource,
+                sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.player" : source),
+                preResolvedCritical: allowCritical ? (bool?)null : false);
+            return CombatDamageResolver.Resolve(_combatCatalog, health, null, request, allowCritical ? _combatRandom : null);
         }
 
         internal void HandleEnemyKilled(SurvivorsEnemyActor enemy)
@@ -5534,6 +5568,16 @@ namespace Deucarian.TemplateGameSurvivors
                 source.IndexOf("combatant.survivors.enemy", StringComparison.Ordinal) < 0;
         }
 
+        private CombatSourceSnapshot CreateEnemyDamageSourceSnapshot(string source, bool applyAugments)
+        {
+            if (!applyAugments || !CanApplyDamageAugments(source) || CriticalChanceNormalized <= 0f)
+            {
+                return null;
+            }
+
+            return new CombatSourceSnapshot(CriticalChanceNormalized, CriticalDamageMultiplier);
+        }
+
         private void ApplyRelic(SurvivorsRelicDefinition relic)
         {
             if (relic == null)
@@ -5655,6 +5699,14 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.ExecuteEffect))
                 {
                     ExecuteThresholdNormalized = Mathf.Clamp01(ExecuteThresholdNormalized + (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalChanceEffect))
+                {
+                    CriticalChanceBonus = Mathf.Clamp01(CriticalChanceBonus + Mathf.Max(0f, (float)effect.Amount));
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalDamageEffect))
+                {
+                    CriticalDamageMultiplierBonus += Mathf.Max(0f, (float)effect.Amount);
                 }
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect))
                 {
@@ -6903,12 +6955,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return null;
             }
 
-            DamageRequest request = new DamageRequest(
-                _health.Id,
-                new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, amount) },
-                sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.player" : source),
-                preResolvedCritical: false);
-            DamageResolutionResult result = CombatDamageResolver.Resolve(_controller.CombatCatalog, _health, null, request);
+            DamageResolutionResult result = _controller.ResolveEnemyDamage(_health, amount, source, applyAugments);
             if (result != null)
             {
                 _controller.RecordEnemyDamageFeedback(this, result.Damage);
