@@ -18,9 +18,9 @@ Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCE
 
 The sample defaults to `SurvivorsPacingProfile.HumanPlaytest`.
 
-Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `3.35` seconds, an opening maximum of `10` alive enemies, basic enemy speed of `1.0` versus player speed of `5.4`, projectile speed of `6.6`, pickup attract range of `1.7`, and no reward-choice auto-pick timeout.
+Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `1.15` seconds, an opening maximum of `34` alive enemies, basic enemy speed of `1.35` versus player speed of `5.4`, projectile speed of `8.5`, pickup attract range of `2.5`, and no reward-choice auto-pick timeout.
 
-Escalation is intentionally gentle: max alive rises by `4` per minute, spawn interval drops by `0.14` seconds per minute, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, elites after about `300` seconds, and the miniboss waits until `420` seconds.
+Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, elites after about `300` seconds, and the miniboss waits until `180` seconds.
 
 ## What To Check
 
@@ -29,12 +29,12 @@ First 30 seconds:
 - The scene starts in Human Playtest, not Debug Fast.
 - Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
 - Runners should not appear until about 35 seconds.
-- Level-up choices should not spam instantly.
+- The first level-up draft should appear within about 30-60 seconds once the player moves through XP gems.
 - No console errors, missing scripts, missing materials, or missing package references should appear.
 
 After 2 minutes:
 
-- The run should have opened at least one readable level-up choice.
+- The run should have opened at least one readable level-up choice, and most runs should have resolved multiple draft picks if the player keeps collecting gems.
 - Runners and bruisers should be present, but the screen should still be understandable.
 - Rewards should stay open until you choose with mouse, `1`, `2`, or `3`.
 - Restart after defeat should still work with `R` or the restart button.
@@ -42,7 +42,7 @@ After 2 minutes:
 After 5 minutes:
 
 - Spitters should have joined the enemy mix.
-- The miniboss should not have arrived yet; it is scheduled around 7 minutes in Human Playtest.
+- The first miniboss should have appeared around 3 minutes and may have opened an elite reward draft.
 - The game should feel busier than the first minute without becoming immediate visual noise.
 
 ## Reset Save Data

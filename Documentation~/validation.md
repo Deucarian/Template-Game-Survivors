@@ -146,11 +146,11 @@ The timeout remains local template UI/runtime behavior. No production UI framewo
 Phase 3I adds human-readable pacing validation:
 
 - `SurvivorsPacingProfile.HumanPlaytest` is the default profile and keeps `Time.timeScale` at `1`.
-- Human Playtest opening spawns use a `3.35` second interval, `10` maximum alive enemies, `1.0` basic enemy speed against `5.4` player speed, readable `6.6` projectile speed, `1.7` pickup magnet range, and no reward timeout.
-- Human Playtest max alive rises by `4` per minute, the spawn interval drops by `0.14` seconds per minute, and the miniboss waits until `420` seconds.
+- Human Playtest opening spawns use a `1.15` second interval, `34` maximum alive enemies, `1.35` basic enemy speed against `5.4` player speed, readable `8.5` projectile speed, `2.5` pickup magnet range, and no reward timeout.
+- Human Playtest max alive rises by `8` about every `45` seconds, the spawn interval drops by `0.08` seconds per escalation, and the miniboss waits until `180` seconds.
 - `SurvivorsPacingProfile.Normal`, `SurvivorsPacingProfile.DebugFast`, and `SurvivorsPacingProfile.Showcase` are explicit profiles for validation and demo work, not sample defaults.
 - EditMode coverage checks Human Playtest readability thresholds and Debug Fast acceleration as opt-in tuning.
-- PlayMode coverage checks the controller starts in Human Playtest, reward choices wait for the player by default, and Debug Fast only appears through an explicit profile switch.
+- PlayMode coverage checks the controller starts in Human Playtest, the imported scene starts by path, the first draft can open within one minute, reward choices wait for the player by default, and Debug Fast only appears through an explicit profile switch.
 - PlayMode persistence coverage uses isolated in-memory save slots to prove normal start, Normal profile application, and run restart do not wipe meta progression, while explicit reset does wipe it.
 - `Documentation~/playtesting.md` documents the local playtest host project, renamed imported sample scene, timing expectations, explicit save reset, and Debug Fast workflow.
 

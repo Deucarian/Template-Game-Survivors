@@ -210,6 +210,35 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator OpeningHumanPlaytestCanOpenFirstDraftWithinOneMinute()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            const float deltaTime = 0.1f;
+            float elapsed = 0f;
+            int steps = 0;
+            while (elapsed < 60f && !controller.IsRunUpgradeDraftOpen)
+            {
+                Vector2 movement = new Vector2(Mathf.Sin(elapsed * 0.75f), Mathf.Cos(elapsed * 0.55f));
+                controller.Simulate(deltaTime, movement);
+                elapsed += deltaTime;
+                steps++;
+                if (steps % 10 == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            string openingState = $"elapsed={elapsed:0.0}s, kills={controller.KilledCount}, xpCollected={controller.ExperienceCollected}, xp={controller.Experience}/{controller.RequiredExperienceForNextLevel}, state={controller.State}";
+            Assert.IsTrue(controller.IsRunUpgradeDraftOpen, openingState);
+            Assert.That(elapsed, Is.LessThanOrEqualTo(60f), openingState);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count, openingState);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator LevelUpChoiceAutoSelectsAfterTimeout()
         {
             SurvivorsTemplateController controller = CreateController();
