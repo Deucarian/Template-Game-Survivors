@@ -167,6 +167,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ExperienceRequiredPerLevel = 5;
         public float StatusPoisonDurationSeconds = 4.5f;
         public float StatusBleedDurationSeconds = 5.5f;
+        public float EvolutionSurgeDamage = 28f;
+        public float EvolutionSurgeRadius = 6.2f;
         public float StartingBarrierCapacity = 8f;
         public float BaseBarrierRegenPerSecond = 0.12f;
         public int DraftChoiceCount = 3;

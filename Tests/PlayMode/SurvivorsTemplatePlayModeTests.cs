@@ -1118,11 +1118,24 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             float previousDamage = controller.DamageBonus;
             int previousChains = controller.ProjectileChainBonus;
             int previousForks = controller.ProjectileForkBonus;
+            controller.CurrentTuning.EvolutionSurgeDamage = 12f;
+            controller.CurrentTuning.EvolutionSurgeRadius = 4f;
+            SurvivorsEnemyActor surgeTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.4f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor surgeTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 2.2f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.8f, 0f, 1.6f), SurvivorsEnemyRole.Elite, 30f);
+            SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(6f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.AreEqual(1, controller.EvolutionReadyFeedbackCount);
 
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.AreEqual(1, controller.EvolvedWeaponCount);
+            Assert.AreEqual(1, controller.WeaponEvolutionSurgeCount);
+            Assert.AreEqual(2, controller.WeaponEvolutionSurgeHitCount);
+            Assert.That(controller.LastWeaponEvolutionSurgeFeedbackLabel, Does.Contain("Arcane Storm"));
+            Assert.IsFalse(surgeTargetA.IsAlive);
+            Assert.IsFalse(surgeTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.IsTrue(outsideTarget.IsAlive);
             Assert.That(controller.DamageBonus, Is.GreaterThan(previousDamage));
             Assert.That(controller.ProjectileChainBonus, Is.GreaterThan(previousChains));
             Assert.That(controller.ProjectileForkBonus, Is.GreaterThan(previousForks));

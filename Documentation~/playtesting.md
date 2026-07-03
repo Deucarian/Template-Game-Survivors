@@ -63,6 +63,7 @@ After 7 minutes:
 - The miniboss should call in a larger support ring near low health, making the fight briefly spike without hiding the health bar or reward flow.
 - The run should have a clear build direction from weapon ranks, passives, or branch mutations.
 - If a weapon path has reached its required rank and the matching passive is owned, the HUD should briefly announce Evolution Ready for that payoff.
+- Selecting an evolution should immediately fire a surge that hits nearby non-major enemies, then the evolved weapon behavior should be visible on subsequent attacks.
 
 After victory:
 

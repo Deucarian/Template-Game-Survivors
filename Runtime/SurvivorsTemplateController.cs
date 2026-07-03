@@ -271,6 +271,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorRewardCacheExperienceGemDropCount { get; private set; }
         public int MajorRewardCacheSpecialDropCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
+        public int WeaponEvolutionSurgeCount { get; private set; }
+        public int WeaponEvolutionSurgeHitCount { get; private set; }
+        public string LastWeaponEvolutionSurgeFeedbackLabel { get; private set; } = string.Empty;
         public int MajorThreatWarningCount { get; private set; }
         public int MajorThreatEnrageCount { get; private set; }
         public int MajorThreatEnrageSupportSpawnCount { get; private set; }
@@ -660,6 +663,9 @@ namespace Deucarian.TemplateGameSurvivors
             MinibossRewardGrantCount = 0;
             BossRewardGrantCount = 0;
             WeaponEvolutionFeedbackCount = 0;
+            WeaponEvolutionSurgeCount = 0;
+            WeaponEvolutionSurgeHitCount = 0;
+            LastWeaponEvolutionSurgeFeedbackLabel = string.Empty;
             EvolutionReadyFeedbackCount = 0;
             LastEvolutionReadyFeedbackLabel = string.Empty;
             BossRelicDraftOpenCount = 0;
@@ -3649,8 +3655,38 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 _ownedEvolutionUpgradeIds.Add(upgrade.Id.Value);
                 WeaponEvolutionFeedbackCount++;
-                PlayFeedback(_levelUpPulse, PlayerPosition, 72, _levelUpClip);
+                TriggerWeaponEvolutionSurge(upgrade);
             }
+        }
+
+        private void TriggerWeaponEvolutionSurge(RunUpgradeDefinition upgrade)
+        {
+            float radius = Mathf.Max(0f, CurrentTuning.EvolutionSurgeRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.EvolutionSurgeDamage);
+            string name = upgrade == null ? "Evolution" : BasicSurvivorsGame.GetUpgradeDisplayName(upgrade.Id);
+            int hitCount = 0;
+            if (radius > 0f && damage > 0f)
+            {
+                var targets = new List<SurvivorsEnemyActor>();
+                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    SurvivorsEnemyActor enemy = targets[i];
+                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+                    {
+                        continue;
+                    }
+
+                    enemy.ApplyDamage(damage, "survivors.evolution.surge");
+                    hitCount++;
+                }
+            }
+
+            WeaponEvolutionSurgeCount++;
+            WeaponEvolutionSurgeHitCount += hitCount;
+            LastWeaponEvolutionSurgeFeedbackLabel = $"{name} Surge: {hitCount} enemies hit";
+            RecordStreakRewardFeedback(LastWeaponEvolutionSurgeFeedbackLabel, new Color(0.72f, 0.42f, 1f));
+            PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(46 + hitCount * 5, 54, 96), _levelUpClip);
         }
 
         private void RecordNewlyEligibleEvolutionFeedback()
