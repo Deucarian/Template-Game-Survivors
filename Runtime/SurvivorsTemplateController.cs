@@ -933,6 +933,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             GUI.Label(new Rect(24, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 412 : 434, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
+            DrawBuildHudPanel();
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
@@ -2230,6 +2231,12 @@ namespace Deucarian.TemplateGameSurvivors
 
             AppendSelectedUpgradeRankLines(lines);
             return lines;
+        }
+
+        public IReadOnlyList<string> CurrentBuildHudLinesForTest()
+        {
+            EnsureRunStartedForTest();
+            return ResolveBuildHudSummaryLines();
         }
 
         public IReadOnlyList<string> DebugDescribeEligibleEvolutionPool()
@@ -10398,6 +10405,231 @@ namespace Deucarian.TemplateGameSurvivors
         private string ResolveBuildSlotHudLabel()
         {
             return $"Build W {ActiveWeaponCount}/{MaxWeaponSlots}   P {ActivePassiveCount}/{MaxPassiveSlots}   Evo {EvolvedWeaponCount}   Relic {SelectedRelicCount}/{ResolveTotalRelicCount()}";
+        }
+
+        private IReadOnlyList<string> ResolveBuildHudSummaryLines()
+        {
+            var lines = new List<string>(18)
+            {
+                $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}"
+            };
+
+            AppendWeaponBuildHudLines(lines);
+            lines.Add($"Passives {ActivePassiveCount}/{MaxPassiveSlots}");
+            AppendPassiveBuildHudLines(lines);
+            lines.Add($"Evolutions {EvolvedWeaponCount}");
+            AppendEvolutionBuildHudLines(lines);
+            lines.Add("Relics " + FormatSelectedRelicList());
+            return lines;
+        }
+
+        private void AppendWeaponBuildHudLines(List<string> lines)
+        {
+            if (lines == null)
+            {
+                return;
+            }
+
+            IReadOnlyList<string> weaponIds = ActiveWeaponIds;
+            if (weaponIds.Count == 0)
+            {
+                lines.Add("  none");
+                return;
+            }
+
+            for (int i = 0; i < weaponIds.Count; i++)
+            {
+                string weaponId = weaponIds[i];
+                var fragments = new List<string>(4);
+                int hidden = AppendBuildRankFragments(
+                    fragments,
+                    metadata => string.Equals(metadata.AffectedContentId, weaponId, StringComparison.Ordinal) &&
+                        (metadata.Category == SurvivorsRunUpgradeCategory.Weapon ||
+                            metadata.Category == SurvivorsRunUpgradeCategory.WeaponUpgrade ||
+                            metadata.Category == SurvivorsRunUpgradeCategory.Mutation),
+                    3);
+
+                if (hidden > 0)
+                {
+                    fragments.Add("+" + hidden.ToString());
+                }
+
+                string weaponName = ResolveWeaponBuildDisplayName(weaponId);
+                lines.Add(fragments.Count == 0
+                    ? "  " + weaponName
+                    : "  " + weaponName + ": " + string.Join(", ", fragments));
+            }
+        }
+
+        private void AppendPassiveBuildHudLines(List<string> lines)
+        {
+            if (lines == null)
+            {
+                return;
+            }
+
+            int added = 0;
+            AppendSelectedBuildRanks(
+                (definition, metadata, rank) =>
+                {
+                    if (metadata.Category != SurvivorsRunUpgradeCategory.Passive)
+                    {
+                        return;
+                    }
+
+                    added++;
+                    lines.Add("  " + FormatPassiveBuildHudLine(definition, metadata, rank));
+                });
+
+            if (added == 0)
+            {
+                lines.Add("  none");
+            }
+        }
+
+        private void AppendEvolutionBuildHudLines(List<string> lines)
+        {
+            if (lines == null)
+            {
+                return;
+            }
+
+            int added = 0;
+            AppendSelectedBuildRanks(
+                (definition, metadata, rank) =>
+                {
+                    if (metadata.Category != SurvivorsRunUpgradeCategory.Evolution)
+                    {
+                        return;
+                    }
+
+                    added++;
+                    lines.Add("  " + FormatBuildRankFragment(definition, rank));
+                });
+
+            if (added > 0)
+            {
+                return;
+            }
+
+            string objective = ResolveEvolutionObjectiveHudLabel();
+            lines.Add(string.IsNullOrWhiteSpace(objective) ? "  none" : "  " + objective);
+        }
+
+        private int AppendBuildRankFragments(List<string> fragments, Func<SurvivorsRunUpgradeMetadata, bool> matches, int maxFragments)
+        {
+            int hidden = 0;
+            AppendSelectedBuildRanks(
+                (definition, metadata, rank) =>
+                {
+                    if (matches == null || !matches(metadata))
+                    {
+                        return;
+                    }
+
+                    if (fragments != null && fragments.Count < maxFragments)
+                    {
+                        fragments.Add(FormatBuildRankFragment(definition, rank));
+                    }
+                    else
+                    {
+                        hidden++;
+                    }
+                });
+
+            return hidden;
+        }
+
+        private void AppendSelectedBuildRanks(Action<RunUpgradeDefinition, SurvivorsRunUpgradeMetadata, int> append)
+        {
+            if (append == null || _upgradeCatalog == null || _upgradeState == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                int rank = definition == null ? 0 : _upgradeState.GetRank(definition.Id);
+                if (rank <= 0 || !TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata))
+                {
+                    continue;
+                }
+
+                append(definition, metadata, rank);
+            }
+        }
+
+        private string ResolveWeaponBuildDisplayName(string weaponId)
+        {
+            if (_upgradeCatalog != null)
+            {
+                for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+                {
+                    RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                    if (definition == null ||
+                        !TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata) ||
+                        metadata.Category != SurvivorsRunUpgradeCategory.Weapon ||
+                        !string.Equals(metadata.AffectedContentId, weaponId, StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    return metadata.DisplayName;
+                }
+            }
+
+            return ShortWeaponName(weaponId);
+        }
+
+        private static string FormatBuildRankFragment(RunUpgradeDefinition definition, int rank)
+        {
+            if (definition == null)
+            {
+                return "Missing";
+            }
+
+            return $"{BasicSurvivorsGame.GetUpgradeDisplayName(definition.Id)} {rank}/{Mathf.Max(1, definition.MaxRank)}";
+        }
+
+        private static string FormatPassiveBuildHudLine(RunUpgradeDefinition definition, SurvivorsRunUpgradeMetadata metadata, int rank)
+        {
+            string line = FormatBuildRankFragment(definition, rank);
+            if (metadata == null || string.IsNullOrWhiteSpace(metadata.AffectedContentId))
+            {
+                return line;
+            }
+
+            return line + " - " + ShortWeaponName(metadata.AffectedContentId);
+        }
+
+        private void DrawBuildHudPanel()
+        {
+            float panelWidth = Mathf.Min(382f, Screen.width - 392f);
+            if (panelWidth < 300f)
+            {
+                return;
+            }
+
+            IReadOnlyList<string> lines = ResolveBuildHudSummaryLines();
+            int visibleLineCount = Mathf.Min(18, lines.Count);
+            float lineHeight = 19f;
+            float panelHeight = 42f + (visibleLineCount * lineHeight) + (lines.Count > visibleLineCount ? lineHeight : 0f);
+            Rect panel = new Rect(Screen.width - panelWidth - 12f, 12f, panelWidth, panelHeight);
+            GUI.Box(panel, string.Empty);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 8f, panel.width - 24f, 22f), "Current Build", _hudTitleStyle);
+
+            float y = panel.y + 34f;
+            for (int i = 0; i < visibleLineCount; i++)
+            {
+                GUI.Label(new Rect(panel.x + 12f, y, panel.width - 24f, lineHeight), lines[i], _hudSmallStyle);
+                y += lineHeight;
+            }
+
+            if (lines.Count > visibleLineCount)
+            {
+                GUI.Label(new Rect(panel.x + 12f, y, panel.width - 24f, lineHeight), "+" + (lines.Count - visibleLineCount).ToString() + " more", _hudSmallStyle);
+            }
         }
 
         private string ResolveWaystoneCompassHudLabel()

@@ -1479,6 +1479,38 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator BuildHudSummarizesOwnedWeaponsPassivesEvolutionsAndRelics()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+
+            Assert.IsTrue(controller.OpenBossRelicDraftForTest());
+            Assert.IsTrue(controller.SelectRelicForTest(0));
+
+            string buildHud = string.Join("\n", controller.CurrentBuildHudLinesForTest());
+            Assert.That(buildHud, Does.Contain("Weapons"));
+            Assert.That(buildHud, Does.Contain("Arcane Wand"));
+            Assert.That(buildHud, Does.Contain("Arcane Damage 5/"));
+            Assert.That(buildHud, Does.Contain("Passives"));
+            Assert.That(buildHud, Does.Contain("Arcane Thesis"));
+            Assert.That(buildHud, Does.Contain("Evolutions 1"));
+            Assert.That(buildHud, Does.Contain("Arcane Storm"));
+            Assert.That(buildHud, Does.Contain("Relics "));
+            Assert.That(buildHud, Does.Not.Contain("Relics none"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator BossRelicChoiceAutoSelectsAfterTimeout()
         {
             SurvivorsTemplateController controller = CreateController();
