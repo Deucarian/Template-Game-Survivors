@@ -407,6 +407,14 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.GemRushPickupRangeBonus, Is.GreaterThan(0f));
             Assert.That(tuning.EvolutionSurgeDamage, Is.GreaterThan(0f));
             Assert.That(tuning.EvolutionSurgeRadius, Is.InRange(4f, 8f));
+            Assert.That(tuning.EvolutionChainSurgeMinimumEvolutions, Is.GreaterThanOrEqualTo(2));
+            Assert.That(tuning.EvolutionChainSurgeDurationSeconds, Is.InRange(4f, 9f));
+            Assert.That(tuning.EvolutionChainSurgeDamageBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.EvolutionChainSurgeMoveSpeedBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.EvolutionChainSurgeCooldownMultiplierBonus, Is.LessThan(0f));
+            Assert.That(tuning.EvolutionChainSurgePickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.EvolutionChainSurgePulseDamage, Is.GreaterThan(0f));
+            Assert.That(tuning.EvolutionChainSurgePulseRadius, Is.InRange(4f, 7f));
             Assert.That(tuning.LevelUpPulseDamage, Is.GreaterThan(0f));
             Assert.That(tuning.LevelUpPulseRadius, Is.InRange(3f, 5f));
             Assert.That(tuning.LowHealthClutchPulseDamage, Is.GreaterThan(0f));

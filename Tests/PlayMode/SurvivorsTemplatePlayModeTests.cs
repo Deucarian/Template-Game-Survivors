@@ -2022,6 +2022,86 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator SecondWeaponEvolutionTriggersLegendSurge()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.EvolutionSurgeDamage = 0f;
+            controller.CurrentTuning.EvolutionChainSurgeMinimumEvolutions = 2;
+            controller.CurrentTuning.EvolutionChainSurgeDurationSeconds = 3f;
+            controller.CurrentTuning.EvolutionChainSurgeDamageBonus = 2f;
+            controller.CurrentTuning.EvolutionChainSurgeMoveSpeedBonus = 0.5f;
+            controller.CurrentTuning.EvolutionChainSurgeCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.EvolutionChainSurgePickupRangeBonus = 0.8f;
+            controller.CurrentTuning.EvolutionChainSurgePulseDamage = 10f;
+            controller.CurrentTuning.EvolutionChainSurgePulseRadius = 4f;
+            controller.StartRun();
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.AreEqual(1, controller.EvolvedWeaponCount);
+            Assert.AreEqual(0, controller.EvolutionChainSurgeActivationCount);
+            Assert.IsFalse(controller.IsEvolutionChainSurgeActive);
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostNeedleworkUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.3f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 2.2f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.8f, 0f, 0f), SurvivorsEnemyRole.Elite, 40f);
+            SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(5.2f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedElite);
+            Assert.NotNull(outsideTarget);
+
+            float damageBefore = controller.ProjectileDamage;
+            float moveBefore = controller.PlayerMoveSpeed;
+            float cooldownBefore = controller.WeaponCooldownSeconds;
+            float pickupBefore = controller.CurrentPickupAttractRange;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId));
+
+            Assert.AreEqual(2, controller.EvolvedWeaponCount);
+            Assert.AreEqual(1, controller.EvolutionChainSurgeActivationCount);
+            Assert.AreEqual(2, controller.EvolutionChainSurgePulseHitCount);
+            Assert.IsTrue(controller.IsEvolutionChainSurgeActive);
+            Assert.That(controller.EvolutionChainSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.LastEvolutionChainSurgeFeedbackLabel, Does.Contain("Blizzard Crown"));
+            Assert.That(controller.LastEvolutionChainSurgeFeedbackLabel, Does.Contain("2 evolutions"));
+            Assert.That(controller.LastEvolutionChainSurgeFeedbackLabel, Does.Contain("2 enemies hit"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Legend Surge"));
+            Assert.IsFalse(pulseTargetA.IsAlive);
+            Assert.IsFalse(pulseTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.IsTrue(outsideTarget.IsAlive);
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(damageBefore));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(moveBefore));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(cooldownBefore));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(pickupBefore));
+
+            float surgedDamage = controller.ProjectileDamage;
+            controller.Simulate(controller.CurrentTuning.EvolutionChainSurgeDurationSeconds + 0.2f);
+
+            Assert.IsFalse(controller.IsEvolutionChainSurgeActive);
+            Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ArcaneStormEvolutionAddsRadialBoltRing()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
