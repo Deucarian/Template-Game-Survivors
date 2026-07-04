@@ -58,6 +58,8 @@ namespace Deucarian.TemplateGameSurvivors
         private const float MajorRewardDropLifetimeSeconds = 1.25f;
         private const int MajorRewardDropEffectLimit = 8;
         private const float MajorRewardPickupCacheRadiusPadding = 0.55f;
+        private const int MajorThreatSlamTelegraphEffectLimit = 12;
+        private const float MajorThreatSlamTelegraphFadePaddingSeconds = 0.12f;
         private const float EnemyRangedAttackFeedbackLifetimeSeconds = 0.24f;
         private const int EnemyRangedAttackFeedbackLimit = 28;
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
@@ -97,6 +99,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsDamagePopup> _damagePopups = new List<SurvivorsDamagePopup>(DamagePopupLimit);
         private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
         private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
+        private readonly List<SurvivorsMajorThreatSlamTelegraphEffect> _majorThreatSlamTelegraphEffects = new List<SurvivorsMajorThreatSlamTelegraphEffect>(MajorThreatSlamTelegraphEffectLimit);
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
         private readonly List<string> _lastRunSummaryLines = new List<string>(8);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
@@ -298,6 +301,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorThreatSlamWarningCount { get; private set; }
         public int MajorThreatSlamCastCount { get; private set; }
         public int MajorThreatSlamHitCount { get; private set; }
+        public int MajorThreatSlamTelegraphEffectCount { get; private set; }
         public string LastMajorThreatSlamFeedbackLabel { get; private set; } = string.Empty;
         public int ExperiencePickupFeedbackCount { get; private set; }
         public int ExperienceComboFeedbackCount { get; private set; }
@@ -434,6 +438,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveEnemyDeathEffectCount => _worldFeedbackEffects.Count;
         public int ActiveEnemyRangedAttackFeedbackCount => _enemyRangedAttackFeedbackEffects.Count;
         public int ActiveMajorRewardDropFeedbackCount => _rewardDropFeedbackEffects.Count;
+        public int ActiveMajorThreatSlamTelegraphEffectCount => _majorThreatSlamTelegraphEffects.Count;
         public int ActiveMajorRewardCacheAttractedPickupCount
         {
             get
@@ -566,6 +571,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickDamagePopups(Time.deltaTime);
                 TickWorldFeedbackEffects(Time.deltaTime);
                 TickEnemyRangedAttackFeedbackEffects(Time.deltaTime);
+                TickMajorThreatSlamTelegraphEffects(Time.deltaTime);
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickStreakRewardFeedback(Time.deltaTime);
@@ -581,6 +587,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickDamagePopups(Time.deltaTime);
                 TickWorldFeedbackEffects(Time.deltaTime);
                 TickEnemyRangedAttackFeedbackEffects(Time.deltaTime);
+                TickMajorThreatSlamTelegraphEffects(Time.deltaTime);
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickStreakRewardFeedback(Time.deltaTime);
@@ -784,6 +791,7 @@ namespace Deucarian.TemplateGameSurvivors
             MajorThreatSlamWarningCount = 0;
             MajorThreatSlamCastCount = 0;
             MajorThreatSlamHitCount = 0;
+            MajorThreatSlamTelegraphEffectCount = 0;
             LastMajorThreatSlamFeedbackLabel = string.Empty;
             ExperiencePickupFeedbackCount = 0;
             ExperienceComboFeedbackCount = 0;
@@ -956,6 +964,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickDamagePopups(dt);
             TickWorldFeedbackEffects(dt);
             TickEnemyRangedAttackFeedbackEffects(dt);
+            TickMajorThreatSlamTelegraphEffects(dt);
             TickMajorRewardDropFeedbackEffects(dt);
             TickRewardFeedback(dt);
             TickStreakRewardFeedback(dt);
@@ -2527,6 +2536,8 @@ namespace Deucarian.TemplateGameSurvivors
                 : enemy.DisplayName;
             LastMajorThreatSlamFeedbackLabel = $"{name} winding slam";
             RecordStreakRewardFeedback(LastMajorThreatSlamFeedbackLabel, ResolveMajorThreatEnrageFeedbackColor(enemy.Role));
+            float radius = Mathf.Max(0.5f, CurrentTuning.MajorThreatSlamRadius + enemy.Radius * 0.35f);
+            RecordMajorThreatSlamTelegraphEffect(enemy.transform.position, enemy.Role, radius, CurrentTuning.MajorThreatSlamTelegraphSeconds);
             PlayFeedback(_bossPulse, enemy.transform.position, enemy.Role == SurvivorsEnemyRole.Boss ? 42 : 30, _dangerClip);
         }
 
@@ -3345,6 +3356,108 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void RecordMajorThreatSlamTelegraphEffect(Vector3 position, SurvivorsEnemyRole role, float radius, float durationSeconds)
+        {
+            if (_feedbackRoot == null)
+            {
+                return;
+            }
+
+            while (_majorThreatSlamTelegraphEffects.Count >= MajorThreatSlamTelegraphEffectLimit)
+            {
+                ReleaseMajorThreatSlamTelegraphEffect(0);
+            }
+
+            Color color = ResolveMajorThreatSlamTelegraphColor(role);
+            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            instance.name = "Survivors Major Threat Slam Telegraph";
+            instance.transform.SetParent(_feedbackRoot, false);
+            instance.transform.position = new Vector3(position.x, 0.115f, position.z);
+            float diameter = Mathf.Max(0.4f, radius * 2f);
+            Vector3 baseScale = new Vector3(diameter, 0.028f, diameter);
+            instance.transform.localScale = baseScale;
+
+            Collider collider = instance.GetComponent<Collider>();
+            if (collider != null)
+            {
+                ReleaseTemplateObject(collider);
+            }
+
+            Renderer renderer = instance.GetComponentInChildren<Renderer>();
+            Material material = ApplyColor(renderer, color);
+            float duration = Mathf.Max(0.08f, durationSeconds) + MajorThreatSlamTelegraphFadePaddingSeconds;
+            _majorThreatSlamTelegraphEffects.Add(new SurvivorsMajorThreatSlamTelegraphEffect(instance, material, color, baseScale, duration));
+            MajorThreatSlamTelegraphEffectCount++;
+        }
+
+        private void TickMajorThreatSlamTelegraphEffects(float deltaTime)
+        {
+            if (_majorThreatSlamTelegraphEffects.Count == 0)
+            {
+                return;
+            }
+
+            float dt = Mathf.Max(0f, deltaTime);
+            for (int i = _majorThreatSlamTelegraphEffects.Count - 1; i >= 0; i--)
+            {
+                SurvivorsMajorThreatSlamTelegraphEffect effect = _majorThreatSlamTelegraphEffects[i];
+                effect.ElapsedSeconds += dt;
+                if (effect.Instance == null || effect.ElapsedSeconds >= effect.DurationSeconds)
+                {
+                    ReleaseMajorThreatSlamTelegraphEffect(i);
+                    continue;
+                }
+
+                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / effect.DurationSeconds);
+                float charge = Mathf.Lerp(0.58f, 1.05f, normalizedAge);
+                float pulse = 1f + Mathf.Sin(effect.ElapsedSeconds * 26f) * 0.06f;
+                effect.Instance.transform.localScale = effect.BaseScale * Mathf.Max(0.45f, charge * pulse);
+                if (effect.Material != null)
+                {
+                    Color color = effect.Color;
+                    color.a = Mathf.Lerp(0.82f, 0.22f, normalizedAge);
+                    effect.Material.color = color;
+                }
+
+                _majorThreatSlamTelegraphEffects[i] = effect;
+            }
+        }
+
+        private void ReleaseMajorThreatSlamTelegraphEffect(int index)
+        {
+            if (index < 0 || index >= _majorThreatSlamTelegraphEffects.Count)
+            {
+                return;
+            }
+
+            SurvivorsMajorThreatSlamTelegraphEffect effect = _majorThreatSlamTelegraphEffects[index];
+            _majorThreatSlamTelegraphEffects.RemoveAt(index);
+            if (effect.Material != null)
+            {
+                ReleaseTemplateObject(effect.Material);
+            }
+
+            if (effect.Instance != null)
+            {
+                ReleaseTemplateObject(effect.Instance);
+            }
+        }
+
+        private static Color ResolveMajorThreatSlamTelegraphColor(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Boss:
+                    return new Color(1f, 0.1f, 0.5f, 0.82f);
+                case SurvivorsEnemyRole.Miniboss:
+                    return new Color(1f, 0.38f, 0.14f, 0.8f);
+                case SurvivorsEnemyRole.DreadElite:
+                    return new Color(0.42f, 0.88f, 1f, 0.78f);
+                default:
+                    return new Color(1f, 0.62f, 0.18f, 0.76f);
+            }
+        }
+
         private void RecordMajorRewardDropFeedback(Vector3 position, SurvivorsEnemyRole role, float radius)
         {
             if (_feedbackRoot == null)
@@ -3546,6 +3659,11 @@ namespace Deucarian.TemplateGameSurvivors
             while (_enemyRangedAttackFeedbackEffects.Count > 0)
             {
                 ReleaseEnemyRangedAttackFeedbackEffect(_enemyRangedAttackFeedbackEffects.Count - 1);
+            }
+
+            while (_majorThreatSlamTelegraphEffects.Count > 0)
+            {
+                ReleaseMajorThreatSlamTelegraphEffect(_majorThreatSlamTelegraphEffects.Count - 1);
             }
 
             while (_rewardDropFeedbackEffects.Count > 0)
@@ -7433,6 +7551,26 @@ namespace Deucarian.TemplateGameSurvivors
             public Material Material { get; }
             public Color Color { get; }
             public Vector3 BaseScale { get; }
+            public float ElapsedSeconds;
+        }
+
+        private struct SurvivorsMajorThreatSlamTelegraphEffect
+        {
+            public SurvivorsMajorThreatSlamTelegraphEffect(GameObject instance, Material material, Color color, Vector3 baseScale, float durationSeconds)
+            {
+                Instance = instance;
+                Material = material;
+                Color = color;
+                BaseScale = baseScale;
+                DurationSeconds = Mathf.Max(0.08f, durationSeconds);
+                ElapsedSeconds = 0f;
+            }
+
+            public GameObject Instance { get; }
+            public Material Material { get; }
+            public Color Color { get; }
+            public Vector3 BaseScale { get; }
+            public float DurationSeconds { get; }
             public float ElapsedSeconds;
         }
 

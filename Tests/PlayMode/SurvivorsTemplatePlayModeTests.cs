@@ -2544,6 +2544,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.MajorThreatSlamWarningCount);
             Assert.AreEqual(0, controller.MajorThreatSlamCastCount);
             Assert.AreEqual(0, controller.MajorThreatSlamHitCount);
+            Assert.AreEqual(1, controller.MajorThreatSlamTelegraphEffectCount);
+            Assert.AreEqual(1, controller.ActiveMajorThreatSlamTelegraphEffectCount);
             Assert.AreEqual(healthBeforeTelegraph, controller.CurrentHealth);
             Assert.That(controller.LastMajorThreatSlamFeedbackLabel, Does.Contain("winding slam"));
             Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("winding slam"));
@@ -2555,6 +2557,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.MajorThreatSlamHitCount);
             Assert.That(controller.CurrentHealth, Is.LessThan(healthBeforeTelegraph));
             Assert.That(controller.LastMajorThreatSlamFeedbackLabel, Does.Contain("slam hit"));
+            Assert.AreEqual(1, controller.ActiveMajorThreatSlamTelegraphEffectCount);
+
+            controller.CurrentTuning.MajorThreatSlamRadius = 0.1f;
+            controller.Simulate(0.2f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveMajorThreatSlamTelegraphEffectCount);
 
             Object.Destroy(controller.gameObject);
         }

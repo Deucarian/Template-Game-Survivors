@@ -51,7 +51,7 @@ Phase 2P adds validation for:
 - timed miniboss and boss spawn smoke
 - miniboss death and XP drop smoke
 - ranged enemy attack feedback and player-damage smoke
-- major reward drop feedback and cache-pull pickup bursts for elite, miniboss, dread elite, and boss kills
+- major reward drop feedback, cache-pull pickup bursts, and slam ground telegraphs for elite, miniboss, dread elite, and boss kills
 - boss death and victory trigger smoke
 - survival-duration victory smoke
 - existing defeat/restart flow
