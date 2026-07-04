@@ -113,6 +113,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _announcedEvolutionReadyUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _selectedRelicIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly List<SurvivorsRelicDefinition> _selectedRelics = new List<SurvivorsRelicDefinition>(8);
         private Transform _worldRoot;
         private Transform _prefabRoot;
         private Transform _arenaTileRoot;
@@ -715,6 +716,7 @@ namespace Deucarian.TemplateGameSurvivors
             _ownedPassiveUpgradeIds.Clear();
             _ownedEvolutionUpgradeIds.Clear();
             _selectedRelicIds.Clear();
+            _selectedRelics.Clear();
             _playerHealth = new HealthState(new CombatantId("combatant.survivors.player"), resolved.PlayerMaxHealth, resolved.PlayerMaxHealth);
             Level = 1;
             Experience = 0;
@@ -1738,6 +1740,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
+                $"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}",
                 $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
@@ -4798,7 +4801,7 @@ namespace Deucarian.TemplateGameSurvivors
             string result = victory ? "Victory" : "Defeat";
             _lastRunSummaryLines.Add($"{result} - {FormatRunTime(RunTimeSeconds)} - Level {Level}");
             _lastRunSummaryLines.Add($"Kills {KilledCount} - Best Streak {BestKillStreak} - Bosses {BossKilledCount}");
-            _lastRunSummaryLines.Add($"Build {ActiveWeaponCount}/{MaxWeaponSlots} weapons, {ActivePassiveCount}/{MaxPassiveSlots} passives, {EvolvedWeaponCount} evolutions");
+            _lastRunSummaryLines.Add($"Build {ActiveWeaponCount}/{MaxWeaponSlots} weapons, {ActivePassiveCount}/{MaxPassiveSlots} passives, {EvolvedWeaponCount} evolutions, {SelectedRelicCount}/{ResolveTotalRelicCount()} relics");
             _lastRunSummaryLines.Add($"Rewards +{BloodShardsEarnedThisRun} shards, +{LegacyExperienceEarnedThisRun} XP");
             _lastRunSummaryLines.Add($"Meta {MetaBloodShards} shards banked, {LifetimeLegacyExperience} lifetime XP");
             if (ClassUnlockRewardCount > 0)
@@ -6417,6 +6420,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             ApplyRelic(selected);
             SelectedRelicCount++;
+            _selectedRelics.Add(selected);
             RecordRelicSelectionFeedback(selected);
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
@@ -7596,7 +7600,41 @@ namespace Deucarian.TemplateGameSurvivors
 
         private string ResolveBuildSlotHudLabel()
         {
-            return $"Build W {ActiveWeaponCount}/{MaxWeaponSlots}   P {ActivePassiveCount}/{MaxPassiveSlots}   Evo {EvolvedWeaponCount}";
+            return $"Build W {ActiveWeaponCount}/{MaxWeaponSlots}   P {ActivePassiveCount}/{MaxPassiveSlots}   Evo {EvolvedWeaponCount}   Relic {SelectedRelicCount}/{ResolveTotalRelicCount()}";
+        }
+
+        private int ResolveTotalRelicCount()
+        {
+            return _relicDefinitions == null ? 0 : _relicDefinitions.Count;
+        }
+
+        private string FormatSelectedRelicList()
+        {
+            if (_selectedRelics.Count == 0)
+            {
+                return "none";
+            }
+
+            const int maxShown = 3;
+            string label = string.Empty;
+            int shown = Mathf.Min(maxShown, _selectedRelics.Count);
+            for (int i = 0; i < shown; i++)
+            {
+                if (i > 0)
+                {
+                    label += ", ";
+                }
+
+                SurvivorsRelicDefinition relic = _selectedRelics[i];
+                label += relic == null || string.IsNullOrWhiteSpace(relic.DisplayName) ? "Unknown Relic" : relic.DisplayName;
+            }
+
+            if (_selectedRelics.Count > shown)
+            {
+                label += " +" + (_selectedRelics.Count - shown).ToString();
+            }
+
+            return label;
         }
 
         private string ResolveRunPhaseHudLabel()

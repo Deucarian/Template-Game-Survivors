@@ -2805,6 +2805,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.IsTrue(controller.OpenBossRelicDraftForTest());
+            SurvivorsRelicDefinition selectedRelic = controller.CurrentRelicChoices[0];
             float previousRelicDamage = controller.RelicDamageBonus;
             float previousRelicCooldown = controller.RelicCooldownMultiplierBonus;
             float previousRelicPickup = controller.RelicPickupRangeBonus;
@@ -2822,6 +2823,16 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.RewardSelectionFeedbackCount);
             Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Boss Relic"));
             Assert.That(controller.ActiveRewardFeedbackLabel, Does.Contain("Boss Relic"));
+            string buildSummary = string.Join("\n", controller.DebugDescribeCurrentBuild());
+            Assert.That(buildSummary, Does.Contain("Relics 1/"));
+            Assert.That(buildSummary, Does.Contain(selectedRelic.DisplayName));
+
+            controller.KillPlayerForTest();
+            yield return null;
+
+            string runSummary = string.Join("\n", controller.LastRunSummaryLines);
+            Assert.That(runSummary, Does.Contain("1/"));
+            Assert.That(runSummary, Does.Contain("relics"));
 
             Object.Destroy(controller.gameObject);
         }

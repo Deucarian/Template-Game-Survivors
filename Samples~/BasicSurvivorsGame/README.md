@@ -23,7 +23,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - The HUD shows current weapon slots, passive slots, and evolved weapon count so build pressure is visible during the run.
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary, then drop visible reward caches whose pickups pulse and pull inward once the reward moment resolves.
 - Elite defeat opens a stronger upgrade reward draft; miniboss defeat opens that stronger upgrade reward and then chains into a boss relic draft.
-- Boss relic picks are unique within the current run, so later relic drafts remove anything already claimed and simply resume play if the collection is exhausted.
+- Boss relic picks are unique within the current run, so later relic drafts remove anything already claimed and simply resume play if the collection is exhausted. The build HUD and result summary show the current relic count.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
 - Mid-run level-up drafts guarantee one Rare-or-better choice when eligible, and late-run drafts guarantee one Epic-or-better choice when eligible.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
