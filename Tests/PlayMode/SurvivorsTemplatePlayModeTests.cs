@@ -1331,8 +1331,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.RoamingCacheSurgeMoveSpeedBonus = 0.5f;
             controller.CurrentTuning.RoamingCacheSurgeCooldownMultiplierBonus = -0.1f;
             controller.CurrentTuning.RoamingCacheSurgePickupRangeBonus = 0.8f;
+            controller.CurrentTuning.RoamingCacheSurgePulseDamage = 10f;
+            controller.CurrentTuning.RoamingCacheSurgePulseRadius = 3.5f;
             controller.StartRun();
             yield return null;
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8.1f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8.6f, 0f, 0.75f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8.3f, 0f, -0.75f), SurvivorsEnemyRole.Elite, 25f);
 
             float startingDamage = controller.ProjectileDamage;
             float startingCooldown = controller.WeaponCooldownSeconds;
@@ -1345,6 +1350,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.RoamingCacheDropCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(controller.RoamingCacheSurgeActivationCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.RoamingCacheSurgeBonusExperienceGemDropCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.RoamingCacheSurgePulseHitCount, Is.GreaterThanOrEqualTo(2));
+            Assert.IsFalse(pulseTargetA.IsAlive);
+            Assert.IsFalse(pulseTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
             Assert.IsTrue(controller.IsRoamingCacheSurgeActive);
             Assert.That(controller.RoamingCacheSurgeRemainingSeconds, Is.GreaterThan(0f));
             Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
@@ -1353,6 +1362,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
             Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Wayfinder Surge"));
             Assert.That(controller.LastRoamingCacheSurgeFeedbackLabel, Does.Contain("Wayfinder Surge"));
+            Assert.That(controller.LastRoamingCacheSurgeFeedbackLabel, Does.Contain("enemies hit"));
             Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Wayfinder Surge"));
 
             Object.Destroy(controller.gameObject);

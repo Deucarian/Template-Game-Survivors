@@ -373,6 +373,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.RoamingCacheSurgeMoveSpeedBonus, Is.GreaterThan(0f));
             Assert.That(tuning.RoamingCacheSurgeCooldownMultiplierBonus, Is.LessThan(0f));
             Assert.That(tuning.RoamingCacheSurgePickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.RoamingCacheSurgePulseDamage, Is.GreaterThan(0f));
+            Assert.That(tuning.RoamingCacheSurgePulseRadius, Is.InRange(3f, 6f));
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
             Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
@@ -504,11 +506,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(human.roamingCacheSurgeMoveSpeedBonus, Is.GreaterThan(0f));
             Assert.That(human.roamingCacheSurgeCooldownMultiplierBonus, Is.LessThan(0f));
             Assert.That(human.roamingCacheSurgePickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(human.roamingCacheSurgePulseDamage, Is.GreaterThan(0f));
+            Assert.That(human.roamingCacheSurgePulseRadius, Is.InRange(3f, 6f));
             Assert.That(debugFast.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
             Assert.That(debugFast.roamingCacheSurgeBonusGemCount, Is.GreaterThanOrEqualTo(human.roamingCacheSurgeBonusGemCount));
             Assert.That(debugFast.roamingCacheSurgeDamageBonus, Is.GreaterThan(human.roamingCacheSurgeDamageBonus));
+            Assert.That(debugFast.roamingCacheSurgePulseDamage, Is.GreaterThan(human.roamingCacheSurgePulseDamage));
             Assert.That(showcase.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
             Assert.That(showcase.roamingCacheSurgePickupRangeBonus, Is.GreaterThan(human.roamingCacheSurgePickupRangeBonus));
+            Assert.That(showcase.roamingCacheSurgePulseRadius, Is.GreaterThan(human.roamingCacheSurgePulseRadius));
         }
 
         [Test]
@@ -608,7 +614,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";
             string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
-            string runFlowJson = "{\"profiles\":[{\"id\":\"HumanPlaytest\",\"enemySpawnIntervalSeconds\":0,\"enemyMaximumAlive\":0,\"enemySpawnPackBaseCount\":3,\"enemySpawnPackMaxCount\":2,\"escalationIntervalSeconds\":0,\"minimumEnemySpawnIntervalSeconds\":0,\"enemySpawnIntervalReductionPerEscalation\":-1,\"enemyMaximumAliveIncreasePerEscalation\":-1,\"enemyHealthMultiplierPerEscalation\":0,\"enemyMoveSpeedMultiplierPerEscalation\":0,\"enemyExperienceMultiplierPerEscalation\":0,\"firstEliteSpawnTimeSeconds\":-1,\"eliteSpawnIntervalSeconds\":0,\"firstDreadEliteSpawnTimeSeconds\":-2,\"dreadEliteSpawnIntervalSeconds\":0,\"minibossSpawnTimeSeconds\":4,\"bossSpawnTimeSeconds\":3,\"survivalVictoryTimeSeconds\":2,\"hordeRushFirstTimeSeconds\":0,\"hordeRushIntervalSeconds\":0,\"hordeRushWarningLeadSeconds\":0,\"hordeRushBaseEnemyCount\":0,\"hordeRushMaxEnemyCount\":0,\"roamingCacheTravelInterval\":0,\"roamingCacheExperienceGemCount\":0,\"roamingCacheSurgeInterval\":0,\"roamingCacheSurgeBonusGemCount\":0,\"roamingCacheSurgeDurationSeconds\":0,\"roamingCacheSurgeDamageBonus\":0,\"roamingCacheSurgeMoveSpeedBonus\":0,\"roamingCacheSurgeCooldownMultiplierBonus\":0,\"roamingCacheSurgePickupRangeBonus\":0,\"draftChoiceCount\":0,\"maxWeaponSlots\":0,\"maxPassiveSlots\":0,\"draftMidRarityLevel\":3,\"draftLateRarityLevel\":2,\"rarityTables\":[{\"id\":\"NormalEarly\",\"common\":0,\"uncommon\":1,\"rare\":1,\"epic\":0,\"legendary\":1},{\"id\":\"NormalMid\",\"common\":1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":2},{\"id\":\"Elite\",\"common\":5,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":1,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":0,\"rare\":1,\"epic\":1,\"legendary\":1},{\"id\":\"Broken\",\"common\":-1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0}],\"endlessEliteSpawnIntervalSeconds\":0,\"endlessMinibossSpawnIntervalSeconds\":0,\"endlessBossSpawnIntervalSeconds\":0}]}";
+            string runFlowJson = "{\"profiles\":[{\"id\":\"HumanPlaytest\",\"enemySpawnIntervalSeconds\":0,\"enemyMaximumAlive\":0,\"enemySpawnPackBaseCount\":3,\"enemySpawnPackMaxCount\":2,\"escalationIntervalSeconds\":0,\"minimumEnemySpawnIntervalSeconds\":0,\"enemySpawnIntervalReductionPerEscalation\":-1,\"enemyMaximumAliveIncreasePerEscalation\":-1,\"enemyHealthMultiplierPerEscalation\":0,\"enemyMoveSpeedMultiplierPerEscalation\":0,\"enemyExperienceMultiplierPerEscalation\":0,\"firstEliteSpawnTimeSeconds\":-1,\"eliteSpawnIntervalSeconds\":0,\"firstDreadEliteSpawnTimeSeconds\":-2,\"dreadEliteSpawnIntervalSeconds\":0,\"minibossSpawnTimeSeconds\":4,\"bossSpawnTimeSeconds\":3,\"survivalVictoryTimeSeconds\":2,\"hordeRushFirstTimeSeconds\":0,\"hordeRushIntervalSeconds\":0,\"hordeRushWarningLeadSeconds\":0,\"hordeRushBaseEnemyCount\":0,\"hordeRushMaxEnemyCount\":0,\"roamingCacheTravelInterval\":0,\"roamingCacheExperienceGemCount\":0,\"roamingCacheSurgeInterval\":0,\"roamingCacheSurgeBonusGemCount\":0,\"roamingCacheSurgeDurationSeconds\":0,\"roamingCacheSurgeDamageBonus\":0,\"roamingCacheSurgeMoveSpeedBonus\":0,\"roamingCacheSurgeCooldownMultiplierBonus\":0,\"roamingCacheSurgePickupRangeBonus\":0,\"roamingCacheSurgePulseDamage\":0,\"roamingCacheSurgePulseRadius\":0,\"draftChoiceCount\":0,\"maxWeaponSlots\":0,\"maxPassiveSlots\":0,\"draftMidRarityLevel\":3,\"draftLateRarityLevel\":2,\"rarityTables\":[{\"id\":\"NormalEarly\",\"common\":0,\"uncommon\":1,\"rare\":1,\"epic\":0,\"legendary\":1},{\"id\":\"NormalMid\",\"common\":1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":2},{\"id\":\"Elite\",\"common\":5,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":1,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":0,\"rare\":1,\"epic\":1,\"legendary\":1},{\"id\":\"Broken\",\"common\":-1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0}],\"endlessEliteSpawnIntervalSeconds\":0,\"endlessMinibossSpawnIntervalSeconds\":0,\"endlessBossSpawnIntervalSeconds\":0}]}";
 
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, runFlowJson: runFlowJson);
             string errors = string.Join(Environment.NewLine, result.Errors);
@@ -1383,6 +1389,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             public float roamingCacheSurgeMoveSpeedBonus;
             public float roamingCacheSurgeCooldownMultiplierBonus;
             public float roamingCacheSurgePickupRangeBonus;
+            public float roamingCacheSurgePulseDamage;
+            public float roamingCacheSurgePulseRadius;
         }
     }
 }

@@ -200,6 +200,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float RoamingCacheSurgeMoveSpeedBonus = 0.28f;
         public float RoamingCacheSurgeCooldownMultiplierBonus = -0.05f;
         public float RoamingCacheSurgePickupRangeBonus = 0.55f;
+        public float RoamingCacheSurgePulseDamage = 14f;
+        public float RoamingCacheSurgePulseRadius = 4.25f;
         public int HealthPickupHealAmount = 10;
         public int BloodShardPickupAmount = 1;
         public int ExperienceRequiredBase = 8;
@@ -674,6 +676,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheSurgeDamageBonus = 1.8f;
             tuning.RoamingCacheSurgeMoveSpeedBonus = 0.38f;
             tuning.RoamingCacheSurgePickupRangeBonus = 0.75f;
+            tuning.RoamingCacheSurgePulseDamage = 20f;
+            tuning.RoamingCacheSurgePulseRadius = 4.8f;
             tuning.HealthPickupHealAmount = 14;
             tuning.BloodShardPickupAmount = 2;
             tuning.ExperienceRequiredBase = 3;
@@ -766,6 +770,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheSurgeBonusGemCount = 3;
             tuning.RoamingCacheSurgeMoveSpeedBonus = 0.34f;
             tuning.RoamingCacheSurgePickupRangeBonus = 0.65f;
+            tuning.RoamingCacheSurgePulseDamage = 16f;
+            tuning.RoamingCacheSurgePulseRadius = 4.5f;
             tuning.HealthPickupHealAmount = 12;
             tuning.BloodShardPickupAmount = 1;
             tuning.ExperienceRequiredBase = 5;

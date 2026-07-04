@@ -345,6 +345,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int RoamingCacheAmbushClearExperienceGemDropCount { get; private set; }
         public int RoamingCacheSurgeActivationCount { get; private set; }
         public int RoamingCacheSurgeBonusExperienceGemDropCount { get; private set; }
+        public int RoamingCacheSurgePulseHitCount { get; private set; }
         public string LastRoamingCacheFeedbackLabel { get; private set; } = string.Empty;
         public string LastRoamingCacheAmbushClearFeedbackLabel { get; private set; } = string.Empty;
         public string LastRoamingCacheSurgeFeedbackLabel { get; private set; } = string.Empty;
@@ -851,6 +852,7 @@ namespace Deucarian.TemplateGameSurvivors
             RoamingCacheAmbushClearExperienceGemDropCount = 0;
             RoamingCacheSurgeActivationCount = 0;
             RoamingCacheSurgeBonusExperienceGemDropCount = 0;
+            RoamingCacheSurgePulseHitCount = 0;
             LastRoamingCacheFeedbackLabel = string.Empty;
             LastRoamingCacheAmbushClearFeedbackLabel = string.Empty;
             LastRoamingCacheSurgeFeedbackLabel = string.Empty;
@@ -5062,8 +5064,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             int ambushSpawned = SpawnRoamingArenaCacheAmbush(origin, forward, side, nextCacheNumber);
-            int surgeExperience = TryActivateRoamingCacheSurge(nextCacheNumber, origin, forward, side, xpPerGem);
-            if (spawnedExperience <= 0 && !spawnedMagnet && !spawnedBloodShard && ambushSpawned <= 0 && surgeExperience <= 0)
+            int surgeExperience = TryActivateRoamingCacheSurge(nextCacheNumber, origin, forward, side, xpPerGem, out int surgeHitCount);
+            if (spawnedExperience <= 0 && !spawnedMagnet && !spawnedBloodShard && ambushSpawned <= 0 && surgeExperience <= 0 && surgeHitCount <= 0)
             {
                 return;
             }
@@ -5085,17 +5087,18 @@ namespace Deucarian.TemplateGameSurvivors
                 label += $" + Ambush x{ambushSpawned}";
             }
 
-            if (surgeExperience > 0)
+            if (surgeExperience > 0 || surgeHitCount > 0)
             {
-                label += $" + Wayfinder Surge (+{surgeExperience} XP)";
+                label += $" + Wayfinder Surge (+{surgeExperience} XP, {surgeHitCount} hit)";
             }
 
             LastRoamingCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.35f, 0.9f, 1f));
         }
 
-        private int TryActivateRoamingCacheSurge(int cacheNumber, Vector3 origin, Vector3 forward, Vector3 side, int xpPerGem)
+        private int TryActivateRoamingCacheSurge(int cacheNumber, Vector3 origin, Vector3 forward, Vector3 side, int xpPerGem, out int pulseHitCount)
         {
+            pulseHitCount = 0;
             if (!ShouldTriggerRoamingCacheCadence(cacheNumber, CurrentTuning.RoamingCacheSurgeInterval))
             {
                 return 0;
@@ -5119,8 +5122,36 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            LastRoamingCacheSurgeFeedbackLabel = $"Wayfinder Surge: +{spawnedExperience} XP";
+            pulseHitCount = TriggerRoamingCacheSurgePulse(center);
+            LastRoamingCacheSurgeFeedbackLabel = $"Wayfinder Surge: +{spawnedExperience} XP, {pulseHitCount} enemies hit";
             return spawnedExperience;
+        }
+
+        private int TriggerRoamingCacheSurgePulse(Vector3 center)
+        {
+            float radius = Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePulseRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePulseDamage);
+            int hitCount = 0;
+            if (radius > 0f && damage > 0f)
+            {
+                var targets = new List<SurvivorsEnemyActor>();
+                CollectEnemiesWithinRadius(center, radius, targets);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    SurvivorsEnemyActor enemy = targets[i];
+                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+                    {
+                        continue;
+                    }
+
+                    enemy.ApplyDamage(damage, "survivors.roaming-cache.surge");
+                    hitCount++;
+                }
+            }
+
+            RoamingCacheSurgePulseHitCount += hitCount;
+            PlayFeedback(_levelUpPulse, center, Mathf.Clamp(32 + hitCount * 4, 40, 80), _pickupClip);
+            return hitCount;
         }
 
         private int SpawnRoamingArenaCacheAmbush(Vector3 origin, Vector3 forward, Vector3 side, int cacheNumber)

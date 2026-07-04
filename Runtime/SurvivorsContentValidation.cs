@@ -1683,6 +1683,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             ValidatePositive(profileId, "roaming cache surge pickup range bonus", profile.roamingCacheSurgePickupRangeBonus, result);
+            ValidatePositive(profileId, "roaming cache surge pulse damage", profile.roamingCacheSurgePulseDamage, result);
+            ValidatePositive(profileId, "roaming cache surge pulse radius", profile.roamingCacheSurgePulseRadius, result);
             ValidatePositive(profileId, "draft choice count", profile.draftChoiceCount, result);
             ValidatePositive(profileId, "max weapon slots", profile.maxWeaponSlots, result);
             ValidatePositive(profileId, "max passive slots", profile.maxPassiveSlots, result);
@@ -2660,6 +2662,8 @@ namespace Deucarian.TemplateGameSurvivors
             public float roamingCacheSurgeMoveSpeedBonus;
             public float roamingCacheSurgeCooldownMultiplierBonus;
             public float roamingCacheSurgePickupRangeBonus;
+            public float roamingCacheSurgePulseDamage;
+            public float roamingCacheSurgePulseRadius;
             public int draftChoiceCount;
             public int maxWeaponSlots;
             public int maxPassiveSlots;
