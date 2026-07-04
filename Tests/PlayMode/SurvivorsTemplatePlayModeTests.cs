@@ -781,6 +781,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.HordeRushClearExperienceGemCount = 4;
             controller.CurrentTuning.HordeRushClearMagnetEveryRush = 1;
             controller.CurrentTuning.HordeRushClearBloodShardEveryRush = 1;
+            controller.CurrentTuning.HordeRushClearPulseDamage = 8f;
+            controller.CurrentTuning.HordeRushClearPulseRadius = 12f;
             controller.StartRun();
 
             Assert.AreEqual(0, controller.HordeRushSpawnCount);
@@ -808,17 +810,27 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LastStreakRewardFeedbackLabel, Does.Contain("Horde Rush"));
             Assert.That(controller.NextHordeRushTimeSecondsForTest, Is.GreaterThan(controller.RunTimeSeconds));
 
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.2f, 0f, 0f), SurvivorsEnemyRole.Swarm, 6f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(-1.2f, 0f, 0f), SurvivorsEnemyRole.Runner, 6f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 1.7f), SurvivorsEnemyRole.Elite, 30f);
             int pickupCountBeforeClear = controller.ActivePickupCount;
             Assert.AreEqual(6, controller.KillActiveHordeRushEnemiesForTest());
             yield return null;
 
             Assert.AreEqual(0, controller.ActiveHordeRushEnemyCount);
-            Assert.AreEqual(activeBeforeRush, controller.ActiveEnemyCount);
+            Assert.That(controller.ActiveEnemyCount, Is.LessThanOrEqualTo(activeBeforeRush + 1));
             Assert.AreEqual(1, controller.HordeRushClearRewardCount);
             Assert.AreEqual(4, controller.HordeRushClearExperienceGemDropCount);
             Assert.AreEqual(2, controller.HordeRushClearSpecialDropCount);
+            Assert.AreEqual(1, controller.HordeRushClearPulseCount);
+            Assert.That(controller.HordeRushClearPulseHitCount, Is.GreaterThanOrEqualTo(2));
+            Assert.IsFalse(pulseTargetA.IsAlive);
+            Assert.IsFalse(pulseTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(pickupCountBeforeClear + 12));
             Assert.That(controller.LastHordeRushClearFeedbackLabel, Does.Contain("Cleared"));
+            Assert.That(controller.LastHordeRushClearFeedbackLabel, Does.Contain("Breaker Pulse"));
+            Assert.That(controller.LastHordeRushClearPulseFeedbackLabel, Does.Contain("enemies hit"));
             Assert.That(controller.LastHordeRushFeedbackLabel, Does.Contain("Cleared"));
 
             Object.Destroy(controller.gameObject);

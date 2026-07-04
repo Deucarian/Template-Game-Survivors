@@ -278,8 +278,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int HordeRushClearRewardCount { get; private set; }
         public int HordeRushClearExperienceGemDropCount { get; private set; }
         public int HordeRushClearSpecialDropCount { get; private set; }
+        public int HordeRushClearPulseCount { get; private set; }
+        public int HordeRushClearPulseHitCount { get; private set; }
         public string LastHordeRushFeedbackLabel { get; private set; } = string.Empty;
         public string LastHordeRushClearFeedbackLabel { get; private set; } = string.Empty;
+        public string LastHordeRushClearPulseFeedbackLabel { get; private set; } = string.Empty;
         public int DraftRerollCount { get; private set; }
         public int DraftBanishCount { get; private set; }
         public int DraftSkipCount { get; private set; }
@@ -804,8 +807,11 @@ namespace Deucarian.TemplateGameSurvivors
             HordeRushClearRewardCount = 0;
             HordeRushClearExperienceGemDropCount = 0;
             HordeRushClearSpecialDropCount = 0;
+            HordeRushClearPulseCount = 0;
+            HordeRushClearPulseHitCount = 0;
             LastHordeRushFeedbackLabel = string.Empty;
             LastHordeRushClearFeedbackLabel = string.Empty;
+            LastHordeRushClearPulseFeedbackLabel = string.Empty;
             DraftRerollCount = 0;
             DraftBanishCount = 0;
             DraftSkipCount = 0;
@@ -5780,12 +5786,44 @@ namespace Deucarian.TemplateGameSurvivors
 
             HordeRushClearRewardCount++;
             HordeRushClearSpecialDropCount += specialDropCount;
+            int pulseHitCount = TriggerHordeRushClearPulse(position);
             string specialLabel = specialDropCount > 0 ? $" + {specialDropCount} special" : string.Empty;
-            string label = $"Horde Rush Cleared: +{spawnedExperience} XP{specialLabel}";
+            string pulseLabel = pulseHitCount > 0 ? $" + Breaker Pulse ({pulseHitCount} hit)" : string.Empty;
+            string label = $"Horde Rush Cleared: +{spawnedExperience} XP{specialLabel}{pulseLabel}";
             LastHordeRushClearFeedbackLabel = label;
             LastHordeRushFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(1f, 0.74f, 0.24f));
-            PlayFeedback(_levelUpPulse, position, 24, _pickupClip);
+            PlayFeedback(_levelUpPulse, position, Mathf.Clamp(24 + pulseHitCount * 5, 28, 78), _pickupClip);
+        }
+
+        private int TriggerHordeRushClearPulse(Vector3 position)
+        {
+            float radius = Mathf.Max(0f, CurrentTuning.HordeRushClearPulseRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.HordeRushClearPulseDamage);
+            if (radius <= 0f || damage <= 0f)
+            {
+                return 0;
+            }
+
+            int hitCount = 0;
+            var targets = new List<SurvivorsEnemyActor>();
+            CollectEnemiesWithinRadius(position, radius, targets);
+            for (int i = 0; i < targets.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = targets[i];
+                if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+                {
+                    continue;
+                }
+
+                enemy.ApplyDamage(damage, "survivors.horde-rush.clear-pulse");
+                hitCount++;
+            }
+
+            HordeRushClearPulseCount++;
+            HordeRushClearPulseHitCount += hitCount;
+            LastHordeRushClearPulseFeedbackLabel = $"Breaker Pulse: {hitCount} enemies hit";
+            return hitCount;
         }
 
         private static bool ShouldDropHordeRushSpecial(int clearNumber, int cadence)

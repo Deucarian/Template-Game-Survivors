@@ -88,6 +88,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float HordeRushClearExperienceMultiplier = 2.2f;
         public int HordeRushClearMagnetEveryRush = 2;
         public int HordeRushClearBloodShardEveryRush = 3;
+        public float HordeRushClearPulseDamage = 12f;
+        public float HordeRushClearPulseRadius = 4.6f;
         public float MajorThreatEnrageHealthThreshold = 0.5f;
         public int MajorThreatEnrageEliteSupportCount = 4;
         public int MajorThreatEnrageMinibossSupportCount = 6;
@@ -504,6 +506,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushEnemyCountIncreasePerRush = 4;
             tuning.HordeRushMaxEnemyCount = 34;
             tuning.HordeRushExtraAliveAllowance = 20;
+            tuning.HordeRushClearPulseDamage = 14f;
+            tuning.HordeRushClearPulseRadius = 4.8f;
             tuning.MajorThreatEnrageHealthThreshold = 0.52f;
             tuning.MajorThreatEnrageEliteSupportCount = 4;
             tuning.MajorThreatEnrageMinibossSupportCount = 7;
@@ -609,6 +613,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushMaxEnemyCount = 42;
             tuning.HordeRushExtraAliveAllowance = 28;
             tuning.HordeRushSpawnRadius = 7.5f;
+            tuning.HordeRushClearPulseDamage = 18f;
+            tuning.HordeRushClearPulseRadius = 5.2f;
             tuning.MajorThreatEnrageHealthThreshold = 0.6f;
             tuning.MajorThreatEnrageEliteSupportCount = 5;
             tuning.MajorThreatEnrageMinibossSupportCount = 8;
@@ -730,6 +736,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushMaxEnemyCount = 32;
             tuning.HordeRushExtraAliveAllowance = 22;
             tuning.HordeRushSpawnRadius = 8f;
+            tuning.HordeRushClearPulseDamage = 15f;
+            tuning.HordeRushClearPulseRadius = 5f;
             tuning.MajorThreatEnrageHealthThreshold = 0.55f;
             tuning.MajorThreatEnrageEliteSupportCount = 5;
             tuning.MajorThreatEnrageMinibossSupportCount = 8;

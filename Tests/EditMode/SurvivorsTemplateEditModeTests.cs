@@ -357,6 +357,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.EnemySpawnPackMaxCount, Is.GreaterThan(tuning.EnemySpawnPackBaseCount));
             Assert.That(tuning.EnemySpawnPackIncreaseEveryEscalations, Is.GreaterThanOrEqualTo(1));
             Assert.That(tuning.EnemyRangedAttackDodgeExperienceReward, Is.GreaterThanOrEqualTo(1));
+            Assert.That(tuning.HordeRushClearPulseDamage, Is.GreaterThan(0f));
+            Assert.That(tuning.HordeRushClearPulseRadius, Is.InRange(4f, 6f));
             Assert.That(swarm.MoveSpeed, Is.InRange(1.1f, 1.6f));
             Assert.That(swarm.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
             Assert.That(runner.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
