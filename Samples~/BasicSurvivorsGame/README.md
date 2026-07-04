@@ -33,7 +33,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes with clear caches and breaker pulses, and recurring elite, miniboss, and boss reward threats; defeating those recurring threats triggers stacking Endless Surge bursts with extra XP, blood shards, a non-major enemy pulse, and short combat/pickup momentum.
-- Defeating the final boss unlocks the Ember Vanguard sample class.
+- Defeating the final boss unlocks the Ember Vanguard sample class and adds its authored class-unlock reward bonus to the run summary.
 - Victory or defeat persists the run summary to a local meta profile and shows a summary panel with time, level, kills, build size, rewards, meta totals, next-run class selection, and affordable meta upgrade purchases.
 - The sample includes seven persistent meta upgrades for later-run damage, max health, pickup range, XP gain, and extra rerolls.
 - The sample includes a default Arcane Initiate class, one unlockable class, class-owned loadouts, passive atlases, weapon skill tracks, and six boss relics.

@@ -65,7 +65,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (classes != null)
             {
-                ValidateClassLibrary(classes, BuildKnownWeaponIds(weapons), result);
+                ValidateClassLibrary(classes, BuildKnownWeaponIds(weapons), BuildKnownRewardIds(metaProgression), result);
             }
 
             if (classUpgradeGates != null)
@@ -129,7 +129,7 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePickupLibrary(pickupLibrary, result);
             ValidateRewardLibrary(rewardLibrary, result);
             ValidateRelicLibrary(relicLibrary, result);
-            ValidateClassLibraryJson(classLibrary, result);
+            ValidateClassLibraryJson(classLibrary, BuildKnownRewardIds(rewardLibrary), result);
             ValidateProgressionLibrary(progressionLibrary, upgradeLibrary, classLibrary, result);
             ValidateRunFlowLibrary(runFlowLibrary, result);
             return result;
@@ -382,6 +382,7 @@ namespace Deucarian.TemplateGameSurvivors
         private static void ValidateClassLibrary(
             SurvivorsClassLibraryDefinition classLibrary,
             HashSet<string> knownWeaponIds,
+            HashSet<string> knownRewardIds,
             SurvivorsContentValidationResult result)
         {
             if (classLibrary == null || classLibrary.Classes.Count == 0)
@@ -409,6 +410,7 @@ namespace Deucarian.TemplateGameSurvivors
                     definition.UnlockRewardId,
                     definition.StartingStatModifiers,
                     knownWeaponIds,
+                    knownRewardIds,
                     result);
                 if (!string.IsNullOrWhiteSpace(definition.Id) && !classIds.Add(definition.Id))
                 {
@@ -1220,7 +1222,10 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private static void ValidateClassLibraryJson(ClassLibraryJson library, SurvivorsContentValidationResult result)
+        private static void ValidateClassLibraryJson(
+            ClassLibraryJson library,
+            HashSet<string> knownRewardIds,
+            SurvivorsContentValidationResult result)
         {
             if (library == null)
             {
@@ -1253,6 +1258,7 @@ namespace Deucarian.TemplateGameSurvivors
                     classRecord.unlockRewardId,
                     classRecord.statModifiers,
                     knownWeaponIds,
+                    knownRewardIds,
                     result);
                 if (!string.IsNullOrWhiteSpace(classRecord.id) && !classIds.Add(classRecord.id))
                 {
@@ -2047,6 +2053,7 @@ namespace Deucarian.TemplateGameSurvivors
             string unlockRewardId,
             IReadOnlyList<SurvivorsClassStatModifierDefinition> statModifiers,
             HashSet<string> knownWeaponIds,
+            HashSet<string> knownRewardIds,
             SurvivorsContentValidationResult result)
         {
             string resolvedId = string.IsNullOrWhiteSpace(id) ? "unknown class" : id;
@@ -2065,6 +2072,10 @@ namespace Deucarian.TemplateGameSurvivors
             if (!unlockedByDefault && string.IsNullOrWhiteSpace(unlockRewardId))
             {
                 result.AddError($"Class {resolvedId} requires an unlock reward id.");
+            }
+            else if (!unlockedByDefault && knownRewardIds != null && !knownRewardIds.Contains(unlockRewardId))
+            {
+                result.AddError($"Class {resolvedId} references unknown unlock reward id: {unlockRewardId}");
             }
 
             if (statModifiers == null)
@@ -2093,6 +2104,7 @@ namespace Deucarian.TemplateGameSurvivors
             string unlockRewardId,
             StatModifierRecordJson[] statModifiers,
             HashSet<string> knownWeaponIds,
+            HashSet<string> knownRewardIds,
             SurvivorsContentValidationResult result)
         {
             string resolvedId = string.IsNullOrWhiteSpace(id) ? "unknown class" : id;
@@ -2111,6 +2123,10 @@ namespace Deucarian.TemplateGameSurvivors
             if (!unlockedByDefault && string.IsNullOrWhiteSpace(unlockRewardId))
             {
                 result.AddError($"Class {resolvedId} requires an unlock reward id.");
+            }
+            else if (!unlockedByDefault && knownRewardIds != null && !knownRewardIds.Contains(unlockRewardId))
+            {
+                result.AddError($"Class {resolvedId} references unknown unlock reward id: {unlockRewardId}");
             }
 
             if (statModifiers == null)
@@ -2457,6 +2473,51 @@ namespace Deucarian.TemplateGameSurvivors
                 if (definition != null && !string.IsNullOrWhiteSpace(definition.Id))
                 {
                     ids.Add(definition.Id);
+                }
+            }
+
+            return ids;
+        }
+
+        private static HashSet<string> BuildKnownRewardIds(SurvivorsMetaProgressionDefinition metaProgression)
+        {
+            if (metaProgression == null)
+            {
+                return null;
+            }
+
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < metaProgression.Rewards.Count; i++)
+            {
+                SurvivorsRewardDefinition reward = metaProgression.Rewards[i];
+                if (reward != null && !string.IsNullOrWhiteSpace(reward.Id))
+                {
+                    ids.Add(reward.Id);
+                }
+            }
+
+            return ids;
+        }
+
+        private static HashSet<string> BuildKnownRewardIds(RewardLibraryJson rewardLibrary)
+        {
+            if (rewardLibrary == null)
+            {
+                return null;
+            }
+
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (rewardLibrary.rewards == null)
+            {
+                return ids;
+            }
+
+            for (int i = 0; i < rewardLibrary.rewards.Length; i++)
+            {
+                RewardRecordJson reward = rewardLibrary.rewards[i];
+                if (reward != null && !string.IsNullOrWhiteSpace(reward.id))
+                {
+                    ids.Add(reward.id);
                 }
             }
 

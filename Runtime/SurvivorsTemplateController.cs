@@ -6369,6 +6369,12 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureMetaProgressionLoaded();
+            bool grantVictoryClassUnlockReward = ShouldGrantVictoryClassUnlockReward(victory);
+            if (grantVictoryClassUnlockReward)
+            {
+                AddClassUnlockRewardToRunBonus();
+            }
+
             LastRunResult = SurvivorsRunRewardCalculator.Calculate(
                 RunTimeSeconds,
                 Level,
@@ -6382,7 +6388,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (_metaProgression.GrantRunRewards(LastRunResult).Succeeded)
             {
                 _runRewardsGranted = true;
-                if (victory)
+                if (grantVictoryClassUnlockReward)
                 {
                     GrantVictoryClassUnlockReward();
                 }
@@ -6413,6 +6419,31 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 ClassUnlockRewardCount++;
             }
+        }
+
+        private bool ShouldGrantVictoryClassUnlockReward(bool victory)
+        {
+            if (!victory)
+            {
+                return false;
+            }
+
+            EnsureClassLibraryLoaded();
+            return _metaProgression != null &&
+                _classLibrary != null &&
+                !_metaProgression.IsClassUnlocked(BasicSurvivorsGame.EmberVanguardClassId, _classLibrary);
+        }
+
+        private void AddClassUnlockRewardToRunBonus()
+        {
+            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            if (!definition.TryGetReward(BasicSurvivorsGame.EmberVanguardUnlockRewardId, out SurvivorsRewardDefinition reward))
+            {
+                return;
+            }
+
+            _bonusBloodShardsEarnedThisRun += reward.CurrencyAmount;
+            _bonusLegacyExperienceEarnedThisRun += reward.TrackAmount;
         }
 
         private void ReleaseMetaProgressionService()

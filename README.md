@@ -38,7 +38,7 @@ Use `#main` for stable package consumption and `#develop` when testing active pa
 2. Import the `Basic Survivors Game` sample.
 3. Open the imported sample scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
 4. Press Play.
-5. Move through the horde, collect XP gems, choose level-up options, take the elite reward after the miniboss, then build toward a boss evolution reward before defeating the final boss; if no evolution is ready, the boss falls back to a stronger reward draft before victory. Spend earned shards on affordable meta upgrades from the result screen, pick any unlocked next-run class, then continue into endless escalation or restart.
+5. Move through the horde, collect XP gems, choose level-up options, take the elite reward after the miniboss, then build toward a boss evolution reward before defeating the final boss; if no evolution is ready, the boss falls back to a stronger reward draft before victory. The first clear unlocks Ember Vanguard and pays its authored class-unlock reward into the run summary. Spend earned shards on affordable meta upgrades from the result screen, pick any unlocked next-run class, then continue into endless escalation or restart.
 
 For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. More detail lives in `Documentation~/playtesting.md`.
 

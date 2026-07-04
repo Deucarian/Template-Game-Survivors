@@ -4020,7 +4020,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
             Assert.IsTrue(controller.IsVictory);
             Assert.That(controller.BossRewardGrantCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(controller.BloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(18));
+            Assert.That(controller.BloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(28));
             Assert.AreEqual(1, controller.MetaBossVictories);
 
             Object.Destroy(controller.gameObject);
@@ -4062,9 +4062,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
             Assert.IsTrue(controller.IsVictory);
             Assert.That(controller.BossRewardGrantCount, Is.GreaterThanOrEqualTo(1));
-            Assert.That(controller.BloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(18));
-            Assert.That(controller.LegacyExperienceEarnedThisRun, Is.GreaterThanOrEqualTo(120));
-            Assert.That(controller.MetaBloodShards, Is.GreaterThanOrEqualTo(18));
+            Assert.That(controller.BloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(28));
+            Assert.That(controller.LegacyExperienceEarnedThisRun, Is.GreaterThanOrEqualTo(180));
+            Assert.That(controller.MetaBloodShards, Is.GreaterThanOrEqualTo(28));
             Assert.AreEqual(1, controller.MetaBossVictories);
             Assert.That(controller.ClassUnlockRewardCount, Is.GreaterThanOrEqualTo(1));
             Assert.IsTrue(controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));

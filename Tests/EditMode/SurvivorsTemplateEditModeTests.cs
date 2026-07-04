@@ -846,6 +846,22 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void InvalidClassUnlockRewardReferenceReportsErrors()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\",\"hitscanCount\":1,\"hitscanWidth\":1}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
+            string rewardJson = "{\"currencies\":[{\"id\":\"currency.survivors.blood-shards\"}],\"tracks\":[{\"id\":\"track.survivors.legacy-xp\"}],\"persistentUpgrades\":[{\"id\":\"meta.survivors.valid\",\"target\":\"survivors.weapon.arcane-wand\",\"effect\":\"survivors.meta.damage.flat\",\"maxRank\":1,\"rankCosts\":[1],\"amountPerRank\":1}],\"rewards\":[{\"id\":\"reward.survivors.valid\",\"currencyId\":\"currency.survivors.blood-shards\",\"trackId\":\"track.survivors.legacy-xp\",\"currencyAmount\":1,\"trackAmount\":1}]}";
+            string classJson = "{\"defaultClassId\":\"class.survivors.default\",\"classes\":[{\"id\":\"class.survivors.default\",\"startingWeaponId\":\"weapon.survivors.arcane-wand\",\"startingWeaponIds\":[\"weapon.survivors.arcane-wand\"],\"unlockedByDefault\":true,\"unlockRewardId\":\"\",\"statModifiers\":[]},{\"id\":\"class.survivors.locked\",\"startingWeaponId\":\"weapon.survivors.arcane-wand\",\"startingWeaponIds\":[\"weapon.survivors.arcane-wand\"],\"unlockedByDefault\":false,\"unlockRewardId\":\"reward.survivors.missing\",\"statModifiers\":[]}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, rewardJson: rewardJson, classJson: classJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("unknown unlock reward id", errors);
+            StringAssert.Contains("reward.survivors.missing", errors);
+        }
+
+        [Test]
         public void InvalidRuntimeClassUpgradeGateReportsErrors()
         {
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateRuntimeContent(
@@ -1389,6 +1405,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Elite).ExperienceReward, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Bruiser).ExperienceReward));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.DreadElite).RangedAttackRange, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Elite).RangedAttackRange));
             Assert.IsTrue(BasicSurvivorsGame.CreateMetaProgressionDefinition().TryGetReward(BasicSurvivorsGame.EliteRewardId, out _));
+            Assert.IsTrue(BasicSurvivorsGame.CreateMetaProgressionDefinition().TryGetReward(BasicSurvivorsGame.EmberVanguardUnlockRewardId, out _));
         }
 
         [Test]

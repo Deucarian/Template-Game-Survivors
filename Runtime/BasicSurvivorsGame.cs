@@ -2250,7 +2250,8 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     new SurvivorsRewardDefinition(EliteRewardId, BloodShardsCurrencyId, 2, LegacyExperienceTrackId, 12),
                     new SurvivorsRewardDefinition(MinibossRewardId, BloodShardsCurrencyId, 4, LegacyExperienceTrackId, 25),
-                    new SurvivorsRewardDefinition(BossRewardId, BloodShardsCurrencyId, 18, LegacyExperienceTrackId, 120)
+                    new SurvivorsRewardDefinition(BossRewardId, BloodShardsCurrencyId, 18, LegacyExperienceTrackId, 120),
+                    new SurvivorsRewardDefinition(EmberVanguardUnlockRewardId, BloodShardsCurrencyId, 10, LegacyExperienceTrackId, 60)
                 });
         }
 

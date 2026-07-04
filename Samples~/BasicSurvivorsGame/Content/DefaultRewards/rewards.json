@@ -92,6 +92,13 @@
       "trackAmount": 120
     },
     {
+      "id": "reward.survivors.class.ember-vanguard",
+      "currencyId": "currency.survivors.blood-shards",
+      "currencyAmount": 10,
+      "trackId": "track.survivors.legacy-xp",
+      "trackAmount": 60
+    },
+    {
       "id": "reward.survivors.elite-clear",
       "currencyId": "currency.survivors.blood-shards",
       "currencyAmount": 2,
