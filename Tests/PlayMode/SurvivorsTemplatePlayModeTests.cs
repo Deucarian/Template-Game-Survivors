@@ -1953,6 +1953,17 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         public IEnumerator PassiveSlotsBlockNewPassivesButAllowOwnedRanks()
         {
             SurvivorsTemplateController controller = CreateController();
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.ExperienceRequiredPerLevel = 999;
+            controller.CurrentTuning.PassiveLoadoutSurgeDurationSeconds = 3f;
+            controller.CurrentTuning.PassiveLoadoutSurgeDamageBonus = 1.5f;
+            controller.CurrentTuning.PassiveLoadoutSurgeMoveSpeedBonus = 0.4f;
+            controller.CurrentTuning.PassiveLoadoutSurgeCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.PassiveLoadoutSurgePickupRangeBonus = 0.8f;
+            controller.CurrentTuning.PassiveLoadoutSurgeExperienceGainMultiplierBonus = 0.5f;
+            controller.CurrentTuning.PassiveLoadoutSurgePulseDamage = 10f;
+            controller.CurrentTuning.PassiveLoadoutSurgePulseRadius = 4f;
             yield return null;
 
             string[] passives =
@@ -1965,12 +1976,54 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
                 "upgrade.survivors.execution-rite"
             };
 
-            for (int i = 0; i < passives.Length; i++)
+            for (int i = 0; i < passives.Length - 1; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(passives[i]));
             }
 
+            Assert.AreEqual(controller.MaxPassiveSlots - 1, controller.ActivePassiveCount);
+            Assert.AreEqual(0, controller.PassiveLoadoutSurgeActivationCount);
+
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.1f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 2.1f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.8f, 0f, 0f), SurvivorsEnemyRole.Elite, 40f);
+            SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(5.2f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedElite);
+            Assert.NotNull(outsideTarget);
+
+            float startingDamage = controller.ProjectileDamage;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
+            int experienceBeforeHarmony = controller.ExperienceCollected;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(passives[passives.Length - 1]));
+
             Assert.AreEqual(controller.MaxPassiveSlots, controller.ActivePassiveCount);
+            Assert.AreEqual(1, controller.PassiveLoadoutSurgeActivationCount);
+            Assert.AreEqual(2, controller.PassiveLoadoutSurgePulseHitCount);
+            Assert.IsTrue(controller.IsPassiveLoadoutSurgeActive);
+            Assert.That(controller.PassiveLoadoutSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.LastPassiveLoadoutSurgeFeedbackLabel, Does.Contain("Execution Rite"));
+            Assert.That(controller.LastPassiveLoadoutSurgeFeedbackLabel, Does.Contain("Harmony Surge"));
+            Assert.That(controller.LastPassiveLoadoutSurgeFeedbackLabel, Does.Contain("6/6 passives"));
+            Assert.That(controller.LastPassiveLoadoutSurgeFeedbackLabel, Does.Contain("2 enemies hit"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Harmony Surge"));
+            Assert.IsFalse(pulseTargetA.IsAlive);
+            Assert.IsFalse(pulseTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.IsTrue(outsideTarget.IsAlive);
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
+
+            controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.12f, 0f, 0.12f), 10);
+            yield return SimulateFrames(controller, 2);
+
+            Assert.That(controller.ExperienceCollected - experienceBeforeHarmony, Is.GreaterThan(10));
             Assert.AreEqual(SurvivorsRunUpgradeCategory.PassiveUpgrade, controller.GetUpgradeCategoryForTest("upgrade.survivors.swift-steps"));
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest("upgrade.survivors.sanguine-feast"));
             Assert.IsFalse(controller.ApplyUpgradeByIdForTest("upgrade.survivors.sanguine-feast"));
@@ -1980,6 +2033,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.swift-steps"));
             Assert.AreEqual(controller.MaxPassiveSlots, controller.ActivePassiveCount);
             Assert.AreEqual(previousRank + 1, controller.GetRunUpgradeRankForTest("upgrade.survivors.swift-steps"));
+            Assert.AreEqual(1, controller.PassiveLoadoutSurgeActivationCount);
+
+            float surgedDamage = controller.ProjectileDamage;
+            controller.Simulate(controller.CurrentTuning.PassiveLoadoutSurgeDurationSeconds + 0.2f);
+
+            Assert.IsFalse(controller.IsPassiveLoadoutSurgeActive);
+            Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
 
             Object.Destroy(controller.gameObject);
         }

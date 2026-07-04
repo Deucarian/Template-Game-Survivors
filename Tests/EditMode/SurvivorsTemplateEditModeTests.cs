@@ -371,6 +371,14 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.WeaponLoadoutSurgePickupRangeBonus, Is.GreaterThan(0f));
             Assert.That(tuning.WeaponLoadoutSurgePulseDamage, Is.GreaterThan(0f));
             Assert.That(tuning.WeaponLoadoutSurgePulseRadius, Is.InRange(4f, 7f));
+            Assert.That(tuning.PassiveLoadoutSurgeDurationSeconds, Is.InRange(3f, 7f));
+            Assert.That(tuning.PassiveLoadoutSurgeDamageBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.PassiveLoadoutSurgeMoveSpeedBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.PassiveLoadoutSurgeCooldownMultiplierBonus, Is.LessThan(0f));
+            Assert.That(tuning.PassiveLoadoutSurgePickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.PassiveLoadoutSurgeExperienceGainMultiplierBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.PassiveLoadoutSurgePulseDamage, Is.GreaterThan(0f));
+            Assert.That(tuning.PassiveLoadoutSurgePulseRadius, Is.InRange(4f, 7f));
             Assert.That(swarm.MoveSpeed, Is.InRange(1.1f, 1.6f));
             Assert.That(swarm.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
             Assert.That(runner.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));

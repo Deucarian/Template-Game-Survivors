@@ -43,6 +43,7 @@ First 30 seconds:
 - Draft cards should show rarity, category, affected build piece, description, and current-to-next rank such as `Rank 1->2/5`.
 - Selecting a normal level-up card should flash a small Level Pulse that hits nearby regular enemies without deleting elite pressure.
 - Filling the weapon slots should flash an Arsenal Surge banner, hit nearby regular enemies, leave major threats intact, and briefly improve damage, cooldown, movement, and pickup attraction.
+- Filling the passive slots should flash a Harmony Surge banner, hit nearby regular enemies, leave major threats intact, briefly improve damage, cooldown, movement, pickup attraction, and XP gain, and show a Harmony timer in the HUD.
 - Selecting a second evolved weapon should flash a Legend Surge banner, hit nearby regular enemies, leave major threats intact, and briefly improve damage, cooldown, movement, and pickup attraction.
 - If no valid upgrade choices are available, the run should automatically use the skip fallback, grant the small shard reward, and resume instead of leaving an empty choice overlay open.
 - No console errors, missing scripts, missing materials, or missing package references should appear.
