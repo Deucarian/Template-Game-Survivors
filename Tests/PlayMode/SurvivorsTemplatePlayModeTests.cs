@@ -3183,6 +3183,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.MetaBloodShards, Is.GreaterThanOrEqualTo(5));
             IReadOnlyList<string> options = controller.GetResultMetaUpgradeOptionLabelsForTest();
             Assert.That(options.Count, Is.GreaterThanOrEqualTo(1));
+            Assert.That(options[0], Does.StartWith("1."));
             Assert.That(options[0], Does.Contain("Arcane Legacy"));
 
             long shardsBeforePurchase = controller.MetaBloodShards;

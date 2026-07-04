@@ -555,6 +555,11 @@ namespace Deucarian.TemplateGameSurvivors
                 TickStreakRewardFeedback(Time.deltaTime);
                 TickEvolutionReadyFeedback(Time.deltaTime);
                 TickExperienceComboFeedback(Time.deltaTime);
+                if (HandleResultMetaUpgradeInput())
+                {
+                    return;
+                }
+
                 if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
                 {
                     ContinueAfterVictory();
@@ -6977,6 +6982,26 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 SelectUpgrade(2);
             }
+        }
+
+        private bool HandleResultMetaUpgradeInput()
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                return TryPurchaseResultMetaUpgrade(0);
+            }
+
+            if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                return TryPurchaseResultMetaUpgrade(1);
+            }
+
+            if (Input.GetKeyDown(KeyCode.Alpha3))
+            {
+                return TryPurchaseResultMetaUpgrade(2);
+            }
+
+            return false;
         }
 
         private Vector2 ReadMovementInput()

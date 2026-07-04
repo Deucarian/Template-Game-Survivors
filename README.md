@@ -48,7 +48,7 @@ The scene contains a tiny bootstrap object. At runtime it creates the arena, pla
 
 - WASD or arrow keys: move
 - Mouse: choose level-up, elite reward, boss evolution, boss relic, or result-screen meta upgrade buttons
-- 1/2/3: choose level-up, elite reward, boss evolution, or boss relic options
+- 1/2/3: choose level-up, elite reward, boss evolution, boss relic, or affordable result-screen meta upgrade options
 - C: continue into endless escalation after victory
 - R: reroll the current upgrade draft while charges remain; after death or victory, restart
 - S: skip the current upgrade draft for a small blood shard bonus
