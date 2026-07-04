@@ -90,6 +90,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.That(controller.RunTimeSeconds, Is.GreaterThan(startingRunTime));
             Assert.That(controller.InfiniteArenaTileCountForTest, Is.GreaterThan(0));
+            Assert.That(controller.InfiniteArenaLandmarkCountForTest, Is.GreaterThan(0));
             Assert.That(controller.ActiveWeaponCount, Is.GreaterThanOrEqualTo(1));
 
             AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
@@ -1316,13 +1317,16 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.That(controller.InfiniteArenaTileCountForTest, Is.GreaterThanOrEqualTo(25));
+            Assert.That(controller.InfiniteArenaLandmarkCountForTest, Is.GreaterThanOrEqualTo(8));
             Vector3 firstTileBefore = controller.FirstInfiniteArenaTilePositionForTest;
+            Vector3 firstLandmarkBefore = controller.FirstInfiniteArenaLandmarkPositionForTest;
 
             yield return SimulateFrames(controller, 240, Vector2.right);
 
             Assert.That(controller.PlayerPosition.x, Is.GreaterThan(18f));
             Assert.That(controller.ArenaPresentationCenterForTest.x, Is.EqualTo(controller.PlayerPosition.x).Within(0.05f));
             Assert.That(Mathf.Abs(controller.FirstInfiniteArenaTilePositionForTest.x - firstTileBefore.x), Is.GreaterThan(0.5f));
+            Assert.That(Mathf.Abs(controller.FirstInfiniteArenaLandmarkPositionForTest.x - firstLandmarkBefore.x), Is.GreaterThan(0.5f));
 
             Object.Destroy(controller.gameObject);
         }

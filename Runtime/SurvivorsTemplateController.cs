@@ -26,6 +26,8 @@ namespace Deucarian.TemplateGameSurvivors
         private const string DirectionalLightName = "Survivors Directional Light";
         private const float InfiniteArenaTileSize = 12f;
         private const int InfiniteArenaGridRadius = 2;
+        private const int InfiniteArenaLandmarkCount = 8;
+        private const float InfiniteArenaLandmarkJitterRadius = 2.35f;
         private const float KillStreakWindowSeconds = 3.8f;
         private const int KillStreakExperienceInterval = 8;
         private const int KillStreakHealthInterval = 16;
@@ -99,6 +101,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsPickupActor> _pickups = new List<SurvivorsPickupActor>(128);
         private readonly List<SurvivorsProjectileActor> _projectiles = new List<SurvivorsProjectileActor>(64);
         private readonly List<Transform> _arenaTiles = new List<Transform>(25);
+        private readonly List<Transform> _arenaLandmarks = new List<Transform>(InfiniteArenaLandmarkCount);
         private readonly List<SurvivorsDamagePopup> _damagePopups = new List<SurvivorsDamagePopup>(DamagePopupLimit);
         private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
         private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
@@ -506,8 +509,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int MaxWeaponSlots => CurrentTuning.MaxWeaponSlots > 0 ? CurrentTuning.MaxWeaponSlots : DefaultMaxWeaponSlots;
         public int MaxPassiveSlots => CurrentTuning.MaxPassiveSlots > 0 ? CurrentTuning.MaxPassiveSlots : DefaultMaxPassiveSlots;
         public int InfiniteArenaTileCountForTest => _arenaTiles.Count;
+        public int InfiniteArenaLandmarkCountForTest => _arenaLandmarks.Count;
         public Vector3 ArenaPresentationCenterForTest => _arenaFollowRoot == null ? Vector3.zero : _arenaFollowRoot.position;
         public Vector3 FirstInfiniteArenaTilePositionForTest => _arenaTiles.Count == 0 || _arenaTiles[0] == null ? Vector3.zero : _arenaTiles[0].position;
+        public Vector3 FirstInfiniteArenaLandmarkPositionForTest => _arenaLandmarks.Count == 0 || _arenaLandmarks[0] == null ? Vector3.zero : _arenaLandmarks[0].position;
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus;
@@ -3049,11 +3054,13 @@ namespace Deucarian.TemplateGameSurvivors
         private void BuildArenaVisuals()
         {
             _arenaTiles.Clear();
+            _arenaLandmarks.Clear();
 
             GameObject tileRoot = new GameObject("Survivors Infinite Arena Tiles");
             tileRoot.transform.SetParent(_worldRoot, false);
             _arenaTileRoot = tileRoot.transform;
             BuildInfiniteArenaTiles();
+            BuildInfiniteArenaLandmarks();
 
             GameObject followRoot = new GameObject("Survivors Moving Arena Readability");
             followRoot.transform.SetParent(_worldRoot, false);
@@ -3097,6 +3104,21 @@ namespace Deucarian.TemplateGameSurvivors
                         _arenaTileRoot);
                     _arenaTiles.Add(tile.transform);
                 }
+            }
+        }
+
+        private void BuildInfiniteArenaLandmarks()
+        {
+            for (int i = 0; i < InfiniteArenaLandmarkCount; i++)
+            {
+                GameObject landmark = CreateArenaPrimitive(
+                    "Infinite Arena Waystone " + (i + 1).ToString(),
+                    PrimitiveType.Cylinder,
+                    Vector3.zero,
+                    new Vector3(0.42f, 0.52f, 0.42f),
+                    ResolveArenaLandmarkColor(i),
+                    _arenaTileRoot);
+                _arenaLandmarks.Add(landmark.transform);
             }
         }
 
@@ -3984,6 +4006,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _arenaTiles.Clear();
+            _arenaLandmarks.Clear();
             _ownedPassiveUpgradeIds.Clear();
             _ownedEvolutionUpgradeIds.Clear();
             _arenaTileRoot = null;
@@ -5775,6 +5798,102 @@ namespace Deucarian.TemplateGameSurvivors
                         tile.position = new Vector3(anchorX + x * InfiniteArenaTileSize, -0.08f, anchorZ + z * InfiniteArenaTileSize);
                     }
                 }
+            }
+
+            UpdateArenaLandmarks(anchorX, anchorZ);
+        }
+
+        private void UpdateArenaLandmarks(float anchorX, float anchorZ)
+        {
+            if (_arenaLandmarks.Count == 0)
+            {
+                return;
+            }
+
+            int anchorCellX = Mathf.FloorToInt(anchorX / InfiniteArenaTileSize);
+            int anchorCellZ = Mathf.FloorToInt(anchorZ / InfiniteArenaTileSize);
+            for (int i = 0; i < _arenaLandmarks.Count; i++)
+            {
+                Transform landmark = _arenaLandmarks[i];
+                if (landmark == null)
+                {
+                    continue;
+                }
+
+                ResolveArenaLandmarkOffset(i, out int offsetX, out int offsetZ);
+                int cellX = anchorCellX + offsetX;
+                int cellZ = anchorCellZ + offsetZ;
+                float jitterX = ResolveArenaLandmarkJitter(cellX, cellZ, i * 2 + 1) * InfiniteArenaLandmarkJitterRadius;
+                float jitterZ = ResolveArenaLandmarkJitter(cellX, cellZ, i * 2 + 2) * InfiniteArenaLandmarkJitterRadius;
+                landmark.position = new Vector3(
+                    cellX * InfiniteArenaTileSize + InfiniteArenaTileSize * 0.5f + jitterX,
+                    0.38f,
+                    cellZ * InfiniteArenaTileSize + InfiniteArenaTileSize * 0.5f + jitterZ);
+                landmark.rotation = Quaternion.Euler(0f, (cellX * 37f + cellZ * 19f + i * 31f) % 360f, 0f);
+            }
+        }
+
+        private static void ResolveArenaLandmarkOffset(int index, out int offsetX, out int offsetZ)
+        {
+            switch (index % InfiniteArenaLandmarkCount)
+            {
+                case 0:
+                    offsetX = -1;
+                    offsetZ = -1;
+                    return;
+                case 1:
+                    offsetX = 0;
+                    offsetZ = -1;
+                    return;
+                case 2:
+                    offsetX = 1;
+                    offsetZ = -1;
+                    return;
+                case 3:
+                    offsetX = -1;
+                    offsetZ = 0;
+                    return;
+                case 4:
+                    offsetX = 1;
+                    offsetZ = 0;
+                    return;
+                case 5:
+                    offsetX = -1;
+                    offsetZ = 1;
+                    return;
+                case 6:
+                    offsetX = 0;
+                    offsetZ = 1;
+                    return;
+                default:
+                    offsetX = 1;
+                    offsetZ = 1;
+                    return;
+            }
+        }
+
+        private static float ResolveArenaLandmarkJitter(int cellX, int cellZ, int salt)
+        {
+            unchecked
+            {
+                int hash = cellX * 73856093 ^ cellZ * 19349663 ^ salt * 83492791;
+                int positive = hash & 0x7fffffff;
+                return (positive % 1001) / 1000f - 0.5f;
+            }
+        }
+
+        private static Color ResolveArenaLandmarkColor(int index)
+        {
+            switch (index % 4)
+            {
+                case 0:
+                    return new Color(0.28f, 0.9f, 1f);
+                case 1:
+                    return new Color(0.95f, 0.38f, 0.56f);
+                case 2:
+                    return new Color(0.98f, 0.82f, 0.24f);
+                default:
+                    return new Color(0.48f, 0.92f, 0.42f);
             }
         }
 
