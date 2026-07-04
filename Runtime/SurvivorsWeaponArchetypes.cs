@@ -433,8 +433,11 @@ namespace Deucarian.TemplateGameSurvivors
         private const float TempestPrismSideBeamDegrees = 22f;
         private const float TempestPrismSideBeamRangeMultiplier = 0.9f;
         private const float TempestPrismSideBeamWidthMultiplier = 0.85f;
+        private const float TempestPrismArcRange = 2.25f;
+        private const float TempestPrismArcDamageMultiplier = 0.45f;
         private readonly List<SurvivorsEnemyActor> _targets = new List<SurvivorsEnemyActor>();
         private readonly List<SurvivorsEnemyActor> _beamHits = new List<SurvivorsEnemyActor>();
+        private readonly HashSet<int> _tempestArcHitIds = new HashSet<int>();
         private float _cooldownRemaining = 0.2f;
 
         public SurvivorsHitscanWeaponRuntime(SurvivorsTemplateController controller, SurvivorsWeaponArchetypeDefinition definition)
@@ -473,6 +476,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             bool dealtDamage = false;
             bool tempestPrismActive = IsTempestPrismActive();
+            _tempestArcHitIds.Clear();
             int maxBeamHits = ResolveBeamMaxHits();
             for (int i = 0; i < _targets.Count; i++)
             {
@@ -490,7 +494,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
                 else
                 {
-                    dealtDamage |= ApplyDamage(target);
+                    dealtDamage |= ApplyDamage(target, tempestPrismActive);
                     CreateBeamVisual(origin, targetPoint);
                 }
 
@@ -501,6 +505,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _targets.Clear();
+            _tempestArcHitIds.Clear();
             if (dealtDamage)
             {
                 Controller.RecordHitscanFire();
@@ -582,7 +587,7 @@ namespace Deucarian.TemplateGameSurvivors
             bool dealtDamage = false;
             for (int hitIndex = 0; hitIndex < _beamHits.Count; hitIndex++)
             {
-                dealtDamage |= ApplyDamage(_beamHits[hitIndex]);
+                dealtDamage |= ApplyDamage(_beamHits[hitIndex], IsTempestPrismActive());
             }
 
             CreateBeamVisual(origin, endpoint);
@@ -643,7 +648,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private bool ApplyDamage(SurvivorsEnemyActor enemy)
+        private bool ApplyDamage(SurvivorsEnemyActor enemy, bool allowTempestArc)
         {
             if (enemy == null || !enemy.IsAlive)
             {
@@ -656,7 +661,71 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             Controller.RecordHitscanHit();
+            if (allowTempestArc)
+            {
+                TryApplyTempestPrismArc(enemy);
+            }
+
             return true;
+        }
+
+        private bool TryApplyTempestPrismArc(SurvivorsEnemyActor source)
+        {
+            if (source == null || !source.IsAlive)
+            {
+                return false;
+            }
+
+            SurvivorsEnemyActor target = FindTempestPrismArcTarget(source);
+            if (target == null)
+            {
+                return false;
+            }
+
+            float damage = Controller.ResolveWeaponDamage(Definition) * TempestPrismArcDamageMultiplier;
+            if (target.ApplyDamage(damage, Definition.Id + ".prism-arc") == null)
+            {
+                return false;
+            }
+
+            _tempestArcHitIds.Add(target.GetInstanceID());
+            Controller.RecordHitscanHit();
+            Controller.RecordTempestPrismArcHit(source, target);
+            CreateBeamVisual(source.transform.position + Vector3.up * 0.45f, target.transform.position + Vector3.up * 0.45f);
+            return true;
+        }
+
+        private SurvivorsEnemyActor FindTempestPrismArcTarget(SurvivorsEnemyActor source)
+        {
+            IReadOnlyList<SurvivorsEnemyActor> enemies = Controller.ActiveEnemies;
+            SurvivorsEnemyActor best = null;
+            float bestDistance = TempestPrismArcRange * TempestPrismArcRange;
+            Vector3 origin = source.transform.position;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor candidate = enemies[i];
+                if (candidate == null || !candidate.IsAlive || candidate == source)
+                {
+                    continue;
+                }
+
+                int candidateId = candidate.GetInstanceID();
+                if (_tempestArcHitIds.Contains(candidateId))
+                {
+                    continue;
+                }
+
+                Vector3 offset = candidate.transform.position - origin;
+                offset.y = 0f;
+                float distance = offset.sqrMagnitude;
+                if (distance <= bestDistance)
+                {
+                    bestDistance = distance;
+                    best = candidate;
+                }
+            }
+
+            return best;
         }
 
         private void CreateBeamVisual(Vector3 origin, Vector3 endpoint)

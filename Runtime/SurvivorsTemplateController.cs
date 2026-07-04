@@ -275,6 +275,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int BurstHitCount { get; private set; }
         public int HitscanFireCount { get; private set; }
         public int HitscanHitCount { get; private set; }
+        public int TempestPrismArcHitCount { get; private set; }
+        public string LastTempestPrismArcFeedbackLabel { get; private set; } = string.Empty;
         public int ProjectilePierceHitCount { get; private set; }
         public int ProjectileChainHitCount { get; private set; }
         public int ProjectileForkSpawnCount { get; private set; }
@@ -973,6 +975,8 @@ namespace Deucarian.TemplateGameSurvivors
             BurstHitCount = 0;
             HitscanFireCount = 0;
             HitscanHitCount = 0;
+            TempestPrismArcHitCount = 0;
+            LastTempestPrismArcFeedbackLabel = string.Empty;
             ProjectilePierceHitCount = 0;
             ProjectileChainHitCount = 0;
             ProjectileForkSpawnCount = 0;
@@ -3159,6 +3163,14 @@ namespace Deucarian.TemplateGameSurvivors
         internal void RecordHitscanHit()
         {
             HitscanHitCount++;
+        }
+
+        internal void RecordTempestPrismArcHit(SurvivorsEnemyActor source, SurvivorsEnemyActor target)
+        {
+            TempestPrismArcHitCount++;
+            string sourceName = source == null || string.IsNullOrWhiteSpace(source.DisplayName) ? "target" : source.DisplayName;
+            string targetName = target == null || string.IsNullOrWhiteSpace(target.DisplayName) ? "nearby enemy" : target.DisplayName;
+            LastTempestPrismArcFeedbackLabel = $"Tempest Prism arced from {sourceName} to {targetName}";
         }
 
         internal void RecordProjectilePierceHit()

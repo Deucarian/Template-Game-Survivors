@@ -2597,10 +2597,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Vector3 forwardTarget = controller.PlayerPosition + new Vector3(3.8f, 0f, 0f);
             Vector3 sideDirection = Quaternion.Euler(0f, 22f, 0f) * Vector3.right;
             Vector3 sideTarget = controller.PlayerPosition + sideDirection * 4.8f;
+            Vector3 arcTarget = forwardTarget + new Vector3(0.25f, 0f, 0.85f);
             SurvivorsEnemyActor anchor = controller.SpawnEnemyForTest(forwardTarget, 100f);
             SurvivorsEnemyActor prismTarget = controller.SpawnEnemyForTest(sideTarget, 100f);
+            SurvivorsEnemyActor arcEnemy = controller.SpawnEnemyForTest(arcTarget, 100f);
             Assert.NotNull(anchor);
             Assert.NotNull(prismTarget);
+            Assert.NotNull(arcEnemy);
 
             int beforeBaselineHits = controller.HitscanHitCount;
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Hitscan));
@@ -2610,10 +2613,15 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
 
             int beforePrismHits = controller.HitscanHitCount;
+            int beforePrismArcs = controller.TempestPrismArcHitCount;
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Hitscan));
             int prismHits = controller.HitscanHitCount - beforePrismHits;
+            int prismArcs = controller.TempestPrismArcHitCount - beforePrismArcs;
 
             Assert.That(prismHits, Is.GreaterThanOrEqualTo(2));
+            Assert.That(prismArcs, Is.GreaterThanOrEqualTo(1));
+            Assert.That(arcEnemy.CurrentHealth, Is.LessThan(100f));
+            Assert.That(controller.LastTempestPrismArcFeedbackLabel, Does.Contain("Tempest Prism"));
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.TempestPrismEvolutionUpgradeId));
 
             Object.Destroy(controller.gameObject);
