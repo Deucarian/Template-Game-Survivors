@@ -66,6 +66,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemyContactDamage = 3.5f;
         public float EnemyContactIntervalSeconds = 0.7f;
         public float EnemyRangedAttackWindupSeconds = 0.28f;
+        public int EnemyRangedAttackDodgeExperienceReward = 2;
         public int EnemyExperienceReward = 2;
         public float RunEscalationIntervalSeconds = 45f;
         public float MinimumEnemySpawnIntervalSeconds = 0.35f;
@@ -591,6 +592,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemySeparationMaxNeighbors = 6;
             tuning.EnemyContactDamage = 6f;
             tuning.EnemyRangedAttackWindupSeconds = 0.16f;
+            tuning.EnemyRangedAttackDodgeExperienceReward = 3;
             tuning.EnemyExperienceReward = 3;
             tuning.RunEscalationIntervalSeconds = 30f;
             tuning.MinimumEnemySpawnIntervalSeconds = 0.1f;

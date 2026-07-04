@@ -344,6 +344,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.StartingBarrierCapacity = 0f;
             controller.CurrentTuning.EnemyMaximumAlive = 1;
             controller.CurrentTuning.EnemyRangedAttackWindupSeconds = 0.28f;
+            controller.CurrentTuning.EnemyRangedAttackDodgeExperienceReward = 2;
             controller.StartRun();
 
             SurvivorsEnemyActor spitter = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4.5f, 0f, 0f), SurvivorsEnemyRole.Spitter, 50f);
@@ -360,6 +361,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.AreEqual(0, controller.PlayerDamageFeedbackCount);
             Assert.That(Vector3.Distance(controller.PlayerPosition, spitter.transform.position), Is.GreaterThan(5.8f));
+            Assert.AreEqual(1, controller.EnemyRangedAttackDodgeFeedbackCount);
+            Assert.AreEqual(1, controller.EnemyRangedAttackDodgeExperienceGemDropCount);
+            Assert.That(controller.LastEnemyRangedAttackDodgeFeedbackLabel, Does.Contain("shot dodged"));
+            Assert.That(controller.LastEnemyRangedAttackDodgeFeedbackLabel, Does.Contain("+2 XP"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("shot dodged"));
 
             Object.Destroy(controller.gameObject);
         }

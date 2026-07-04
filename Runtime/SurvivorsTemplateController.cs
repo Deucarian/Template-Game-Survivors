@@ -296,6 +296,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int DeathNovaHitCount { get; private set; }
         public int EnemyDeathEffectCount { get; private set; }
         public int EnemyRangedAttackFeedbackCount { get; private set; }
+        public int EnemyRangedAttackDodgeFeedbackCount { get; private set; }
+        public int EnemyRangedAttackDodgeExperienceGemDropCount { get; private set; }
+        public string LastEnemyRangedAttackDodgeFeedbackLabel { get; private set; } = string.Empty;
         public int MajorRewardDropFeedbackCount { get; private set; }
         public int MajorRewardCacheDropCount { get; private set; }
         public int MajorRewardCacheExperienceGemDropCount { get; private set; }
@@ -819,6 +822,9 @@ namespace Deucarian.TemplateGameSurvivors
             DeathNovaHitCount = 0;
             EnemyDeathEffectCount = 0;
             EnemyRangedAttackFeedbackCount = 0;
+            EnemyRangedAttackDodgeFeedbackCount = 0;
+            EnemyRangedAttackDodgeExperienceGemDropCount = 0;
+            LastEnemyRangedAttackDodgeFeedbackLabel = string.Empty;
             MajorRewardDropFeedbackCount = 0;
             MajorRewardCacheDropCount = 0;
             MajorRewardCacheExperienceGemDropCount = 0;
@@ -3490,6 +3496,68 @@ namespace Deucarian.TemplateGameSurvivors
             Material material = ApplyColor(renderer, color);
             _enemyRangedAttackFeedbackEffects.Add(new SurvivorsEnemyRangedAttackFeedbackEffect(instance, material, color, baseScale));
             EnemyRangedAttackFeedbackCount++;
+        }
+
+        internal void RecordEnemyRangedAttackDodgeFeedback(SurvivorsEnemyActor enemy)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            int experienceReward = Mathf.Max(0, CurrentTuning.EnemyRangedAttackDodgeExperienceReward);
+            bool spawnedExperience = false;
+            if (experienceReward > 0)
+            {
+                Vector3 rewardPosition = ResolveRangedDodgeRewardPosition(enemy);
+                spawnedExperience = SpawnPickup(SurvivorsPickupKind.Experience, rewardPosition, experienceReward) != null;
+                if (spawnedExperience)
+                {
+                    EnemyRangedAttackDodgeExperienceGemDropCount++;
+                }
+            }
+
+            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
+                ? ResolveRangedDodgeFallbackLabel(enemy.Role)
+                : enemy.DisplayName;
+            LastEnemyRangedAttackDodgeFeedbackLabel = spawnedExperience
+                ? $"{name} shot dodged: +{experienceReward} XP"
+                : $"{name} shot dodged";
+            EnemyRangedAttackDodgeFeedbackCount++;
+            RecordStreakRewardFeedback(LastEnemyRangedAttackDodgeFeedbackLabel, new Color(0.52f, 0.95f, 1f));
+            PlayFeedback(_pickupPulse, PlayerPosition, spawnedExperience ? 14 : 8, _pickupClip);
+        }
+
+        private Vector3 ResolveRangedDodgeRewardPosition(SurvivorsEnemyActor enemy)
+        {
+            Vector3 player = PlayerPosition;
+            Vector3 away = enemy == null ? Vector3.forward : player - enemy.transform.position;
+            away.y = 0f;
+            if (away.sqrMagnitude <= 0.001f)
+            {
+                away = Vector3.forward;
+            }
+
+            float offset = Mathf.Max(CurrentTuning.PickupCollectRadius + 0.35f, 0.75f);
+            return player + away.normalized * offset;
+        }
+
+        private static string ResolveRangedDodgeFallbackLabel(SurvivorsEnemyRole role)
+        {
+            switch (role)
+            {
+                case SurvivorsEnemyRole.Spitter:
+                    return "Spitter";
+                case SurvivorsEnemyRole.Elite:
+                case SurvivorsEnemyRole.DreadElite:
+                    return "Elite";
+                case SurvivorsEnemyRole.Miniboss:
+                    return "Miniboss";
+                case SurvivorsEnemyRole.Boss:
+                    return "Boss";
+                default:
+                    return "Ranged shot";
+            }
         }
 
         private void TickEnemyRangedAttackFeedbackEffects(float deltaTime)
@@ -8498,6 +8566,10 @@ namespace Deucarian.TemplateGameSurvivors
                 if (ResolveDistanceToPlayer() <= _rangedAttackRange)
                 {
                     _controller.ApplyDamageToPlayer(_rangedAttackDamage, "combatant.survivors.enemy.ranged." + InstanceId.Value);
+                }
+                else
+                {
+                    _controller.RecordEnemyRangedAttackDodgeFeedback(this);
                 }
 
                 return;

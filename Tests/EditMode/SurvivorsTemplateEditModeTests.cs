@@ -356,6 +356,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.EnemySpawnPackBaseCount, Is.InRange(2, 3));
             Assert.That(tuning.EnemySpawnPackMaxCount, Is.GreaterThan(tuning.EnemySpawnPackBaseCount));
             Assert.That(tuning.EnemySpawnPackIncreaseEveryEscalations, Is.GreaterThanOrEqualTo(1));
+            Assert.That(tuning.EnemyRangedAttackDodgeExperienceReward, Is.GreaterThanOrEqualTo(1));
             Assert.That(swarm.MoveSpeed, Is.InRange(1.1f, 1.6f));
             Assert.That(swarm.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
             Assert.That(runner.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
@@ -450,6 +451,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.EnemyMaximumAlive, Is.GreaterThan(human.EnemyMaximumAlive));
             Assert.That(debugFast.EnemySpawnPackBaseCount, Is.GreaterThanOrEqualTo(human.EnemySpawnPackBaseCount));
             Assert.That(debugFast.EnemySpawnPackMaxCount, Is.GreaterThan(human.EnemySpawnPackMaxCount));
+            Assert.That(debugFast.EnemyRangedAttackDodgeExperienceReward, Is.GreaterThanOrEqualTo(human.EnemyRangedAttackDodgeExperienceReward));
             Assert.That(debugFast.ExperienceRequiredBase, Is.LessThan(human.ExperienceRequiredBase));
             Assert.That(debugFast.RoamingCacheTravelInterval, Is.LessThan(human.RoamingCacheTravelInterval));
             Assert.That(debugFast.MajorRewardCacheAttractionSpeedMultiplier, Is.GreaterThan(human.MajorRewardCacheAttractionSpeedMultiplier));
