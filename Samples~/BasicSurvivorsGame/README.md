@@ -27,6 +27,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
 - Mid-run level-up drafts guarantee one Rare-or-better choice when eligible, and late-run drafts guarantee one Epic-or-better choice when eligible.
 - Before the player owns a passive, normal level-up drafts reserve one Common/Uncommon passive hook and fill the remaining cards from the normal rarity table.
+- Once a weapon path reaches an evolution requirement, normal level-up drafts reserve the missing matching passive when the current rarity table allows it.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes with clear caches and breaker pulses, and recurring elite, miniboss, and boss reward threats.

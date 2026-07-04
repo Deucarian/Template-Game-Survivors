@@ -989,6 +989,44 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator NormalLevelUpDraftReservesEvolutionPassiveWhenWeaponPathReady()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.CurrentTuning.DraftMidRarityLevel = 1;
+            controller.CurrentTuning.DraftLateRarityLevel = 99;
+            controller.CurrentTuning.NormalMidCommonWeight = 1000;
+            controller.CurrentTuning.NormalMidUncommonWeight = 1;
+            controller.CurrentTuning.NormalMidRareWeight = 0;
+            controller.CurrentTuning.NormalMidEpicWeight = 0;
+            controller.CurrentTuning.NormalMidLegendaryWeight = 0;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.AreEqual(BasicSurvivorsGame.ArcaneThesisUpgradeId, controller.CurrentDraftChoices[0].Id.Value);
+
+            int passiveChoiceIndex = IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneThesisUpgradeId);
+            Assert.That(passiveChoiceIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.IsTrue(controller.SelectUpgrade(passiveChoiceIndex));
+            yield return null;
+
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Arcane Storm"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator FateLensBiasesFutureDraftsTowardHigherRarities()
         {
             SurvivorsTemplateController controller = CreateController();
