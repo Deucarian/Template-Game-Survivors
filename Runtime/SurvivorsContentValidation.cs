@@ -1739,6 +1739,10 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "roaming cache surge pulse damage", profile.roamingCacheSurgePulseDamage, result);
             ValidatePositive(profileId, "roaming cache surge pulse radius", profile.roamingCacheSurgePulseRadius, result);
             ValidatePositive(profileId, "draft choice count", profile.draftChoiceCount, result);
+            ValidatePositive(profileId, "draft reroll charges", profile.draftRerollCharges, result);
+            ValidatePositive(profileId, "draft banish charges", profile.draftBanishCharges, result);
+            ValidatePositive(profileId, "draft skip shard reward", profile.draftSkipBloodShards, result);
+            ValidateNonNegative(profileId, "reward selection timeout", profile.rewardSelectionTimeoutSeconds, result);
             ValidatePositive(profileId, "max weapon slots", profile.maxWeaponSlots, result);
             ValidatePositive(profileId, "max passive slots", profile.maxPassiveSlots, result);
             ValidatePositive(profileId, "draft mid rarity level", profile.draftMidRarityLevel, result);
@@ -1919,6 +1923,14 @@ namespace Deucarian.TemplateGameSurvivors
             if (value <= 0)
             {
                 result.AddError($"Run flow profile {profileId} requires {label} above zero.");
+            }
+        }
+
+        private static void ValidateNonNegative(string profileId, string label, float value, SurvivorsContentValidationResult result)
+        {
+            if (value < 0f)
+            {
+                result.AddError($"Run flow profile {profileId} cannot use negative {label}.");
             }
         }
 
@@ -2741,6 +2753,10 @@ namespace Deucarian.TemplateGameSurvivors
             public float roamingCacheSurgePulseDamage;
             public float roamingCacheSurgePulseRadius;
             public int draftChoiceCount;
+            public int draftRerollCharges;
+            public int draftBanishCharges;
+            public int draftSkipBloodShards;
+            public float rewardSelectionTimeoutSeconds;
             public int maxWeaponSlots;
             public int maxPassiveSlots;
             public int draftMidRarityLevel;
