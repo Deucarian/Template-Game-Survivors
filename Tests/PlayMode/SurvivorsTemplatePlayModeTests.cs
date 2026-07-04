@@ -246,6 +246,58 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ArcStepDashMovesShovesAndBrieflyProtectsPlayer()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.StartingBarrierCapacity = 0f;
+            controller.CurrentTuning.DashDistance = 3f;
+            controller.CurrentTuning.DashCooldownSeconds = 0.5f;
+            controller.CurrentTuning.DashInvulnerabilitySeconds = 0.35f;
+            controller.CurrentTuning.DashKnockbackRadius = 1.25f;
+            controller.CurrentTuning.DashKnockbackDistance = 1.1f;
+            controller.CurrentTuning.DashDamage = 1f;
+            controller.StartRun();
+            yield return null;
+
+            Vector3 start = controller.PlayerPosition;
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(start + new Vector3(1.4f, 0f, 0f), SurvivorsEnemyRole.Swarm, 20f);
+            Assert.NotNull(enemy);
+            Vector3 enemyBefore = enemy.transform.position;
+
+            Assert.IsTrue(controller.DashForTest(Vector2.right));
+            yield return null;
+
+            Assert.AreEqual(1, controller.DashUseCount);
+            Assert.That(controller.PlayerPosition.x, Is.GreaterThan(start.x + 2.9f));
+            Assert.That(controller.DashCooldownRemainingSeconds, Is.GreaterThan(0f));
+            Assert.IsTrue(controller.IsPlayerSafetyActive);
+            Assert.That(controller.PlayerSafetyRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.DashEnemyShoveCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.DashDamageHitCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(enemy.transform.position.x, Is.GreaterThan(enemyBefore.x));
+            Assert.That(controller.LastDashFeedbackLabel, Does.Contain("Arc Step"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Arc Step"));
+
+            float healthBefore = controller.CurrentHealth;
+            controller.ApplyDamageToPlayer(9f, "test.arc-step.safety");
+            Assert.AreEqual(healthBefore, controller.CurrentHealth);
+
+            Assert.IsFalse(controller.DashForTest(Vector2.right));
+            controller.Simulate(0.55f);
+            yield return null;
+
+            Assert.That(controller.DashCooldownRemainingSeconds, Is.EqualTo(0f).Within(0.01f));
+            Assert.IsFalse(controller.IsPlayerSafetyActive);
+            Assert.IsTrue(controller.DashForTest(Vector2.right));
+            Assert.AreEqual(2, controller.DashUseCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RangedEnemyAttackCreatesReadableShotFeedback()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

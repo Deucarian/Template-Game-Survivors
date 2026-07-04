@@ -167,6 +167,7 @@ namespace Deucarian.TemplateGameSurvivors
         private SaveSlotId _metaSaveSlotId = new SaveSlotId("survivors-template");
         private float _enemySpawnTimer;
         private float _playerInvulnerabilityTimer;
+        private float _dashCooldownTimer;
         private float _rewardSelectionTimer;
         private float _killStreakTimer;
         private float _roamingCacheTravelDistance;
@@ -269,6 +270,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int ClassUnlockRewardCount { get; private set; }
         public int DamagePopupSpawnCount { get; private set; }
         public int PlayerDamageFeedbackCount { get; private set; }
+        public int DashUseCount { get; private set; }
+        public int DashEnemyShoveCount { get; private set; }
+        public int DashDamageHitCount { get; private set; }
+        public string LastDashFeedbackLabel { get; private set; } = string.Empty;
         public int EnemyHitFlashFeedbackCount { get; private set; }
         public int CriticalHitFeedbackCount { get; private set; }
         public int DeathNovaTriggerCount { get; private set; }
@@ -435,6 +440,9 @@ namespace Deucarian.TemplateGameSurvivors
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus;
+        public float DashCooldownRemainingSeconds => Mathf.Max(0f, _dashCooldownTimer);
+        public float PlayerSafetyRemainingSeconds => Mathf.Max(0f, _playerInvulnerabilityTimer);
+        public bool IsPlayerSafetyActive => _playerInvulnerabilityTimer > 0f;
         public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus);
         public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus));
         public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus);
@@ -574,6 +582,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             Vector2 movement = ReadMovementInput();
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                TryDash(movement);
+            }
+
             Simulate(Time.deltaTime, movement);
 
             if (Input.GetKeyDown(KeyCode.M))
@@ -620,6 +633,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
             GUI.Label(new Rect(24, 346, 318, 22), ResolveBuildSlotHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(24, 368, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
@@ -725,6 +739,10 @@ namespace Deucarian.TemplateGameSurvivors
             ClassUnlockRewardCount = 0;
             DamagePopupSpawnCount = 0;
             PlayerDamageFeedbackCount = 0;
+            DashUseCount = 0;
+            DashEnemyShoveCount = 0;
+            DashDamageHitCount = 0;
+            LastDashFeedbackLabel = string.Empty;
             EnemyHitFlashFeedbackCount = 0;
             CriticalHitFeedbackCount = 0;
             DeathNovaTriggerCount = 0;
@@ -851,6 +869,7 @@ namespace Deucarian.TemplateGameSurvivors
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
             _playerInvulnerabilityTimer = 0f;
+            _dashCooldownTimer = 0f;
             _killStreakTimer = 0f;
             _roamingCacheTravelDistance = 0f;
             _killStreakCount = 0;
@@ -935,6 +954,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             TickHordeRushEvents();
             _playerInvulnerabilityTimer = Mathf.Max(0f, _playerInvulnerabilityTimer - dt);
+            _dashCooldownTimer = Mathf.Max(0f, _dashCooldownTimer - dt);
             TickKillStreak(dt);
             TickStreakSurge(dt);
             TickBarrier(dt);
@@ -1084,6 +1104,12 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureRunStartedForTest();
             return _weaponLoadout != null && _weaponLoadout.FireForTest(archetype);
+        }
+
+        public bool DashForTest(Vector2 directionInput)
+        {
+            EnsureRunStartedForTest();
+            return TryDash(directionInput);
         }
 
         public void ForceLevelUp()
@@ -1639,6 +1665,17 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             float incoming = Mathf.Max(0f, amount);
+            if (_playerInvulnerabilityTimer > 0f && incoming > 0f)
+            {
+                PlayFeedback(_pickupPulse, PlayerPosition, 4, null);
+                return;
+            }
+
+            if (incoming > 0f)
+            {
+                _playerInvulnerabilityTimer = Mathf.Max(_playerInvulnerabilityTimer, CurrentTuning.PlayerContactInvulnerabilitySeconds);
+            }
+
             if (BarrierValue > 0f && incoming > 0f)
             {
                 float absorbed = Mathf.Min(BarrierValue, incoming);
@@ -4420,6 +4457,125 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private bool TryDash(Vector2 directionInput)
+        {
+            if (State != SurvivorsRunState.Playing || _playerObject == null || _dashCooldownTimer > 0f)
+            {
+                return false;
+            }
+
+            Vector3 direction = ResolveDashDirection(directionInput);
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                return false;
+            }
+
+            float distance = Mathf.Max(0f, CurrentTuning.DashDistance);
+            if (distance <= 0f)
+            {
+                return false;
+            }
+
+            Vector3 start = PlayerPosition;
+            Vector3 delta = direction.normalized * distance;
+            Vector3 end = start + delta;
+            _playerObject.transform.position = end;
+            _playerObject.transform.forward = direction.normalized;
+            RecordRoamingArenaTravel(delta);
+
+            _dashCooldownTimer = Mathf.Max(0.05f, CurrentTuning.DashCooldownSeconds);
+            _playerInvulnerabilityTimer = Mathf.Max(_playerInvulnerabilityTimer, CurrentTuning.DashInvulnerabilitySeconds);
+            DashUseCount++;
+
+            int shoved = ApplyDashEnemyPressure(start, end, direction.normalized);
+            DashEnemyShoveCount += shoved;
+            LastDashFeedbackLabel = shoved > 0 ? $"Arc Step: shoved {shoved}" : "Arc Step";
+            RecordStreakRewardFeedback(LastDashFeedbackLabel, new Color(0.54f, 0.84f, 1f));
+            PlayFeedback(_pickupPulse, end, Mathf.Clamp(18 + shoved * 4, 18, 54), _pickupClip);
+            return true;
+        }
+
+        private Vector3 ResolveDashDirection(Vector2 directionInput)
+        {
+            Vector2 planar = directionInput.sqrMagnitude > 1f ? directionInput.normalized : directionInput;
+            Vector3 direction = planar.sqrMagnitude > 0.0001f
+                ? new Vector3(planar.x, 0f, planar.y)
+                : PlayerForward;
+            direction.y = 0f;
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                direction = Vector3.forward;
+            }
+
+            return direction.normalized;
+        }
+
+        private int ApplyDashEnemyPressure(Vector3 start, Vector3 end, Vector3 dashDirection)
+        {
+            float pressureRadius = Mathf.Max(0f, CurrentTuning.DashKnockbackRadius);
+            float knockbackDistance = Mathf.Max(0f, CurrentTuning.DashKnockbackDistance);
+            float damage = Mathf.Max(0f, CurrentTuning.DashDamage);
+            if ((pressureRadius <= 0f && damage <= 0f) || _enemies.Count == 0)
+            {
+                return 0;
+            }
+
+            int impacted = 0;
+            var enemies = new List<SurvivorsEnemyActor>(_enemies);
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                Vector3 enemyPosition = enemy.transform.position;
+                Vector3 closest = ClosestPointOnSegment(start, end, enemyPosition);
+                float allowedDistance = pressureRadius + enemy.Radius;
+                if ((enemyPosition - closest).sqrMagnitude > allowedDistance * allowedDistance)
+                {
+                    continue;
+                }
+
+                impacted++;
+                if (damage > 0f && enemy.ApplyDamage(damage, "survivors.player.arc-step") != null)
+                {
+                    DashDamageHitCount++;
+                }
+
+                if (!enemy.IsAlive || knockbackDistance <= 0f)
+                {
+                    continue;
+                }
+
+                Vector3 away = enemyPosition - closest;
+                away.y = 0f;
+                if (away.sqrMagnitude <= 0.0001f)
+                {
+                    away = dashDirection;
+                }
+
+                enemy.transform.position += away.normalized * knockbackDistance;
+                enemy.transform.forward = away.normalized;
+            }
+
+            return impacted;
+        }
+
+        private static Vector3 ClosestPointOnSegment(Vector3 start, Vector3 end, Vector3 point)
+        {
+            Vector3 segment = end - start;
+            float lengthSquared = segment.sqrMagnitude;
+            if (lengthSquared <= 0.0001f)
+            {
+                return start;
+            }
+
+            float t = Vector3.Dot(point - start, segment) / lengthSquared;
+            return start + segment * Mathf.Clamp01(t);
+        }
+
         private void RecordRoamingArenaTravel(Vector3 delta)
         {
             if (State != SurvivorsRunState.Playing || delta.sqrMagnitude <= 0.0001f)
@@ -6945,6 +7101,15 @@ namespace Deucarian.TemplateGameSurvivors
         private static string FormatRewardTimeout(float seconds)
         {
             return seconds > 0f ? seconds.ToString("0.#") + "s" : "Off";
+        }
+
+        private string ResolveDashHudLabel()
+        {
+            string cooldown = DashCooldownRemainingSeconds <= 0.01f
+                ? "Ready"
+                : DashCooldownRemainingSeconds.ToString("0.0") + "s";
+            string safety = IsPlayerSafetyActive ? "   Safe " + PlayerSafetyRemainingSeconds.ToString("0.0") + "s" : string.Empty;
+            return "Arc Step " + cooldown + safety;
         }
 
         private void HandleLevelUpInput()

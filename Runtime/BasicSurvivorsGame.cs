@@ -45,6 +45,12 @@ namespace Deucarian.TemplateGameSurvivors
         public float PlayerRadius = 0.55f;
         public float PlayerMaxHealth = 44f;
         public float PlayerContactInvulnerabilitySeconds = 0.35f;
+        public float DashDistance = 3.15f;
+        public float DashCooldownSeconds = 2.75f;
+        public float DashInvulnerabilitySeconds = 0.34f;
+        public float DashKnockbackRadius = 1.45f;
+        public float DashKnockbackDistance = 1.25f;
+        public float DashDamage = 2.4f;
         public float EnemySpawnRadius = 13.75f;
         public float EnemySpawnIntervalSeconds = 1.15f;
         public int EnemyMaximumAlive = 34;
@@ -441,6 +447,8 @@ namespace Deucarian.TemplateGameSurvivors
         {
             tuning.PacingProfile = SurvivorsPacingProfile.Normal;
             tuning.PlayerMaxHealth = 36f;
+            tuning.DashCooldownSeconds = 3.1f;
+            tuning.DashDamage = 2.2f;
             tuning.EnemySpawnRadius = 13.5f;
             tuning.EnemySpawnIntervalSeconds = 0.9f;
             tuning.EnemyMaximumAlive = 48;
@@ -530,6 +538,10 @@ namespace Deucarian.TemplateGameSurvivors
         private static void ApplyDebugFastTuning(SurvivorsTemplateTuning tuning)
         {
             tuning.PlayerMoveSpeed = 5.75f;
+            tuning.DashDistance = 3.4f;
+            tuning.DashCooldownSeconds = 1.6f;
+            tuning.DashKnockbackDistance = 1.45f;
+            tuning.DashDamage = 3.2f;
             tuning.EnemySpawnRadius = 11.5f;
             tuning.EnemySpawnIntervalSeconds = 0.35f;
             tuning.EnemyMaximumAlive = 96;
@@ -626,6 +638,10 @@ namespace Deucarian.TemplateGameSurvivors
         private static void ApplyShowcaseTuning(SurvivorsTemplateTuning tuning)
         {
             tuning.PlayerMoveSpeed = 5.6f;
+            tuning.DashDistance = 3.35f;
+            tuning.DashCooldownSeconds = 2.25f;
+            tuning.DashKnockbackRadius = 1.6f;
+            tuning.DashDamage = 3f;
             tuning.EnemySpawnRadius = 12.5f;
             tuning.EnemySpawnIntervalSeconds = 0.72f;
             tuning.EnemyMaximumAlive = 56;

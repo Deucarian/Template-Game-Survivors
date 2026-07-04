@@ -18,7 +18,7 @@ Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCE
 
 The sample defaults to `SurvivorsPacingProfile.HumanPlaytest`.
 
-Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `1.15` seconds, an opening maximum of `34` alive enemies, basic enemy speed of `1.35` versus player speed of `5.4`, projectile speed of `8.5`, pickup attract range of `2.5`, center-screen horde-rush and major-threat warnings, and no reward-choice auto-pick timeout.
+Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `1.15` seconds, an opening maximum of `34` alive enemies, basic enemy speed of `1.35` versus player speed of `5.4`, a short Arc Step dash on Space for emergency spacing, projectile speed of `8.5`, pickup attract range of `2.5`, center-screen horde-rush and major-threat warnings, and no reward-choice auto-pick timeout.
 
 Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, horde-rush rings begin before the first elite and pay out when cleared, the first elite arrives around `180` seconds, the dread elite arrives around `300` seconds, and the miniboss waits until `420` seconds.
 
@@ -28,6 +28,7 @@ First 30 seconds:
 
 - The scene starts in Human Playtest, not Debug Fast.
 - Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
+- Arc Step moves the player out of a crowded pocket, briefly prevents damage, and shoves nearby enemies without becoming a permanent speed boost.
 - Fast projectile shots should still damage enemies they visibly cross, even during single-frame speed spikes.
 - XP gems should pulse while being pulled in; rapid clusters should show a Gem Rush banner, pickup-range upgrades should affect gems already on the ground, and magnet pickups or `M` should make distant XP gems spin and surge toward the player.
 - Sustained movement through the endless arena should drop small roaming XP caches; longer travel should eventually add magnet recalls, shard bonuses, and small trailing ambushes to some caches, and clearing an ambush pack should drop a small XP burst.
