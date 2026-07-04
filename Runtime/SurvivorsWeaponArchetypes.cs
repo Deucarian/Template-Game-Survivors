@@ -1068,9 +1068,11 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
-                if (enemy.ApplyDamage(damage, Definition.Id) != null)
+                var damageResult = enemy.ApplyDamage(damage, Definition.Id);
+                if (damageResult != null)
                 {
                     Controller.RecordBurstHit();
+                    Controller.ApplyWeaponStatusEffectsToEnemy(enemy, Definition, damageResult);
                 }
             }
 

@@ -280,6 +280,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float PassiveLoadoutSurgePulseRadius = 4.6f;
         public float StatusPoisonDurationSeconds = 4.5f;
         public float StatusBleedDurationSeconds = 5.5f;
+        public float StatusBurnDurationSeconds = 3.25f;
         public float EvolutionSurgeDamage = 28f;
         public float EvolutionSurgeRadius = 6.2f;
         public int EvolutionChainSurgeMinimumEvolutions = 2;
@@ -1777,7 +1778,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(FrostFanUnlockUpgradeId, "Frost Fan", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, FrostFanWeaponContentId, "Unlock weapon: cast a cone of slowing frost shards."),
                 UpgradeMetadata(OrbitWardUnlockUpgradeId, "Blood Ring", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, OrbitWardWeaponContentId, "Unlock weapon: orbit blades around the player."),
                 UpgradeMetadata(ThornHaloUnlockUpgradeId, "Thorn Halo", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, ThornHaloWeaponContentId, "Unlock weapon: form a wider guard ring around the player."),
-                UpgradeMetadata(StarNovaUnlockUpgradeId, "Cinder Burst", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, StarNovaWeaponContentId, "Unlock weapon: pulse a fiery burst around the player."),
+                UpgradeMetadata(StarNovaUnlockUpgradeId, "Cinder Burst", SurvivorsRunUpgradeCategory.Weapon, SurvivorsRunBuildSlotKind.Weapon, StarNovaWeaponContentId, "Unlock weapon: pulse a fiery burst around the player and burn enemies."),
                 UpgradeMetadata(FrostFanUpgradeId, "Frost Fan", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Add more frost shards to the fan pattern.", FrostFanWeaponContentId),
                 UpgradeMetadata(FrostSplinterUpgradeId, "Frost Splinter", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Frost shards split into secondary shards after impact.", FrostFanWeaponContentId, FrostFanUpgradeId, 2),
                 UpgradeMetadata(FrostRicochetUpgradeId, "Frost Ricochet", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Frost shards jump between packed enemies.", FrostFanWeaponContentId, FrostFanUpgradeId, 3),
@@ -1833,7 +1834,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(ArcaneStormEvolutionUpgradeId, "Arcane Storm", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Evolution: Arc Bolt becomes a storm of chaining, forking bolts.", ArcaneWandWeaponContentId, "upgrade.survivors.arcane-damage", 5, ArcaneThesisUpgradeId),
                 UpgradeMetadata(BlizzardCrownEvolutionUpgradeId, "Blizzard Crown", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Evolution: Frost Fan expands into a piercing crown of shards.", FrostFanWeaponContentId, FrostFanUpgradeId, 5, FrostNeedleworkUpgradeId),
                 UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo gain a counter-rotating shield ring.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 5, BloodRingCanticleUpgradeId),
-                UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 5, CinderScriptUpgradeId),
+                UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, burns longer, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 5, CinderScriptUpgradeId),
                 UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam becomes a rapid prism that splits into angled side beams.", StarBeamWeaponContentId, StarFocusUpgradeId, 5, TwinCharmUpgradeId),
                 UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload detonations seed satellite danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, GiantRuneUpgradeId),
                 UpgradeMetadata(EclipseWaltzEvolutionUpgradeId, "Eclipse Waltz", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, MoonSlashWeaponContentId, "Evolution: Moon Slash cuts forward and backward in a rapid sweeping dance.", MoonSlashWeaponContentId, MoonlitEdgeUpgradeId, 5, MoonOathUpgradeId),

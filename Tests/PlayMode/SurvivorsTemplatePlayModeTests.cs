@@ -2496,6 +2496,36 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator CinderBurstAppliesBurnDamageOverTime()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureBurstOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.2f, 0f, 0f), 1000f);
+            Assert.IsFalse(enemy.IsBurning);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Burst));
+            Assert.That(controller.CinderBurnApplicationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(enemy.IsBurning);
+            Assert.That(enemy.CurrentBurnDamagePerSecond, Is.GreaterThan(0f));
+            Assert.That(controller.LastCinderBurnFeedbackLabel, Does.Contain("Cinder Burst"));
+
+            float healthAfterHit = enemy.CurrentHealth;
+            enemy.Simulate(1f);
+
+            Assert.That(enemy.CurrentHealth, Is.LessThan(healthAfterHit));
+
+            enemy.Simulate(controller.CurrentTuning.StatusBurnDurationSeconds + 0.2f);
+
+            Assert.IsFalse(enemy.IsBurning);
+            Assert.AreEqual(0f, enemy.CurrentBurnDamagePerSecond);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator InfernoHeartEvolutionAddsSatelliteNovaCoverage()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
@@ -2521,22 +2551,27 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             int beforeBaselineHits = controller.BurstHitCount;
             int beforeBaselinePulses = controller.BurstPulseCount;
+            int beforeBaselineBurns = controller.CinderBurnApplicationCount;
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Burst));
             int baselineHits = controller.BurstHitCount - beforeBaselineHits;
             int baselinePulses = controller.BurstPulseCount - beforeBaselinePulses;
             Assert.AreEqual(1, baselineHits);
             Assert.AreEqual(1, baselinePulses);
+            Assert.That(controller.CinderBurnApplicationCount - beforeBaselineBurns, Is.GreaterThanOrEqualTo(1));
 
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
 
             int beforeInfernoHits = controller.BurstHitCount;
             int beforeInfernoPulses = controller.BurstPulseCount;
+            int beforeInfernoBurns = controller.CinderBurnApplicationCount;
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Burst));
             int infernoHits = controller.BurstHitCount - beforeInfernoHits;
             int infernoPulses = controller.BurstPulseCount - beforeInfernoPulses;
 
             Assert.That(infernoHits, Is.GreaterThanOrEqualTo(2));
             Assert.That(infernoPulses, Is.GreaterThanOrEqualTo(baselinePulses + 6));
+            Assert.That(controller.CinderBurnApplicationCount - beforeInfernoBurns, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.LastCinderBurnFeedbackLabel, Does.Contain("Inferno Heart"));
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
 
             Object.Destroy(controller.gameObject);
