@@ -49,6 +49,10 @@ namespace Deucarian.TemplateGameSurvivors
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
         private const float EvolutionReadyFeedbackDurationSeconds = 2.4f;
+        private const float FrostFanEnemyMoveSpeedMultiplier = 0.68f;
+        private const float FrostFanEnemySlowDurationSeconds = 1.65f;
+        private const float BlizzardCrownEnemyMoveSpeedMultiplier = 0.52f;
+        private const float BlizzardCrownEnemySlowDurationSeconds = 2.35f;
         private const float ExperienceComboWindowSeconds = 0.85f;
         private const float ExperienceComboFeedbackDurationSeconds = 1.35f;
         private const int ExperienceComboMinimumPickupCount = 3;
@@ -272,6 +276,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ProjectileChainHitCount { get; private set; }
         public int ProjectileForkSpawnCount { get; private set; }
         public int ProjectileReturnStartCount { get; private set; }
+        public int FrostFanSlowApplicationCount { get; private set; }
+        public string LastFrostFanSlowFeedbackLabel { get; private set; } = string.Empty;
         public int PayloadThrowCount { get; private set; }
         public int PayloadPlacedCount { get; private set; }
         public int PayloadDetonationCount { get; private set; }
@@ -964,6 +970,8 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileChainHitCount = 0;
             ProjectileForkSpawnCount = 0;
             ProjectileReturnStartCount = 0;
+            FrostFanSlowApplicationCount = 0;
+            LastFrostFanSlowFeedbackLabel = string.Empty;
             PayloadThrowCount = 0;
             PayloadPlacedCount = 0;
             PayloadDetonationCount = 0;
@@ -2585,6 +2593,32 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 enemy.ExecuteFromAugment(source);
             }
+        }
+
+        internal void ApplyProjectileStatusEffectsToEnemy(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition)
+        {
+            if (enemy == null || definition == null || !enemy.IsAlive)
+            {
+                return;
+            }
+
+            if (!string.Equals(definition.Id, BasicSurvivorsGame.FrostFanWeaponContentId, StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            bool evolved = IsEvolutionActive(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId);
+            float multiplier = evolved ? BlizzardCrownEnemyMoveSpeedMultiplier : FrostFanEnemyMoveSpeedMultiplier;
+            float duration = evolved ? BlizzardCrownEnemySlowDurationSeconds : FrostFanEnemySlowDurationSeconds;
+            if (!enemy.ApplyMovementSlow(multiplier, duration))
+            {
+                return;
+            }
+
+            FrostFanSlowApplicationCount++;
+            LastFrostFanSlowFeedbackLabel = evolved
+                ? $"Blizzard Crown chilled {enemy.DisplayName}"
+                : $"Frost Fan chilled {enemy.DisplayName}";
         }
 
         internal void RecordEnemyDamageFeedback(SurvivorsEnemyActor enemy, DamageResult damage)
@@ -10582,6 +10616,8 @@ namespace Deucarian.TemplateGameSurvivors
         private float _poisonRemainingSeconds;
         private float _bleedDamagePerSecond;
         private float _bleedRemainingSeconds;
+        private float _moveSpeedMultiplier = 1f;
+        private float _slowRemainingSeconds;
         private Renderer _renderer;
         private Material _runtimeMaterial;
         private Color _baseTint;
@@ -10601,6 +10637,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float CurrentHealth => _health == null ? 0f : (float)_health.CurrentHealth;
         public float MaxHealth => _health == null ? 0f : (float)_health.MaximumHealth;
         public float HealthFraction => MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth;
+        public bool IsMovementSlowed => _slowRemainingSeconds > 0f && _moveSpeedMultiplier < 1f;
+        public float CurrentMoveSpeedMultiplier => IsMovementSlowed ? _moveSpeedMultiplier : 1f;
 
         public void Initialize(SurvivorsTemplateController controller, SurvivorsEnemyProfile profile)
         {
@@ -10629,6 +10667,8 @@ namespace Deucarian.TemplateGameSurvivors
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;
             _bleedRemainingSeconds = 0f;
+            _moveSpeedMultiplier = 1f;
+            _slowRemainingSeconds = 0f;
             ExperienceReward = Mathf.Max(1, profile.ExperienceReward);
             string id = InstanceId.Value > 0 ? "combatant.survivors.enemy." + InstanceId.Value : "combatant.survivors.enemy.pending";
             float maxHealth = Mathf.Max(1f, profile.MaxHealth);
@@ -10649,6 +10689,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             TickHitFlash(deltaTime);
+            TickMovementSlow(deltaTime);
             TickDamageOverTime(deltaTime);
             if (!IsAlive)
             {
@@ -10676,7 +10717,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (moveDirection.sqrMagnitude > 0.001f)
             {
                 Vector3 resolvedMove = moveDirection.normalized;
-                transform.position += resolvedMove * (_moveSpeed * deltaTime);
+                transform.position += resolvedMove * (_moveSpeed * CurrentMoveSpeedMultiplier * deltaTime);
                 transform.forward = resolvedMove;
             }
             else if (distance > 0.001f)
@@ -10719,6 +10760,26 @@ namespace Deucarian.TemplateGameSurvivors
                 _poisonDamagePerSecond += perSecond;
                 _poisonRemainingSeconds = Mathf.Max(_poisonRemainingSeconds, duration);
             }
+        }
+
+        public bool ApplyMovementSlow(float multiplier, float durationSeconds)
+        {
+            if (!IsAlive)
+            {
+                return false;
+            }
+
+            float resolvedMultiplier = Mathf.Clamp(multiplier, 0.15f, 1f);
+            float duration = Mathf.Max(0f, durationSeconds);
+            if (resolvedMultiplier >= 1f || duration <= 0f)
+            {
+                return false;
+            }
+
+            _moveSpeedMultiplier = Mathf.Min(_moveSpeedMultiplier, resolvedMultiplier);
+            _slowRemainingSeconds = Mathf.Max(_slowRemainingSeconds, duration);
+            ApplyHitFlashPresentation(_hitFlashDuration <= 0f ? 0f : Mathf.Clamp01(_hitFlashTimer / _hitFlashDuration));
+            return true;
         }
 
         public void ExecuteFromAugment(string source)
@@ -10781,13 +10842,21 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (_runtimeMaterial != null)
             {
+                Color baseTint = ResolvePresentationBaseTint();
                 Color flash = _hitFlashCritical
                     ? new Color(1f, 0.86f, 0.25f)
                     : Color.white;
-                _runtimeMaterial.color = Color.Lerp(_baseTint, flash, Mathf.Clamp01(intensity));
+                _runtimeMaterial.color = Color.Lerp(baseTint, flash, Mathf.Clamp01(intensity));
             }
 
             transform.localScale = _baseScale * (1f + 0.18f * Mathf.Clamp01(intensity));
+        }
+
+        private Color ResolvePresentationBaseTint()
+        {
+            return IsMovementSlowed
+                ? Color.Lerp(_baseTint, new Color(0.52f, 0.88f, 1f), 0.48f)
+                : _baseTint;
         }
 
         private Vector3 ResolveMoveDirection(Vector3 normalizedToPlayer, float distance)
@@ -10955,6 +11024,23 @@ namespace Deucarian.TemplateGameSurvivors
             return delta.magnitude;
         }
 
+        private void TickMovementSlow(float deltaTime)
+        {
+            if (_slowRemainingSeconds <= 0f)
+            {
+                return;
+            }
+
+            _slowRemainingSeconds = Mathf.Max(0f, _slowRemainingSeconds - Mathf.Max(0f, deltaTime));
+            if (_slowRemainingSeconds > 0f)
+            {
+                return;
+            }
+
+            _moveSpeedMultiplier = 1f;
+            ApplyHitFlashPresentation(_hitFlashDuration <= 0f ? 0f : Mathf.Clamp01(_hitFlashTimer / _hitFlashDuration));
+        }
+
         private void TickDamageOverTime(float deltaTime)
         {
             if (_poisonRemainingSeconds > 0f && _poisonDamagePerSecond > 0f)
@@ -11007,6 +11093,8 @@ namespace Deucarian.TemplateGameSurvivors
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;
             _bleedRemainingSeconds = 0f;
+            _moveSpeedMultiplier = 1f;
+            _slowRemainingSeconds = 0f;
             _rangedAttackWindupTimer = 0f;
             _rangedAttackTelegraphing = false;
             _summonSupportCooldown = 0f;
@@ -11039,6 +11127,8 @@ namespace Deucarian.TemplateGameSurvivors
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;
             _bleedRemainingSeconds = 0f;
+            _moveSpeedMultiplier = 1f;
+            _slowRemainingSeconds = 0f;
             _hitFlashTimer = 0f;
             _hitFlashDuration = 0f;
             _hitFlashCritical = false;
@@ -11177,6 +11267,7 @@ namespace Deucarian.TemplateGameSurvivors
                 int enemyId = hitEnemy.GetInstanceID();
                 _hitEnemyIds.Add(enemyId);
                 hitEnemy.ApplyDamage(_damage, _definition == null ? "combatant.survivors.player" : _definition.Id);
+                _controller.ApplyProjectileStatusEffectsToEnemy(hitEnemy, _definition);
                 SpawnForkProjectiles(hitEnemy);
                 if (_remainingPierces > 0)
                 {

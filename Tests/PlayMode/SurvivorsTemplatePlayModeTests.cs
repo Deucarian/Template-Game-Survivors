@@ -2468,6 +2468,34 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator FrostFanProjectilesSlowEnemiesOnHit()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4f, 0f, 0f), 1000f);
+            Assert.IsFalse(enemy.IsMovementSlowed);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Projectile));
+            yield return SimulateFrames(controller, 60);
+
+            Assert.That(controller.FrostFanSlowApplicationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(enemy.IsMovementSlowed);
+            Assert.That(enemy.CurrentMoveSpeedMultiplier, Is.LessThan(1f));
+            Assert.That(controller.LastFrostFanSlowFeedbackLabel, Does.Contain("Frost Fan"));
+
+            enemy.Simulate(2f);
+
+            Assert.IsFalse(enemy.IsMovementSlowed);
+            Assert.AreEqual(1f, enemy.CurrentMoveSpeedMultiplier);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator InfernoHeartEvolutionAddsSatelliteNovaCoverage()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
