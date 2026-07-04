@@ -294,6 +294,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorThreatEnrageCount { get; private set; }
         public int MajorThreatEnrageSupportSpawnCount { get; private set; }
         public string LastMajorThreatEnrageFeedbackLabel { get; private set; } = string.Empty;
+        public int MajorThreatSlamWarningCount { get; private set; }
+        public int MajorThreatSlamCastCount { get; private set; }
+        public int MajorThreatSlamHitCount { get; private set; }
+        public string LastMajorThreatSlamFeedbackLabel { get; private set; } = string.Empty;
         public int ExperiencePickupFeedbackCount { get; private set; }
         public int ExperienceComboFeedbackCount { get; private set; }
         public string LastExperienceComboFeedbackLabel { get; private set; } = string.Empty;
@@ -757,6 +761,10 @@ namespace Deucarian.TemplateGameSurvivors
             MajorThreatEnrageCount = 0;
             MajorThreatEnrageSupportSpawnCount = 0;
             LastMajorThreatEnrageFeedbackLabel = string.Empty;
+            MajorThreatSlamWarningCount = 0;
+            MajorThreatSlamCastCount = 0;
+            MajorThreatSlamHitCount = 0;
+            LastMajorThreatSlamFeedbackLabel = string.Empty;
             ExperiencePickupFeedbackCount = 0;
             ExperienceComboFeedbackCount = 0;
             LastExperienceComboFeedbackLabel = string.Empty;
@@ -2479,6 +2487,59 @@ namespace Deucarian.TemplateGameSurvivors
         private static bool IsMajorRewardRole(SurvivorsEnemyRole role)
         {
             return IsEliteRole(role) || role == SurvivorsEnemyRole.Miniboss || role == SurvivorsEnemyRole.Boss;
+        }
+
+        internal static bool IsMajorThreatSlamRole(SurvivorsEnemyRole role)
+        {
+            return role == SurvivorsEnemyRole.DreadElite || role == SurvivorsEnemyRole.Miniboss || role == SurvivorsEnemyRole.Boss;
+        }
+
+        internal void RecordMajorThreatSlamTelegraph(SurvivorsEnemyActor enemy)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            MajorThreatSlamWarningCount++;
+            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
+                ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
+                : enemy.DisplayName;
+            LastMajorThreatSlamFeedbackLabel = $"{name} winding slam";
+            RecordStreakRewardFeedback(LastMajorThreatSlamFeedbackLabel, ResolveMajorThreatEnrageFeedbackColor(enemy.Role));
+            PlayFeedback(_bossPulse, enemy.transform.position, enemy.Role == SurvivorsEnemyRole.Boss ? 42 : 30, _dangerClip);
+        }
+
+        internal void ResolveMajorThreatSlam(SurvivorsEnemyActor enemy)
+        {
+            if (enemy == null || !enemy.IsAlive || State != SurvivorsRunState.Playing)
+            {
+                return;
+            }
+
+            MajorThreatSlamCastCount++;
+            float radius = Mathf.Max(0.5f, CurrentTuning.MajorThreatSlamRadius + enemy.Radius * 0.35f);
+            float damage = Mathf.Max(0f, CurrentTuning.MajorThreatSlamDamage);
+            float distance = Vector3.Distance(enemy.transform.position, PlayerPosition);
+            bool hit = damage > 0f && distance <= radius + CurrentTuning.PlayerRadius;
+            float healthBefore = CurrentHealth;
+            float barrierBefore = BarrierValue;
+            if (hit)
+            {
+                ApplyDamageToPlayer(damage, "combatant.survivors.enemy.slam." + enemy.InstanceId.Value);
+            }
+
+            bool damagedPlayer = CurrentHealth < healthBefore || BarrierValue < barrierBefore;
+            if (damagedPlayer)
+            {
+                MajorThreatSlamHitCount++;
+            }
+
+            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
+                ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
+                : enemy.DisplayName;
+            LastMajorThreatSlamFeedbackLabel = damagedPlayer ? $"{name} slam hit" : $"{name} slam missed";
+            PlayFeedback(_bossPulse, enemy.transform.position, enemy.Role == SurvivorsEnemyRole.Boss ? 58 : 40, _dangerClip);
         }
 
         private void TryTriggerMajorThreatEnrage(SurvivorsEnemyActor enemy)
@@ -7364,6 +7425,9 @@ namespace Deucarian.TemplateGameSurvivors
         private float _rangedAttackInterval;
         private float _preferredRange;
         private float _rangedAttackCooldown;
+        private float _majorThreatSlamCooldown;
+        private float _majorThreatSlamTelegraphTimer;
+        private bool _majorThreatSlamTelegraphing;
         private float _poisonDamagePerSecond;
         private float _poisonRemainingSeconds;
         private float _bleedDamagePerSecond;
@@ -7404,6 +7468,9 @@ namespace Deucarian.TemplateGameSurvivors
             _rangedAttackInterval = Mathf.Max(0.05f, profile.RangedAttackIntervalSeconds);
             _preferredRange = Mathf.Max(0f, profile.PreferredRange);
             _rangedAttackCooldown = Mathf.Min(0.75f, _rangedAttackInterval);
+            _majorThreatSlamCooldown = ResolveInitialMajorThreatSlamCooldown(profile.Role, controller == null ? null : controller.CurrentTuning);
+            _majorThreatSlamTelegraphTimer = 0f;
+            _majorThreatSlamTelegraphing = false;
             _poisonDamagePerSecond = 0f;
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;
@@ -7463,6 +7530,7 @@ namespace Deucarian.TemplateGameSurvivors
                 transform.forward = facingDirection;
             }
 
+            TickMajorThreatSlam(deltaTime, distance);
             TickRangedAttack(deltaTime, distance);
             _contactCooldown -= deltaTime;
             if (_contactCooldown <= 0f && distance <= Radius + _controller.CurrentTuning.PlayerRadius)
@@ -7585,6 +7653,55 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return Vector3.zero;
+        }
+
+        private void TickMajorThreatSlam(float deltaTime, float distanceToPlayer)
+        {
+            if (_controller == null || !SurvivorsTemplateController.IsMajorThreatSlamRole(Role))
+            {
+                return;
+            }
+
+            SurvivorsTemplateTuning tuning = _controller.CurrentTuning;
+            float interval = Mathf.Max(0f, tuning.MajorThreatSlamIntervalSeconds);
+            float radius = Mathf.Max(0.5f, tuning.MajorThreatSlamRadius + Radius * 0.35f);
+            if (interval <= 0f || radius <= 0f)
+            {
+                return;
+            }
+
+            if (_majorThreatSlamTelegraphing)
+            {
+                _majorThreatSlamTelegraphTimer = Mathf.Max(0f, _majorThreatSlamTelegraphTimer - Mathf.Max(0f, deltaTime));
+                if (_majorThreatSlamTelegraphTimer <= 0f)
+                {
+                    _majorThreatSlamTelegraphing = false;
+                    _majorThreatSlamCooldown = interval;
+                    _controller.ResolveMajorThreatSlam(this);
+                }
+
+                return;
+            }
+
+            _majorThreatSlamCooldown = Mathf.Max(0f, _majorThreatSlamCooldown - Mathf.Max(0f, deltaTime));
+            if (_majorThreatSlamCooldown > 0f || distanceToPlayer > radius * 1.35f)
+            {
+                return;
+            }
+
+            _majorThreatSlamTelegraphing = true;
+            _majorThreatSlamTelegraphTimer = Mathf.Max(0.05f, tuning.MajorThreatSlamTelegraphSeconds);
+            _controller.RecordMajorThreatSlamTelegraph(this);
+        }
+
+        private static float ResolveInitialMajorThreatSlamCooldown(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
+        {
+            if (tuning == null || !SurvivorsTemplateController.IsMajorThreatSlamRole(role))
+            {
+                return 0f;
+            }
+
+            return Mathf.Max(0f, tuning.MajorThreatSlamIntervalSeconds);
         }
 
         private void TickRangedAttack(float deltaTime, float distance)

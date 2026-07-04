@@ -302,6 +302,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.MajorThreatEnrageHealthThreshold, Is.InRange(0.4f, 0.65f));
             Assert.That(tuning.MajorThreatEnrageBossSupportCount, Is.GreaterThan(tuning.MajorThreatEnrageMinibossSupportCount));
             Assert.That(tuning.MajorThreatEnrageMinibossSupportCount, Is.GreaterThan(tuning.MajorThreatEnrageEliteSupportCount));
+            Assert.That(tuning.MajorThreatSlamIntervalSeconds, Is.InRange(4f, 7f));
+            Assert.That(tuning.MajorThreatSlamTelegraphSeconds, Is.InRange(0.4f, 0.9f));
+            Assert.That(tuning.MajorThreatSlamRadius, Is.InRange(2.5f, 4.5f));
+            Assert.That(tuning.MajorThreatSlamDamage, Is.GreaterThan(0f));
             Assert.That(tuning.EnemySpawnPackBaseCount, Is.InRange(2, 3));
             Assert.That(tuning.EnemySpawnPackMaxCount, Is.GreaterThan(tuning.EnemySpawnPackBaseCount));
             Assert.That(tuning.EnemySpawnPackIncreaseEveryEscalations, Is.GreaterThanOrEqualTo(1));
@@ -387,6 +391,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.DreadEliteSpawnIntervalSeconds, Is.LessThan(human.DreadEliteSpawnIntervalSeconds));
             Assert.That(showcase.FirstDreadEliteSpawnTimeSeconds, Is.LessThan(showcase.MinibossSpawnTimeSeconds));
             Assert.That(showcase.EliteSpawnIntervalSeconds, Is.LessThan(human.EliteSpawnIntervalSeconds));
+            Assert.That(debugFast.MajorThreatSlamIntervalSeconds, Is.LessThan(human.MajorThreatSlamIntervalSeconds));
+            Assert.That(showcase.MajorThreatSlamIntervalSeconds, Is.LessThan(human.MajorThreatSlamIntervalSeconds));
             Assert.That(debugFast.RewardSelectionTimeoutSeconds, Is.GreaterThan(human.RewardSelectionTimeoutSeconds));
             Assert.That(showcase.EnemySpawnIntervalSeconds, Is.GreaterThan(debugFast.EnemySpawnIntervalSeconds));
             Assert.That(showcase.EnemySpawnIntervalSeconds, Is.LessThan(human.EnemySpawnIntervalSeconds));

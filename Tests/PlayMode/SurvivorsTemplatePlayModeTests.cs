@@ -2521,6 +2521,45 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator MajorThreatSlamTelegraphsBeforeDamagingPlayer()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.BossContactDamage = 0f;
+            controller.CurrentTuning.StartingBarrierCapacity = 0f;
+            controller.CurrentTuning.MajorThreatSlamIntervalSeconds = 0.15f;
+            controller.CurrentTuning.MajorThreatSlamTelegraphSeconds = 0.1f;
+            controller.CurrentTuning.MajorThreatSlamRadius = 3.2f;
+            controller.CurrentTuning.MajorThreatSlamDamage = 8f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(2.25f, 0f, 0f), 200f);
+            Assert.NotNull(boss);
+            float healthBeforeTelegraph = controller.CurrentHealth;
+
+            controller.Simulate(0.16f);
+            yield return null;
+
+            Assert.AreEqual(1, controller.MajorThreatSlamWarningCount);
+            Assert.AreEqual(0, controller.MajorThreatSlamCastCount);
+            Assert.AreEqual(0, controller.MajorThreatSlamHitCount);
+            Assert.AreEqual(healthBeforeTelegraph, controller.CurrentHealth);
+            Assert.That(controller.LastMajorThreatSlamFeedbackLabel, Does.Contain("winding slam"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("winding slam"));
+
+            controller.Simulate(0.11f);
+            yield return null;
+
+            Assert.AreEqual(1, controller.MajorThreatSlamCastCount);
+            Assert.AreEqual(1, controller.MajorThreatSlamHitCount);
+            Assert.That(controller.CurrentHealth, Is.LessThan(healthBeforeTelegraph));
+            Assert.That(controller.LastMajorThreatSlamFeedbackLabel, Does.Contain("slam hit"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MajorThreatEnrageSpawnsOneSupportWaveAtLowHealth()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

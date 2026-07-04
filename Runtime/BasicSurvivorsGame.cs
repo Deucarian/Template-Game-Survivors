@@ -92,6 +92,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorThreatEnrageBossSupportCount = 10;
         public int MajorThreatEnrageExtraAliveAllowance = 12;
         public float MajorThreatEnrageSupportRadius = 3.6f;
+        public float MajorThreatSlamIntervalSeconds = 5.5f;
+        public float MajorThreatSlamTelegraphSeconds = 0.65f;
+        public float MajorThreatSlamRadius = 3.25f;
+        public float MajorThreatSlamDamage = 7.5f;
         public float FirstEliteSpawnTimeSeconds = 180f;
         public float EliteSpawnIntervalSeconds = 210f;
         public float FirstDreadEliteSpawnTimeSeconds = 300f;
@@ -482,6 +486,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatEnrageBossSupportCount = 12;
             tuning.MajorThreatEnrageExtraAliveAllowance = 16;
             tuning.MajorThreatEnrageSupportRadius = 3.9f;
+            tuning.MajorThreatSlamIntervalSeconds = 5f;
+            tuning.MajorThreatSlamDamage = 8f;
             tuning.FirstEliteSpawnTimeSeconds = 120f;
             tuning.EliteSpawnIntervalSeconds = 180f;
             tuning.FirstDreadEliteSpawnTimeSeconds = 210f;
@@ -579,6 +585,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatEnrageBossSupportCount = 12;
             tuning.MajorThreatEnrageExtraAliveAllowance = 24;
             tuning.MajorThreatEnrageSupportRadius = 3.4f;
+            tuning.MajorThreatSlamIntervalSeconds = 3.5f;
+            tuning.MajorThreatSlamTelegraphSeconds = 0.5f;
+            tuning.MajorThreatSlamRadius = 3.5f;
+            tuning.MajorThreatSlamDamage = 8.5f;
             tuning.FirstEliteSpawnTimeSeconds = 20f;
             tuning.EliteSpawnIntervalSeconds = 20f;
             tuning.FirstDreadEliteSpawnTimeSeconds = 40f;
@@ -679,6 +689,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatEnrageBossSupportCount = 12;
             tuning.MajorThreatEnrageExtraAliveAllowance = 20;
             tuning.MajorThreatEnrageSupportRadius = 3.75f;
+            tuning.MajorThreatSlamIntervalSeconds = 4.4f;
+            tuning.MajorThreatSlamTelegraphSeconds = 0.55f;
+            tuning.MajorThreatSlamRadius = 3.4f;
+            tuning.MajorThreatSlamDamage = 8f;
             tuning.FirstEliteSpawnTimeSeconds = 60f;
             tuning.EliteSpawnIntervalSeconds = 90f;
             tuning.FirstDreadEliteSpawnTimeSeconds = 105f;
