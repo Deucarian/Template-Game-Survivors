@@ -3284,6 +3284,43 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ResultClassChoiceSelectsUnlockedClassForNextRun()
+        {
+            var storage = new InMemoryTextStorage();
+            SurvivorsTemplateController controller = CreateController(storage, "play-result-class-choice");
+            yield return null;
+
+            yield return DefeatBossAndResolveReward(controller);
+
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, controller.SelectedClassId);
+            Assert.IsTrue(controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
+
+            IReadOnlyList<string> classOptions = controller.GetResultClassOptionLabelsForTest();
+            Assert.That(classOptions.Count, Is.GreaterThanOrEqualTo(2));
+            Assert.That(classOptions[0], Does.Contain("Arcane Initiate"));
+            Assert.That(classOptions[0], Does.Contain("Selected"));
+            Assert.That(classOptions[1], Does.Contain("Ember Vanguard"));
+            Assert.That(classOptions[1], Does.Contain("Unlocked"));
+
+            Assert.IsTrue(controller.TrySelectResultClassForTest(1));
+            Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, controller.SelectedClassId);
+            Assert.AreEqual(1, controller.ResultClassSelectionCount);
+            Assert.That(controller.LastResultClassSelectionFeedbackLabel, Does.Contain("Ember Vanguard"));
+
+            controller.RestartRun();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, controller.SelectedClassId);
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
+            Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator PersistentUpgradesAffectNewRunStats()
         {
             var storage = new InMemoryTextStorage();

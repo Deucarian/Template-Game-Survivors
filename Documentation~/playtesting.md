@@ -71,13 +71,14 @@ After 7 minutes:
 After victory:
 
 - Press `C` or the Continue button to stay in the same build.
-- The victory panel should summarize time, level, kills, build size, run rewards, meta totals, and any class unlock before you continue or restart.
+- The victory panel should summarize time, level, kills, build size, run rewards, meta totals, any class unlock, next-run class choices, and affordable meta upgrades before you continue or restart.
+- If Ember Vanguard has just unlocked, select it from the result panel, restart, and confirm the next run starts with the broader Ember loadout and class-gated upgrade pool.
 - Endless escalation should keep increasing horde pressure and should schedule recurring elite, miniboss, and boss threats with incoming warnings.
 - Killing recurring major threats should keep producing the same stronger reward drafts and arena pickup caches without ending the run again, and each new recurring major threat can still trigger its own one-shot support call-in.
 
 After defeat:
 
-- The defeat panel should summarize the same run rewards and meta totals, then `R` or the Restart button should begin a fresh run and clear the previous summary.
+- The defeat panel should summarize the same run rewards, meta totals, next-run class choices, and affordable meta upgrades, then `R` or the Restart button should begin a fresh run and clear the previous summary.
 
 ## Reset Save Data
 

@@ -29,14 +29,14 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes with clear caches, and recurring elite, miniboss, and boss reward threats.
 - Defeating the final boss unlocks the Ember Vanguard sample class.
-- Victory or defeat persists the run summary to a local meta profile and shows a summary panel with time, level, kills, build size, rewards, meta totals, and affordable meta upgrade purchases.
+- Victory or defeat persists the run summary to a local meta profile and shows a summary panel with time, level, kills, build size, rewards, meta totals, next-run class selection, and affordable meta upgrade purchases.
 - The sample includes seven persistent meta upgrades for later-run damage, max health, pickup range, XP gain, and extra rerolls.
 - The sample includes a default Arcane Initiate class, one unlockable class, class-owned loadouts, passive atlases, weapon skill tracks, and six boss relics.
 - XP gems pull into the player when close.
 - Vital shards can drop from streaks or major foes while wounded and restore health on pickup; streak drops briefly announce themselves on the HUD, and every sustained streak milestone can start a Tempo Surge for temporary damage, cooldown, movement, and pickup-range pressure.
 - Blood shards can drop from longer streaks and add bonus run currency that is included in the end-of-run meta rewards.
 - Press `M` to trigger a debug magnet recall.
-- Pick a level-up, reward, or result-screen meta upgrade choice with the mouse or number keys; combat pauses while draft cards are open, and cards show rarity, category, affected build piece, current-to-next rank, and description.
+- Pick a level-up, reward, or result-screen meta upgrade choice with the mouse or number keys; pick a next-run class with the result-screen class buttons. Combat pauses while draft cards are open, and cards show rarity, category, affected build piece, current-to-next rank, and description.
 - Press `R` during an upgrade draft to reroll while charges remain.
 - Press `S` during an upgrade draft to skip for a small blood shard bonus.
 - Press `Shift+1`, `Shift+2`, or `Shift+3` during an upgrade draft to banish a choice while charges remain.
@@ -60,7 +60,7 @@ First run target:
 - Watch the major-threat health bar drop while fighting the miniboss and final boss, back away from their slam warning disc, then dodge the support ring each major threat calls in near low health.
 - Build toward an evolution by ranking a weapon path and taking the matching passive; the HUD should briefly announce Evolution Ready once the requirements are met.
 - Select an evolution reward and watch its surge clear nearby non-major enemies before the evolved behavior takes over.
-- Defeat the final boss, collect its larger reward cache, then if an evolution is eligible pick the boss evolution reward; otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile, then `C` continues the same build into endless escalation with recurring major-threat rewards.
+- Defeat the final boss, collect its larger reward cache, then if an evolution is eligible pick the boss evolution reward; otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile; select Ember Vanguard in the result panel before restarting to try the broader loadout, or press `C` to continue the same build into endless escalation with recurring major-threat rewards.
 
 For manual timing checks, use the host scene path above rather than the package source scene.
 

@@ -66,6 +66,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const int EndlessEnemyAliveBonus = 24;
         private const int NormalDraftRarityLockSeedSalt = 7919;
         private const int ResultMetaUpgradeOptionCount = 3;
+        private const int ResultClassOptionCount = 4;
 
         private enum DraftRarityProfile
         {
@@ -103,6 +104,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
         private readonly List<string> _lastRunSummaryLines = new List<string>(8);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
+        private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _activeRoamingCacheAmbushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
@@ -294,6 +296,8 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastWeaponEvolutionSurgeFeedbackLabel { get; private set; } = string.Empty;
         public int MetaUpgradePurchaseCount { get; private set; }
         public string LastMetaUpgradePurchaseFeedbackLabel { get; private set; } = string.Empty;
+        public int ResultClassSelectionCount { get; private set; }
+        public string LastResultClassSelectionFeedbackLabel { get; private set; } = string.Empty;
         public int MajorThreatWarningCount { get; private set; }
         public int MajorThreatEnrageCount { get; private set; }
         public int MajorThreatEnrageSupportSpawnCount { get; private set; }
@@ -746,6 +750,8 @@ namespace Deucarian.TemplateGameSurvivors
             LastWeaponEvolutionSurgeFeedbackLabel = string.Empty;
             MetaUpgradePurchaseCount = 0;
             LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
+            ResultClassSelectionCount = 0;
+            LastResultClassSelectionFeedbackLabel = string.Empty;
             EvolutionReadyFeedbackCount = 0;
             LastEvolutionReadyFeedbackLabel = string.Empty;
             BossRelicDraftOpenCount = 0;
@@ -1316,9 +1322,26 @@ namespace Deucarian.TemplateGameSurvivors
             return labels;
         }
 
+        public IReadOnlyList<string> GetResultClassOptionLabelsForTest()
+        {
+            IReadOnlyList<SurvivorsClassDefinition> options = ResolveResultClassOptions(ResultClassOptionCount);
+            string[] labels = new string[options.Count];
+            for (int i = 0; i < options.Count; i++)
+            {
+                labels[i] = FormatResultClassOptionLabel(i, options[i]);
+            }
+
+            return labels;
+        }
+
         public bool TryPurchaseResultMetaUpgradeForTest(int index)
         {
             return TryPurchaseResultMetaUpgrade(index);
+        }
+
+        public bool TrySelectResultClassForTest(int index)
+        {
+            return TrySelectResultClass(index);
         }
 
         public bool TryPurchasePersistentUpgrade(string id)
@@ -1384,6 +1407,74 @@ namespace Deucarian.TemplateGameSurvivors
             return _resultMetaUpgradeOptions;
         }
 
+        private IReadOnlyList<SurvivorsClassDefinition> ResolveResultClassOptions(int limit)
+        {
+            _resultClassOptions.Clear();
+            if (limit <= 0)
+            {
+                return _resultClassOptions;
+            }
+
+            EnsureMetaProgressionLoaded();
+            EnsureClassLibraryLoaded();
+            if (_classLibrary == null)
+            {
+                return _resultClassOptions;
+            }
+
+            for (int i = 0; i < _classLibrary.Classes.Count && _resultClassOptions.Count < limit; i++)
+            {
+                SurvivorsClassDefinition definition = _classLibrary.Classes[i];
+                if (definition != null)
+                {
+                    _resultClassOptions.Add(definition);
+                }
+            }
+
+            return _resultClassOptions;
+        }
+
+        private bool TrySelectResultClass(int index)
+        {
+            if (_runStarted && State != SurvivorsRunState.GameOver && State != SurvivorsRunState.Victory)
+            {
+                return false;
+            }
+
+            IReadOnlyList<SurvivorsClassDefinition> options = ResolveResultClassOptions(ResultClassOptionCount);
+            if (index < 0 || index >= options.Count)
+            {
+                return false;
+            }
+
+            SurvivorsClassDefinition selected = options[index];
+            if (!IsResultClassUnlocked(selected))
+            {
+                return false;
+            }
+
+            bool changed = _metaProgression.TrySetSelectedClass(selected.Id, _classLibrary);
+            _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
+            if (changed)
+            {
+                RecordResultClassSelectionFeedback(selected);
+            }
+
+            return changed;
+        }
+
+        private bool IsResultClassUnlocked(SurvivorsClassDefinition definition)
+        {
+            if (definition == null)
+            {
+                return false;
+            }
+
+            EnsureMetaProgressionLoaded();
+            EnsureClassLibraryLoaded();
+            return _metaProgression != null && _metaProgression.IsClassUnlocked(definition.Id, _classLibrary);
+        }
+
         private int ResolveNextPersistentUpgradeCost(SurvivorsPersistentUpgradeDefinition upgrade, int currentRank)
         {
             if (upgrade == null || currentRank < 0 || currentRank >= upgrade.MaxRank || upgrade.RankCosts.Count == 0)
@@ -1406,6 +1497,62 @@ namespace Deucarian.TemplateGameSurvivors
             int currentRank = _metaProgression.GetPersistentUpgradeRank(upgrade.Id.Value);
             int nextCost = ResolveNextPersistentUpgradeCost(upgrade, currentRank);
             return $"{index + 1}. {upgrade.DisplayName} rank {currentRank}->{Mathf.Min(upgrade.MaxRank, currentRank + 1)}/{upgrade.MaxRank} ({nextCost} shards) - {FormatPersistentUpgradeEffectLabel(upgrade)}";
+        }
+
+        private string FormatResultClassOptionLabel(int index, SurvivorsClassDefinition definition)
+        {
+            if (definition == null)
+            {
+                return string.Empty;
+            }
+
+            bool unlocked = IsResultClassUnlocked(definition);
+            bool selected = string.Equals(SelectedClassId, definition.Id, StringComparison.Ordinal);
+            string state = selected ? "Selected" : (unlocked ? "Unlocked" : "Locked");
+            return $"{index + 1}. {definition.DisplayName} [{state}]\n{FormatClassStatSummary(definition)} | {FormatClassStartingWeaponSummary(definition)}";
+        }
+
+        private static string FormatClassStatSummary(SurvivorsClassDefinition definition)
+        {
+            if (definition == null || definition.StartingStatModifiers.Count == 0)
+            {
+                return "Balanced";
+            }
+
+            var labels = new List<string>(definition.StartingStatModifiers.Count);
+            for (int i = 0; i < definition.StartingStatModifiers.Count; i++)
+            {
+                SurvivorsClassStatModifierDefinition modifier = definition.StartingStatModifiers[i];
+                if (modifier == null)
+                {
+                    continue;
+                }
+
+                if (modifier.StatKind == SurvivorsClassStatKind.MoveSpeed)
+                {
+                    labels.Add($"Move +{modifier.Amount:0.##}");
+                }
+                else if (modifier.StatKind == SurvivorsClassStatKind.Damage)
+                {
+                    labels.Add($"Dmg +{modifier.Amount:0.##}");
+                }
+                else if (modifier.StatKind == SurvivorsClassStatKind.MaxHealth)
+                {
+                    labels.Add($"HP +{modifier.Amount:0.#}");
+                }
+            }
+
+            return labels.Count == 0 ? "Balanced" : string.Join(", ", labels);
+        }
+
+        private static string FormatClassStartingWeaponSummary(SurvivorsClassDefinition definition)
+        {
+            if (definition == null || definition.StartingWeaponIds.Count == 0)
+            {
+                return "0 weapons";
+            }
+
+            return definition.StartingWeaponIds.Count.ToString() + " weapons";
         }
 
         private static string FormatPersistentUpgradeEffectLabel(SurvivorsPersistentUpgradeDefinition upgrade)
@@ -1441,6 +1588,20 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return upgrade.EffectId;
+        }
+
+        private void RecordResultClassSelectionFeedback(SurvivorsClassDefinition selected)
+        {
+            if (selected == null)
+            {
+                return;
+            }
+
+            ResultClassSelectionCount++;
+            LastResultClassSelectionFeedbackLabel = "Next Run Class: " + selected.DisplayName;
+            _rewardFeedbackLabel = LastResultClassSelectionFeedbackLabel;
+            _rewardFeedbackColor = new Color(0.8f, 0.58f, 1f);
+            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
         }
 
         private void RecordMetaUpgradePurchaseFeedback(string id)
@@ -6565,7 +6726,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void DrawRunResultOverlay(bool victory)
         {
             const float width = 560f;
-            float height = victory ? 348f : 318f;
+            float height = victory ? 420f : 390f;
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(rect, victory ? "Victory" : "Game Over");
             IReadOnlyList<string> lines = LastRunSummaryLines;
@@ -6582,7 +6743,8 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            DrawResultMetaUpgradeOptions(new Rect(rect.x + 24f, rect.y + 174f, width - 48f, 96f));
+            DrawResultClassOptions(new Rect(rect.x + 24f, rect.y + 166f, width - 48f, 66f));
+            DrawResultMetaUpgradeOptions(new Rect(rect.x + 24f, rect.y + 246f, width - 48f, 96f));
 
             float buttonY = rect.yMax - 48f;
             if (victory)
@@ -6600,6 +6762,42 @@ namespace Deucarian.TemplateGameSurvivors
             else if (GUI.Button(new Rect(rect.x + width * 0.5f - 70f, buttonY, 140f, 34f), "Restart"))
             {
                 RestartRun();
+            }
+        }
+
+        private void DrawResultClassOptions(Rect rect)
+        {
+            IReadOnlyList<SurvivorsClassDefinition> options = ResolveResultClassOptions(ResultClassOptionCount);
+            GUI.Label(new Rect(rect.x, rect.y, rect.width, 20f), "Next Run Class", _hudLabelStyle);
+            if (options.Count == 0)
+            {
+                GUI.Label(new Rect(rect.x, rect.y + 24f, rect.width, 20f), "No class definitions found.", _hudSmallStyle);
+                return;
+            }
+
+            float gap = 8f;
+            float buttonWidth = (rect.width - gap * (options.Count - 1)) / options.Count;
+            for (int i = 0; i < options.Count; i++)
+            {
+                SurvivorsClassDefinition option = options[i];
+                bool unlocked = IsResultClassUnlocked(option);
+                bool selected = option != null && string.Equals(SelectedClassId, option.Id, StringComparison.Ordinal);
+                Rect buttonRect = new Rect(rect.x + i * (buttonWidth + gap), rect.y + 24f, buttonWidth, 42f);
+
+                bool previousEnabled = GUI.enabled;
+                Color previousBackgroundColor = GUI.backgroundColor;
+                GUI.enabled = previousEnabled && unlocked && !selected;
+                GUI.backgroundColor = selected
+                    ? new Color(0.48f, 0.84f, 0.62f)
+                    : (unlocked ? new Color(0.8f, 0.58f, 1f) : new Color(0.38f, 0.38f, 0.38f));
+
+                if (GUI.Button(buttonRect, FormatResultClassOptionLabel(i, option)))
+                {
+                    TrySelectResultClass(i);
+                }
+
+                GUI.backgroundColor = previousBackgroundColor;
+                GUI.enabled = previousEnabled;
             }
         }
 
