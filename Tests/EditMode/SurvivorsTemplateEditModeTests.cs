@@ -585,6 +585,38 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void SampleContentValidationRequiresVerticalSliceShape()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.survivors.arcane-wand\",\"fireMode\":\"Projectile\",\"projectileId\":\"projectile.valid\",\"fanCount\":1}],\"projectiles\":[{\"id\":\"projectile.valid\"}]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"survivors.damage.flat\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
+            string enemyJson = "{\"enemies\":[{\"id\":\"enemy.survivors.swarm\",\"role\":\"Swarm\",\"health\":10,\"moveSpeed\":2,\"radius\":0.5,\"contactDamage\":1,\"contactIntervalSeconds\":0.5,\"experienceDrop\":1}]}";
+            string classJson = "{\"defaultClassId\":\"class.valid\",\"classes\":[{\"id\":\"class.valid\",\"startingWeaponId\":\"weapon.survivors.arcane-wand\",\"startingWeaponIds\":[\"weapon.survivors.arcane-wand\"],\"unlockedByDefault\":true,\"unlockRewardId\":\"\",\"statModifiers\":[]}]}";
+            string progressionJson = "{\"tracks\":[{\"id\":\"progression.valid.passives\",\"kind\":\"PassiveAtlas\",\"classId\":\"class.valid\",\"targetWeaponId\":\"\",\"nodes\":[{\"id\":\"node.passive\",\"upgradeId\":\"upgrade.valid\",\"kind\":\"Passive\",\"tier\":0,\"pointCost\":1,\"maxRank\":1}]},{\"id\":\"progression.valid.weapon\",\"kind\":\"WeaponSkillTrack\",\"classId\":\"\",\"targetWeaponId\":\"weapon.survivors.arcane-wand\",\"nodes\":[{\"id\":\"node.unlock\",\"upgradeId\":\"upgrade.valid\",\"kind\":\"WeaponUnlock\",\"tier\":0,\"pointCost\":1,\"maxRank\":1}]}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(
+                weaponJson,
+                upgradeJson,
+                enemyJson: enemyJson,
+                classJson: classJson,
+                progressionJson: progressionJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("at least 6 playable weapons", errors);
+            StringAssert.Contains("spread or fan projectile weapon", errors);
+            StringAssert.Contains("orbiting weapon", errors);
+            StringAssert.Contains("area burst weapon", errors);
+            StringAssert.Contains("beam or hitscan weapon", errors);
+            StringAssert.Contains("bomb, trap, or hazard payload weapon", errors);
+            StringAssert.Contains("at least 6 enemy definitions", errors);
+            StringAssert.Contains("enemy role Runner", errors);
+            StringAssert.Contains("at least 2 elite variants", errors);
+            StringAssert.Contains("at least 8 passive upgrades", errors);
+            StringAssert.Contains("must include a weapon unlock, a five-rank weapon path, at least two mutation nodes, and an evolution node", errors);
+            StringAssert.Contains("at least 6 complete weapon skill tracks", errors);
+        }
+
+        [Test]
         public void SampleRunFlowContentIncludesRewardTuning()
         {
             string sampleRoot = GetSampleRoot();

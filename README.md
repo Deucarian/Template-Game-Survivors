@@ -150,7 +150,7 @@ From the Unity editor, run:
 
 `Tools > Deucarian > Templates > Survivors > Validate Content`
 
-The menu validates sample JSON and runtime catalogs for IDs, archetype references, projectile references, upgrade targets, pickup definitions, boss/miniboss enemy definitions, relic effects, class IDs, starting weapons, passive atlases, weapon skill tracks, and unlock requirements. The report is written to the Unity console for template developer visibility.
+The menu validates sample JSON and runtime catalogs for IDs, archetype references, projectile references, upgrade targets, pickup definitions, vertical-slice weapon role coverage, enemy role coverage, boss/miniboss enemy definitions, relic effects, class IDs, starting weapons, passive atlases, weapon skill tracks, and unlock requirements. The report is written to the Unity console for template developer visibility.
 
 Before committing package changes, run:
 

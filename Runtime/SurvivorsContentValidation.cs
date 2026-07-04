@@ -25,6 +25,12 @@ namespace Deucarian.TemplateGameSurvivors
 
     public static class SurvivorsContentValidator
     {
+        private const int MinimumVerticalSliceWeaponCount = 6;
+        private const int MinimumVerticalSlicePassiveCount = 8;
+        private const int MinimumVerticalSliceCompleteWeaponTrackCount = 6;
+        private const int MinimumVerticalSliceEnemyCount = 6;
+        private const int MinimumVerticalSliceEliteVariantCount = 2;
+
         private static readonly string[] RequiredRunFlowRarityTableIds =
         {
             "NormalEarly",
@@ -754,6 +760,8 @@ namespace Deucarian.TemplateGameSurvivors
                         result);
                 }
             }
+
+            ValidateSampleWeaponRoleCoverage(library.weapons, result);
         }
 
         private static bool IsPayloadArchetype(SurvivorsWeaponArchetype archetype)
@@ -761,6 +769,92 @@ namespace Deucarian.TemplateGameSurvivors
             return archetype == SurvivorsWeaponArchetype.Grenade ||
                 archetype == SurvivorsWeaponArchetype.Trap ||
                 archetype == SurvivorsWeaponArchetype.Mine;
+        }
+
+        private static void ValidateSampleWeaponRoleCoverage(WeaponRecordJson[] weapons, SurvivorsContentValidationResult result)
+        {
+            if (weapons == null)
+            {
+                return;
+            }
+
+            int validWeaponCount = 0;
+            bool hasStraightProjectile = false;
+            bool hasSpreadProjectile = false;
+            bool hasOrbit = false;
+            bool hasBurst = false;
+            bool hasBeam = false;
+            bool hasPayload = false;
+
+            for (int i = 0; i < weapons.Length; i++)
+            {
+                WeaponRecordJson weapon = weapons[i];
+                if (weapon == null ||
+                    string.IsNullOrWhiteSpace(weapon.id) ||
+                    !Enum.TryParse(weapon.fireMode, ignoreCase: true, out SurvivorsWeaponArchetype archetype) ||
+                    !Enum.IsDefined(typeof(SurvivorsWeaponArchetype), archetype))
+                {
+                    continue;
+                }
+
+                validWeaponCount++;
+                if (archetype == SurvivorsWeaponArchetype.Projectile)
+                {
+                    hasStraightProjectile |= weapon.fanCount <= 1 && weapon.spreadDegrees <= 0f;
+                    hasSpreadProjectile |= weapon.fanCount >= 3 || weapon.spreadDegrees > 0f;
+                }
+                else if (archetype == SurvivorsWeaponArchetype.Orbit)
+                {
+                    hasOrbit = true;
+                }
+                else if (archetype == SurvivorsWeaponArchetype.Burst)
+                {
+                    hasBurst = true;
+                }
+                else if (archetype == SurvivorsWeaponArchetype.Hitscan)
+                {
+                    hasBeam = true;
+                }
+                else if (IsPayloadArchetype(archetype))
+                {
+                    hasPayload = true;
+                }
+            }
+
+            if (validWeaponCount < MinimumVerticalSliceWeaponCount)
+            {
+                result.AddError($"Sample vertical slice requires at least {MinimumVerticalSliceWeaponCount} playable weapons.");
+            }
+
+            if (!hasStraightProjectile)
+            {
+                result.AddError("Sample vertical slice requires a straight projectile weapon.");
+            }
+
+            if (!hasSpreadProjectile)
+            {
+                result.AddError("Sample vertical slice requires a spread or fan projectile weapon.");
+            }
+
+            if (!hasOrbit)
+            {
+                result.AddError("Sample vertical slice requires an orbiting weapon.");
+            }
+
+            if (!hasBurst)
+            {
+                result.AddError("Sample vertical slice requires an area burst weapon.");
+            }
+
+            if (!hasBeam)
+            {
+                result.AddError("Sample vertical slice requires a beam or hitscan weapon.");
+            }
+
+            if (!hasPayload)
+            {
+                result.AddError("Sample vertical slice requires a bomb, trap, or hazard payload weapon.");
+            }
         }
 
         private static void ValidatePayloadRuntimeWeapon(
@@ -1329,6 +1423,8 @@ namespace Deucarian.TemplateGameSurvivors
             var nodeIds = new HashSet<string>(StringComparer.Ordinal);
             var passiveAtlasClassIds = new HashSet<string>(StringComparer.Ordinal);
             var evolutionNodeUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
+            int passiveNodeCount = 0;
+            int completeWeaponTrackCount = 0;
             for (int i = 0; i < library.tracks.Length; i++)
             {
                 ProgressionTrackRecordJson track = library.tracks[i];
@@ -1364,6 +1460,7 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
+                TrackShapeSummary trackShape = TrackShapeSummary.Create(track);
                 for (int nodeIndex = 0; nodeIndex < track.nodes.Length; nodeIndex++)
                 {
                     ProgressionNodeRecordJson node = track.nodes[nodeIndex];
@@ -1393,6 +1490,22 @@ namespace Deucarian.TemplateGameSurvivors
                         evolutionNodeUpgradeIds.Add(node.upgradeId);
                     }
                 }
+
+                if (trackShape.IsPassiveAtlas)
+                {
+                    passiveNodeCount += trackShape.PassiveNodeCount;
+                }
+                else if (trackShape.IsWeaponSkillTrack)
+                {
+                    if (trackShape.IsCompleteVerticalSliceWeaponTrack)
+                    {
+                        completeWeaponTrackCount++;
+                    }
+                    else
+                    {
+                        result.AddError($"Weapon skill track {resolvedTrackId} must include a weapon unlock, a five-rank weapon path, at least two mutation nodes, and an evolution node.");
+                    }
+                }
             }
 
             if (classLibrary != null && classLibrary.classes != null)
@@ -1405,6 +1518,16 @@ namespace Deucarian.TemplateGameSurvivors
                         result.AddError($"Class {playerClass.id} requires a passive atlas progression track.");
                     }
                 }
+            }
+
+            if (passiveNodeCount < MinimumVerticalSlicePassiveCount)
+            {
+                result.AddError($"Sample vertical slice requires at least {MinimumVerticalSlicePassiveCount} passive upgrades across passive atlases.");
+            }
+
+            if (completeWeaponTrackCount < MinimumVerticalSliceCompleteWeaponTrackCount)
+            {
+                result.AddError($"Sample vertical slice requires at least {MinimumVerticalSliceCompleteWeaponTrackCount} complete weapon skill tracks.");
             }
 
             ValidateSampleEvolutionProgressionCoverage(evolutionNodeUpgradeIds, result);
@@ -1426,6 +1549,8 @@ namespace Deucarian.TemplateGameSurvivors
             var enemyIds = new HashSet<string>(StringComparer.Ordinal);
             int bossCount = 0;
             int minibossCount = 0;
+            int eliteVariantCount = 0;
+            var roles = new HashSet<SurvivorsEnemyRole>();
             for (int i = 0; i < library.enemies.Length; i++)
             {
                 EnemyRecordJson enemy = library.enemies[i];
@@ -1447,6 +1572,7 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
+                roles.Add(role);
                 if (role == SurvivorsEnemyRole.Miniboss)
                 {
                     minibossCount++;
@@ -1454,6 +1580,10 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (role == SurvivorsEnemyRole.Boss)
                 {
                     bossCount++;
+                }
+                else if (role == SurvivorsEnemyRole.Elite || role == SurvivorsEnemyRole.DreadElite)
+                {
+                    eliteVariantCount++;
                 }
 
                 ValidateEnemyStats(enemy.id, enemy.health, enemy.moveSpeed, enemy.radius, enemy.contactDamage, enemy.contactIntervalSeconds, enemy.experienceDrop, result);
@@ -1481,6 +1611,23 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
+            if (enemyIds.Count < MinimumVerticalSliceEnemyCount)
+            {
+                result.AddError($"Sample vertical slice requires at least {MinimumVerticalSliceEnemyCount} enemy definitions.");
+            }
+
+            ValidateRequiredEnemyRole(roles, SurvivorsEnemyRole.Swarm, result);
+            ValidateRequiredEnemyRole(roles, SurvivorsEnemyRole.Runner, result);
+            ValidateRequiredEnemyRole(roles, SurvivorsEnemyRole.Bruiser, result);
+            ValidateRequiredEnemyRole(roles, SurvivorsEnemyRole.Spitter, result);
+            ValidateRequiredEnemyRole(roles, SurvivorsEnemyRole.Splitter, result);
+            ValidateRequiredEnemyRole(roles, SurvivorsEnemyRole.Summoner, result);
+
+            if (eliteVariantCount < MinimumVerticalSliceEliteVariantCount)
+            {
+                result.AddError($"Sample vertical slice requires at least {MinimumVerticalSliceEliteVariantCount} elite variants.");
+            }
+
             if (minibossCount == 0)
             {
                 result.AddError("Sample enemy library must contain a miniboss definition.");
@@ -1489,6 +1636,14 @@ namespace Deucarian.TemplateGameSurvivors
             if (bossCount == 0)
             {
                 result.AddError("Sample enemy library must contain a boss definition.");
+            }
+        }
+
+        private static void ValidateRequiredEnemyRole(HashSet<SurvivorsEnemyRole> roles, SurvivorsEnemyRole requiredRole, SurvivorsContentValidationResult result)
+        {
+            if (roles == null || !roles.Contains(requiredRole))
+            {
+                result.AddError($"Sample vertical slice requires enemy role {requiredRole}.");
             }
         }
 
@@ -2604,6 +2759,81 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private struct TrackShapeSummary
+        {
+            public bool IsPassiveAtlas;
+            public bool IsWeaponSkillTrack;
+            public int PassiveNodeCount;
+            public bool HasWeaponUnlock;
+            public bool HasFiveRankPath;
+            public int MutationNodeCount;
+            public bool HasEvolution;
+
+            public bool IsCompleteVerticalSliceWeaponTrack =>
+                IsWeaponSkillTrack &&
+                HasWeaponUnlock &&
+                HasFiveRankPath &&
+                MutationNodeCount >= 2 &&
+                HasEvolution;
+
+            public static TrackShapeSummary Create(ProgressionTrackRecordJson track)
+            {
+                var summary = new TrackShapeSummary();
+                if (track == null ||
+                    string.IsNullOrWhiteSpace(track.kind) ||
+                    !Enum.TryParse(track.kind, ignoreCase: true, out SurvivorsProgressionTrackKind trackKind) ||
+                    !Enum.IsDefined(typeof(SurvivorsProgressionTrackKind), trackKind))
+                {
+                    return summary;
+                }
+
+                summary.IsPassiveAtlas = trackKind == SurvivorsProgressionTrackKind.PassiveAtlas;
+                summary.IsWeaponSkillTrack = trackKind == SurvivorsProgressionTrackKind.WeaponSkillTrack;
+                if (track.nodes == null)
+                {
+                    return summary;
+                }
+
+                for (int i = 0; i < track.nodes.Length; i++)
+                {
+                    ProgressionNodeRecordJson node = track.nodes[i];
+                    if (node == null ||
+                        string.IsNullOrWhiteSpace(node.kind) ||
+                        !Enum.TryParse(node.kind, ignoreCase: true, out SurvivorsProgressionNodeKind nodeKind) ||
+                        !Enum.IsDefined(typeof(SurvivorsProgressionNodeKind), nodeKind))
+                    {
+                        continue;
+                    }
+
+                    if (summary.IsPassiveAtlas && nodeKind == SurvivorsProgressionNodeKind.Passive && node.maxRank >= 3)
+                    {
+                        summary.PassiveNodeCount++;
+                    }
+                    else if (summary.IsWeaponSkillTrack)
+                    {
+                        if (nodeKind == SurvivorsProgressionNodeKind.WeaponUnlock)
+                        {
+                            summary.HasWeaponUnlock = true;
+                        }
+                        else if (nodeKind == SurvivorsProgressionNodeKind.WeaponRank && node.maxRank >= 5)
+                        {
+                            summary.HasFiveRankPath = true;
+                        }
+                        else if (nodeKind == SurvivorsProgressionNodeKind.WeaponMutation)
+                        {
+                            summary.MutationNodeCount++;
+                        }
+                        else if (nodeKind == SurvivorsProgressionNodeKind.Evolution)
+                        {
+                            summary.HasEvolution = true;
+                        }
+                    }
+                }
+
+                return summary;
+            }
+        }
+
         [Serializable]
         private sealed class WeaponLibraryJson
         {
@@ -2617,6 +2847,8 @@ namespace Deucarian.TemplateGameSurvivors
             public string id;
             public string fireMode;
             public string projectileId;
+            public int fanCount;
+            public float spreadDegrees;
             public int payloadCount;
             public float payloadTravelSpeed;
             public float payloadArmingSeconds;
