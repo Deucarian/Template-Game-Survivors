@@ -54,6 +54,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const float EnemyHitFlashSeconds = 0.13f;
         private const float EnemyDeathEffectLifetimeSeconds = 0.42f;
         private const int EnemyDeathEffectLimit = 56;
+        private const float BaseDeathNovaRadius = 1.65f;
         private const float MajorRewardDropLifetimeSeconds = 1.25f;
         private const int MajorRewardDropEffectLimit = 8;
         private const float MajorRewardPickupCacheRadiusPadding = 0.55f;
@@ -268,6 +269,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int PlayerDamageFeedbackCount { get; private set; }
         public int EnemyHitFlashFeedbackCount { get; private set; }
         public int CriticalHitFeedbackCount { get; private set; }
+        public int DeathNovaTriggerCount { get; private set; }
+        public int DeathNovaHitCount { get; private set; }
         public int EnemyDeathEffectCount { get; private set; }
         public int EnemyRangedAttackFeedbackCount { get; private set; }
         public int MajorRewardDropFeedbackCount { get; private set; }
@@ -357,6 +360,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float CriticalChanceBonus { get; private set; }
         public float CriticalDamageMultiplierBonus { get; private set; }
         public float DraftLuckBonus { get; private set; }
+        public float DeathNovaDamageBonus { get; private set; }
+        public float DeathNovaRadiusBonus { get; private set; }
         public float LifestealRatio { get; private set; }
         public float ExperienceGainMultiplierBonus { get; private set; }
         public float AreaRadiusBonus { get; private set; }
@@ -431,6 +436,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus);
         public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
         public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
+        public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
+        public float DeathNovaRadius => DeathNovaDamage <= 0f ? 0f : Mathf.Max(0f, BaseDeathNovaRadius + DeathNovaRadiusBonus + AreaRadiusBonus * 0.5f);
         public float CurrentHealth => _playerHealth == null ? 0f : (float)_playerHealth.CurrentHealth;
         public float MaxHealth => _playerHealth == null ? 0f : (float)_playerHealth.MaximumHealth;
         public float BarrierCapacity => Mathf.Max(0f, CurrentTuning.StartingBarrierCapacity + BarrierCapacityBonus);
@@ -709,6 +716,8 @@ namespace Deucarian.TemplateGameSurvivors
             PlayerDamageFeedbackCount = 0;
             EnemyHitFlashFeedbackCount = 0;
             CriticalHitFeedbackCount = 0;
+            DeathNovaTriggerCount = 0;
+            DeathNovaHitCount = 0;
             EnemyDeathEffectCount = 0;
             EnemyRangedAttackFeedbackCount = 0;
             MajorRewardDropFeedbackCount = 0;
@@ -783,6 +792,8 @@ namespace Deucarian.TemplateGameSurvivors
             CriticalChanceBonus = 0f;
             CriticalDamageMultiplierBonus = 0f;
             DraftLuckBonus = 0f;
+            DeathNovaDamageBonus = 0f;
+            DeathNovaRadiusBonus = 0f;
             LifestealRatio = 0f;
             ExperienceGainMultiplierBonus = 0f;
             AreaRadiusBonus = 0f;
@@ -1352,7 +1363,7 @@ namespace Deucarian.TemplateGameSurvivors
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
                 $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
-                $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}",
+                $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
             };
 
@@ -1731,7 +1742,7 @@ namespace Deucarian.TemplateGameSurvivors
             return CombatDamageResolver.Resolve(_combatCatalog, health, null, request, allowCritical ? _combatRandom : null);
         }
 
-        internal void HandleEnemyKilled(SurvivorsEnemyActor enemy)
+        internal void HandleEnemyKilled(SurvivorsEnemyActor enemy, string source, bool applyAugments)
         {
             if (enemy == null)
             {
@@ -1755,6 +1766,7 @@ namespace Deucarian.TemplateGameSurvivors
             SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
             RegisterKillStreak(position);
             RecordEnemyDeathEffect(position, role, radius);
+            TryTriggerDeathNova(position, source, applyAugments);
             if (IsMajorRewardRole(role))
             {
                 RecordMajorRewardDropFeedback(position, role, radius);
@@ -1800,6 +1812,56 @@ namespace Deucarian.TemplateGameSurvivors
             if (clearedRoamingCacheAmbushEnemy)
             {
                 SpawnRoamingCacheAmbushClearReward(position);
+            }
+        }
+
+        private void TryTriggerDeathNova(Vector3 position, string source, bool applyAugments)
+        {
+            float damage = DeathNovaDamage;
+            float radius = DeathNovaRadius;
+            if (damage <= 0f || radius <= 0f || !applyAugments || !CanApplyDamageAugments(source))
+            {
+                return;
+            }
+
+            var targets = new List<SurvivorsEnemyActor>();
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor target = _enemies[i];
+                if (target == null || !target.IsAlive)
+                {
+                    continue;
+                }
+
+                Vector3 delta = target.transform.position - position;
+                delta.y = 0f;
+                float range = radius + Mathf.Max(0f, target.Radius);
+                if (delta.sqrMagnitude <= range * range)
+                {
+                    targets.Add(target);
+                }
+            }
+
+            if (targets.Count == 0)
+            {
+                return;
+            }
+
+            DeathNovaTriggerCount++;
+            PlayFeedback(_killPulse, position, Mathf.Clamp(16 + targets.Count * 7, 18, 72), _killClip);
+            for (int i = 0; i < targets.Count; i++)
+            {
+                SurvivorsEnemyActor target = targets[i];
+                if (target == null || !target.IsAlive)
+                {
+                    continue;
+                }
+
+                DamageResult result = target.ApplyDamage(damage, "survivors.augment.death-nova");
+                if (result != null && result.HealthDamage > 0d)
+                {
+                    DeathNovaHitCount++;
+                }
             }
         }
 
@@ -5759,6 +5821,14 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     DraftLuckBonus += Mathf.Max(0f, (float)effect.Amount);
                 }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaDamageEffect))
+                {
+                    DeathNovaDamageBonus += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaRadiusEffect))
+                {
+                    DeathNovaRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
+                }
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect))
                 {
                     LifestealRatio += Mathf.Max(0f, (float)effect.Amount);
@@ -7019,7 +7089,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (_health != null && !_health.IsAlive)
             {
-                _controller.HandleEnemyKilled(this);
+                _controller.HandleEnemyKilled(this, source, applyAugments);
             }
 
             return result.Damage;

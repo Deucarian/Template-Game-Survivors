@@ -147,6 +147,44 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator SoulflareGlyphWeaponKillsCreateDeathNova()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.StartRun();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.SoulflareGlyphUpgradeId));
+            Assert.That(controller.DeathNovaDamage, Is.GreaterThan(0f));
+            Assert.That(controller.DeathNovaRadius, Is.GreaterThan(0f));
+
+            Vector3 center = controller.PlayerPosition + new Vector3(5f, 0f, 0f);
+            SurvivorsEnemyActor victim = controller.SpawnEnemyForTest(center, SurvivorsEnemyRole.Swarm, 1f);
+            SurvivorsEnemyActor nearby = controller.SpawnEnemyForTest(center + new Vector3(1.1f, 0f, 0f), SurvivorsEnemyRole.Swarm, 4.5f);
+            SurvivorsEnemyActor far = controller.SpawnEnemyForTest(center + new Vector3(5f, 0f, 0f), SurvivorsEnemyRole.Swarm, 4.5f);
+
+            victim.ApplyDamage(20f, "weapon.survivors.arcane-wand");
+            yield return null;
+
+            Assert.AreEqual(1, controller.DeathNovaTriggerCount);
+            Assert.AreEqual(1, controller.DeathNovaHitCount);
+            Assert.AreEqual(2, controller.KilledCount);
+            Assert.IsFalse(nearby.IsAlive);
+            Assert.IsTrue(far.IsAlive);
+
+            SurvivorsEnemyActor statusVictim = controller.SpawnEnemyForTest(center + new Vector3(0f, 0f, 6f), SurvivorsEnemyRole.Swarm, 1f);
+            SurvivorsEnemyActor statusNearby = controller.SpawnEnemyForTest(center + new Vector3(1.1f, 0f, 6f), SurvivorsEnemyRole.Swarm, 4.5f);
+            statusVictim.ApplyDamage(20f, "survivors.status.poison");
+            yield return null;
+
+            Assert.AreEqual(1, controller.DeathNovaTriggerCount);
+            Assert.AreEqual(1, controller.DeathNovaHitCount);
+            Assert.IsTrue(statusNearby.IsAlive);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator PlayerDamageShowsFeedbackAndLowHealthWarning()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

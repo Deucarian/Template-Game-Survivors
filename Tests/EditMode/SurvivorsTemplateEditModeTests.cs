@@ -73,6 +73,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GiantRuneUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.TwinCharmUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FateLensUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.SoulflareGlyphUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AstralConvergenceUpgradeId));
             AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.ArcaneWandUnlockUpgradeId, BasicSurvivorsGame.ArcaneWandWeaponContentId);
             AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.FrostFanUnlockUpgradeId, BasicSurvivorsGame.FrostFanWeaponContentId);
@@ -926,7 +927,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             SurvivorsTemplateController controller = CreateController();
             try
             {
-                controller.ForceLevelUp();
+                controller.ForceLevelUpWithLockedChoiceForTest("upgrade.survivors.arcane-damage");
+                int previousWeaponCount = controller.ActiveWeaponCount;
+                int previousPassiveCount = controller.ActivePassiveCount;
+                int previousEvolutionCount = controller.EvolvedWeaponCount;
                 float previousDamage = controller.ProjectileDamage;
                 float previousMove = controller.PlayerMoveSpeed;
                 float previousCooldown = controller.WeaponCooldownSeconds;
@@ -949,6 +953,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 float previousCriticalChance = controller.CriticalChanceNormalized;
                 float previousCriticalDamageMultiplier = controller.CriticalDamageMultiplier;
                 float previousDraftLuck = controller.DraftLuckBonus;
+                float previousDeathNovaDamage = controller.DeathNovaDamage;
+                float previousDeathNovaRadius = controller.DeathNovaRadius;
                 float previousLifesteal = controller.LifestealRatio;
                 float previousExperienceGain = controller.ExperienceGainMultiplierBonus;
                 float previousAreaRadius = controller.AreaRadiusBonus;
@@ -960,7 +966,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
 
                 Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
                 Assert.AreEqual(1, controller.SelectedUpgradeCount);
-                bool changed = controller.ProjectileDamage > previousDamage ||
+                bool changed = controller.ActiveWeaponCount > previousWeaponCount ||
+                    controller.ActivePassiveCount > previousPassiveCount ||
+                    controller.EvolvedWeaponCount > previousEvolutionCount ||
+                    controller.ProjectileDamage > previousDamage ||
                     controller.PlayerMoveSpeed > previousMove ||
                     controller.WeaponCooldownSeconds < previousCooldown ||
                     controller.MaxHealth > previousMaxHealth ||
@@ -983,6 +992,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     controller.CriticalChanceNormalized > previousCriticalChance ||
                     controller.CriticalDamageMultiplier > previousCriticalDamageMultiplier ||
                     controller.DraftLuckBonus > previousDraftLuck ||
+                    controller.DeathNovaDamage > previousDeathNovaDamage ||
+                    controller.DeathNovaRadius > previousDeathNovaRadius ||
                     controller.LifestealRatio > previousLifesteal ||
                     controller.ExperienceGainMultiplierBonus > previousExperienceGain ||
                     controller.AreaRadiusBonus > previousAreaRadius ||
