@@ -209,6 +209,13 @@ namespace Deucarian.TemplateGameSurvivors
         public float RoamingCacheSurgePickupRangeBonus = 0.55f;
         public float RoamingCacheSurgePulseDamage = 14f;
         public float RoamingCacheSurgePulseRadius = 4.25f;
+        public float WaystoneDiscoveryRadius = 1.45f;
+        public int WaystoneExperienceGemCount = 4;
+        public int WaystoneBloodShardInterval = 3;
+        public int WaystoneAmbushInterval = 2;
+        public int WaystoneAmbushBaseEnemyCount = 2;
+        public int WaystoneAmbushExtraAliveAllowance = 8;
+        public float WaystoneAmbushRadius = 3.4f;
         public int HealthPickupHealAmount = 10;
         public int BloodShardPickupAmount = 1;
         public int ExperienceRequiredBase = 8;
@@ -696,6 +703,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheSurgePickupRangeBonus = 0.75f;
             tuning.RoamingCacheSurgePulseDamage = 20f;
             tuning.RoamingCacheSurgePulseRadius = 4.8f;
+            tuning.WaystoneDiscoveryRadius = 1.65f;
+            tuning.WaystoneExperienceGemCount = 5;
+            tuning.WaystoneAmbushBaseEnemyCount = 3;
+            tuning.WaystoneAmbushExtraAliveAllowance = 14;
             tuning.RewardUpgradeSurgeDamage = 20f;
             tuning.RewardUpgradeSurgeRadius = 5.2f;
             tuning.HealthPickupHealAmount = 14;
@@ -797,6 +808,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheSurgePickupRangeBonus = 0.65f;
             tuning.RoamingCacheSurgePulseDamage = 16f;
             tuning.RoamingCacheSurgePulseRadius = 4.5f;
+            tuning.WaystoneDiscoveryRadius = 1.55f;
+            tuning.WaystoneExperienceGemCount = 5;
+            tuning.WaystoneAmbushBaseEnemyCount = 3;
+            tuning.WaystoneAmbushExtraAliveAllowance = 12;
             tuning.RewardUpgradeSurgeDamage = 18f;
             tuning.RewardUpgradeSurgeRadius = 5f;
             tuning.HealthPickupHealAmount = 12;

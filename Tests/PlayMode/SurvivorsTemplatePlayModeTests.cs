@@ -682,7 +682,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             string openingState = $"elapsed={elapsed:0.0}s, kills={controller.KilledCount}, activePickups={controller.ActivePickupCount}, xpCollected={controller.ExperienceCollected}, state={controller.State}";
-            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1), openingState);
+            Assert.That(controller.KilledCount + controller.WaystoneDiscoveryCount, Is.GreaterThanOrEqualTo(1), openingState);
             Assert.That(controller.ExperienceCollected, Is.GreaterThan(0), openingState);
             Assert.That(elapsed, Is.LessThanOrEqualTo(20f), openingState);
 
@@ -1327,6 +1327,57 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ArenaPresentationCenterForTest.x, Is.EqualTo(controller.PlayerPosition.x).Within(0.05f));
             Assert.That(Mathf.Abs(controller.FirstInfiniteArenaTilePositionForTest.x - firstTileBefore.x), Is.GreaterThan(0.5f));
             Assert.That(Mathf.Abs(controller.FirstInfiniteArenaLandmarkPositionForTest.x - firstLandmarkBefore.x), Is.GreaterThan(0.5f));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ArenaWaystonesTriggerDiscoveryRewardsAndAmbushes()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.WaystoneDiscoveryRadius = 1.9f;
+            controller.CurrentTuning.WaystoneExperienceGemCount = 2;
+            controller.CurrentTuning.WaystoneBloodShardInterval = 1;
+            controller.CurrentTuning.WaystoneAmbushInterval = 1;
+            controller.CurrentTuning.WaystoneAmbushBaseEnemyCount = 2;
+            controller.CurrentTuning.WaystoneAmbushExtraAliveAllowance = 4;
+            controller.StartRun();
+            yield return null;
+
+            Assert.That(controller.InfiniteArenaLandmarkCountForTest, Is.GreaterThanOrEqualTo(8));
+            Vector3 target = controller.ClosestInfiniteArenaLandmarkPositionForTest;
+            Vector3 toTarget = target - controller.PlayerPosition;
+            Vector2 movement = new Vector2(toTarget.x, toTarget.z).normalized;
+            for (int i = 0; i < 240 && controller.WaystoneDiscoveryCount == 0; i++)
+            {
+                controller.Simulate(1f / 60f, movement);
+                yield return null;
+            }
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Vector3 finalDelta = target - controller.PlayerPosition;
+            finalDelta.y = 0f;
+            Assert.That(
+                finalDelta.magnitude,
+                Is.LessThanOrEqualTo(controller.CurrentTuning.WaystoneDiscoveryRadius + 0.25f),
+                $"Waystone reach distance. Player {controller.PlayerPosition}, target {target}");
+            Assert.AreEqual(1, controller.WaystoneDiscoveryCount, "Waystone discovery count");
+            Assert.AreEqual(2, controller.WaystoneExperienceGemDropCount, "Waystone XP gem drop count");
+            Assert.AreEqual(1, controller.WaystoneBloodShardDropCount, "Waystone blood shard drop count");
+            Assert.AreEqual(1, controller.WaystoneAmbushCount, "Waystone ambush count");
+            Assert.AreEqual(2, controller.WaystoneAmbushEnemySpawnCount, "Waystone ambush enemy spawn count");
+            Assert.That(controller.LastWaystoneDiscoveryFeedbackLabel, Does.Contain("Waystone Discovered"));
+            Assert.That(controller.LastWaystoneDiscoveryFeedbackLabel, Does.Contain("Shard"));
+            Assert.That(controller.LastWaystoneDiscoveryFeedbackLabel, Does.Contain("Ambush"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Waystone"));
+
+            yield return SimulateFrames(controller, 12);
+
+            Assert.AreEqual(1, controller.WaystoneDiscoveryCount, "Waystone discovery should not repeat while staying on the same marker");
 
             Object.Destroy(controller.gameObject);
         }

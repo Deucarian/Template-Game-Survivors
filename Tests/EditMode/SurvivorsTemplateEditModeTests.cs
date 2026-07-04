@@ -380,6 +380,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.RoamingCacheSurgePickupRangeBonus, Is.GreaterThan(0f));
             Assert.That(tuning.RoamingCacheSurgePulseDamage, Is.GreaterThan(0f));
             Assert.That(tuning.RoamingCacheSurgePulseRadius, Is.InRange(3f, 6f));
+            Assert.That(tuning.WaystoneDiscoveryRadius, Is.InRange(1f, 2.25f));
+            Assert.That(tuning.WaystoneExperienceGemCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(tuning.WaystoneBloodShardInterval, Is.GreaterThanOrEqualTo(2));
+            Assert.That(tuning.WaystoneAmbushInterval, Is.GreaterThanOrEqualTo(1));
+            Assert.That(tuning.WaystoneAmbushBaseEnemyCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(tuning.WaystoneAmbushExtraAliveAllowance, Is.GreaterThanOrEqualTo(tuning.WaystoneAmbushBaseEnemyCount));
+            Assert.That(tuning.WaystoneAmbushRadius, Is.InRange(2f, 5f));
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
             Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));

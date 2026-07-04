@@ -102,6 +102,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsProjectileActor> _projectiles = new List<SurvivorsProjectileActor>(64);
         private readonly List<Transform> _arenaTiles = new List<Transform>(25);
         private readonly List<Transform> _arenaLandmarks = new List<Transform>(InfiniteArenaLandmarkCount);
+        private readonly List<long> _arenaLandmarkKeys = new List<long>(InfiniteArenaLandmarkCount);
         private readonly List<SurvivorsDamagePopup> _damagePopups = new List<SurvivorsDamagePopup>(DamagePopupLimit);
         private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
         private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
@@ -113,6 +114,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _activeRoamingCacheAmbushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
+        private readonly HashSet<long> _discoveredArenaWaystones = new HashSet<long>();
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -372,6 +374,12 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastRoamingCacheFeedbackLabel { get; private set; } = string.Empty;
         public string LastRoamingCacheAmbushClearFeedbackLabel { get; private set; } = string.Empty;
         public string LastRoamingCacheSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public int WaystoneDiscoveryCount { get; private set; }
+        public int WaystoneExperienceGemDropCount { get; private set; }
+        public int WaystoneBloodShardDropCount { get; private set; }
+        public int WaystoneAmbushCount { get; private set; }
+        public int WaystoneAmbushEnemySpawnCount { get; private set; }
+        public string LastWaystoneDiscoveryFeedbackLabel { get; private set; } = string.Empty;
         public int BestKillStreak { get; private set; }
         public int StreakBonusDropCount { get; private set; }
         public int StreakHealthDropCount { get; private set; }
@@ -513,6 +521,7 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 ArenaPresentationCenterForTest => _arenaFollowRoot == null ? Vector3.zero : _arenaFollowRoot.position;
         public Vector3 FirstInfiniteArenaTilePositionForTest => _arenaTiles.Count == 0 || _arenaTiles[0] == null ? Vector3.zero : _arenaTiles[0].position;
         public Vector3 FirstInfiniteArenaLandmarkPositionForTest => _arenaLandmarks.Count == 0 || _arenaLandmarks[0] == null ? Vector3.zero : _arenaLandmarks[0].position;
+        public Vector3 ClosestInfiniteArenaLandmarkPositionForTest => ResolveClosestArenaLandmarkPositionForTest();
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus;
@@ -906,6 +915,13 @@ namespace Deucarian.TemplateGameSurvivors
             LastRoamingCacheFeedbackLabel = string.Empty;
             LastRoamingCacheAmbushClearFeedbackLabel = string.Empty;
             LastRoamingCacheSurgeFeedbackLabel = string.Empty;
+            WaystoneDiscoveryCount = 0;
+            WaystoneExperienceGemDropCount = 0;
+            WaystoneBloodShardDropCount = 0;
+            WaystoneAmbushCount = 0;
+            WaystoneAmbushEnemySpawnCount = 0;
+            LastWaystoneDiscoveryFeedbackLabel = string.Empty;
+            _discoveredArenaWaystones.Clear();
             BestKillStreak = 0;
             StreakBonusDropCount = 0;
             StreakHealthDropCount = 0;
@@ -1084,7 +1100,9 @@ namespace Deucarian.TemplateGameSurvivors
             TickRoamingCacheSurge(dt);
             TickBarrier(dt);
             MovePlayer(movementInput, dt);
+            TickArenaWaystoneDiscoveries();
             UpdateArenaPresentation();
+            TickArenaWaystoneDiscoveries();
             TickEnemySpawning(dt);
             TickWeapon(dt);
             TickEnemies(dt);
@@ -1752,6 +1770,37 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureRunStartedForTest();
             return _upgradeCatalog != null && !string.IsNullOrWhiteSpace(upgradeId) && _upgradeCatalog.TryGet(new RunUpgradeId(upgradeId), out _);
+        }
+
+        private Vector3 ResolveClosestArenaLandmarkPositionForTest()
+        {
+            if (_arenaLandmarks.Count == 0)
+            {
+                return Vector3.zero;
+            }
+
+            Vector3 player = PlayerPosition;
+            Vector3 closest = Vector3.zero;
+            float closestDistance = float.MaxValue;
+            for (int i = 0; i < _arenaLandmarks.Count; i++)
+            {
+                Transform landmark = _arenaLandmarks[i];
+                if (landmark == null)
+                {
+                    continue;
+                }
+
+                Vector3 delta = landmark.position - player;
+                delta.y = 0f;
+                float distance = delta.sqrMagnitude;
+                if (distance < closestDistance)
+                {
+                    closestDistance = distance;
+                    closest = landmark.position;
+                }
+            }
+
+            return closestDistance < float.MaxValue ? closest : Vector3.zero;
         }
 
         public bool IsUpgradeEligibleInCurrentBuildForTest(string upgradeId)
@@ -3055,6 +3104,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             _arenaTiles.Clear();
             _arenaLandmarks.Clear();
+            _arenaLandmarkKeys.Clear();
 
             GameObject tileRoot = new GameObject("Survivors Infinite Arena Tiles");
             tileRoot.transform.SetParent(_worldRoot, false);
@@ -3119,6 +3169,7 @@ namespace Deucarian.TemplateGameSurvivors
                     ResolveArenaLandmarkColor(i),
                     _arenaTileRoot);
                 _arenaLandmarks.Add(landmark.transform);
+                _arenaLandmarkKeys.Add(0L);
             }
         }
 
@@ -4007,6 +4058,8 @@ namespace Deucarian.TemplateGameSurvivors
 
             _arenaTiles.Clear();
             _arenaLandmarks.Clear();
+            _arenaLandmarkKeys.Clear();
+            _discoveredArenaWaystones.Clear();
             _ownedPassiveUpgradeIds.Clear();
             _ownedEvolutionUpgradeIds.Clear();
             _arenaTileRoot = null;
@@ -5780,8 +5833,8 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            float anchorX = Mathf.Floor(player.x / InfiniteArenaTileSize) * InfiniteArenaTileSize;
-            float anchorZ = Mathf.Floor(player.z / InfiniteArenaTileSize) * InfiniteArenaTileSize;
+            float anchorX = ResolveArenaPresentationAnchor(player.x);
+            float anchorZ = ResolveArenaPresentationAnchor(player.z);
             int tileIndex = 0;
             for (int x = -InfiniteArenaGridRadius; x <= InfiniteArenaGridRadius; x++)
             {
@@ -5823,6 +5876,16 @@ namespace Deucarian.TemplateGameSurvivors
                 ResolveArenaLandmarkOffset(i, out int offsetX, out int offsetZ);
                 int cellX = anchorCellX + offsetX;
                 int cellZ = anchorCellZ + offsetZ;
+                long key = ResolveArenaLandmarkKey(cellX, cellZ);
+                if (i < _arenaLandmarkKeys.Count)
+                {
+                    _arenaLandmarkKeys[i] = key;
+                }
+                else
+                {
+                    _arenaLandmarkKeys.Add(key);
+                }
+
                 float jitterX = ResolveArenaLandmarkJitter(cellX, cellZ, i * 2 + 1) * InfiniteArenaLandmarkJitterRadius;
                 float jitterZ = ResolveArenaLandmarkJitter(cellX, cellZ, i * 2 + 2) * InfiniteArenaLandmarkJitterRadius;
                 landmark.position = new Vector3(
@@ -5831,6 +5894,135 @@ namespace Deucarian.TemplateGameSurvivors
                     cellZ * InfiniteArenaTileSize + InfiniteArenaTileSize * 0.5f + jitterZ);
                 landmark.rotation = Quaternion.Euler(0f, (cellX * 37f + cellZ * 19f + i * 31f) % 360f, 0f);
             }
+        }
+
+        private static float ResolveArenaPresentationAnchor(float value)
+        {
+            return Mathf.Floor((value + InfiniteArenaTileSize * 0.5f) / InfiniteArenaTileSize) * InfiniteArenaTileSize;
+        }
+
+        private void TickArenaWaystoneDiscoveries()
+        {
+            if (_arenaLandmarks.Count == 0 || CurrentTuning.WaystoneDiscoveryRadius <= 0f)
+            {
+                return;
+            }
+
+            Vector3 player = PlayerPosition;
+            float radiusSquared = CurrentTuning.WaystoneDiscoveryRadius * CurrentTuning.WaystoneDiscoveryRadius;
+            for (int i = 0; i < _arenaLandmarks.Count; i++)
+            {
+                Transform landmark = _arenaLandmarks[i];
+                if (landmark == null || i >= _arenaLandmarkKeys.Count)
+                {
+                    continue;
+                }
+
+                long key = _arenaLandmarkKeys[i];
+                if (_discoveredArenaWaystones.Contains(key))
+                {
+                    continue;
+                }
+
+                Vector3 delta = landmark.position - player;
+                delta.y = 0f;
+                if (delta.sqrMagnitude > radiusSquared)
+                {
+                    continue;
+                }
+
+                _discoveredArenaWaystones.Add(key);
+                SpawnWaystoneDiscoveryReward(landmark.position);
+            }
+        }
+
+        private void SpawnWaystoneDiscoveryReward(Vector3 position)
+        {
+            int discoveryNumber = WaystoneDiscoveryCount + 1;
+            int gemCount = Mathf.Max(1, CurrentTuning.WaystoneExperienceGemCount);
+            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.45f + RunEscalationLevel * 0.08f)));
+            int spawnedExperience = 0;
+            float rewardRadius = 0.7f + Mathf.Min(0.8f, gemCount * 0.08f);
+            for (int i = 0; i < gemCount; i++)
+            {
+                float angle = ((i + 0.15f) / gemCount) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * rewardRadius;
+                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
+                {
+                    spawnedExperience += xpPerGem;
+                    WaystoneExperienceGemDropCount++;
+                }
+            }
+
+            bool spawnedBloodShard = false;
+            if (ShouldTriggerRoamingCacheCadence(discoveryNumber, CurrentTuning.WaystoneBloodShardInterval))
+            {
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + new Vector3(-rewardRadius, 0f, rewardRadius * 0.45f), CurrentTuning.BloodShardPickupAmount) != null)
+                {
+                    spawnedBloodShard = true;
+                    WaystoneBloodShardDropCount++;
+                }
+            }
+
+            int ambushSpawned = SpawnWaystoneDiscoveryAmbush(position, discoveryNumber);
+            WaystoneDiscoveryCount++;
+            string label = $"Waystone Discovered: +{spawnedExperience} XP";
+            if (spawnedBloodShard)
+            {
+                label += " + Shard";
+            }
+
+            if (ambushSpawned > 0)
+            {
+                label += $" + Ambush x{ambushSpawned}";
+            }
+
+            LastWaystoneDiscoveryFeedbackLabel = label;
+            LastRoamingCacheFeedbackLabel = label;
+            RecordStreakRewardFeedback(label, new Color(0.58f, 0.95f, 1f));
+            PlayFeedback(_levelUpPulse, position, ambushSpawned > 0 ? 24 : 16, _pickupClip);
+        }
+
+        private int SpawnWaystoneDiscoveryAmbush(Vector3 position, int discoveryNumber)
+        {
+            if (!ShouldTriggerRoamingCacheCadence(discoveryNumber, CurrentTuning.WaystoneAmbushInterval))
+            {
+                return 0;
+            }
+
+            int baseCount = Mathf.Max(0, CurrentTuning.WaystoneAmbushBaseEnemyCount);
+            if (baseCount <= 0)
+            {
+                return 0;
+            }
+
+            int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.WaystoneAmbushExtraAliveAllowance) - _enemies.Count);
+            int targetCount = Mathf.Min(baseCount + Mathf.Max(0, RunEscalationLevel) / 4, available);
+            if (targetCount <= 0)
+            {
+                return 0;
+            }
+
+            int spawned = 0;
+            float radius = Mathf.Max(1f, CurrentTuning.WaystoneAmbushRadius);
+            for (int i = 0; i < targetCount; i++)
+            {
+                float angle = ((i + 0.5f) / targetCount) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                SurvivorsEnemyRole role = ResolveRoamingCacheAmbushRole(i, discoveryNumber + 2);
+                if (SpawnEnemy(position + offset, explicitPosition: true, role) != null)
+                {
+                    spawned++;
+                }
+            }
+
+            if (spawned > 0)
+            {
+                WaystoneAmbushCount++;
+                WaystoneAmbushEnemySpawnCount += spawned;
+            }
+
+            return spawned;
         }
 
         private static void ResolveArenaLandmarkOffset(int index, out int offsetX, out int offsetZ)
@@ -5880,6 +6072,11 @@ namespace Deucarian.TemplateGameSurvivors
                 int positive = hash & 0x7fffffff;
                 return (positive % 1001) / 1000f - 0.5f;
             }
+        }
+
+        private static long ResolveArenaLandmarkKey(int cellX, int cellZ)
+        {
+            return ((long)cellX << 32) ^ (uint)cellZ;
         }
 
         private static Color ResolveArenaLandmarkColor(int index)
