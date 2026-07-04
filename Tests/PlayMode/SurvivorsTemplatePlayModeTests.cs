@@ -3,6 +3,7 @@ using System.Collections;
 using Deucarian.Persistence;
 using Deucarian.RunUpgrades;
 using NUnit.Framework;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -21,6 +22,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         private const string BossPulseName = "Survivors Boss Cue Pulse";
         private const string FeedbackAudioName = "Survivors Feedback Audio";
         private const string DirectionalLightName = "Survivors Directional Light";
+        private const string ImportedPlayableScenePath = "Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity";
+        private const string PlayableSceneMarkerName = "PLAYTEST_THIS_SCENE_OPEN_ME";
 
         [UnityTest]
         public IEnumerator FirstPlayableSliceBootsSpawnsKillsAndLevels()
@@ -57,6 +60,42 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ActiveRewardFeedbackLabel, Does.Contain("Level Up"));
 
             Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ImportedPlayableSampleSceneBootsIntoPlayingRun()
+        {
+            AsyncOperation load = EditorSceneManager.LoadSceneAsyncInPlayMode(
+                ImportedPlayableScenePath,
+                new LoadSceneParameters(LoadSceneMode.Additive));
+            Assert.IsNotNull(load);
+            yield return WaitForAsyncOperation(load, 10f);
+
+            Scene scene = SceneManager.GetSceneByPath(ImportedPlayableScenePath);
+            Assert.IsTrue(scene.IsValid(), ImportedPlayableScenePath);
+            Assert.IsTrue(scene.isLoaded, ImportedPlayableScenePath);
+            Assert.IsNotNull(FindRootInScene(scene, PlayableSceneMarkerName));
+
+            SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
+            Assert.IsNotNull(controller);
+
+            float startingRunTime = controller.RunTimeSeconds;
+            for (int i = 0; i < 120 && (!controller.IsPlaying || controller.RunTimeSeconds <= startingRunTime); i++)
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(controller.IsPlaying);
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.That(controller.RunTimeSeconds, Is.GreaterThan(startingRunTime));
+            Assert.That(controller.InfiniteArenaTileCountForTest, Is.GreaterThan(0));
+            Assert.That(controller.ActiveWeaponCount, Is.GreaterThanOrEqualTo(1));
+
+            AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
+            if (unload != null)
+            {
+                yield return WaitForAsyncOperation(unload, 10f);
+            }
         }
 
         [UnityTest]
@@ -3111,6 +3150,57 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             return controller;
+        }
+
+        private static IEnumerator WaitForAsyncOperation(AsyncOperation operation, float timeoutSeconds)
+        {
+            float deadline = Time.realtimeSinceStartup + Mathf.Max(0.1f, timeoutSeconds);
+            while (operation != null && !operation.isDone && Time.realtimeSinceStartup < deadline)
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(operation == null || operation.isDone);
+        }
+
+        private static T FindComponentInScene<T>(Scene scene)
+            where T : Component
+        {
+            if (!scene.IsValid())
+            {
+                return null;
+            }
+
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                T component = roots[i] == null ? null : roots[i].GetComponentInChildren<T>(true);
+                if (component != null)
+                {
+                    return component;
+                }
+            }
+
+            return null;
+        }
+
+        private static GameObject FindRootInScene(Scene scene, string name)
+        {
+            if (!scene.IsValid() || string.IsNullOrWhiteSpace(name))
+            {
+                return null;
+            }
+
+            GameObject[] roots = scene.GetRootGameObjects();
+            for (int i = 0; i < roots.Length; i++)
+            {
+                if (roots[i] != null && string.Equals(roots[i].name, name, StringComparison.Ordinal))
+                {
+                    return roots[i];
+                }
+            }
+
+            return null;
         }
 
         private static SurvivorsTemplateController CreateControllerWithClass(string classId)
