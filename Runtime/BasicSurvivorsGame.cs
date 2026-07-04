@@ -232,6 +232,9 @@ namespace Deucarian.TemplateGameSurvivors
         public float WaystoneFocusCooldownMultiplierBonus = -0.035f;
         public float WaystoneFocusPickupRangeBonus = 0.45f;
         public int HealthPickupHealAmount = 10;
+        public float LowHealthClutchPulseDamage = 10f;
+        public float LowHealthClutchPulseRadius = 4.2f;
+        public float LowHealthClutchSafetySeconds = 0.85f;
         public int BloodShardPickupAmount = 1;
         public int ExperienceRequiredBase = 8;
         public int ExperienceRequiredPerLevel = 5;
@@ -550,6 +553,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushClearSurgePickupRangeBonus = 0.4f;
             tuning.LevelUpPulseDamage = 8f;
             tuning.LevelUpPulseRadius = 3.8f;
+            tuning.LowHealthClutchPulseDamage = 11f;
+            tuning.LowHealthClutchPulseRadius = 4.4f;
+            tuning.LowHealthClutchSafetySeconds = 0.85f;
             tuning.MajorThreatEnrageHealthThreshold = 0.52f;
             tuning.MajorThreatEnrageEliteSupportCount = 4;
             tuning.MajorThreatEnrageMinibossSupportCount = 7;
@@ -669,6 +675,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushClearSurgePickupRangeBonus = 0.58f;
             tuning.LevelUpPulseDamage = 11f;
             tuning.LevelUpPulseRadius = 4.2f;
+            tuning.LowHealthClutchPulseDamage = 14f;
+            tuning.LowHealthClutchPulseRadius = 4.8f;
+            tuning.LowHealthClutchSafetySeconds = 0.9f;
             tuning.MajorThreatEnrageHealthThreshold = 0.6f;
             tuning.MajorThreatEnrageEliteSupportCount = 5;
             tuning.MajorThreatEnrageMinibossSupportCount = 8;
@@ -755,6 +764,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.GemRushPickupRangeBonus = 0.62f;
             tuning.LevelUpPulseDamage = 10f;
             tuning.LevelUpPulseRadius = 4f;
+            tuning.LowHealthClutchPulseDamage = 14f;
+            tuning.LowHealthClutchPulseRadius = 4.8f;
+            tuning.LowHealthClutchSafetySeconds = 0.9f;
             tuning.WaystoneDiscoveryRadius = 1.65f;
             tuning.WaystoneExperienceGemCount = 5;
             tuning.WaystoneAmbushBaseEnemyCount = 3;
@@ -892,6 +904,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RewardUpgradeSurgeRadius = 5f;
             tuning.LevelUpPulseDamage = 9f;
             tuning.LevelUpPulseRadius = 3.9f;
+            tuning.LowHealthClutchPulseDamage = 12f;
+            tuning.LowHealthClutchPulseRadius = 4.6f;
+            tuning.LowHealthClutchSafetySeconds = 0.9f;
             tuning.RewardJackpotExperienceGemBaseCount = 3;
             tuning.RewardJackpotExperienceGemPerRarityTier = 1;
             tuning.RewardJackpotBloodShardBaseAmount = 1;

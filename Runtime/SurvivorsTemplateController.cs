@@ -194,6 +194,7 @@ namespace Deucarian.TemplateGameSurvivors
         private float _waystoneFocusTimer;
         private float _hordeRushClearSurgeTimer;
         private bool _runStarted;
+        private bool _lowHealthClutchPulseUsed;
         private bool _ownsMetaProgressionService;
         private bool _metaProfileLoaded;
         private bool _runRewardsGranted;
@@ -314,6 +315,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int ClassUnlockRewardCount { get; private set; }
         public int DamagePopupSpawnCount { get; private set; }
         public int PlayerDamageFeedbackCount { get; private set; }
+        public int LowHealthClutchPulseCount { get; private set; }
+        public int LowHealthClutchPulseHitCount { get; private set; }
+        public string LastLowHealthClutchPulseFeedbackLabel { get; private set; } = string.Empty;
         public int DashUseCount { get; private set; }
         public int DashEnemyShoveCount { get; private set; }
         public int DashDamageHitCount { get; private set; }
@@ -903,6 +907,9 @@ namespace Deucarian.TemplateGameSurvivors
             ClassUnlockRewardCount = 0;
             DamagePopupSpawnCount = 0;
             PlayerDamageFeedbackCount = 0;
+            LowHealthClutchPulseCount = 0;
+            LowHealthClutchPulseHitCount = 0;
+            LastLowHealthClutchPulseFeedbackLabel = string.Empty;
             DashUseCount = 0;
             DashEnemyShoveCount = 0;
             DashDamageHitCount = 0;
@@ -1060,6 +1067,7 @@ namespace Deucarian.TemplateGameSurvivors
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
             _playerInvulnerabilityTimer = 0f;
+            _lowHealthClutchPulseUsed = false;
             _dashCooldownTimer = 0f;
             _killStreakTimer = 0f;
             _roamingCacheTravelDistance = 0f;
@@ -2084,6 +2092,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            float healthFractionBefore = MaxHealth <= 0f ? 1f : CurrentHealth / MaxHealth;
             DamageRequest request = new DamageRequest(
                 _playerHealth.Id,
                 new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, incoming) },
@@ -2100,8 +2109,60 @@ namespace Deucarian.TemplateGameSurvivors
             }
             else
             {
-                PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip);
+                if (!TryTriggerLowHealthClutchPulse(healthFractionBefore))
+                {
+                    PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip);
+                }
             }
+        }
+
+        private bool TryTriggerLowHealthClutchPulse(float healthFractionBefore)
+        {
+            if (_lowHealthClutchPulseUsed || _playerHealth == null || !_playerHealth.IsAlive || MaxHealth <= 0f)
+            {
+                return false;
+            }
+
+            float healthFractionAfter = CurrentHealth / MaxHealth;
+            if (healthFractionBefore <= LowHealthWarningThreshold || healthFractionAfter > LowHealthWarningThreshold)
+            {
+                return false;
+            }
+
+            _lowHealthClutchPulseUsed = true;
+
+            float safetySeconds = Mathf.Max(0f, CurrentTuning.LowHealthClutchSafetySeconds);
+            if (safetySeconds > 0f)
+            {
+                _playerInvulnerabilityTimer = Mathf.Max(_playerInvulnerabilityTimer, safetySeconds);
+            }
+
+            float radius = Mathf.Max(0f, CurrentTuning.LowHealthClutchPulseRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.LowHealthClutchPulseDamage);
+            int hitCount = 0;
+            if (radius > 0f && damage > 0f)
+            {
+                var targets = new List<SurvivorsEnemyActor>();
+                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    SurvivorsEnemyActor enemy = targets[i];
+                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+                    {
+                        continue;
+                    }
+
+                    enemy.ApplyDamage(damage, "survivors.low-health.clutch-pulse");
+                    hitCount++;
+                }
+            }
+
+            LowHealthClutchPulseCount++;
+            LowHealthClutchPulseHitCount += hitCount;
+            LastLowHealthClutchPulseFeedbackLabel = $"Clutch Pulse: {hitCount} enemies hit, safety {safetySeconds:0.#}s";
+            RecordStreakRewardFeedback(LastLowHealthClutchPulseFeedbackLabel, new Color(1f, 0.32f, 0.42f));
+            PlayFeedback(_bossPulse, PlayerPosition, Mathf.Clamp(24 + hitCount * 5, 30, 72), _dangerClip);
+            return true;
         }
 
         public bool SelectUpgrade(int index)

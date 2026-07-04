@@ -409,6 +409,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.EvolutionSurgeRadius, Is.InRange(4f, 8f));
             Assert.That(tuning.LevelUpPulseDamage, Is.GreaterThan(0f));
             Assert.That(tuning.LevelUpPulseRadius, Is.InRange(3f, 5f));
+            Assert.That(tuning.LowHealthClutchPulseDamage, Is.GreaterThan(0f));
+            Assert.That(tuning.LowHealthClutchPulseRadius, Is.InRange(3f, 6f));
+            Assert.That(tuning.LowHealthClutchSafetySeconds, Is.InRange(0.4f, 1.2f));
             Assert.That(tuning.RewardJackpotExperienceGemBaseCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(tuning.RewardJackpotExperienceGemPerRarityTier, Is.GreaterThanOrEqualTo(1));
             Assert.That(tuning.RewardJackpotBloodShardBaseAmount, Is.GreaterThanOrEqualTo(1));

@@ -36,6 +36,7 @@ First 30 seconds:
 - Sustained kill streaks should briefly announce bonus XP, vital-shard, magnet, and blood-shard drops when they trigger.
 - At longer streak milestones, Tempo Surge should appear and briefly make weapons hit harder, cool down faster, move the player faster, and pull new pickups from farther away.
 - When wounded, sustained kill streaks or major-enemy kills can leave vital shards; collecting one should restore health and clear the low-health warning if enough health returns.
+- The first damaging hit that crosses into low health should fire a Clutch Pulse, damage nearby regular enemies, leave elites and bosses intact, and briefly ignore immediate follow-up damage.
 - Longer kill streaks can leave blood shards; collecting one should increase the bonus blood shards counted in the run summary.
 - Opening spawns should arrive as small packs, while runners should not appear until about 35 seconds.
 - The first level-up draft should appear within about 30-60 seconds once the player moves through XP gems.

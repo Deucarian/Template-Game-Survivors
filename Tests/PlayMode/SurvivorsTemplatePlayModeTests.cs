@@ -247,6 +247,58 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator CrossingLowHealthThresholdFiresOneShotClutchPulse()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.StartingBarrierCapacity = 0f;
+            controller.CurrentTuning.LowHealthClutchPulseDamage = 10f;
+            controller.CurrentTuning.LowHealthClutchPulseRadius = 4f;
+            controller.CurrentTuning.LowHealthClutchSafetySeconds = 0.75f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.35f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 2.2f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3.25f, 0f, 0f), SurvivorsEnemyRole.Elite, 30f);
+            SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(5.4f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedElite);
+            Assert.NotNull(outsideTarget);
+
+            controller.ApplyDamageToPlayer(controller.MaxHealth * 0.76f, "test.low-health-clutch");
+            yield return null;
+
+            Assert.IsTrue(controller.IsLowHealthWarningActive);
+            Assert.AreEqual(1, controller.LowHealthClutchPulseCount);
+            Assert.AreEqual(2, controller.LowHealthClutchPulseHitCount);
+            Assert.That(controller.LastLowHealthClutchPulseFeedbackLabel, Does.Contain("Clutch Pulse"));
+            Assert.That(controller.LastLowHealthClutchPulseFeedbackLabel, Does.Contain("2 enemies hit"));
+            Assert.IsTrue(controller.IsPlayerSafetyActive);
+            Assert.That(controller.PlayerSafetyRemainingSeconds, Is.GreaterThan(0.5f));
+            Assert.IsFalse(pulseTargetA.IsAlive);
+            Assert.IsFalse(pulseTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.IsTrue(outsideTarget.IsAlive);
+
+            float healthAfterPulse = controller.CurrentHealth;
+            controller.ApplyDamageToPlayer(1f, "test.low-health-clutch.safety");
+            Assert.AreEqual(healthAfterPulse, controller.CurrentHealth);
+
+            controller.Simulate(controller.PlayerSafetyRemainingSeconds + 0.1f);
+            controller.ApplyDamageToPlayer(1f, "test.low-health-clutch.after-safety");
+
+            Assert.AreEqual(1, controller.LowHealthClutchPulseCount);
+            Assert.That(controller.CurrentHealth, Is.LessThan(healthAfterPulse));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator ArcStepDashMovesShovesAndBrieflyProtectsPlayer()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
