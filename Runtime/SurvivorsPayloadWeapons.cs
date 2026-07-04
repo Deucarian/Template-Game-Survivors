@@ -6,7 +6,7 @@ namespace Deucarian.TemplateGameSurvivors
 {
     internal abstract class SurvivorsPayloadWeaponRuntimeBase : SurvivorsWeaponRuntimeBase
     {
-        private const int EvolvedSatelliteHazardCount = 4;
+        private const int EvolvedSatelliteHazardCount = 6;
         private const float EvolvedHazardRadiusMultiplier = 1.18f;
         private const float EvolvedHazardDurationMultiplier = 1.65f;
         private const float EvolvedHazardTickIntervalMultiplier = 0.65f;

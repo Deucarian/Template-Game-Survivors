@@ -2062,6 +2062,45 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator GravefieldEngineEvolutionMakesGravityGrenadeLeaveSatelliteHazards()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureGrenadeOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            for (int i = 0; i < 2; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
+            }
+
+            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GiantRuneUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
+
+            int hazardsBefore = Object.FindObjectsByType<SurvivorsPayloadHazardActor>(FindObjectsSortMode.None).Length;
+            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 1000f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));
+            yield return SimulateFrames(controller, 95);
+
+            int hazardsAfter = Object.FindObjectsByType<SurvivorsPayloadHazardActor>(FindObjectsSortMode.None).Length;
+            Assert.That(hazardsAfter - hazardsBefore, Is.GreaterThanOrEqualTo(7));
+            Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadHazardTickCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator EmberPayloadHazardPathRequiresRanksBeforeEvolution()
         {
             SurvivorsTemplateController defaultController = CreateController();
@@ -3228,6 +3267,24 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             tuning.PlacedPayloadLifetimeSeconds = 4.4f;
             tuning.PlacedPayloadTriggerRadius = 1.35f;
             tuning.PlacedPayloadExplosionRadius = 2.15f;
+        }
+
+        private static void ConfigureGrenadeOnlyTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.EnemySpawnIntervalSeconds = 999f;
+            tuning.EnemyMoveSpeed = 0f;
+            tuning.EnemyContactDamage = 0f;
+            tuning.ProjectileDamage = 0f;
+            tuning.OrbitDamage = 0f;
+            tuning.MeleeDamage = 0f;
+            tuning.BurstDamage = 0f;
+            tuning.HitscanDamage = 0f;
+            tuning.GrenadeDamage = 8.5f;
+            tuning.GrenadeCooldownSeconds = 2.4f;
+            tuning.GrenadePayloadTravelSpeed = 9f;
+            tuning.GrenadePayloadArmingSeconds = 0.7f;
+            tuning.GrenadePayloadExplosionRadius = 2.35f;
+            tuning.PlacedPayloadDamage = 0f;
         }
 
         private static void ConfigureProjectileModifierOnlyTuning(SurvivorsTemplateTuning tuning)
