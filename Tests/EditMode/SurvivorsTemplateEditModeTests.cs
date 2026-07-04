@@ -487,6 +487,31 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void SampleRunFlowContentIncludesRoamingCacheSurgeTuning()
+        {
+            string sampleRoot = GetSampleRoot();
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            RunFlowLibraryForTest library = JsonUtility.FromJson<RunFlowLibraryForTest>(runFlowJson);
+
+            RunFlowProfileForTest human = FindRunFlowProfile(library, SurvivorsPacingProfile.HumanPlaytest.ToString());
+            RunFlowProfileForTest debugFast = FindRunFlowProfile(library, SurvivorsPacingProfile.DebugFast.ToString());
+            RunFlowProfileForTest showcase = FindRunFlowProfile(library, SurvivorsPacingProfile.Showcase.ToString());
+
+            Assert.That(human.roamingCacheSurgeInterval, Is.InRange(3, 6));
+            Assert.That(human.roamingCacheSurgeBonusGemCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(human.roamingCacheSurgeDurationSeconds, Is.InRange(4f, 8f));
+            Assert.That(human.roamingCacheSurgeDamageBonus, Is.GreaterThan(0f));
+            Assert.That(human.roamingCacheSurgeMoveSpeedBonus, Is.GreaterThan(0f));
+            Assert.That(human.roamingCacheSurgeCooldownMultiplierBonus, Is.LessThan(0f));
+            Assert.That(human.roamingCacheSurgePickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(debugFast.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
+            Assert.That(debugFast.roamingCacheSurgeBonusGemCount, Is.GreaterThanOrEqualTo(human.roamingCacheSurgeBonusGemCount));
+            Assert.That(debugFast.roamingCacheSurgeDamageBonus, Is.GreaterThan(human.roamingCacheSurgeDamageBonus));
+            Assert.That(showcase.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
+            Assert.That(showcase.roamingCacheSurgePickupRangeBonus, Is.GreaterThan(human.roamingCacheSurgePickupRangeBonus));
+        }
+
+        [Test]
         public void InvalidSampleContentReportsDuplicateAndMissingReferences()
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.dup\",\"fireMode\":\"Projectile\",\"projectileId\":\"projectile.missing\"},{\"id\":\"weapon.dup\",\"fireMode\":\"NoSuchArchetype\"}],\"projectiles\":[]}";
@@ -583,7 +608,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";
             string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
-            string runFlowJson = "{\"profiles\":[{\"id\":\"HumanPlaytest\",\"enemySpawnIntervalSeconds\":0,\"enemyMaximumAlive\":0,\"enemySpawnPackBaseCount\":3,\"enemySpawnPackMaxCount\":2,\"escalationIntervalSeconds\":0,\"minimumEnemySpawnIntervalSeconds\":0,\"enemySpawnIntervalReductionPerEscalation\":-1,\"enemyMaximumAliveIncreasePerEscalation\":-1,\"enemyHealthMultiplierPerEscalation\":0,\"enemyMoveSpeedMultiplierPerEscalation\":0,\"enemyExperienceMultiplierPerEscalation\":0,\"firstEliteSpawnTimeSeconds\":-1,\"eliteSpawnIntervalSeconds\":0,\"firstDreadEliteSpawnTimeSeconds\":-2,\"dreadEliteSpawnIntervalSeconds\":0,\"minibossSpawnTimeSeconds\":4,\"bossSpawnTimeSeconds\":3,\"survivalVictoryTimeSeconds\":2,\"hordeRushFirstTimeSeconds\":0,\"hordeRushIntervalSeconds\":0,\"hordeRushWarningLeadSeconds\":0,\"hordeRushBaseEnemyCount\":0,\"hordeRushMaxEnemyCount\":0,\"roamingCacheTravelInterval\":0,\"roamingCacheExperienceGemCount\":0,\"draftChoiceCount\":0,\"maxWeaponSlots\":0,\"maxPassiveSlots\":0,\"draftMidRarityLevel\":3,\"draftLateRarityLevel\":2,\"rarityTables\":[{\"id\":\"NormalEarly\",\"common\":0,\"uncommon\":1,\"rare\":1,\"epic\":0,\"legendary\":1},{\"id\":\"NormalMid\",\"common\":1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":2},{\"id\":\"Elite\",\"common\":5,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":1,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":0,\"rare\":1,\"epic\":1,\"legendary\":1},{\"id\":\"Broken\",\"common\":-1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0}],\"endlessEliteSpawnIntervalSeconds\":0,\"endlessMinibossSpawnIntervalSeconds\":0,\"endlessBossSpawnIntervalSeconds\":0}]}";
+            string runFlowJson = "{\"profiles\":[{\"id\":\"HumanPlaytest\",\"enemySpawnIntervalSeconds\":0,\"enemyMaximumAlive\":0,\"enemySpawnPackBaseCount\":3,\"enemySpawnPackMaxCount\":2,\"escalationIntervalSeconds\":0,\"minimumEnemySpawnIntervalSeconds\":0,\"enemySpawnIntervalReductionPerEscalation\":-1,\"enemyMaximumAliveIncreasePerEscalation\":-1,\"enemyHealthMultiplierPerEscalation\":0,\"enemyMoveSpeedMultiplierPerEscalation\":0,\"enemyExperienceMultiplierPerEscalation\":0,\"firstEliteSpawnTimeSeconds\":-1,\"eliteSpawnIntervalSeconds\":0,\"firstDreadEliteSpawnTimeSeconds\":-2,\"dreadEliteSpawnIntervalSeconds\":0,\"minibossSpawnTimeSeconds\":4,\"bossSpawnTimeSeconds\":3,\"survivalVictoryTimeSeconds\":2,\"hordeRushFirstTimeSeconds\":0,\"hordeRushIntervalSeconds\":0,\"hordeRushWarningLeadSeconds\":0,\"hordeRushBaseEnemyCount\":0,\"hordeRushMaxEnemyCount\":0,\"roamingCacheTravelInterval\":0,\"roamingCacheExperienceGemCount\":0,\"roamingCacheSurgeInterval\":0,\"roamingCacheSurgeBonusGemCount\":0,\"roamingCacheSurgeDurationSeconds\":0,\"roamingCacheSurgeDamageBonus\":0,\"roamingCacheSurgeMoveSpeedBonus\":0,\"roamingCacheSurgeCooldownMultiplierBonus\":0,\"roamingCacheSurgePickupRangeBonus\":0,\"draftChoiceCount\":0,\"maxWeaponSlots\":0,\"maxPassiveSlots\":0,\"draftMidRarityLevel\":3,\"draftLateRarityLevel\":2,\"rarityTables\":[{\"id\":\"NormalEarly\",\"common\":0,\"uncommon\":1,\"rare\":1,\"epic\":0,\"legendary\":1},{\"id\":\"NormalMid\",\"common\":1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":2},{\"id\":\"Elite\",\"common\":5,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":1,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":0,\"rare\":1,\"epic\":1,\"legendary\":1},{\"id\":\"Broken\",\"common\":-1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0}],\"endlessEliteSpawnIntervalSeconds\":0,\"endlessMinibossSpawnIntervalSeconds\":0,\"endlessBossSpawnIntervalSeconds\":0}]}";
 
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, runFlowJson: runFlowJson);
             string errors = string.Join(Environment.NewLine, result.Errors);
@@ -592,6 +617,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("Run flow", errors);
             StringAssert.Contains("enemy spawn interval", errors);
             StringAssert.Contains("horde rush", errors);
+            StringAssert.Contains("roaming cache surge", errors);
             StringAssert.Contains("max weapon slots", errors);
             StringAssert.Contains("max passive slots", errors);
             StringAssert.Contains("late rarity level", errors);
@@ -1296,6 +1322,23 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             return sampleRoot;
         }
 
+        private static RunFlowProfileForTest FindRunFlowProfile(RunFlowLibraryForTest library, string id)
+        {
+            Assert.IsNotNull(library);
+            Assert.IsNotNull(library.profiles);
+            for (int i = 0; i < library.profiles.Length; i++)
+            {
+                RunFlowProfileForTest profile = library.profiles[i];
+                if (profile != null && string.Equals(profile.id, id, StringComparison.Ordinal))
+                {
+                    return profile;
+                }
+            }
+
+            Assert.Fail("Missing run flow profile: " + id);
+            return null;
+        }
+
         private static void Step(SurvivorsTemplateController controller, int frames, float deltaTime)
         {
             for (int i = 0; i < frames; i++)
@@ -1321,6 +1364,25 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             public int CompletedRuns;
             public int BossVictories;
             public System.Collections.Generic.List<SurvivorsPersistentUpgradeRankRecord> PersistentUpgradeRanks = new System.Collections.Generic.List<SurvivorsPersistentUpgradeRankRecord>();
+        }
+
+        [Serializable]
+        private sealed class RunFlowLibraryForTest
+        {
+            public RunFlowProfileForTest[] profiles;
+        }
+
+        [Serializable]
+        private sealed class RunFlowProfileForTest
+        {
+            public string id;
+            public int roamingCacheSurgeInterval;
+            public int roamingCacheSurgeBonusGemCount;
+            public float roamingCacheSurgeDurationSeconds;
+            public float roamingCacheSurgeDamageBonus;
+            public float roamingCacheSurgeMoveSpeedBonus;
+            public float roamingCacheSurgeCooldownMultiplierBonus;
+            public float roamingCacheSurgePickupRangeBonus;
         }
     }
 }

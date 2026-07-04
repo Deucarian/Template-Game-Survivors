@@ -1672,6 +1672,17 @@ namespace Deucarian.TemplateGameSurvivors
 
             ValidatePositive(profileId, "roaming cache travel interval", profile.roamingCacheTravelInterval, result);
             ValidatePositive(profileId, "roaming cache XP gem count", profile.roamingCacheExperienceGemCount, result);
+            ValidatePositive(profileId, "roaming cache surge interval", profile.roamingCacheSurgeInterval, result);
+            ValidatePositive(profileId, "roaming cache surge bonus XP gem count", profile.roamingCacheSurgeBonusGemCount, result);
+            ValidatePositive(profileId, "roaming cache surge duration", profile.roamingCacheSurgeDurationSeconds, result);
+            ValidatePositive(profileId, "roaming cache surge damage bonus", profile.roamingCacheSurgeDamageBonus, result);
+            ValidatePositive(profileId, "roaming cache surge move speed bonus", profile.roamingCacheSurgeMoveSpeedBonus, result);
+            if (profile.roamingCacheSurgeCooldownMultiplierBonus >= 0f || profile.roamingCacheSurgeCooldownMultiplierBonus <= -0.75f)
+            {
+                result.AddError($"Run flow profile {profileId} roaming cache surge cooldown multiplier must be below zero and above -0.75.");
+            }
+
+            ValidatePositive(profileId, "roaming cache surge pickup range bonus", profile.roamingCacheSurgePickupRangeBonus, result);
             ValidatePositive(profileId, "draft choice count", profile.draftChoiceCount, result);
             ValidatePositive(profileId, "max weapon slots", profile.maxWeaponSlots, result);
             ValidatePositive(profileId, "max passive slots", profile.maxPassiveSlots, result);
@@ -2642,6 +2653,13 @@ namespace Deucarian.TemplateGameSurvivors
             public int hordeRushMaxEnemyCount;
             public float roamingCacheTravelInterval;
             public int roamingCacheExperienceGemCount;
+            public int roamingCacheSurgeInterval;
+            public int roamingCacheSurgeBonusGemCount;
+            public float roamingCacheSurgeDurationSeconds;
+            public float roamingCacheSurgeDamageBonus;
+            public float roamingCacheSurgeMoveSpeedBonus;
+            public float roamingCacheSurgeCooldownMultiplierBonus;
+            public float roamingCacheSurgePickupRangeBonus;
             public int draftChoiceCount;
             public int maxWeaponSlots;
             public int maxPassiveSlots;
