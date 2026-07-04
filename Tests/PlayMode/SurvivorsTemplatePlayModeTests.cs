@@ -1305,6 +1305,60 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator DeepRoamingCachesTriggerWayfinderSurge()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ProjectileDamage = 0f;
+            controller.CurrentTuning.OrbitDamage = 0f;
+            controller.CurrentTuning.MeleeDamage = 0f;
+            controller.CurrentTuning.BurstDamage = 0f;
+            controller.CurrentTuning.HitscanDamage = 0f;
+            controller.CurrentTuning.GrenadeDamage = 0f;
+            controller.CurrentTuning.PlacedPayloadDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.RoamingCacheTravelInterval = 2f;
+            controller.CurrentTuning.RoamingCacheExperienceGemCount = 1;
+            controller.CurrentTuning.RoamingCacheMagnetInterval = 0;
+            controller.CurrentTuning.RoamingCacheBloodShardInterval = 0;
+            controller.CurrentTuning.RoamingCacheAmbushStartCache = 99;
+            controller.CurrentTuning.RoamingCacheSurgeInterval = 2;
+            controller.CurrentTuning.RoamingCacheSurgeBonusGemCount = 2;
+            controller.CurrentTuning.RoamingCacheSurgeDurationSeconds = 4f;
+            controller.CurrentTuning.RoamingCacheSurgeDamageBonus = 2f;
+            controller.CurrentTuning.RoamingCacheSurgeMoveSpeedBonus = 0.5f;
+            controller.CurrentTuning.RoamingCacheSurgeCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.RoamingCacheSurgePickupRangeBonus = 0.8f;
+            controller.StartRun();
+            yield return null;
+
+            float startingDamage = controller.ProjectileDamage;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
+
+            yield return SimulateFrames(controller, 90, Vector2.right);
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.That(controller.RoamingCacheDropCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.RoamingCacheSurgeActivationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.RoamingCacheSurgeBonusExperienceGemDropCount, Is.GreaterThanOrEqualTo(2));
+            Assert.IsTrue(controller.IsRoamingCacheSurgeActive);
+            Assert.That(controller.RoamingCacheSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
+            Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Wayfinder Surge"));
+            Assert.That(controller.LastRoamingCacheSurgeFeedbackLabel, Does.Contain("Wayfinder Surge"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Wayfinder Surge"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RapidKillsCreateStreakBonusDropsAndMagnet()
         {
             SurvivorsTemplateController controller = CreateController();

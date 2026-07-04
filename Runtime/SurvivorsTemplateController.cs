@@ -182,6 +182,7 @@ namespace Deucarian.TemplateGameSurvivors
         private int _killStreakCount;
         private int _currentDraftRerollIndex;
         private float _streakSurgeTimer;
+        private float _roamingCacheSurgeTimer;
         private bool _runStarted;
         private bool _ownsMetaProgressionService;
         private bool _metaProfileLoaded;
@@ -342,8 +343,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int RoamingCacheAmbushEnemySpawnCount { get; private set; }
         public int RoamingCacheAmbushClearRewardCount { get; private set; }
         public int RoamingCacheAmbushClearExperienceGemDropCount { get; private set; }
+        public int RoamingCacheSurgeActivationCount { get; private set; }
+        public int RoamingCacheSurgeBonusExperienceGemDropCount { get; private set; }
         public string LastRoamingCacheFeedbackLabel { get; private set; } = string.Empty;
         public string LastRoamingCacheAmbushClearFeedbackLabel { get; private set; } = string.Empty;
+        public string LastRoamingCacheSurgeFeedbackLabel { get; private set; } = string.Empty;
         public int BestKillStreak { get; private set; }
         public int StreakBonusDropCount { get; private set; }
         public int StreakHealthDropCount { get; private set; }
@@ -360,6 +364,12 @@ namespace Deucarian.TemplateGameSurvivors
         public float StreakSurgeMoveSpeedBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgeMoveSpeedBonusPerTier : 0f;
         public float StreakSurgeCooldownMultiplierBonus => IsStreakSurgeActive ? -StreakSurgeTier * StreakSurgeCooldownReductionPerTier : 0f;
         public float StreakSurgePickupRangeBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgePickupRangeBonusPerTier : 0f;
+        public bool IsRoamingCacheSurgeActive => _roamingCacheSurgeTimer > 0f;
+        public float RoamingCacheSurgeRemainingSeconds => Mathf.Max(0f, _roamingCacheSurgeTimer);
+        public float RoamingCacheSurgeDamageBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgeDamageBonus) : 0f;
+        public float RoamingCacheSurgeMoveSpeedBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgeMoveSpeedBonus) : 0f;
+        public float RoamingCacheSurgeCooldownMultiplierBonus => IsRoamingCacheSurgeActive ? Mathf.Min(0f, CurrentTuning.RoamingCacheSurgeCooldownMultiplierBonus) : 0f;
+        public float RoamingCacheSurgePickupRangeBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePickupRangeBonus) : 0f;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
         public int BloodShardsEarnedThisRun { get; private set; }
@@ -479,13 +489,13 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 FirstInfiniteArenaTilePositionForTest => _arenaTiles.Count == 0 || _arenaTiles[0] == null ? Vector3.zero : _arenaTiles[0].position;
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
-        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus;
+        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus;
         public float DashCooldownRemainingSeconds => Mathf.Max(0f, _dashCooldownTimer);
         public float PlayerSafetyRemainingSeconds => Mathf.Max(0f, _playerInvulnerabilityTimer);
         public bool IsPlayerSafetyActive => _playerInvulnerabilityTimer > 0f;
-        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus);
-        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus));
-        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus);
+        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus);
+        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus));
+        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus);
         public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
         public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
         public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
@@ -671,7 +681,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 236, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
             GUI.Label(new Rect(24, 258, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
             GUI.Label(new Rect(24, 280, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
-            string surgeHud = IsStreakSurgeActive ? $"   Surge T{StreakSurgeTier} {StreakSurgeRemainingSeconds:0.0}s" : string.Empty;
+            string surgeHud = ResolveSurgeHudLabel();
             GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
             GUI.Label(new Rect(24, 346, 318, 22), ResolveBuildSlotHudLabel(), _hudSmallStyle);
@@ -839,8 +849,11 @@ namespace Deucarian.TemplateGameSurvivors
             RoamingCacheAmbushEnemySpawnCount = 0;
             RoamingCacheAmbushClearRewardCount = 0;
             RoamingCacheAmbushClearExperienceGemDropCount = 0;
+            RoamingCacheSurgeActivationCount = 0;
+            RoamingCacheSurgeBonusExperienceGemDropCount = 0;
             LastRoamingCacheFeedbackLabel = string.Empty;
             LastRoamingCacheAmbushClearFeedbackLabel = string.Empty;
+            LastRoamingCacheSurgeFeedbackLabel = string.Empty;
             BestKillStreak = 0;
             StreakBonusDropCount = 0;
             StreakHealthDropCount = 0;
@@ -930,6 +943,7 @@ namespace Deucarian.TemplateGameSurvivors
             _roamingCacheTravelDistance = 0f;
             _killStreakCount = 0;
             _streakSurgeTimer = 0f;
+            _roamingCacheSurgeTimer = 0f;
             _announcedEvolutionReadyUpgradeIds.Clear();
             _evolutionReadyFeedbackLabel = string.Empty;
             _evolutionReadyFeedbackTimer = 0f;
@@ -1014,6 +1028,7 @@ namespace Deucarian.TemplateGameSurvivors
             _dashCooldownTimer = Mathf.Max(0f, _dashCooldownTimer - dt);
             TickKillStreak(dt);
             TickStreakSurge(dt);
+            TickRoamingCacheSurge(dt);
             TickBarrier(dt);
             MovePlayer(movementInput, dt);
             UpdateArenaPresentation();
@@ -1750,7 +1765,7 @@ namespace Deucarian.TemplateGameSurvivors
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
                 $"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}",
-                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
+                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
@@ -2412,7 +2427,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return 0f;
             }
 
-            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus);
+            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus);
         }
 
         internal float ResolveWeaponCooldownSeconds(SurvivorsWeaponArchetypeDefinition definition)
@@ -2422,7 +2437,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return WeaponCooldownSeconds;
             }
 
-            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus));
+            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus));
         }
 
         internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction)
@@ -5047,7 +5062,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             int ambushSpawned = SpawnRoamingArenaCacheAmbush(origin, forward, side, nextCacheNumber);
-            if (spawnedExperience <= 0 && !spawnedMagnet && !spawnedBloodShard && ambushSpawned <= 0)
+            int surgeExperience = TryActivateRoamingCacheSurge(nextCacheNumber, origin, forward, side, xpPerGem);
+            if (spawnedExperience <= 0 && !spawnedMagnet && !spawnedBloodShard && ambushSpawned <= 0 && surgeExperience <= 0)
             {
                 return;
             }
@@ -5069,8 +5085,42 @@ namespace Deucarian.TemplateGameSurvivors
                 label += $" + Ambush x{ambushSpawned}";
             }
 
+            if (surgeExperience > 0)
+            {
+                label += $" + Wayfinder Surge (+{surgeExperience} XP)";
+            }
+
             LastRoamingCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.35f, 0.9f, 1f));
+        }
+
+        private int TryActivateRoamingCacheSurge(int cacheNumber, Vector3 origin, Vector3 forward, Vector3 side, int xpPerGem)
+        {
+            if (!ShouldTriggerRoamingCacheCadence(cacheNumber, CurrentTuning.RoamingCacheSurgeInterval))
+            {
+                return 0;
+            }
+
+            _roamingCacheSurgeTimer = Mathf.Max(0.1f, CurrentTuning.RoamingCacheSurgeDurationSeconds);
+            RoamingCacheSurgeActivationCount++;
+
+            int gemCount = Mathf.Max(0, CurrentTuning.RoamingCacheSurgeBonusGemCount);
+            int spawnedExperience = 0;
+            int bonusXpPerGem = Mathf.Max(1, xpPerGem * 2);
+            Vector3 center = origin + forward * 1.15f;
+            for (int i = 0; i < gemCount; i++)
+            {
+                float angle = ((i + 0.35f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
+                Vector3 offset = side * (Mathf.Cos(angle) * 0.92f) + forward * (Mathf.Sin(angle) * 0.92f);
+                if (SpawnPickup(SurvivorsPickupKind.Experience, center + offset, bonusXpPerGem) != null)
+                {
+                    spawnedExperience += bonusXpPerGem;
+                    RoamingCacheSurgeBonusExperienceGemDropCount++;
+                }
+            }
+
+            LastRoamingCacheSurgeFeedbackLabel = $"Wayfinder Surge: +{spawnedExperience} XP";
+            return spawnedExperience;
         }
 
         private int SpawnRoamingArenaCacheAmbush(Vector3 origin, Vector3 forward, Vector3 side, int cacheNumber)
@@ -6524,6 +6574,16 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void TickRoamingCacheSurge(float deltaTime)
+        {
+            if (_roamingCacheSurgeTimer <= 0f)
+            {
+                return;
+            }
+
+            _roamingCacheSurgeTimer = Mathf.Max(0f, _roamingCacheSurgeTimer - Mathf.Max(0f, deltaTime));
+        }
+
         private void TickBarrier(float deltaTime)
         {
             float regen = Mathf.Max(0f, CurrentTuning.BaseBarrierRegenPerSecond + BarrierRegenPerSecondBonus);
@@ -7687,6 +7747,23 @@ namespace Deucarian.TemplateGameSurvivors
         private string ResolveBuildSlotHudLabel()
         {
             return $"Build W {ActiveWeaponCount}/{MaxWeaponSlots}   P {ActivePassiveCount}/{MaxPassiveSlots}   Evo {EvolvedWeaponCount}   Relic {SelectedRelicCount}/{ResolveTotalRelicCount()}";
+        }
+
+        private string ResolveSurgeHudLabel()
+        {
+            string label = string.Empty;
+            if (IsStreakSurgeActive)
+            {
+                label = $"   Surge T{StreakSurgeTier} {StreakSurgeRemainingSeconds:0.0}s";
+            }
+
+            if (IsRoamingCacheSurgeActive)
+            {
+                string travel = $"Way {RoamingCacheSurgeRemainingSeconds:0.0}s";
+                label = string.IsNullOrEmpty(label) ? "   " + travel : label + "   " + travel;
+            }
+
+            return label;
         }
 
         private int ResolveTotalRelicCount()

@@ -50,7 +50,7 @@ First run target:
 - Move through the opening horde and let the wand auto-fire.
 - Watch early swarm packs press inward without collapsing into a single unreadable stack.
 - Around the third minute, kite a Rift Caller long enough to confirm it periodically adds nearby support enemies without stopping the normal horde loop.
-- Keep moving across the arena long enough to see roaming XP caches appear, then keep roaming until a later cache adds a special pickup or ambush; clearing the pack should drop a small XP burst.
+- Keep moving across the arena long enough to see roaming XP caches appear, then keep roaming until a later cache adds a special pickup, ambush, or Wayfinder Surge; clearing the pack should drop a small XP burst, and a surge cache should briefly improve damage, cooldown, movement, and pickup attraction.
 - Dash through a tight pocket of enemies with Arc Step and confirm the HUD shows the cooldown/safety beat, enemies get pushed away, and immediate follow-up damage is ignored during the safety window.
 - Collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
 - Survive a horde-rush warning, clear the mixed enemy ring, and collect its bonus cache.

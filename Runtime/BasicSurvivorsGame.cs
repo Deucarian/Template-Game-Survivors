@@ -193,6 +193,13 @@ namespace Deucarian.TemplateGameSurvivors
         public int RoamingCacheAmbushMaxEnemyCount = 6;
         public int RoamingCacheAmbushExtraAliveAllowance = 8;
         public float RoamingCacheAmbushRadius = 3.2f;
+        public int RoamingCacheSurgeInterval = 4;
+        public int RoamingCacheSurgeBonusGemCount = 2;
+        public float RoamingCacheSurgeDurationSeconds = 6f;
+        public float RoamingCacheSurgeDamageBonus = 1.2f;
+        public float RoamingCacheSurgeMoveSpeedBonus = 0.28f;
+        public float RoamingCacheSurgeCooldownMultiplierBonus = -0.05f;
+        public float RoamingCacheSurgePickupRangeBonus = 0.55f;
         public int HealthPickupHealAmount = 10;
         public int BloodShardPickupAmount = 1;
         public int ExperienceRequiredBase = 8;
@@ -549,6 +556,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheTravelInterval = 16f;
             tuning.RoamingCacheAmbushStartCache = 3;
             tuning.RoamingCacheAmbushInterval = 4;
+            tuning.RoamingCacheSurgeInterval = 4;
             tuning.HealthPickupHealAmount = 9;
             tuning.BloodShardPickupAmount = 1;
             tuning.ExperienceRequiredBase = 8;
@@ -660,6 +668,12 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheAmbushMaxEnemyCount = 10;
             tuning.RoamingCacheAmbushExtraAliveAllowance = 18;
             tuning.RoamingCacheAmbushRadius = 3.6f;
+            tuning.RoamingCacheSurgeInterval = 3;
+            tuning.RoamingCacheSurgeBonusGemCount = 3;
+            tuning.RoamingCacheSurgeDurationSeconds = 5f;
+            tuning.RoamingCacheSurgeDamageBonus = 1.8f;
+            tuning.RoamingCacheSurgeMoveSpeedBonus = 0.38f;
+            tuning.RoamingCacheSurgePickupRangeBonus = 0.75f;
             tuning.HealthPickupHealAmount = 14;
             tuning.BloodShardPickupAmount = 2;
             tuning.ExperienceRequiredBase = 3;
@@ -748,6 +762,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheAmbushBaseEnemyCount = 3;
             tuning.RoamingCacheAmbushMaxEnemyCount = 8;
             tuning.RoamingCacheAmbushExtraAliveAllowance = 14;
+            tuning.RoamingCacheSurgeInterval = 3;
+            tuning.RoamingCacheSurgeBonusGemCount = 3;
+            tuning.RoamingCacheSurgeMoveSpeedBonus = 0.34f;
+            tuning.RoamingCacheSurgePickupRangeBonus = 0.65f;
             tuning.HealthPickupHealAmount = 12;
             tuning.BloodShardPickupAmount = 1;
             tuning.ExperienceRequiredBase = 5;

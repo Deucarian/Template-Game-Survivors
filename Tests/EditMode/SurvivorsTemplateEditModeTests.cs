@@ -366,6 +366,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.RoamingCacheBloodShardInterval, Is.GreaterThan(tuning.RoamingCacheMagnetInterval));
             Assert.That(tuning.RoamingCacheAmbushStartCache, Is.GreaterThanOrEqualTo(3));
             Assert.That(tuning.RoamingCacheAmbushMaxEnemyCount, Is.GreaterThanOrEqualTo(tuning.RoamingCacheAmbushBaseEnemyCount));
+            Assert.That(tuning.RoamingCacheSurgeInterval, Is.InRange(3, 6));
+            Assert.That(tuning.RoamingCacheSurgeBonusGemCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(tuning.RoamingCacheSurgeDurationSeconds, Is.InRange(4f, 8f));
+            Assert.That(tuning.RoamingCacheSurgeDamageBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.RoamingCacheSurgeMoveSpeedBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.RoamingCacheSurgeCooldownMultiplierBonus, Is.LessThan(0f));
+            Assert.That(tuning.RoamingCacheSurgePickupRangeBonus, Is.GreaterThan(0f));
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
             Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
