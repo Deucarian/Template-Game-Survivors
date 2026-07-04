@@ -64,6 +64,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
         private const int EndlessEnemyAliveBonus = 24;
         private const int NormalDraftRarityLockSeedSalt = 7919;
+        private const int EarlyPassiveDraftLockSeedSalt = 12289;
         private const int ResultMetaUpgradeOptionCount = 3;
         private const int ResultClassOptionCount = 4;
 
@@ -4319,6 +4320,110 @@ namespace Deucarian.TemplateGameSurvivors
             return new[] { lockDraft.Choices[0].Id };
         }
 
+        private IReadOnlyList<RunUpgradeId> CreateNormalDraftChoiceLocks(
+            DraftRarityProfile profile,
+            int rerollIndex)
+        {
+            int choiceCount = Mathf.Max(0, CurrentTuning.DraftChoiceCount);
+            if (choiceCount <= 0)
+            {
+                return Array.Empty<RunUpgradeId>();
+            }
+
+            IReadOnlyList<RunUpgradeId> rarityLocks = CreateNormalDraftRarityLocks(profile, rerollIndex);
+            bool hasPassiveLock = TryCreateEarlyPassiveChoiceLock(profile, rerollIndex, out RunUpgradeId passiveLock);
+            if (!hasPassiveLock)
+            {
+                return rarityLocks ?? Array.Empty<RunUpgradeId>();
+            }
+
+            if (rarityLocks == null || rarityLocks.Count == 0)
+            {
+                return new[] { passiveLock };
+            }
+
+            var locks = new List<RunUpgradeId>(Mathf.Min(choiceCount, rarityLocks.Count + 1));
+            for (int i = 0; i < rarityLocks.Count && locks.Count < choiceCount; i++)
+            {
+                AddUniqueDraftLock(locks, rarityLocks[i], choiceCount);
+            }
+
+            AddUniqueDraftLock(locks, passiveLock, choiceCount);
+            return locks.Count == 0 ? Array.Empty<RunUpgradeId>() : locks.ToArray();
+        }
+
+        private bool TryCreateEarlyPassiveChoiceLock(
+            DraftRarityProfile profile,
+            int rerollIndex,
+            out RunUpgradeId passiveLock)
+        {
+            passiveLock = default;
+            if (_upgradeCatalog == null ||
+                ActivePassiveCount > 0 ||
+                ActivePassiveCount >= MaxPassiveSlots ||
+                CurrentTuning.DraftChoiceCount <= 0)
+            {
+                return false;
+            }
+
+            var candidates = new List<RunUpgradeDefinition>(_upgradeCatalog.Definitions.Count);
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                if (definition == null ||
+                    definition.Rarity > RunUpgradeRarity.Uncommon ||
+                    !IsUpgradeEligibleForCurrentBuild(definition) ||
+                    !TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata) ||
+                    metadata.Category != SurvivorsRunUpgradeCategory.Passive ||
+                    !metadata.UsesPassiveSlot ||
+                    _upgradeState.GetRank(definition.Id) > 0)
+                {
+                    continue;
+                }
+
+                candidates.Add(definition);
+            }
+
+            RunUpgradeCatalog passiveCatalog = CreateWeightedDraftCatalog(candidates, profile);
+            if (passiveCatalog == null || passiveCatalog.Definitions.Count == 0)
+            {
+                return false;
+            }
+
+            RunUpgradeDraft lockDraft = RunUpgradeDraftService.Generate(
+                passiveCatalog,
+                _upgradeState,
+                new RunUpgradeDraftRequest(
+                    1,
+                    ResolveDraftSeed(SurvivorsRewardSelectionKind.LevelUp) + EarlyPassiveDraftLockSeedSalt,
+                    Mathf.Max(0, rerollIndex)));
+            if (lockDraft == null || lockDraft.Choices.Count == 0)
+            {
+                return false;
+            }
+
+            passiveLock = lockDraft.Choices[0].Id;
+            return true;
+        }
+
+        private static void AddUniqueDraftLock(List<RunUpgradeId> locks, RunUpgradeId candidate, int maxCount)
+        {
+            if (locks == null || locks.Count >= maxCount)
+            {
+                return;
+            }
+
+            for (int i = 0; i < locks.Count; i++)
+            {
+                if (locks[i].Equals(candidate))
+                {
+                    return;
+                }
+            }
+
+            locks.Add(candidate);
+        }
+
         private static bool TryResolveNormalDraftGuaranteedMinimumRarity(
             DraftRarityProfile profile,
             out RunUpgradeRarity minimumRarity)
@@ -4405,7 +4510,7 @@ namespace Deucarian.TemplateGameSurvivors
                     draftCatalog = CreateEligibleDraftCatalog(normalProfile);
                     if (resolvedLocks == null || resolvedLocks.Count == 0)
                     {
-                        resolvedLocks = CreateNormalDraftRarityLocks(normalProfile, rerollIndex);
+                        resolvedLocks = CreateNormalDraftChoiceLocks(normalProfile, rerollIndex);
                     }
                     break;
                 case SurvivorsRewardSelectionKind.EliteUpgrade:

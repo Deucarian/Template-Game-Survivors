@@ -26,6 +26,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Boss relic picks are unique within the current run, so later relic drafts remove anything already claimed and simply resume play if the collection is exhausted. Choosing a relic emits an immediate surge through nearby non-major enemies, and the build HUD and result summary show the current relic count.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
 - Mid-run level-up drafts guarantee one Rare-or-better choice when eligible, and late-run drafts guarantee one Epic-or-better choice when eligible.
+- Before the player owns a passive, normal level-up drafts reserve one Common/Uncommon passive hook and fill the remaining cards from the normal rarity table.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - After victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes with clear caches and breaker pulses, and recurring elite, miniboss, and boss reward threats.

@@ -960,6 +960,35 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator FirstNormalLevelUpDraftReservesPassiveBuildHook()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.CurrentTuning.NormalEarlyCommonWeight = 1000;
+            controller.CurrentTuning.NormalEarlyUncommonWeight = 1;
+            Assert.AreEqual(0, controller.ActivePassiveCount);
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.AreEqual(SurvivorsRunUpgradeCategory.Passive, controller.GetUpgradeCategoryForTest(controller.CurrentDraftChoices[0].Id.Value));
+            Assert.That((int)controller.CurrentDraftChoices[0].Rarity, Is.LessThanOrEqualTo((int)RunUpgradeRarity.Uncommon));
+
+            int passiveChoiceIndex = IndexOfDraftChoiceByCategory(controller, SurvivorsRunUpgradeCategory.Passive);
+            Assert.That(passiveChoiceIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.IsTrue(controller.SelectUpgrade(passiveChoiceIndex));
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.ActivePassiveCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator FateLensBiasesFutureDraftsTowardHigherRarities()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -3852,6 +3881,24 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
             {
                 if (string.Equals(controller.CurrentDraftChoices[i].Id.Value, upgradeId, StringComparison.Ordinal))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        private static int IndexOfDraftChoiceByCategory(SurvivorsTemplateController controller, SurvivorsRunUpgradeCategory category)
+        {
+            if (controller == null)
+            {
+                return -1;
+            }
+
+            for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
+            {
+                if (controller.GetUpgradeCategoryForTest(controller.CurrentDraftChoices[i].Id.Value) == category)
                 {
                     return i;
                 }
