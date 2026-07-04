@@ -1027,6 +1027,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.IsEmpty(controller.CurrentEvolutionGoalHudLabel);
+            Assert.That(controller.CurrentEvolutionReadyHudLabel, Does.Contain("Arcane Storm"));
+            Assert.That(controller.CurrentEvolutionReadyHudLabel, Does.Contain("elite/boss reward"));
+            Assert.That(string.Join("\n", controller.DebugDescribeCurrentBuild()), Does.Contain("Ready Arcane Storm -> elite/boss reward"));
             Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Arcane Storm"));
 
             Object.Destroy(controller.gameObject);
@@ -1750,9 +1754,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ActiveEvolutionReadyFeedbackLabel, Does.Contain("Arcane Thesis"));
             Assert.That(controller.EvolutionReadyFeedbackRemainingSeconds, Is.GreaterThan(0f));
             Assert.That(controller.CurrentEvolutionGoalHudLabel, Does.Contain("Arcane Thesis"));
+            Assert.IsEmpty(controller.CurrentEvolutionReadyHudLabel);
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.IsEmpty(controller.CurrentEvolutionGoalHudLabel);
+            Assert.That(controller.CurrentEvolutionReadyHudLabel, Does.Contain("Arcane Storm"));
             Assert.AreEqual(1, controller.EvolutionReadyFeedbackCount);
             Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Evolution Ready"));
             Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Arcane Storm"));
@@ -1770,6 +1776,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(6f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.AreEqual(1, controller.EvolutionReadyFeedbackCount);
+            Assert.IsEmpty(controller.CurrentEvolutionReadyHudLabel);
 
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.AreEqual(1, controller.EvolvedWeaponCount);
