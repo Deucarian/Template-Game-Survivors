@@ -63,6 +63,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
         private const int EndlessEnemyAliveBonus = 24;
         private const int NormalDraftRarityLockSeedSalt = 7919;
+        private const int ResultMetaUpgradeOptionCount = 3;
 
         private enum DraftRarityProfile
         {
@@ -98,6 +99,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
         private readonly List<string> _lastRunSummaryLines = new List<string>(8);
+        private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _activeRoamingCacheAmbushEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
@@ -281,6 +283,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int WeaponEvolutionSurgeCount { get; private set; }
         public int WeaponEvolutionSurgeHitCount { get; private set; }
         public string LastWeaponEvolutionSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public int MetaUpgradePurchaseCount { get; private set; }
+        public string LastMetaUpgradePurchaseFeedbackLabel { get; private set; } = string.Empty;
         public int MajorThreatWarningCount { get; private set; }
         public int MajorThreatEnrageCount { get; private set; }
         public int MajorThreatEnrageSupportSpawnCount { get; private set; }
@@ -691,6 +695,8 @@ namespace Deucarian.TemplateGameSurvivors
             WeaponEvolutionSurgeCount = 0;
             WeaponEvolutionSurgeHitCount = 0;
             LastWeaponEvolutionSurgeFeedbackLabel = string.Empty;
+            MetaUpgradePurchaseCount = 0;
+            LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
             EvolutionReadyFeedbackCount = 0;
             LastEvolutionReadyFeedbackLabel = string.Empty;
             BossRelicDraftOpenCount = 0;
@@ -1230,6 +1236,23 @@ namespace Deucarian.TemplateGameSurvivors
             return TryPurchasePersistentUpgrade(id);
         }
 
+        public IReadOnlyList<string> GetResultMetaUpgradeOptionLabelsForTest()
+        {
+            IReadOnlyList<SurvivorsPersistentUpgradeDefinition> options = ResolveResultMetaUpgradeOptions(ResultMetaUpgradeOptionCount);
+            string[] labels = new string[options.Count];
+            for (int i = 0; i < options.Count; i++)
+            {
+                labels[i] = FormatPersistentUpgradeOptionLabel(i, options[i]);
+            }
+
+            return labels;
+        }
+
+        public bool TryPurchaseResultMetaUpgradeForTest(int index)
+        {
+            return TryPurchaseResultMetaUpgrade(index);
+        }
+
         public bool TryPurchasePersistentUpgrade(string id)
         {
             EnsureMetaProgressionLoaded();
@@ -1239,6 +1262,11 @@ namespace Deucarian.TemplateGameSurvivors
                 ApplyPersistentMetaBonuses();
             }
 
+            if (purchased)
+            {
+                RecordMetaUpgradePurchaseFeedback(id);
+            }
+
             return purchased;
         }
 
@@ -1246,6 +1274,123 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureMetaProgressionLoaded();
             return _metaProgression.GetPersistentUpgradeRank(id);
+        }
+
+        private bool TryPurchaseResultMetaUpgrade(int index)
+        {
+            IReadOnlyList<SurvivorsPersistentUpgradeDefinition> options = ResolveResultMetaUpgradeOptions(ResultMetaUpgradeOptionCount);
+            if (index < 0 || index >= options.Count)
+            {
+                return false;
+            }
+
+            return TryPurchasePersistentUpgrade(options[index].Id.Value);
+        }
+
+        private IReadOnlyList<SurvivorsPersistentUpgradeDefinition> ResolveResultMetaUpgradeOptions(int limit)
+        {
+            _resultMetaUpgradeOptions.Clear();
+            if (limit <= 0)
+            {
+                return _resultMetaUpgradeOptions;
+            }
+
+            EnsureMetaProgressionLoaded();
+            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            for (int i = 0; i < definition.PersistentUpgrades.Count && _resultMetaUpgradeOptions.Count < limit; i++)
+            {
+                SurvivorsPersistentUpgradeDefinition upgrade = definition.PersistentUpgrades[i];
+                if (upgrade == null)
+                {
+                    continue;
+                }
+
+                int currentRank = _metaProgression.GetPersistentUpgradeRank(upgrade.Id.Value);
+                int nextCost = ResolveNextPersistentUpgradeCost(upgrade, currentRank);
+                if (currentRank < upgrade.MaxRank && nextCost > 0 && MetaBloodShards >= nextCost)
+                {
+                    _resultMetaUpgradeOptions.Add(upgrade);
+                }
+            }
+
+            return _resultMetaUpgradeOptions;
+        }
+
+        private int ResolveNextPersistentUpgradeCost(SurvivorsPersistentUpgradeDefinition upgrade, int currentRank)
+        {
+            if (upgrade == null || currentRank < 0 || currentRank >= upgrade.MaxRank || upgrade.RankCosts.Count == 0)
+            {
+                return 0;
+            }
+
+            int costIndex = Mathf.Clamp(currentRank, 0, upgrade.RankCosts.Count - 1);
+            return Mathf.Max(0, upgrade.RankCosts[costIndex]);
+        }
+
+        private string FormatPersistentUpgradeOptionLabel(int index, SurvivorsPersistentUpgradeDefinition upgrade)
+        {
+            if (upgrade == null)
+            {
+                return string.Empty;
+            }
+
+            EnsureMetaProgressionLoaded();
+            int currentRank = _metaProgression.GetPersistentUpgradeRank(upgrade.Id.Value);
+            int nextCost = ResolveNextPersistentUpgradeCost(upgrade, currentRank);
+            return $"{index + 1}. {upgrade.DisplayName} rank {currentRank}->{Mathf.Min(upgrade.MaxRank, currentRank + 1)}/{upgrade.MaxRank} ({nextCost} shards) - {FormatPersistentUpgradeEffectLabel(upgrade)}";
+        }
+
+        private static string FormatPersistentUpgradeEffectLabel(SurvivorsPersistentUpgradeDefinition upgrade)
+        {
+            if (upgrade == null)
+            {
+                return string.Empty;
+            }
+
+            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaDamageEffectId, StringComparison.Ordinal))
+            {
+                return $"+{upgrade.AmountPerRank:0.#} starting damage";
+            }
+
+            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaMaxHealthEffectId, StringComparison.Ordinal))
+            {
+                return $"+{upgrade.AmountPerRank:0.#} max health";
+            }
+
+            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaPickupRangeEffectId, StringComparison.Ordinal))
+            {
+                return $"+{upgrade.AmountPerRank:0.#} pickup range";
+            }
+
+            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaExperienceGainEffectId, StringComparison.Ordinal))
+            {
+                return $"+{upgrade.AmountPerRank:P0} XP gain";
+            }
+
+            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaDraftRerollEffectId, StringComparison.Ordinal))
+            {
+                return $"+{upgrade.AmountPerRank:0} draft reroll";
+            }
+
+            return upgrade.EffectId;
+        }
+
+        private void RecordMetaUpgradePurchaseFeedback(string id)
+        {
+            EnsureMetaProgressionLoaded();
+            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            string displayName = id;
+            if (definition.TryGetPersistentUpgrade(id, out SurvivorsPersistentUpgradeDefinition upgrade))
+            {
+                displayName = upgrade.DisplayName;
+            }
+
+            int rank = _metaProgression.GetPersistentUpgradeRank(id);
+            MetaUpgradePurchaseCount++;
+            LastMetaUpgradePurchaseFeedbackLabel = $"Meta Upgrade: {displayName} rank {rank}";
+            _rewardFeedbackLabel = LastMetaUpgradePurchaseFeedbackLabel;
+            _rewardFeedbackColor = new Color(0.45f, 0.95f, 0.76f);
+            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
         }
 
         public void ResetMetaProgressionForTest()
@@ -5964,8 +6109,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void DrawRunResultOverlay(bool victory)
         {
-            const float width = 440f;
-            float height = victory ? 248f : 210f;
+            const float width = 560f;
+            float height = victory ? 348f : 318f;
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(rect, victory ? "Victory" : "Game Over");
             IReadOnlyList<string> lines = LastRunSummaryLines;
@@ -5982,15 +6127,17 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
+            DrawResultMetaUpgradeOptions(new Rect(rect.x + 24f, rect.y + 174f, width - 48f, 96f));
+
             float buttonY = rect.yMax - 48f;
             if (victory)
             {
-                if (GUI.Button(new Rect(rect.x + 100f, buttonY, 106f, 34f), "Continue"))
+                if (GUI.Button(new Rect(rect.x + 160f, buttonY, 106f, 34f), "Continue"))
                 {
                     ContinueAfterVictory();
                 }
 
-                if (GUI.Button(new Rect(rect.x + width - 206f, buttonY, 106f, 34f), "Restart"))
+                if (GUI.Button(new Rect(rect.x + width - 266f, buttonY, 106f, 34f), "Restart"))
                 {
                     RestartRun();
                 }
@@ -5998,6 +6145,27 @@ namespace Deucarian.TemplateGameSurvivors
             else if (GUI.Button(new Rect(rect.x + width * 0.5f - 70f, buttonY, 140f, 34f), "Restart"))
             {
                 RestartRun();
+            }
+        }
+
+        private void DrawResultMetaUpgradeOptions(Rect rect)
+        {
+            IReadOnlyList<SurvivorsPersistentUpgradeDefinition> options = ResolveResultMetaUpgradeOptions(ResultMetaUpgradeOptionCount);
+            GUI.Label(new Rect(rect.x, rect.y, rect.width, 20f), $"Meta Upgrades - {MetaBloodShards} shards banked", _hudLabelStyle);
+            if (options.Count == 0)
+            {
+                GUI.Label(new Rect(rect.x, rect.y + 24f, rect.width, 20f), "No affordable meta upgrades yet. Bank more shards from runs, elites, bosses, or skips.", _hudSmallStyle);
+                return;
+            }
+
+            for (int i = 0; i < options.Count; i++)
+            {
+                Rect buttonRect = new Rect(rect.x, rect.y + 24f + i * 28f, rect.width, 24f);
+                if (GUI.Button(buttonRect, FormatPersistentUpgradeOptionLabel(i, options[i])))
+                {
+                    TryPurchaseResultMetaUpgrade(i);
+                    return;
+                }
             }
         }
 

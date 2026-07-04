@@ -1,6 +1,6 @@
 # Deucarian Template Game - Survivors
 
-Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, timed horde-rush pressure beats, auto-attacks, XP gems, rarity-tinted reward cards, level-up choices, readable damage feedback, enemy hit flashes, death bursts, ranged enemy shot cues, streak reward banners, temporary streak surges, evolution-ready banners, weapon-evolution surge payoffs, major-threat health bars, low-health major-threat support call-ins, major-reward cache beacons and pickup bursts, reward-pick banners, low-health warnings, major-threat telegraphs, miniboss and boss pressure, elite upgrade rewards, boss evolution rewards, relic rewards, class unlocks, persistent meta progression, victory/defeat run summaries, endless continuation, and restart flow.
+Playable Unity template package for a Survivors-style horde roguelite loop. The sample boots into a top-down arena with radial enemy spawning, timed horde-rush pressure beats, auto-attacks, XP gems, rarity-tinted reward cards, level-up choices, readable damage feedback, enemy hit flashes, death bursts, ranged enemy shot cues, streak reward banners, temporary streak surges, evolution-ready banners, weapon-evolution surge payoffs, major-threat health bars, low-health major-threat support call-ins, major-reward cache beacons and pickup bursts, reward-pick banners, low-health warnings, major-threat telegraphs, miniboss and boss pressure, elite upgrade rewards, boss evolution rewards, relic rewards, class unlocks, persistent meta progression, result-screen meta purchases, victory/defeat run summaries, endless continuation, and restart flow.
 
 The `Basic Survivors Game` sample is tuned as a small complete template game rather than a toy package demo: the default class starts with five distinct weapons, every authored weapon has a draftable unlock definition for leaner class/loadout flips, the horde grows through nine enemy roles including splitter pressure and two reward-bearing elite variants, the level-up pool includes 30+ authored choices with weapon unlocks, behavior mutations, passives, status effects, and eight legendary evolutions, class passive atlases group class identity, weapon skill tracks group upgrade routes, and the run paces toward a 30-minute clear with continuing escalation.
 
@@ -38,7 +38,7 @@ Use `#main` for stable package consumption and `#develop` when testing active pa
 2. Import the `Basic Survivors Game` sample.
 3. Open the imported sample scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
 4. Press Play.
-5. Move through the horde, collect XP gems, choose level-up options, take the elite reward after the miniboss, then build toward a boss evolution reward before defeating the final boss; if no evolution is ready, the boss falls back to a stronger reward draft before victory. After victory, continue into endless escalation or restart.
+5. Move through the horde, collect XP gems, choose level-up options, take the elite reward after the miniboss, then build toward a boss evolution reward before defeating the final boss; if no evolution is ready, the boss falls back to a stronger reward draft before victory. Spend earned shards on affordable meta upgrades from the result screen, then continue into endless escalation or restart.
 
 For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. More detail lives in `Documentation~/playtesting.md`.
 
@@ -47,7 +47,7 @@ The scene contains a tiny bootstrap object. At runtime it creates the arena, pla
 ## Controls
 
 - WASD or arrow keys: move
-- Mouse: choose level-up, elite reward, boss evolution, or boss relic buttons
+- Mouse: choose level-up, elite reward, boss evolution, boss relic, or result-screen meta upgrade buttons
 - 1/2/3: choose level-up, elite reward, boss evolution, or boss relic options
 - C: continue into endless escalation after victory
 - R: reroll the current upgrade draft while charges remain; after death or victory, restart

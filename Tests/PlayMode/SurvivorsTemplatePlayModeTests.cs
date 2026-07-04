@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Deucarian.Persistence;
 using Deucarian.RunUpgrades;
 using NUnit.Framework;
@@ -3159,6 +3160,43 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ExperienceGainMultiplierBonus, Is.GreaterThan(0f));
             Assert.That(controller.PersistentDraftRerollBonus, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.TotalDraftRerollCharges, Is.GreaterThan(controller.CurrentTuning.DraftRerollCharges));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator RunResultMetaUpgradeOptionsSpendEarnedShardsBeforeRestart()
+        {
+            var storage = new InMemoryTextStorage();
+            SurvivorsTemplateController controller = CreateController(storage, "play-result-meta-upgrade");
+            yield return null;
+
+            float baseProjectileDamage = controller.ProjectileDamage;
+            controller.SpawnBloodShardForTest(controller.PlayerPosition + new Vector3(0.15f, 0f, 0.15f), 5);
+            yield return SimulateFrames(controller, 8);
+            Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(5));
+
+            controller.KillPlayerForTest();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.GameOver, controller.State);
+            Assert.That(controller.MetaBloodShards, Is.GreaterThanOrEqualTo(5));
+            IReadOnlyList<string> options = controller.GetResultMetaUpgradeOptionLabelsForTest();
+            Assert.That(options.Count, Is.GreaterThanOrEqualTo(1));
+            Assert.That(options[0], Does.Contain("Arcane Legacy"));
+
+            long shardsBeforePurchase = controller.MetaBloodShards;
+            Assert.IsTrue(controller.TryPurchaseResultMetaUpgradeForTest(0));
+            Assert.AreEqual(1, controller.GetPersistentUpgradeRankForTest(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
+            Assert.AreEqual(shardsBeforePurchase - 5, controller.MetaBloodShards);
+            Assert.AreEqual(1, controller.MetaUpgradePurchaseCount);
+            Assert.That(controller.LastMetaUpgradePurchaseFeedbackLabel, Does.Contain("Arcane Legacy"));
+
+            controller.RestartRun();
+            yield return null;
+
+            Assert.That(controller.PersistentDamageBonus, Is.GreaterThan(0f));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(baseProjectileDamage));
 
             Object.Destroy(controller.gameObject);
         }
