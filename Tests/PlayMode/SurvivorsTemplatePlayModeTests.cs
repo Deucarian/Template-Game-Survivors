@@ -2477,6 +2477,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.AreEqual(2, controller.SummonerSupportSpawnCount);
+            Assert.AreEqual(1, controller.SummonerSupportFeedbackCount);
+            Assert.That(controller.LastSummonerSupportFeedbackLabel, Does.Contain("Rift Caller"));
+            Assert.That(controller.LastSummonerSupportFeedbackLabel, Does.Contain("+2 support"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("+2 support"));
             Assert.AreEqual(activeSummonersBefore + 1, controller.ActiveSummonerCount);
             Assert.AreEqual(activeBeforeSummoner + 3, controller.ActiveEnemyCount);
 

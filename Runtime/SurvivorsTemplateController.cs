@@ -251,6 +251,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadHazardTickCount { get; private set; }
         public int SplitterChildSpawnCount { get; private set; }
         public int SummonerSupportSpawnCount { get; private set; }
+        public int SummonerSupportFeedbackCount { get; private set; }
+        public string LastSummonerSupportFeedbackLabel { get; private set; } = string.Empty;
         public int MinibossSpawnCount { get; private set; }
         public int BossSpawnCount { get; private set; }
         public int EliteKilledCount { get; private set; }
@@ -760,6 +762,8 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadHazardTickCount = 0;
             SplitterChildSpawnCount = 0;
             SummonerSupportSpawnCount = 0;
+            SummonerSupportFeedbackCount = 0;
+            LastSummonerSupportFeedbackLabel = string.Empty;
             MinibossSpawnCount = 0;
             BossSpawnCount = 0;
             EliteKilledCount = 0;
@@ -6003,7 +6007,26 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SummonerSupportSpawnCount += spawned;
+            if (spawned > 0)
+            {
+                RecordSummonerSupportFeedback(summoner, spawned);
+            }
+
             return spawned;
+        }
+
+        private void RecordSummonerSupportFeedback(SurvivorsEnemyActor summoner, int spawned)
+        {
+            if (summoner == null || spawned <= 0)
+            {
+                return;
+            }
+
+            string name = string.IsNullOrWhiteSpace(summoner.DisplayName) ? "Rift Caller" : summoner.DisplayName;
+            LastSummonerSupportFeedbackLabel = $"{name}: +{spawned} support";
+            SummonerSupportFeedbackCount++;
+            RecordStreakRewardFeedback(LastSummonerSupportFeedbackLabel, new Color(0.56f, 0.72f, 1f));
+            PlayFeedback(_spawnPulse, summoner.transform.position, Mathf.Clamp(18 + spawned * 6, 24, 60), _spawnClip);
         }
 
         private static SurvivorsEnemyRole ResolveSummonerSupportRole(int sequence)
