@@ -872,6 +872,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.IsHordeRushWarningActive);
             Assert.AreEqual(1, controller.HordeRushWarningCount);
             Assert.That(controller.CurrentHordeRushWarningLabel, Does.Contain("HORDE RUSH"));
+            Assert.AreEqual(1, controller.IncomingThreatTelegraphEffectCount);
+            Assert.AreEqual(1, controller.ActiveIncomingThreatTelegraphEffectCount);
+            Assert.That(controller.LastIncomingThreatTelegraphLabel, Does.Contain("HORDE RUSH"));
             Assert.AreEqual(0, controller.HordeRushSpawnCount);
             int activeBeforeRush = controller.ActiveEnemyCount;
 
@@ -3211,6 +3214,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.IsMajorThreatWarningActive);
             Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("ELITE"));
             Assert.AreEqual(1, controller.MajorThreatWarningCount);
+            Assert.AreEqual(1, controller.IncomingThreatTelegraphEffectCount);
+            Assert.AreEqual(1, controller.ActiveIncomingThreatTelegraphEffectCount);
+            Assert.That(controller.LastIncomingThreatTelegraphLabel, Does.Contain("ELITE"));
             Assert.AreEqual(0, controller.ActiveEliteCount);
 
             controller.Simulate(controller.CurrentTuning.FirstEliteSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f);
@@ -3229,6 +3235,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.IsMajorThreatWarningActive);
             Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("DREAD ELITE"));
             Assert.AreEqual(2, controller.MajorThreatWarningCount);
+            Assert.AreEqual(2, controller.IncomingThreatTelegraphEffectCount);
+            Assert.That(controller.LastIncomingThreatTelegraphLabel, Does.Contain("DREAD ELITE"));
 
             controller.Simulate(controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds - controller.RunTimeSeconds + 0.1f);
             yield return null;
