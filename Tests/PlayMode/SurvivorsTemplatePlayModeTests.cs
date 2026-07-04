@@ -2788,7 +2788,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.SelectRelicForTest(0));
             yield return null;
 
-            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.IsFalse(controller.IsRelicChoiceOpen);
+            Assert.That(controller.State, Is.EqualTo(SurvivorsRunState.Playing).Or.EqualTo(SurvivorsRunState.LevelUp));
+            if (controller.State == SurvivorsRunState.LevelUp)
+            {
+                Assert.IsTrue(controller.IsRunUpgradeDraftOpen);
+            }
+
             Assert.AreEqual(1, controller.SelectedRelicCount);
             bool relicChanged = controller.RelicDamageBonus != previousRelicDamage ||
                 controller.RelicCooldownMultiplierBonus != previousRelicCooldown ||
@@ -2802,7 +2808,14 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         public IEnumerator SelectedBossRelicAffectsCurrentRun()
         {
             SurvivorsTemplateController controller = CreateController();
+            controller.CurrentTuning.BossRelicSurgeDamage = 12f;
+            controller.CurrentTuning.BossRelicSurgeRadius = 4f;
             yield return null;
+
+            SurvivorsEnemyActor surgeTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.4f, 0f, 0f), 1f);
+            SurvivorsEnemyActor surgeTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(-1.2f, 0f, 0f), 1f);
+            SurvivorsEnemyActor majorTarget = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(1.8f, 0f, 1.2f), 100f);
+            int killedBeforeRelic = controller.KilledCount;
 
             Assert.IsTrue(controller.OpenBossRelicDraftForTest());
             SurvivorsRelicDefinition selectedRelic = controller.CurrentRelicChoices[0];
@@ -2813,12 +2826,27 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.SelectRelicForTest(0));
             yield return null;
 
-            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.IsFalse(controller.IsRelicChoiceOpen);
+            Assert.That(controller.State, Is.EqualTo(SurvivorsRunState.Playing).Or.EqualTo(SurvivorsRunState.LevelUp));
+            if (controller.State == SurvivorsRunState.LevelUp)
+            {
+                Assert.IsTrue(controller.IsRunUpgradeDraftOpen);
+            }
+
             Assert.AreEqual(1, controller.SelectedRelicCount);
             bool relicChanged = controller.RelicDamageBonus != previousRelicDamage ||
                 controller.RelicCooldownMultiplierBonus != previousRelicCooldown ||
                 controller.RelicPickupRangeBonus != previousRelicPickup;
             Assert.IsTrue(relicChanged);
+            Assert.AreEqual(1, controller.BossRelicSurgeCount);
+            Assert.AreEqual(2, controller.BossRelicSurgeHitCount);
+            Assert.IsFalse(surgeTargetA.IsAlive);
+            Assert.IsFalse(surgeTargetB.IsAlive);
+            Assert.IsTrue(majorTarget.IsAlive);
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(killedBeforeRelic + 2));
+            Assert.That(controller.LastBossRelicSurgeFeedbackLabel, Does.Contain(selectedRelic.DisplayName));
+            Assert.That(controller.LastBossRelicSurgeFeedbackLabel, Does.Contain("2 enemies hit"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Surge"));
             Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3));
             Assert.AreEqual(1, controller.RewardSelectionFeedbackCount);
             Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Boss Relic"));

@@ -326,6 +326,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
             Assert.That(tuning.EvolutionSurgeDamage, Is.GreaterThan(0f));
             Assert.That(tuning.EvolutionSurgeRadius, Is.InRange(4f, 8f));
+            Assert.That(tuning.BossRelicSurgeDamage, Is.GreaterThan(0f));
+            Assert.That(tuning.BossRelicSurgeRadius, Is.InRange(4f, 7f));
             Assert.That(tuning.MajorThreatWarningLeadSeconds, Is.InRange(5f, 12f));
             Assert.That(tuning.FirstEliteSpawnTimeSeconds, Is.InRange(120f, 240f));
             Assert.That(tuning.EliteSpawnIntervalSeconds, Is.InRange(180f, 240f));

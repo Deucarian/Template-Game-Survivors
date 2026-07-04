@@ -196,6 +196,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float StatusBleedDurationSeconds = 5.5f;
         public float EvolutionSurgeDamage = 28f;
         public float EvolutionSurgeRadius = 6.2f;
+        public float BossRelicSurgeDamage = 18f;
+        public float BossRelicSurgeRadius = 5.4f;
         public float StartingBarrierCapacity = 8f;
         public float BaseBarrierRegenPerSecond = 0.12f;
         public int DraftChoiceCount = 3;

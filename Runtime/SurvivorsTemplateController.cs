@@ -261,6 +261,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int EliteUpgradeDraftOpenCount { get; private set; }
         public int BossUpgradeDraftOpenCount { get; private set; }
         public int SelectedRelicCount { get; private set; }
+        public int BossRelicSurgeCount { get; private set; }
+        public int BossRelicSurgeHitCount { get; private set; }
+        public string LastBossRelicSurgeFeedbackLabel { get; private set; } = string.Empty;
         public int SelectedRewardUpgradeCount { get; private set; }
         public int RewardAutoSelectCount { get; private set; }
         public int EndlessThreatSpawnCount { get; private set; }
@@ -763,6 +766,9 @@ namespace Deucarian.TemplateGameSurvivors
             EliteUpgradeDraftOpenCount = 0;
             BossUpgradeDraftOpenCount = 0;
             SelectedRelicCount = 0;
+            BossRelicSurgeCount = 0;
+            BossRelicSurgeHitCount = 0;
+            LastBossRelicSurgeFeedbackLabel = string.Empty;
             SelectedRewardUpgradeCount = 0;
             RewardAutoSelectCount = 0;
             EndlessThreatSpawnCount = 0;
@@ -6422,6 +6428,7 @@ namespace Deucarian.TemplateGameSurvivors
             SelectedRelicCount++;
             _selectedRelics.Add(selected);
             RecordRelicSelectionFeedback(selected);
+            TriggerBossRelicSurge(selected);
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             _rewardSelectionTimer = 0f;
@@ -6531,6 +6538,36 @@ namespace Deucarian.TemplateGameSurvivors
                 RelicPickupRangeBonus += relic.Amount;
                 PickupRangeBonus += relic.Amount;
             }
+        }
+
+        private void TriggerBossRelicSurge(SurvivorsRelicDefinition relic)
+        {
+            float radius = Mathf.Max(0f, CurrentTuning.BossRelicSurgeRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.BossRelicSurgeDamage);
+            int hitCount = 0;
+            if (radius > 0f && damage > 0f)
+            {
+                var targets = new List<SurvivorsEnemyActor>();
+                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    SurvivorsEnemyActor enemy = targets[i];
+                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+                    {
+                        continue;
+                    }
+
+                    enemy.ApplyDamage(damage, "survivors.relic.surge");
+                    hitCount++;
+                }
+            }
+
+            BossRelicSurgeCount++;
+            BossRelicSurgeHitCount += hitCount;
+            string name = relic == null || string.IsNullOrWhiteSpace(relic.DisplayName) ? "Boss Relic" : relic.DisplayName;
+            LastBossRelicSurgeFeedbackLabel = $"{name} Surge: {hitCount} enemies hit";
+            RecordStreakRewardFeedback(LastBossRelicSurgeFeedbackLabel, ResolveRelicAccentColor(relic));
+            PlayFeedback(_bossPulse, PlayerPosition, Mathf.Clamp(42 + hitCount * 4, 48, 88), _bossClip);
         }
 
         private void ApplyUpgrade(RunUpgradeDefinition upgrade)
