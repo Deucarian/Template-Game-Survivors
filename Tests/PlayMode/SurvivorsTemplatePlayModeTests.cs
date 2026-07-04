@@ -2435,6 +2435,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
             controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.SplitterChildCount = 2;
+            controller.CurrentTuning.SplitterChildSpawnRadius = 0.72f;
             controller.StartRun();
             yield return null;
 
@@ -2447,6 +2449,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.AreEqual(0, controller.ActiveSplitterCount);
             Assert.AreEqual(2, controller.SplitterChildSpawnCount);
+            Assert.AreEqual(1, controller.SplitterSplitFeedbackCount);
+            Assert.That(controller.LastSplitterSplitFeedbackLabel, Does.Contain("Splitter"));
+            Assert.That(controller.LastSplitterSplitFeedbackLabel, Does.Contain("+2 fragments"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("+2 fragments"));
             Assert.AreEqual(activeBeforeKill + 1, controller.ActiveEnemyCount);
             Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
 

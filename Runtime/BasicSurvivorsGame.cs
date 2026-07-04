@@ -98,6 +98,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int SummonerSupportCount = 2;
         public int SummonerSupportExtraAliveAllowance = 8;
         public float SummonerSupportRadius = 1.75f;
+        public int SplitterChildCount = 2;
+        public float SplitterChildSpawnRadius = 0.72f;
         public float MajorThreatSlamIntervalSeconds = 5.5f;
         public float MajorThreatSlamTelegraphSeconds = 0.65f;
         public float MajorThreatSlamRadius = 3.25f;
@@ -614,6 +616,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.SummonerSupportInitialDelaySeconds = 0.65f;
             tuning.SummonerSupportIntervalSeconds = 2.3f;
             tuning.SummonerSupportExtraAliveAllowance = 16;
+            tuning.SplitterChildCount = 3;
+            tuning.SplitterChildSpawnRadius = 0.86f;
             tuning.MajorThreatSlamIntervalSeconds = 3.5f;
             tuning.MajorThreatSlamTelegraphSeconds = 0.5f;
             tuning.MajorThreatSlamRadius = 3.5f;
@@ -732,6 +736,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatEnrageSupportRadius = 3.75f;
             tuning.SummonerSupportIntervalSeconds = 3.5f;
             tuning.SummonerSupportExtraAliveAllowance = 12;
+            tuning.SplitterChildCount = 3;
+            tuning.SplitterChildSpawnRadius = 0.82f;
             tuning.MajorThreatSlamIntervalSeconds = 4.4f;
             tuning.MajorThreatSlamTelegraphSeconds = 0.55f;
             tuning.MajorThreatSlamRadius = 3.4f;

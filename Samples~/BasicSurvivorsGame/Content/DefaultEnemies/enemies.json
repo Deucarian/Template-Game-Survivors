@@ -60,7 +60,10 @@
       "contactDamage": 3.7,
       "contactIntervalSeconds": 0.76,
       "experienceDrop": 6,
-      "spawnTimeSeconds": 210
+      "spawnTimeSeconds": 210,
+      "splitChildCount": 2,
+      "splitChildRadius": 0.72,
+      "behavior": "Splits into two nearby swarm fragments on death."
     },
     {
       "id": "enemy.survivors.summoner",

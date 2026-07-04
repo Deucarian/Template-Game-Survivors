@@ -1455,6 +1455,24 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError($"Enemy {enemy.id} requires spawn time above zero.");
                 }
+
+                if (role == SurvivorsEnemyRole.Splitter)
+                {
+                    if (enemy.splitChildCount <= 0)
+                    {
+                        result.AddError($"Enemy {enemy.id} requires split child count above zero.");
+                    }
+
+                    if (enemy.splitChildRadius <= 0f)
+                    {
+                        result.AddError($"Enemy {enemy.id} requires split child radius above zero.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(enemy.behavior))
+                    {
+                        result.AddError($"Enemy {enemy.id} requires splitter behavior text.");
+                    }
+                }
             }
 
             if (minibossCount == 0)
@@ -2524,6 +2542,9 @@ namespace Deucarian.TemplateGameSurvivors
             public float contactIntervalSeconds;
             public int experienceDrop;
             public float spawnTimeSeconds;
+            public int splitChildCount;
+            public float splitChildRadius;
+            public string behavior;
             public bool finalBoss;
         }
 

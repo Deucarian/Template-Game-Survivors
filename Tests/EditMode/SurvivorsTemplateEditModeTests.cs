@@ -347,6 +347,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.SummonerSupportInitialDelaySeconds, Is.InRange(0.5f, 2f));
             Assert.That(tuning.SummonerSupportIntervalSeconds, Is.InRange(3.5f, 6f));
             Assert.That(tuning.SummonerSupportExtraAliveAllowance, Is.GreaterThanOrEqualTo(4));
+            Assert.That(tuning.SplitterChildCount, Is.InRange(2, 4));
+            Assert.That(tuning.SplitterChildSpawnRadius, Is.InRange(0.6f, 1f));
             Assert.That(tuning.MajorThreatSlamIntervalSeconds, Is.InRange(4f, 7f));
             Assert.That(tuning.MajorThreatSlamTelegraphSeconds, Is.InRange(0.4f, 0.9f));
             Assert.That(tuning.MajorThreatSlamRadius, Is.InRange(2.5f, 4.5f));
@@ -453,6 +455,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.MajorRewardCacheAttractionSpeedMultiplier, Is.GreaterThan(human.MajorRewardCacheAttractionSpeedMultiplier));
             Assert.That(debugFast.RoamingCacheAmbushStartCache, Is.LessThan(human.RoamingCacheAmbushStartCache));
             Assert.That(showcase.RoamingCacheTravelInterval, Is.LessThan(human.RoamingCacheTravelInterval));
+            Assert.That(debugFast.SplitterChildCount, Is.GreaterThanOrEqualTo(human.SplitterChildCount));
+            Assert.That(showcase.SplitterChildCount, Is.GreaterThanOrEqualTo(human.SplitterChildCount));
             Assert.That(debugFast.FirstEliteSpawnTimeSeconds, Is.LessThan(human.FirstEliteSpawnTimeSeconds));
             Assert.That(debugFast.EliteSpawnIntervalSeconds, Is.LessThan(human.EliteSpawnIntervalSeconds));
             Assert.That(debugFast.MinibossSpawnTimeSeconds, Is.LessThan(human.MinibossSpawnTimeSeconds));
@@ -991,7 +995,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Grenade\",\"payloadCount\":1,\"payloadTravelSpeed\":1,\"payloadArmingSeconds\":1,\"payloadLifetimeSeconds\":1,\"payloadTriggerRadius\":1,\"payloadExplosionRadius\":1}],\"projectiles\":[]}";
             string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.payloads\"}]}";
-            string enemyJson = "{\"enemies\":[{\"id\":\"enemy.dup\",\"role\":\"Miniboss\",\"health\":0,\"moveSpeed\":0,\"radius\":0,\"contactDamage\":-1,\"contactIntervalSeconds\":0,\"experienceDrop\":0,\"spawnTimeSeconds\":0},{\"id\":\"enemy.dup\",\"role\":\"NoSuchRole\",\"health\":1,\"moveSpeed\":1,\"radius\":1,\"contactDamage\":0,\"contactIntervalSeconds\":1,\"experienceDrop\":1}]}";
+            string enemyJson = "{\"enemies\":[{\"id\":\"enemy.dup\",\"role\":\"Miniboss\",\"health\":0,\"moveSpeed\":0,\"radius\":0,\"contactDamage\":-1,\"contactIntervalSeconds\":0,\"experienceDrop\":0,\"spawnTimeSeconds\":0},{\"id\":\"enemy.dup\",\"role\":\"NoSuchRole\",\"health\":1,\"moveSpeed\":1,\"radius\":1,\"contactDamage\":0,\"contactIntervalSeconds\":1,\"experienceDrop\":1},{\"id\":\"enemy.split.bad\",\"role\":\"Splitter\",\"health\":1,\"moveSpeed\":1,\"radius\":1,\"contactDamage\":0,\"contactIntervalSeconds\":1,\"experienceDrop\":1,\"spawnTimeSeconds\":1,\"splitChildCount\":0,\"splitChildRadius\":0}]}";
 
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson);
             string errors = string.Join(Environment.NewLine, result.Errors);
@@ -1001,6 +1005,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("unknown role", errors);
             StringAssert.Contains("health above zero", errors);
             StringAssert.Contains("spawn time above zero", errors);
+            StringAssert.Contains("split child count", errors);
+            StringAssert.Contains("split child radius", errors);
+            StringAssert.Contains("splitter behavior text", errors);
             StringAssert.Contains("boss definition", errors);
         }
 
@@ -1232,12 +1239,14 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         public void ExpandedEnemyCatalogIncludesPressureRoles()
         {
             var profiles = BasicSurvivorsGame.CreateEnemyProfileDefinitions();
+            SurvivorsTemplateTuning tuning = BasicSurvivorsGame.CreateDefaultTuning();
 
             Assert.That(profiles.Count, Is.GreaterThanOrEqualTo(9));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Runner).MoveSpeed, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Swarm).MoveSpeed));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Bruiser).MaxHealth, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Swarm).MaxHealth));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Spitter).RangedAttackRange, Is.GreaterThan(0f));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Splitter).MaxHealth, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Swarm).MaxHealth));
+            Assert.That(tuning.SplitterChildCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Summoner).PreferredRange, Is.GreaterThan(0f));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Summoner).ExperienceReward, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Runner).ExperienceReward));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Elite).ExperienceReward, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Bruiser).ExperienceReward));

@@ -40,7 +40,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const float StreakSurgePickupRangeBonusPerTier = 0.18f;
         private const int DefaultMaxWeaponSlots = 6;
         private const int DefaultMaxPassiveSlots = 6;
-        private const int SplitterChildCount = 2;
         private const float DamagePopupLifetimeSeconds = 0.9f;
         private const float DamagePopupRiseHeight = 1.25f;
         private const int DamagePopupLimit = 72;
@@ -250,6 +249,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadExplosionHitCount { get; private set; }
         public int PayloadHazardTickCount { get; private set; }
         public int SplitterChildSpawnCount { get; private set; }
+        public int SplitterSplitFeedbackCount { get; private set; }
+        public string LastSplitterSplitFeedbackLabel { get; private set; } = string.Empty;
         public int SummonerSupportSpawnCount { get; private set; }
         public int SummonerSupportFeedbackCount { get; private set; }
         public string LastSummonerSupportFeedbackLabel { get; private set; } = string.Empty;
@@ -761,6 +762,8 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadExplosionHitCount = 0;
             PayloadHazardTickCount = 0;
             SplitterChildSpawnCount = 0;
+            SplitterSplitFeedbackCount = 0;
+            LastSplitterSplitFeedbackLabel = string.Empty;
             SummonerSupportSpawnCount = 0;
             SummonerSupportFeedbackCount = 0;
             LastSummonerSupportFeedbackLabel = string.Empty;
@@ -2202,7 +2205,7 @@ namespace Deucarian.TemplateGameSurvivors
             PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip);
             if (role == SurvivorsEnemyRole.Splitter)
             {
-                SpawnSplitterChildren(position);
+                SpawnSplitterChildren(position, enemy.DisplayName);
             }
             else if (IsEliteRole(role))
             {
@@ -5955,23 +5958,42 @@ namespace Deucarian.TemplateGameSurvivors
             return enemy;
         }
 
-        private void SpawnSplitterChildren(Vector3 position)
+        private void SpawnSplitterChildren(Vector3 position, string splitterName)
         {
             if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
             {
                 return;
             }
 
-            float radius = Mathf.Max(0.65f, CurrentTuning.EnemyRadius * 1.5f);
-            for (int index = 0; index < SplitterChildCount; index++)
+            int childCount = Mathf.Clamp(CurrentTuning.SplitterChildCount, 1, 8);
+            float radius = CurrentTuning.SplitterChildSpawnRadius > 0f
+                ? CurrentTuning.SplitterChildSpawnRadius
+                : Mathf.Max(0.65f, CurrentTuning.EnemyRadius * 1.5f);
+            int spawned = 0;
+            for (int index = 0; index < childCount; index++)
             {
-                float angle = ((index + 0.25f) / SplitterChildCount) * Mathf.PI * 2f;
+                float angle = ((index + 0.25f) / childCount) * Mathf.PI * 2f;
                 Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
                 if (SpawnEnemy(position + offset, explicitPosition: true, SurvivorsEnemyRole.Swarm) != null)
                 {
                     SplitterChildSpawnCount++;
+                    spawned++;
                 }
             }
+
+            if (spawned > 0)
+            {
+                RecordSplitterSplitFeedback(splitterName, position, spawned);
+            }
+        }
+
+        private void RecordSplitterSplitFeedback(string splitterName, Vector3 position, int spawned)
+        {
+            string name = string.IsNullOrWhiteSpace(splitterName) ? "Splitter" : splitterName;
+            LastSplitterSplitFeedbackLabel = $"{name}: +{spawned} fragments";
+            SplitterSplitFeedbackCount++;
+            RecordStreakRewardFeedback(LastSplitterSplitFeedbackLabel, new Color(0.78f, 0.58f, 1f));
+            PlayFeedback(_spawnPulse, position, Mathf.Clamp(16 + spawned * 5, 24, 64), _spawnClip);
         }
 
         internal int SpawnSummonerSupport(SurvivorsEnemyActor summoner)
