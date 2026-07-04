@@ -25,6 +25,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Elite defeat opens a stronger upgrade reward draft; miniboss defeat opens that stronger upgrade reward and then chains into a boss relic draft.
 - Boss relic picks are unique within the current run, so later relic drafts remove anything already claimed and simply resume play if the collection is exhausted. Choosing a relic emits an immediate surge through nearby non-major enemies, and the build HUD and result summary show the current relic count.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
+- Elite and boss fallback reward drafts lock a reward-tier first card when no evolution is ready, while ready evolutions still lead the reward draft.
 - Mid-run level-up drafts guarantee one Rare-or-better choice when eligible, and late-run drafts guarantee one Epic-or-better choice when eligible.
 - Before the player owns a passive, normal level-up drafts reserve one Common/Uncommon passive hook and fill the remaining cards from the normal rarity table.
 - Once a weapon path reaches an evolution requirement, normal level-up drafts reserve the missing matching passive when the current rarity table allows it.

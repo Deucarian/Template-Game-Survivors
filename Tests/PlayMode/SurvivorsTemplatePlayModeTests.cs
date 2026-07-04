@@ -2910,6 +2910,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.EliteUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.BonusBloodShardsEarnedThisRun, Is.GreaterThanOrEqualTo(2));
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.That((int)controller.CurrentDraftChoices[0].Rarity, Is.GreaterThanOrEqualTo((int)RunUpgradeRarity.Uncommon));
             Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3));
             Assert.That(controller.LastRewardCardPresentationLabel, Does.Contain("Elite Reward"));
             Assert.AreEqual(1, controller.MajorRewardDropFeedbackCount);
@@ -3148,6 +3149,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LastMajorRewardDropFeedbackLabel, Does.Contain("Boss"));
             int evolutionChoiceIndex = IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId);
             Assert.That(evolutionChoiceIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.AreEqual(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId, controller.CurrentDraftChoices[0].Id.Value);
 
             Assert.IsTrue(controller.SelectUpgrade(evolutionChoiceIndex));
             yield return null;
@@ -3190,6 +3192,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LastMajorRewardCacheFeedbackLabel, Does.Contain("Cache"));
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
             Assert.AreEqual(-1, IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.That((int)controller.CurrentDraftChoices[0].Rarity, Is.GreaterThanOrEqualTo((int)RunUpgradeRarity.Rare));
             for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
             {
                 Assert.That((int)controller.CurrentDraftChoices[i].Rarity, Is.GreaterThanOrEqualTo((int)RunUpgradeRarity.Rare));

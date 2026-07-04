@@ -66,6 +66,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const int NormalDraftRarityLockSeedSalt = 7919;
         private const int EarlyPassiveDraftLockSeedSalt = 12289;
         private const int EvolutionPrimerPassiveDraftLockSeedSalt = 17443;
+        private const int RewardDraftRarityLockSeedSalt = 23831;
         private const int ResultMetaUpgradeOptionCount = 3;
         private const int ResultClassOptionCount = 4;
 
@@ -4534,6 +4535,83 @@ namespace Deucarian.TemplateGameSurvivors
             return locks;
         }
 
+        private IReadOnlyList<RunUpgradeId> CreateRewardDraftChoiceLocks(
+            SurvivorsEnemyRole role,
+            int maxCount,
+            int rerollIndex)
+        {
+            if (maxCount <= 0)
+            {
+                return Array.Empty<RunUpgradeId>();
+            }
+
+            IReadOnlyList<RunUpgradeId> evolutionLocks = CreateEligibleEvolutionChoiceLocks(maxCount);
+            if (evolutionLocks != null && evolutionLocks.Count > 0)
+            {
+                return evolutionLocks;
+            }
+
+            return TryCreateRewardRarityChoiceLock(role, rerollIndex, out RunUpgradeId rarityLock)
+                ? new[] { rarityLock }
+                : Array.Empty<RunUpgradeId>();
+        }
+
+        private bool TryCreateRewardRarityChoiceLock(
+            SurvivorsEnemyRole role,
+            int rerollIndex,
+            out RunUpgradeId rarityLock)
+        {
+            rarityLock = default;
+            if (!TryResolveRewardDraftGuaranteedMinimumRarity(role, out RunUpgradeRarity minimumRarity))
+            {
+                return false;
+            }
+
+            DraftRarityProfile profile = role == SurvivorsEnemyRole.Boss ? DraftRarityProfile.Boss : DraftRarityProfile.Elite;
+            RunUpgradeCatalog highRarityCatalog = CreateEligibleDraftCatalog(
+                profile,
+                minimumRarity,
+                requireMinimumRarity: true);
+            if (highRarityCatalog == null || highRarityCatalog.Definitions.Count == 0)
+            {
+                return false;
+            }
+
+            SurvivorsRewardSelectionKind selectionKind = role == SurvivorsEnemyRole.Boss
+                ? SurvivorsRewardSelectionKind.BossUpgrade
+                : SurvivorsRewardSelectionKind.EliteUpgrade;
+            RunUpgradeDraft lockDraft = RunUpgradeDraftService.Generate(
+                highRarityCatalog,
+                _upgradeState,
+                new RunUpgradeDraftRequest(
+                    1,
+                    ResolveDraftSeed(selectionKind) + RewardDraftRarityLockSeedSalt,
+                    Mathf.Max(0, rerollIndex)));
+            if (lockDraft == null || lockDraft.Choices.Count == 0)
+            {
+                return false;
+            }
+
+            rarityLock = lockDraft.Choices[0].Id;
+            return true;
+        }
+
+        private static bool TryResolveRewardDraftGuaranteedMinimumRarity(
+            SurvivorsEnemyRole role,
+            out RunUpgradeRarity minimumRarity)
+        {
+            if (role == SurvivorsEnemyRole.Boss)
+            {
+                minimumRarity = RunUpgradeRarity.Rare;
+                return true;
+            }
+
+            minimumRarity = RunUpgradeRarity.Uncommon;
+            return role == SurvivorsEnemyRole.Elite ||
+                role == SurvivorsEnemyRole.DreadElite ||
+                role == SurvivorsEnemyRole.Miniboss;
+        }
+
         private bool IsEvolutionUpgrade(RunUpgradeDefinition definition)
         {
             return definition != null &&
@@ -4622,11 +4700,11 @@ namespace Deucarian.TemplateGameSurvivors
                     break;
                 case SurvivorsRewardSelectionKind.EliteUpgrade:
                     draftCatalog = CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole.Miniboss, requireEvolutionChoice: false);
-                    resolvedLocks = CreateEligibleEvolutionChoiceLocks(CurrentTuning.DraftChoiceCount);
+                    resolvedLocks = CreateRewardDraftChoiceLocks(SurvivorsEnemyRole.Miniboss, CurrentTuning.DraftChoiceCount, rerollIndex);
                     break;
                 case SurvivorsRewardSelectionKind.BossUpgrade:
                     draftCatalog = CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false);
-                    resolvedLocks = CreateEligibleEvolutionChoiceLocks(CurrentTuning.DraftChoiceCount);
+                    resolvedLocks = CreateRewardDraftChoiceLocks(SurvivorsEnemyRole.Boss, CurrentTuning.DraftChoiceCount, rerollIndex);
                     break;
                 default:
                     return false;
