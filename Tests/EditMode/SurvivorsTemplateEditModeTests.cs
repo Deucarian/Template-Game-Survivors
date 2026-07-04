@@ -606,6 +606,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(human.hordeRushClearBloodShardEveryRush, Is.GreaterThan(human.hordeRushClearMagnetEveryRush));
             Assert.That(human.hordeRushClearPulseDamage, Is.GreaterThan(0f));
             Assert.That(human.hordeRushClearPulseRadius, Is.InRange(4f, 6f));
+            AssertRunFlowTrapChainMatchesTuning(human, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.HumanPlaytest));
+            AssertRunFlowTrapChainMatchesTuning(normal, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Normal));
+            AssertRunFlowTrapChainMatchesTuning(debugFast, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.DebugFast));
+            AssertRunFlowTrapChainMatchesTuning(showcase, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Showcase));
+            Assert.That(human.payloadHazardChainSnareThreshold, Is.GreaterThanOrEqualTo(4));
+            Assert.That(human.payloadHazardChainExperienceGemCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(human.payloadHazardChainPulseDamage, Is.GreaterThan(0f));
             Assert.That(human.roamingCacheSurgeInterval, Is.InRange(3, 6));
             Assert.That(human.roamingCacheSurgeBonusGemCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(human.roamingCacheSurgeDurationSeconds, Is.InRange(4f, 8f));
@@ -639,6 +646,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.hordeRushEnemyCountIncreasePerRush, Is.GreaterThan(human.hordeRushEnemyCountIncreasePerRush));
             Assert.That(debugFast.hordeRushExtraAliveAllowance, Is.GreaterThan(human.hordeRushExtraAliveAllowance));
             Assert.That(debugFast.hordeRushClearPulseDamage, Is.GreaterThan(human.hordeRushClearPulseDamage));
+            Assert.That(debugFast.payloadHazardChainSnareThreshold, Is.LessThanOrEqualTo(human.payloadHazardChainSnareThreshold));
+            Assert.That(debugFast.payloadHazardChainExperienceGemCount, Is.GreaterThanOrEqualTo(human.payloadHazardChainExperienceGemCount));
+            Assert.That(debugFast.payloadHazardChainPulseDamage, Is.GreaterThan(human.payloadHazardChainPulseDamage));
             Assert.That(debugFast.draftRerollCharges, Is.GreaterThan(normal.draftRerollCharges));
             Assert.That(debugFast.draftBanishCharges, Is.GreaterThan(normal.draftBanishCharges));
             Assert.That(debugFast.rewardSelectionTimeoutSeconds, Is.GreaterThan(human.rewardSelectionTimeoutSeconds));
@@ -763,6 +773,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("enemy spawn interval", errors);
             StringAssert.Contains("enemy ranged dodge XP reward", errors);
             StringAssert.Contains("horde rush", errors);
+            StringAssert.Contains("payload hazard chain", errors);
             StringAssert.Contains("roaming cache ambush", errors);
             StringAssert.Contains("roaming cache surge", errors);
             StringAssert.Contains("draft reroll", errors);
@@ -1495,6 +1506,19 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             return null;
         }
 
+        private static void AssertRunFlowTrapChainMatchesTuning(RunFlowProfileForTest profile, SurvivorsTemplateTuning tuning)
+        {
+            Assert.NotNull(profile);
+            Assert.NotNull(tuning);
+            Assert.AreEqual(tuning.PayloadHazardChainSnareThreshold, profile.payloadHazardChainSnareThreshold);
+            Assert.That(profile.payloadHazardChainWindowSeconds, Is.EqualTo(tuning.PayloadHazardChainWindowSeconds).Within(0.001f));
+            Assert.That(profile.payloadHazardChainCooldownSeconds, Is.EqualTo(tuning.PayloadHazardChainCooldownSeconds).Within(0.001f));
+            Assert.AreEqual(tuning.PayloadHazardChainExperienceGemCount, profile.payloadHazardChainExperienceGemCount);
+            Assert.That(profile.payloadHazardChainExperienceMultiplier, Is.EqualTo(tuning.PayloadHazardChainExperienceMultiplier).Within(0.001f));
+            Assert.That(profile.payloadHazardChainPulseDamage, Is.EqualTo(tuning.PayloadHazardChainPulseDamage).Within(0.001f));
+            Assert.That(profile.payloadHazardChainPulseRadius, Is.EqualTo(tuning.PayloadHazardChainPulseRadius).Within(0.001f));
+        }
+
         private static void Step(SurvivorsTemplateController controller, int frames, float deltaTime)
         {
             for (int i = 0; i < frames; i++)
@@ -1542,6 +1566,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             public int hordeRushClearBloodShardEveryRush;
             public float hordeRushClearPulseDamage;
             public float hordeRushClearPulseRadius;
+            public int payloadHazardChainSnareThreshold;
+            public float payloadHazardChainWindowSeconds;
+            public float payloadHazardChainCooldownSeconds;
+            public int payloadHazardChainExperienceGemCount;
+            public float payloadHazardChainExperienceMultiplier;
+            public float payloadHazardChainPulseDamage;
+            public float payloadHazardChainPulseRadius;
             public int roamingCacheMagnetInterval;
             public int roamingCacheBloodShardInterval;
             public int roamingCacheAmbushStartCache;

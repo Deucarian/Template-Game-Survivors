@@ -1703,6 +1703,13 @@ namespace Deucarian.TemplateGameSurvivors
 
             ValidatePositive(profileId, "horde rush clear pulse damage", profile.hordeRushClearPulseDamage, result);
             ValidatePositive(profileId, "horde rush clear pulse radius", profile.hordeRushClearPulseRadius, result);
+            ValidatePositive(profileId, "payload hazard chain snare threshold", profile.payloadHazardChainSnareThreshold, result);
+            ValidatePositive(profileId, "payload hazard chain window", profile.payloadHazardChainWindowSeconds, result);
+            ValidatePositive(profileId, "payload hazard chain cooldown", profile.payloadHazardChainCooldownSeconds, result);
+            ValidatePositive(profileId, "payload hazard chain XP gem count", profile.payloadHazardChainExperienceGemCount, result);
+            ValidatePositive(profileId, "payload hazard chain XP multiplier", profile.payloadHazardChainExperienceMultiplier, result);
+            ValidatePositive(profileId, "payload hazard chain pulse damage", profile.payloadHazardChainPulseDamage, result);
+            ValidatePositive(profileId, "payload hazard chain pulse radius", profile.payloadHazardChainPulseRadius, result);
             ValidatePositive(profileId, "roaming cache travel interval", profile.roamingCacheTravelInterval, result);
             ValidatePositive(profileId, "roaming cache XP gem count", profile.roamingCacheExperienceGemCount, result);
             ValidatePositive(profileId, "roaming cache magnet interval", profile.roamingCacheMagnetInterval, result);
@@ -2770,6 +2777,13 @@ namespace Deucarian.TemplateGameSurvivors
             public int hordeRushClearBloodShardEveryRush;
             public float hordeRushClearPulseDamage;
             public float hordeRushClearPulseRadius;
+            public int payloadHazardChainSnareThreshold;
+            public float payloadHazardChainWindowSeconds;
+            public float payloadHazardChainCooldownSeconds;
+            public int payloadHazardChainExperienceGemCount;
+            public float payloadHazardChainExperienceMultiplier;
+            public float payloadHazardChainPulseDamage;
+            public float payloadHazardChainPulseRadius;
             public float roamingCacheTravelInterval;
             public int roamingCacheExperienceGemCount;
             public int roamingCacheMagnetInterval;
