@@ -75,7 +75,17 @@
       ],
       "endlessEliteSpawnIntervalSeconds": 90,
       "endlessMinibossSpawnIntervalSeconds": 180,
-      "endlessBossSpawnIntervalSeconds": 300
+      "endlessBossSpawnIntervalSeconds": 300,
+      "endlessSurgeExperienceGemCount": 4,
+      "endlessSurgeExperienceMultiplier": 2.6,
+      "endlessSurgeBloodShardAmount": 1,
+      "endlessSurgeDurationSeconds": 7,
+      "endlessSurgeDamageBonus": 1.45,
+      "endlessSurgeMoveSpeedBonus": 0.2,
+      "endlessSurgeCooldownMultiplierBonus": -0.04,
+      "endlessSurgePickupRangeBonus": 0.48,
+      "endlessSurgePulseDamage": 24,
+      "endlessSurgePulseRadius": 5.6
     },
     {
       "id": "Normal",
@@ -152,7 +162,17 @@
       ],
       "endlessEliteSpawnIntervalSeconds": 105,
       "endlessMinibossSpawnIntervalSeconds": 180,
-      "endlessBossSpawnIntervalSeconds": 300
+      "endlessBossSpawnIntervalSeconds": 300,
+      "endlessSurgeExperienceGemCount": 5,
+      "endlessSurgeExperienceMultiplier": 2.8,
+      "endlessSurgeBloodShardAmount": 1,
+      "endlessSurgeDurationSeconds": 7,
+      "endlessSurgeDamageBonus": 1.65,
+      "endlessSurgeMoveSpeedBonus": 0.22,
+      "endlessSurgeCooldownMultiplierBonus": -0.045,
+      "endlessSurgePickupRangeBonus": 0.55,
+      "endlessSurgePulseDamage": 28,
+      "endlessSurgePulseRadius": 5.8
     },
     {
       "id": "DebugFast",
@@ -229,7 +249,17 @@
       ],
       "endlessEliteSpawnIntervalSeconds": 35,
       "endlessMinibossSpawnIntervalSeconds": 70,
-      "endlessBossSpawnIntervalSeconds": 120
+      "endlessBossSpawnIntervalSeconds": 120,
+      "endlessSurgeExperienceGemCount": 6,
+      "endlessSurgeExperienceMultiplier": 3.2,
+      "endlessSurgeBloodShardAmount": 2,
+      "endlessSurgeDurationSeconds": 6,
+      "endlessSurgeDamageBonus": 2.2,
+      "endlessSurgeMoveSpeedBonus": 0.3,
+      "endlessSurgeCooldownMultiplierBonus": -0.06,
+      "endlessSurgePickupRangeBonus": 0.78,
+      "endlessSurgePulseDamage": 34,
+      "endlessSurgePulseRadius": 6.2
     },
     {
       "id": "Showcase",
@@ -306,7 +336,17 @@
       ],
       "endlessEliteSpawnIntervalSeconds": 70,
       "endlessMinibossSpawnIntervalSeconds": 120,
-      "endlessBossSpawnIntervalSeconds": 210
+      "endlessBossSpawnIntervalSeconds": 210,
+      "endlessSurgeExperienceGemCount": 5,
+      "endlessSurgeExperienceMultiplier": 3,
+      "endlessSurgeBloodShardAmount": 1,
+      "endlessSurgeDurationSeconds": 6.5,
+      "endlessSurgeDamageBonus": 1.85,
+      "endlessSurgeMoveSpeedBonus": 0.25,
+      "endlessSurgeCooldownMultiplierBonus": -0.05,
+      "endlessSurgePickupRangeBonus": 0.62,
+      "endlessSurgePulseDamage": 30,
+      "endlessSurgePulseRadius": 6
     }
   ]
 }

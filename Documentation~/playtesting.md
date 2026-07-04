@@ -82,6 +82,7 @@ After victory:
 - The victory panel should summarize time, level, kills, build size, run rewards, meta totals, any class unlock, next-run class choices, and affordable meta upgrades before you continue or restart.
 - If Ember Vanguard has just unlocked, select it from the result panel, restart, and confirm the next run starts with the broader Ember loadout and class-gated upgrade pool.
 - Endless escalation should keep increasing horde pressure and should schedule recurring elite, miniboss, and boss threats with incoming warnings.
+- Defeating a recurring elite, miniboss, or boss should trigger Endless Surge with a tiered HUD timer, extra XP gems, a blood-shard drop, a nearby non-major enemy pulse, and temporary damage, cooldown, movement, and pickup-range momentum.
 - Killing recurring major threats should keep producing the same stronger reward drafts and arena pickup caches without ending the run again, and each new recurring major threat can still trigger its own one-shot support call-in.
 
 After defeat:

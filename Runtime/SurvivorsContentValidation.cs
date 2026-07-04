@@ -1757,6 +1757,20 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "endless elite interval", profile.endlessEliteSpawnIntervalSeconds, result);
             ValidatePositive(profileId, "endless miniboss interval", profile.endlessMinibossSpawnIntervalSeconds, result);
             ValidatePositive(profileId, "endless boss interval", profile.endlessBossSpawnIntervalSeconds, result);
+            ValidatePositive(profileId, "endless surge XP gem count", profile.endlessSurgeExperienceGemCount, result);
+            ValidatePositive(profileId, "endless surge XP multiplier", profile.endlessSurgeExperienceMultiplier, result);
+            ValidatePositive(profileId, "endless surge blood shard amount", profile.endlessSurgeBloodShardAmount, result);
+            ValidatePositive(profileId, "endless surge duration", profile.endlessSurgeDurationSeconds, result);
+            ValidatePositive(profileId, "endless surge damage bonus", profile.endlessSurgeDamageBonus, result);
+            ValidatePositive(profileId, "endless surge move speed bonus", profile.endlessSurgeMoveSpeedBonus, result);
+            if (profile.endlessSurgeCooldownMultiplierBonus >= 0f || profile.endlessSurgeCooldownMultiplierBonus <= -0.75f)
+            {
+                result.AddError($"Run flow profile {profileId} endless surge cooldown multiplier must be below zero and above -0.75.");
+            }
+
+            ValidatePositive(profileId, "endless surge pickup range bonus", profile.endlessSurgePickupRangeBonus, result);
+            ValidatePositive(profileId, "endless surge pulse damage", profile.endlessSurgePulseDamage, result);
+            ValidatePositive(profileId, "endless surge pulse radius", profile.endlessSurgePulseRadius, result);
             if (profile.endlessMinibossSpawnIntervalSeconds <= profile.endlessEliteSpawnIntervalSeconds)
             {
                 result.AddError($"Run flow profile {profileId} endless miniboss interval must be longer than elite interval.");
@@ -2765,6 +2779,16 @@ namespace Deucarian.TemplateGameSurvivors
             public float endlessEliteSpawnIntervalSeconds;
             public float endlessMinibossSpawnIntervalSeconds;
             public float endlessBossSpawnIntervalSeconds;
+            public int endlessSurgeExperienceGemCount;
+            public float endlessSurgeExperienceMultiplier;
+            public int endlessSurgeBloodShardAmount;
+            public float endlessSurgeDurationSeconds;
+            public float endlessSurgeDamageBonus;
+            public float endlessSurgeMoveSpeedBonus;
+            public float endlessSurgeCooldownMultiplierBonus;
+            public float endlessSurgePickupRangeBonus;
+            public float endlessSurgePulseDamage;
+            public float endlessSurgePulseRadius;
         }
 
         [Serializable]

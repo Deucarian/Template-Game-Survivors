@@ -455,6 +455,16 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.BossRelicSurgeMoveSpeedBonus, Is.GreaterThan(0f));
             Assert.That(tuning.BossRelicSurgeCooldownMultiplierBonus, Is.LessThan(0f));
             Assert.That(tuning.BossRelicSurgePickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.EndlessSurgeExperienceGemCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(tuning.EndlessSurgeExperienceMultiplier, Is.GreaterThan(1f));
+            Assert.That(tuning.EndlessSurgeBloodShardAmount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(tuning.EndlessSurgeDurationSeconds, Is.InRange(5f, 8f));
+            Assert.That(tuning.EndlessSurgeDamageBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.EndlessSurgeMoveSpeedBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.EndlessSurgeCooldownMultiplierBonus, Is.LessThan(0f));
+            Assert.That(tuning.EndlessSurgePickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.EndlessSurgePulseDamage, Is.GreaterThan(0f));
+            Assert.That(tuning.EndlessSurgePulseRadius, Is.InRange(5f, 7f));
             Assert.That(tuning.MajorThreatWarningLeadSeconds, Is.InRange(5f, 12f));
             Assert.That(tuning.FirstEliteSpawnTimeSeconds, Is.InRange(120f, 240f));
             Assert.That(tuning.EliteSpawnIntervalSeconds, Is.InRange(180f, 240f));

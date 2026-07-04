@@ -3897,6 +3897,90 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator EndlessMajorThreatKillsTriggerEndlessSurge()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.PlayerMaxHealth = 999f;
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.ExperienceRequiredPerLevel = 999;
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 0.25f;
+            controller.CurrentTuning.EndlessSurgeExperienceGemCount = 3;
+            controller.CurrentTuning.EndlessSurgeExperienceMultiplier = 2f;
+            controller.CurrentTuning.EndlessSurgeBloodShardAmount = 1;
+            controller.CurrentTuning.EndlessSurgeDurationSeconds = 3f;
+            controller.CurrentTuning.EndlessSurgeDamageBonus = 2f;
+            controller.CurrentTuning.EndlessSurgeMoveSpeedBonus = 0.4f;
+            controller.CurrentTuning.EndlessSurgeCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.EndlessSurgePickupRangeBonus = 0.8f;
+            controller.CurrentTuning.EndlessSurgePulseDamage = 50f;
+            controller.CurrentTuning.EndlessSurgePulseRadius = 5f;
+            controller.StartRun();
+            yield return null;
+
+            controller.Simulate(0.3f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.IsTrue(controller.ContinueAfterVictory());
+            yield return null;
+
+            Vector3 center = controller.PlayerPosition + new Vector3(3f, 0f, 0f);
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(center + new Vector3(1.1f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(center + new Vector3(0f, 0f, 1.3f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedBoss = controller.SpawnBossForTest(center + new Vector3(0f, 0f, -1.6f), 100f);
+            SurvivorsEnemyActor endlessElite = controller.SpawnEnemyForTest(center, SurvivorsEnemyRole.Elite, 1f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedBoss);
+            Assert.NotNull(endlessElite);
+
+            float startingDamage = controller.ProjectileDamage;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
+
+            endlessElite.ApplyDamage(10f, "test.endless.surge");
+            yield return null;
+
+            Assert.That(controller.EndlessSurgeActivationCount, Is.EqualTo(1));
+            Assert.That(controller.EndlessSurgeTier, Is.EqualTo(1));
+            Assert.That(controller.EndlessSurgeExperienceGemDropCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(controller.EndlessSurgeBloodShardDropCount, Is.EqualTo(1));
+            Assert.That(controller.EndlessSurgePulseHitCount, Is.GreaterThanOrEqualTo(2));
+            Assert.IsTrue(controller.IsEndlessSurgeActive);
+            Assert.That(controller.EndlessSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.IsFalse(pulseTargetA.IsAlive);
+            Assert.IsFalse(pulseTargetB.IsAlive);
+            Assert.IsTrue(protectedBoss.IsAlive);
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
+            Assert.That(controller.LastEndlessSurgeFeedbackLabel, Does.Contain("Endless Surge"));
+            Assert.That(controller.LastEndlessSurgeFeedbackLabel, Does.Contain("Endless Elite"));
+            Assert.That(controller.LastEndlessSurgeFeedbackLabel, Does.Contain("hit"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Endless Surge"));
+
+            float surgedDamage = controller.ProjectileDamage;
+            if (controller.IsUpgradeRewardChoiceOpen)
+            {
+                Assert.IsTrue(controller.SkipCurrentDraft());
+                yield return null;
+            }
+
+            controller.Simulate(controller.CurrentTuning.EndlessSurgeDurationSeconds + 0.2f);
+            yield return null;
+
+            Assert.IsFalse(controller.IsEndlessSurgeActive);
+            Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator EndlessContinuationSpawnsRecurringMajorThreats()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
