@@ -489,7 +489,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
-        public void SampleRunFlowContentIncludesRoamingCacheSurgeTuning()
+        public void SampleRunFlowContentIncludesRoamingCacheTuning()
         {
             string sampleRoot = GetSampleRoot();
             string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
@@ -508,13 +508,27 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(human.roamingCacheSurgePickupRangeBonus, Is.GreaterThan(0f));
             Assert.That(human.roamingCacheSurgePulseDamage, Is.GreaterThan(0f));
             Assert.That(human.roamingCacheSurgePulseRadius, Is.InRange(3f, 6f));
+            Assert.That(human.roamingCacheMagnetInterval, Is.GreaterThanOrEqualTo(2));
+            Assert.That(human.roamingCacheBloodShardInterval, Is.GreaterThan(human.roamingCacheMagnetInterval));
+            Assert.That(human.roamingCacheAmbushStartCache, Is.GreaterThanOrEqualTo(3));
+            Assert.That(human.roamingCacheAmbushInterval, Is.GreaterThanOrEqualTo(3));
+            Assert.That(human.roamingCacheAmbushBaseEnemyCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(human.roamingCacheAmbushMaxEnemyCount, Is.GreaterThanOrEqualTo(human.roamingCacheAmbushBaseEnemyCount));
+            Assert.That(human.roamingCacheAmbushExtraAliveAllowance, Is.GreaterThanOrEqualTo(human.roamingCacheAmbushMaxEnemyCount));
+            Assert.That(human.roamingCacheAmbushRadius, Is.InRange(2f, 5f));
+            Assert.That(human.roamingCacheAmbushClearMagnetInterval, Is.GreaterThanOrEqualTo(1));
+            Assert.That(human.roamingCacheAmbushClearBloodShardInterval, Is.GreaterThanOrEqualTo(1));
             Assert.That(debugFast.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
             Assert.That(debugFast.roamingCacheSurgeBonusGemCount, Is.GreaterThanOrEqualTo(human.roamingCacheSurgeBonusGemCount));
             Assert.That(debugFast.roamingCacheSurgeDamageBonus, Is.GreaterThan(human.roamingCacheSurgeDamageBonus));
             Assert.That(debugFast.roamingCacheSurgePulseDamage, Is.GreaterThan(human.roamingCacheSurgePulseDamage));
+            Assert.That(debugFast.roamingCacheAmbushStartCache, Is.LessThan(human.roamingCacheAmbushStartCache));
+            Assert.That(debugFast.roamingCacheAmbushMaxEnemyCount, Is.GreaterThan(human.roamingCacheAmbushMaxEnemyCount));
+            Assert.That(debugFast.roamingCacheAmbushClearMagnetInterval, Is.LessThanOrEqualTo(human.roamingCacheAmbushClearMagnetInterval));
             Assert.That(showcase.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
             Assert.That(showcase.roamingCacheSurgePickupRangeBonus, Is.GreaterThan(human.roamingCacheSurgePickupRangeBonus));
             Assert.That(showcase.roamingCacheSurgePulseRadius, Is.GreaterThan(human.roamingCacheSurgePulseRadius));
+            Assert.That(showcase.roamingCacheAmbushInterval, Is.LessThan(human.roamingCacheAmbushInterval));
         }
 
         [Test]
@@ -614,7 +628,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";
             string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
-            string runFlowJson = "{\"profiles\":[{\"id\":\"HumanPlaytest\",\"enemySpawnIntervalSeconds\":0,\"enemyMaximumAlive\":0,\"enemySpawnPackBaseCount\":3,\"enemySpawnPackMaxCount\":2,\"escalationIntervalSeconds\":0,\"minimumEnemySpawnIntervalSeconds\":0,\"enemySpawnIntervalReductionPerEscalation\":-1,\"enemyMaximumAliveIncreasePerEscalation\":-1,\"enemyHealthMultiplierPerEscalation\":0,\"enemyMoveSpeedMultiplierPerEscalation\":0,\"enemyExperienceMultiplierPerEscalation\":0,\"firstEliteSpawnTimeSeconds\":-1,\"eliteSpawnIntervalSeconds\":0,\"firstDreadEliteSpawnTimeSeconds\":-2,\"dreadEliteSpawnIntervalSeconds\":0,\"minibossSpawnTimeSeconds\":4,\"bossSpawnTimeSeconds\":3,\"survivalVictoryTimeSeconds\":2,\"hordeRushFirstTimeSeconds\":0,\"hordeRushIntervalSeconds\":0,\"hordeRushWarningLeadSeconds\":0,\"hordeRushBaseEnemyCount\":0,\"hordeRushMaxEnemyCount\":0,\"roamingCacheTravelInterval\":0,\"roamingCacheExperienceGemCount\":0,\"roamingCacheSurgeInterval\":0,\"roamingCacheSurgeBonusGemCount\":0,\"roamingCacheSurgeDurationSeconds\":0,\"roamingCacheSurgeDamageBonus\":0,\"roamingCacheSurgeMoveSpeedBonus\":0,\"roamingCacheSurgeCooldownMultiplierBonus\":0,\"roamingCacheSurgePickupRangeBonus\":0,\"roamingCacheSurgePulseDamage\":0,\"roamingCacheSurgePulseRadius\":0,\"draftChoiceCount\":0,\"maxWeaponSlots\":0,\"maxPassiveSlots\":0,\"draftMidRarityLevel\":3,\"draftLateRarityLevel\":2,\"rarityTables\":[{\"id\":\"NormalEarly\",\"common\":0,\"uncommon\":1,\"rare\":1,\"epic\":0,\"legendary\":1},{\"id\":\"NormalMid\",\"common\":1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":2},{\"id\":\"Elite\",\"common\":5,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":1,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":0,\"rare\":1,\"epic\":1,\"legendary\":1},{\"id\":\"Broken\",\"common\":-1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0}],\"endlessEliteSpawnIntervalSeconds\":0,\"endlessMinibossSpawnIntervalSeconds\":0,\"endlessBossSpawnIntervalSeconds\":0}]}";
+            string runFlowJson = "{\"profiles\":[{\"id\":\"HumanPlaytest\",\"enemySpawnIntervalSeconds\":0,\"enemyMaximumAlive\":0,\"enemySpawnPackBaseCount\":3,\"enemySpawnPackMaxCount\":2,\"escalationIntervalSeconds\":0,\"minimumEnemySpawnIntervalSeconds\":0,\"enemySpawnIntervalReductionPerEscalation\":-1,\"enemyMaximumAliveIncreasePerEscalation\":-1,\"enemyHealthMultiplierPerEscalation\":0,\"enemyMoveSpeedMultiplierPerEscalation\":0,\"enemyExperienceMultiplierPerEscalation\":0,\"firstEliteSpawnTimeSeconds\":-1,\"eliteSpawnIntervalSeconds\":0,\"firstDreadEliteSpawnTimeSeconds\":-2,\"dreadEliteSpawnIntervalSeconds\":0,\"minibossSpawnTimeSeconds\":4,\"bossSpawnTimeSeconds\":3,\"survivalVictoryTimeSeconds\":2,\"hordeRushFirstTimeSeconds\":0,\"hordeRushIntervalSeconds\":0,\"hordeRushWarningLeadSeconds\":0,\"hordeRushBaseEnemyCount\":0,\"hordeRushMaxEnemyCount\":0,\"roamingCacheTravelInterval\":0,\"roamingCacheExperienceGemCount\":0,\"roamingCacheMagnetInterval\":0,\"roamingCacheBloodShardInterval\":0,\"roamingCacheAmbushStartCache\":0,\"roamingCacheAmbushInterval\":0,\"roamingCacheAmbushBaseEnemyCount\":3,\"roamingCacheAmbushMaxEnemyCount\":2,\"roamingCacheAmbushExtraAliveAllowance\":0,\"roamingCacheAmbushRadius\":0,\"roamingCacheAmbushClearMagnetInterval\":0,\"roamingCacheAmbushClearBloodShardInterval\":0,\"roamingCacheSurgeInterval\":0,\"roamingCacheSurgeBonusGemCount\":0,\"roamingCacheSurgeDurationSeconds\":0,\"roamingCacheSurgeDamageBonus\":0,\"roamingCacheSurgeMoveSpeedBonus\":0,\"roamingCacheSurgeCooldownMultiplierBonus\":0,\"roamingCacheSurgePickupRangeBonus\":0,\"roamingCacheSurgePulseDamage\":0,\"roamingCacheSurgePulseRadius\":0,\"draftChoiceCount\":0,\"maxWeaponSlots\":0,\"maxPassiveSlots\":0,\"draftMidRarityLevel\":3,\"draftLateRarityLevel\":2,\"rarityTables\":[{\"id\":\"NormalEarly\",\"common\":0,\"uncommon\":1,\"rare\":1,\"epic\":0,\"legendary\":1},{\"id\":\"NormalMid\",\"common\":1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":2},{\"id\":\"Elite\",\"common\":5,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":1,\"rare\":0,\"epic\":0,\"legendary\":0},{\"id\":\"Boss\",\"common\":0,\"uncommon\":0,\"rare\":1,\"epic\":1,\"legendary\":1},{\"id\":\"Broken\",\"common\":-1,\"uncommon\":0,\"rare\":0,\"epic\":0,\"legendary\":0}],\"endlessEliteSpawnIntervalSeconds\":0,\"endlessMinibossSpawnIntervalSeconds\":0,\"endlessBossSpawnIntervalSeconds\":0}]}";
 
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, runFlowJson: runFlowJson);
             string errors = string.Join(Environment.NewLine, result.Errors);
@@ -623,6 +637,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("Run flow", errors);
             StringAssert.Contains("enemy spawn interval", errors);
             StringAssert.Contains("horde rush", errors);
+            StringAssert.Contains("roaming cache ambush", errors);
             StringAssert.Contains("roaming cache surge", errors);
             StringAssert.Contains("max weapon slots", errors);
             StringAssert.Contains("max passive slots", errors);
@@ -1382,6 +1397,16 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         private sealed class RunFlowProfileForTest
         {
             public string id;
+            public int roamingCacheMagnetInterval;
+            public int roamingCacheBloodShardInterval;
+            public int roamingCacheAmbushStartCache;
+            public int roamingCacheAmbushInterval;
+            public int roamingCacheAmbushBaseEnemyCount;
+            public int roamingCacheAmbushMaxEnemyCount;
+            public int roamingCacheAmbushExtraAliveAllowance;
+            public float roamingCacheAmbushRadius;
+            public int roamingCacheAmbushClearMagnetInterval;
+            public int roamingCacheAmbushClearBloodShardInterval;
             public int roamingCacheSurgeInterval;
             public int roamingCacheSurgeBonusGemCount;
             public float roamingCacheSurgeDurationSeconds;

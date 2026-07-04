@@ -1278,6 +1278,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.RoamingCacheAmbushMaxEnemyCount = 2;
             controller.CurrentTuning.RoamingCacheAmbushExtraAliveAllowance = 4;
             controller.CurrentTuning.RoamingCacheAmbushRadius = 2f;
+            controller.CurrentTuning.RoamingCacheAmbushClearMagnetInterval = 1;
+            controller.CurrentTuning.RoamingCacheAmbushClearBloodShardInterval = 1;
             controller.StartRun();
             yield return null;
 
@@ -1299,7 +1301,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(0, controller.ActiveRoamingCacheAmbushEnemyCount);
             Assert.AreEqual(1, controller.RoamingCacheAmbushClearRewardCount);
             Assert.That(controller.RoamingCacheAmbushClearExperienceGemDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.RoamingCacheAmbushClearMagnetDropCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.RoamingCacheAmbushClearBloodShardDropCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.LastRoamingCacheAmbushClearFeedbackLabel, Does.Contain("Roaming Ambush Cleared"));
+            Assert.That(controller.LastRoamingCacheAmbushClearFeedbackLabel, Does.Contain("Magnet"));
+            Assert.That(controller.LastRoamingCacheAmbushClearFeedbackLabel, Does.Contain("Shard"));
 
             Object.Destroy(controller.gameObject);
         }

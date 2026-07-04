@@ -343,6 +343,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int RoamingCacheAmbushEnemySpawnCount { get; private set; }
         public int RoamingCacheAmbushClearRewardCount { get; private set; }
         public int RoamingCacheAmbushClearExperienceGemDropCount { get; private set; }
+        public int RoamingCacheAmbushClearMagnetDropCount { get; private set; }
+        public int RoamingCacheAmbushClearBloodShardDropCount { get; private set; }
         public int RoamingCacheSurgeActivationCount { get; private set; }
         public int RoamingCacheSurgeBonusExperienceGemDropCount { get; private set; }
         public int RoamingCacheSurgePulseHitCount { get; private set; }
@@ -850,6 +852,8 @@ namespace Deucarian.TemplateGameSurvivors
             RoamingCacheAmbushEnemySpawnCount = 0;
             RoamingCacheAmbushClearRewardCount = 0;
             RoamingCacheAmbushClearExperienceGemDropCount = 0;
+            RoamingCacheAmbushClearMagnetDropCount = 0;
+            RoamingCacheAmbushClearBloodShardDropCount = 0;
             RoamingCacheSurgeActivationCount = 0;
             RoamingCacheSurgeBonusExperienceGemDropCount = 0;
             RoamingCacheSurgePulseHitCount = 0;
@@ -5256,8 +5260,41 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            int clearNumber = RoamingCacheAmbushClearRewardCount + 1;
+            bool spawnedMagnet = false;
+            if (ShouldTriggerRoamingCacheCadence(clearNumber, CurrentTuning.RoamingCacheAmbushClearMagnetInterval))
+            {
+                Vector3 magnetPosition = position + new Vector3(radius * 0.85f, 0f, -radius * 0.3f);
+                if (SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1) != null)
+                {
+                    spawnedMagnet = true;
+                    RoamingCacheAmbushClearMagnetDropCount++;
+                }
+            }
+
+            bool spawnedBloodShard = false;
+            if (ShouldTriggerRoamingCacheCadence(clearNumber, CurrentTuning.RoamingCacheAmbushClearBloodShardInterval))
+            {
+                Vector3 shardPosition = position + new Vector3(-radius * 0.7f, 0f, radius * 0.45f);
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, CurrentTuning.BloodShardPickupAmount) != null)
+                {
+                    spawnedBloodShard = true;
+                    RoamingCacheAmbushClearBloodShardDropCount++;
+                }
+            }
+
             RoamingCacheAmbushClearRewardCount++;
             string label = $"Roaming Ambush Cleared: +{spawnedExperience} XP";
+            if (spawnedMagnet)
+            {
+                label += " + Magnet";
+            }
+
+            if (spawnedBloodShard)
+            {
+                label += " + Shard";
+            }
+
             LastRoamingCacheAmbushClearFeedbackLabel = label;
             LastRoamingCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.5f, 1f, 0.68f));

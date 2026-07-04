@@ -1672,6 +1672,26 @@ namespace Deucarian.TemplateGameSurvivors
 
             ValidatePositive(profileId, "roaming cache travel interval", profile.roamingCacheTravelInterval, result);
             ValidatePositive(profileId, "roaming cache XP gem count", profile.roamingCacheExperienceGemCount, result);
+            ValidatePositive(profileId, "roaming cache magnet interval", profile.roamingCacheMagnetInterval, result);
+            ValidatePositive(profileId, "roaming cache blood shard interval", profile.roamingCacheBloodShardInterval, result);
+            if (profile.roamingCacheBloodShardInterval <= profile.roamingCacheMagnetInterval)
+            {
+                result.AddError($"Run flow profile {profileId} roaming cache blood shard interval must be longer than magnet interval.");
+            }
+
+            ValidatePositive(profileId, "roaming cache ambush start cache", profile.roamingCacheAmbushStartCache, result);
+            ValidatePositive(profileId, "roaming cache ambush interval", profile.roamingCacheAmbushInterval, result);
+            ValidatePositive(profileId, "roaming cache ambush base enemy count", profile.roamingCacheAmbushBaseEnemyCount, result);
+            ValidatePositive(profileId, "roaming cache ambush max enemy count", profile.roamingCacheAmbushMaxEnemyCount, result);
+            if (profile.roamingCacheAmbushMaxEnemyCount < profile.roamingCacheAmbushBaseEnemyCount)
+            {
+                result.AddError($"Run flow profile {profileId} roaming cache ambush max enemy count must be at least the base count.");
+            }
+
+            ValidatePositive(profileId, "roaming cache ambush extra alive allowance", profile.roamingCacheAmbushExtraAliveAllowance, result);
+            ValidatePositive(profileId, "roaming cache ambush radius", profile.roamingCacheAmbushRadius, result);
+            ValidatePositive(profileId, "roaming cache ambush clear magnet interval", profile.roamingCacheAmbushClearMagnetInterval, result);
+            ValidatePositive(profileId, "roaming cache ambush clear blood shard interval", profile.roamingCacheAmbushClearBloodShardInterval, result);
             ValidatePositive(profileId, "roaming cache surge interval", profile.roamingCacheSurgeInterval, result);
             ValidatePositive(profileId, "roaming cache surge bonus XP gem count", profile.roamingCacheSurgeBonusGemCount, result);
             ValidatePositive(profileId, "roaming cache surge duration", profile.roamingCacheSurgeDurationSeconds, result);
@@ -2655,6 +2675,16 @@ namespace Deucarian.TemplateGameSurvivors
             public int hordeRushMaxEnemyCount;
             public float roamingCacheTravelInterval;
             public int roamingCacheExperienceGemCount;
+            public int roamingCacheMagnetInterval;
+            public int roamingCacheBloodShardInterval;
+            public int roamingCacheAmbushStartCache;
+            public int roamingCacheAmbushInterval;
+            public int roamingCacheAmbushBaseEnemyCount;
+            public int roamingCacheAmbushMaxEnemyCount;
+            public int roamingCacheAmbushExtraAliveAllowance;
+            public float roamingCacheAmbushRadius;
+            public int roamingCacheAmbushClearMagnetInterval;
+            public int roamingCacheAmbushClearBloodShardInterval;
             public int roamingCacheSurgeInterval;
             public int roamingCacheSurgeBonusGemCount;
             public float roamingCacheSurgeDurationSeconds;

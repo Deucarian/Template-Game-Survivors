@@ -193,6 +193,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int RoamingCacheAmbushMaxEnemyCount = 6;
         public int RoamingCacheAmbushExtraAliveAllowance = 8;
         public float RoamingCacheAmbushRadius = 3.2f;
+        public int RoamingCacheAmbushClearMagnetInterval = 2;
+        public int RoamingCacheAmbushClearBloodShardInterval = 3;
         public int RoamingCacheSurgeInterval = 4;
         public int RoamingCacheSurgeBonusGemCount = 2;
         public float RoamingCacheSurgeDurationSeconds = 6f;
@@ -670,6 +672,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheAmbushMaxEnemyCount = 10;
             tuning.RoamingCacheAmbushExtraAliveAllowance = 18;
             tuning.RoamingCacheAmbushRadius = 3.6f;
+            tuning.RoamingCacheAmbushClearMagnetInterval = 1;
+            tuning.RoamingCacheAmbushClearBloodShardInterval = 2;
             tuning.RoamingCacheSurgeInterval = 3;
             tuning.RoamingCacheSurgeBonusGemCount = 3;
             tuning.RoamingCacheSurgeDurationSeconds = 5f;
@@ -766,6 +770,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheAmbushBaseEnemyCount = 3;
             tuning.RoamingCacheAmbushMaxEnemyCount = 8;
             tuning.RoamingCacheAmbushExtraAliveAllowance = 14;
+            tuning.RoamingCacheAmbushClearBloodShardInterval = 2;
             tuning.RoamingCacheSurgeInterval = 3;
             tuning.RoamingCacheSurgeBonusGemCount = 3;
             tuning.RoamingCacheSurgeMoveSpeedBonus = 0.34f;
