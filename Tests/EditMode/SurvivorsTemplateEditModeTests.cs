@@ -400,6 +400,11 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
             Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
+            Assert.That(tuning.GemRushDurationSeconds, Is.InRange(2f, 5f));
+            Assert.That(tuning.GemRushDamageBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.GemRushMoveSpeedBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.GemRushCooldownMultiplierBonus, Is.LessThan(0f));
+            Assert.That(tuning.GemRushPickupRangeBonus, Is.GreaterThan(0f));
             Assert.That(tuning.EvolutionSurgeDamage, Is.GreaterThan(0f));
             Assert.That(tuning.EvolutionSurgeRadius, Is.InRange(4f, 8f));
             Assert.That(tuning.RewardJackpotExperienceGemBaseCount, Is.GreaterThanOrEqualTo(2));

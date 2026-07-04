@@ -31,7 +31,7 @@ First 30 seconds:
 - Nearby enemies should keep slight readable spacing while pressing inward instead of collapsing into one stacked blob.
 - Arc Step moves the player out of a crowded pocket, briefly prevents damage, and shoves nearby enemies without becoming a permanent speed boost.
 - Fast projectile shots should still damage enemies they visibly cross, even during single-frame speed spikes.
-- XP gems should pulse while being pulled in; rapid clusters should show a Gem Rush banner, pickup-range upgrades should affect gems already on the ground, and magnet pickups, evolution selections, or `M` should make distant XP gems spin and surge toward the player.
+- XP gems should pulse while being pulled in; rapid clusters should show a Gem Rush banner and briefly improve damage, cooldown, movement, and pickup attraction, pickup-range upgrades should affect gems already on the ground, and magnet pickups, evolution selections, or `M` should make distant XP gems spin and surge toward the player.
 - Sustained movement through the endless arena should drop small roaming XP caches; longer travel should eventually add magnet recalls, shard bonuses, and small trailing ambushes to some caches, and clearing an ambush pack should drop a small XP burst.
 - Sustained kill streaks should briefly announce bonus XP, vital-shard, magnet, and blood-shard drops when they trigger.
 - At longer streak milestones, Tempo Surge should appear and briefly make weapons hit harder, cool down faster, move the player faster, and pull new pickups from farther away.

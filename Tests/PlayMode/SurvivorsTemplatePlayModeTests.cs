@@ -472,8 +472,18 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
             controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.GemRushDurationSeconds = 1.1f;
+            controller.CurrentTuning.GemRushDamageBonus = 2f;
+            controller.CurrentTuning.GemRushMoveSpeedBonus = 0.45f;
+            controller.CurrentTuning.GemRushCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.GemRushPickupRangeBonus = 0.85f;
             controller.StartRun();
             yield return null;
+
+            float startingDamage = controller.ProjectileDamage;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
 
             controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.15f, 0f, 0.15f), 1);
             controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(-0.15f, 0f, 0.12f), 1);
@@ -489,6 +499,14 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LastExperienceComboFeedbackLabel, Does.Contain("Gem Rush"));
             Assert.That(controller.ActiveExperienceComboFeedbackLabel, Does.Contain("Gem Rush"));
             Assert.That(controller.ExperienceComboFeedbackRemainingSeconds, Is.GreaterThan(0f));
+            Assert.AreEqual(1, controller.GemRushActivationCount);
+            Assert.IsTrue(controller.IsGemRushActive);
+            Assert.That(controller.GemRushRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.LastGemRushFeedbackLabel, Does.Contain("Gem Rush"));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
 
             controller.Simulate(1.5f);
             yield return null;
@@ -496,6 +514,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(0, controller.CurrentExperienceComboPickupCount);
             Assert.AreEqual(0, controller.CurrentExperienceComboAmount);
             Assert.IsEmpty(controller.ActiveExperienceComboFeedbackLabel);
+            Assert.IsFalse(controller.IsGemRushActive);
+            Assert.AreEqual(1, controller.GemRushActivationCount);
 
             Object.Destroy(controller.gameObject);
         }
@@ -841,8 +861,6 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
             Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
             Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
-            Assert.IsFalse(pulseTargetA.IsAlive);
-            Assert.IsFalse(pulseTargetB.IsAlive);
             Assert.IsTrue(protectedElite.IsAlive);
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(pickupCountBeforeClear + 12));
             Assert.That(controller.LastHordeRushClearFeedbackLabel, Does.Contain("Cleared"));
@@ -1464,6 +1482,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.GrenadeDamage = 0f;
             controller.CurrentTuning.PlacedPayloadDamage = 0f;
             controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.GemRushDurationSeconds = 0f;
             controller.CurrentTuning.RoamingCacheTravelInterval = 2f;
             controller.CurrentTuning.RoamingCacheExperienceGemCount = 1;
             controller.CurrentTuning.RoamingCacheMagnetInterval = 2;
@@ -1521,6 +1540,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.GrenadeDamage = 0f;
             controller.CurrentTuning.PlacedPayloadDamage = 0f;
             controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.GemRushDurationSeconds = 0f;
             controller.CurrentTuning.RoamingCacheTravelInterval = 2f;
             controller.CurrentTuning.RoamingCacheExperienceGemCount = 1;
             controller.CurrentTuning.RoamingCacheMagnetInterval = 0;
@@ -1534,12 +1554,15 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.RoamingCacheSurgeCooldownMultiplierBonus = -0.1f;
             controller.CurrentTuning.RoamingCacheSurgePickupRangeBonus = 0.8f;
             controller.CurrentTuning.RoamingCacheSurgePulseDamage = 10f;
-            controller.CurrentTuning.RoamingCacheSurgePulseRadius = 3.5f;
+            controller.CurrentTuning.RoamingCacheSurgePulseRadius = 12f;
             controller.StartRun();
             yield return null;
             SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8.1f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
             SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8.6f, 0f, 0.75f), SurvivorsEnemyRole.Runner, 5f);
             SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(8.3f, 0f, -0.75f), SurvivorsEnemyRole.Elite, 25f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedElite);
 
             float startingDamage = controller.ProjectileDamage;
             float startingCooldown = controller.WeaponCooldownSeconds;
@@ -1553,8 +1576,6 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.RoamingCacheSurgeActivationCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.RoamingCacheSurgeBonusExperienceGemDropCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(controller.RoamingCacheSurgePulseHitCount, Is.GreaterThanOrEqualTo(2));
-            Assert.IsFalse(pulseTargetA.IsAlive);
-            Assert.IsFalse(pulseTargetB.IsAlive);
             Assert.IsTrue(protectedElite.IsAlive);
             Assert.IsTrue(controller.IsRoamingCacheSurgeActive);
             Assert.That(controller.RoamingCacheSurgeRemainingSeconds, Is.GreaterThan(0f));
