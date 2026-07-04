@@ -1500,6 +1500,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.CurrentWaystoneCompassHudLabel, Does.Contain("Explore Waystone"));
             Assert.That(controller.CurrentWaystoneCompassHudLabel, Does.Contain("Found 0"));
             Assert.That(controller.CurrentWaystoneCompassDistanceForTest, Is.EqualTo(new Vector3(toTarget.x, 0f, toTarget.z).magnitude).Within(0.05f));
+            Assert.IsTrue(controller.IsWaystoneCompassArrowVisibleForTest);
+            Vector3 expectedCompassDirection = new Vector3(toTarget.x, 0f, toTarget.z).normalized;
+            Vector3 actualCompassDirection = controller.WaystoneCompassArrowForwardForTest;
+            actualCompassDirection.y = 0f;
+            Assert.That(Vector3.Dot(actualCompassDirection.normalized, expectedCompassDirection), Is.GreaterThan(0.92f));
             Vector2 movement = new Vector2(toTarget.x, toTarget.z).normalized;
             for (int i = 0; i < 240 && controller.WaystoneDiscoveryCount == 0; i++)
             {
@@ -1533,6 +1538,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Waystone"));
             Assert.That(controller.CurrentWaystoneCompassHudLabel, Does.Contain("Found 1"));
             Assert.That(controller.CurrentWaystoneCompassDistanceForTest, Is.GreaterThan(controller.CurrentTuning.WaystoneDiscoveryRadius));
+            Assert.IsTrue(controller.IsWaystoneCompassArrowVisibleForTest);
 
             yield return SimulateFrames(controller, 12);
 

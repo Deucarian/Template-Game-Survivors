@@ -130,6 +130,7 @@ namespace Deucarian.TemplateGameSurvivors
         private Transform _prefabRoot;
         private Transform _arenaTileRoot;
         private Transform _arenaFollowRoot;
+        private Transform _waystoneCompassRoot;
         private GameObject _playerObject;
         private Renderer _playerRenderer;
         private Camera _camera;
@@ -654,6 +655,8 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 ClosestInfiniteArenaLandmarkPositionForTest => ResolveClosestArenaLandmarkPositionForTest();
         public float CurrentWaystoneCompassDistanceForTest => TryResolveClosestArenaLandmark(ignoreDiscovered: true, out _, out float distance, out _) ? distance : 0f;
         public string CurrentWaystoneCompassHudLabel => ResolveWaystoneCompassHudLabel();
+        public bool IsWaystoneCompassArrowVisibleForTest => _waystoneCompassRoot != null && _waystoneCompassRoot.gameObject.activeSelf;
+        public Vector3 WaystoneCompassArrowForwardForTest => _waystoneCompassRoot == null ? Vector3.zero : _waystoneCompassRoot.forward;
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + ArenaShrineSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + WaystoneChainSurgeMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus + WeaponLoadoutSurgeMoveSpeedBonus + PassiveLoadoutSurgeMoveSpeedBonus + BossRelicSurgeMoveSpeedBonus + GemRushMoveSpeedBonus + EvolutionChainSurgeMoveSpeedBonus + EndlessSurgeMoveSpeedBonus;
@@ -3498,7 +3501,43 @@ namespace Deucarian.TemplateGameSurvivors
                 CreateArenaPrimitive("Rune Lane Marker " + (i + 1).ToString(), PrimitiveType.Cube, position, scale, new Color(0.18f, 0.2f, 0.32f), _arenaFollowRoot);
             }
 
+            BuildWaystoneCompassArrow();
             UpdateArenaPresentation();
+        }
+
+        private void BuildWaystoneCompassArrow()
+        {
+            GameObject root = new GameObject("Waystone Compass Arrow");
+            root.transform.SetParent(_arenaFollowRoot, false);
+            root.transform.localPosition = Vector3.zero;
+            _waystoneCompassRoot = root.transform;
+
+            CreateArenaPrimitive(
+                "Waystone Compass Shaft",
+                PrimitiveType.Cube,
+                new Vector3(0f, 0.18f, 3.08f),
+                new Vector3(0.16f, 0.08f, 1.36f),
+                new Color(0.32f, 0.94f, 1f),
+                _waystoneCompassRoot);
+
+            GameObject head = CreateArenaPrimitive(
+                "Waystone Compass Head",
+                PrimitiveType.Cube,
+                new Vector3(0f, 0.2f, 3.88f),
+                new Vector3(0.62f, 0.1f, 0.62f),
+                new Color(0.92f, 1f, 0.42f),
+                _waystoneCompassRoot);
+            head.transform.localRotation = Quaternion.Euler(0f, 45f, 0f);
+
+            CreateArenaPrimitive(
+                "Waystone Compass Pulse",
+                PrimitiveType.Cylinder,
+                new Vector3(0f, 0.13f, 3.88f),
+                new Vector3(1.05f, 0.025f, 1.05f),
+                new Color(0.12f, 0.58f, 0.72f),
+                _waystoneCompassRoot);
+
+            root.SetActive(false);
         }
 
         private void BuildInfiniteArenaTiles()
@@ -4552,6 +4591,7 @@ namespace Deucarian.TemplateGameSurvivors
             _ownedEvolutionUpgradeIds.Clear();
             _arenaTileRoot = null;
             _arenaFollowRoot = null;
+            _waystoneCompassRoot = null;
             if (_spawnService != null)
             {
                 _spawnService.Dispose();
@@ -6800,6 +6840,35 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             UpdateArenaLandmarks(anchorX, anchorZ);
+            UpdateWaystoneCompassPresentation();
+        }
+
+        private void UpdateWaystoneCompassPresentation()
+        {
+            if (_waystoneCompassRoot == null)
+            {
+                return;
+            }
+
+            float distance = 0f;
+            Vector3 delta = Vector3.zero;
+            bool visible = CurrentTuning.WaystoneDiscoveryRadius > 0f &&
+                TryResolveClosestArenaLandmark(ignoreDiscovered: true, out _, out distance, out delta);
+            if (!visible || delta.sqrMagnitude <= 0.0001f)
+            {
+                _waystoneCompassRoot.gameObject.SetActive(false);
+                return;
+            }
+
+            _waystoneCompassRoot.gameObject.SetActive(true);
+            float headingDegrees = Mathf.Atan2(delta.x, delta.z) * Mathf.Rad2Deg;
+            _waystoneCompassRoot.localRotation = Quaternion.Euler(0f, headingDegrees, 0f);
+
+            float nearDistance = Mathf.Max(1f, CurrentTuning.WaystoneDiscoveryRadius * 3.5f);
+            float proximityPulse = Mathf.Clamp01(1f - distance / nearDistance) * 0.16f;
+            float timePulse = Mathf.Sin(RunTimeSeconds * 7.5f) * 0.035f;
+            float scale = Mathf.Max(0.86f, 1f + proximityPulse + timePulse);
+            _waystoneCompassRoot.localScale = new Vector3(scale, scale, scale);
         }
 
         private void UpdateArenaLandmarks(float anchorX, float anchorZ)
