@@ -674,6 +674,51 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator CrowdedSwarmEnemiesSeparateWithoutLosingPressure()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 2f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.EnemySeparationRadius = 1.35f;
+            controller.CurrentTuning.EnemySeparationStrength = 2f;
+            controller.CurrentTuning.EnemySeparationMaxNeighbors = 4;
+            controller.CurrentTuning.ProjectileDamage = 0f;
+            controller.CurrentTuning.OrbitDamage = 0f;
+            controller.CurrentTuning.MeleeDamage = 0f;
+            controller.CurrentTuning.BurstDamage = 0f;
+            controller.CurrentTuning.HitscanDamage = 0f;
+            controller.CurrentTuning.GrenadeDamage = 0f;
+            controller.CurrentTuning.PlacedPayloadDamage = 0f;
+            controller.StartRun();
+            yield return null;
+
+            Vector3 player = controller.PlayerPosition;
+            Vector3 center = player + new Vector3(4f, 0f, 0f);
+            SurvivorsEnemyActor upper = controller.SpawnEnemyForTest(center + new Vector3(0f, 0f, 0.05f), SurvivorsEnemyRole.Swarm, 30f);
+            SurvivorsEnemyActor lower = controller.SpawnEnemyForTest(center + new Vector3(0f, 0f, -0.05f), SurvivorsEnemyRole.Swarm, 30f);
+            Assert.NotNull(upper);
+            Assert.NotNull(lower);
+
+            float startingPairDistance = Vector3.Distance(upper.transform.position, lower.transform.position);
+            float startingUpperPlayerDistance = Vector3.Distance(upper.transform.position, player);
+            float startingLowerPlayerDistance = Vector3.Distance(lower.transform.position, player);
+
+            for (int i = 0; i < 10; i++)
+            {
+                controller.Simulate(0.08f);
+                yield return null;
+            }
+
+            float finalPairDistance = Vector3.Distance(upper.transform.position, lower.transform.position);
+            Assert.That(finalPairDistance, Is.GreaterThan(startingPairDistance + 0.45f));
+            Assert.That(Vector3.Distance(upper.transform.position, player), Is.LessThan(startingUpperPlayerDistance));
+            Assert.That(Vector3.Distance(lower.transform.position, player), Is.LessThan(startingLowerPlayerDistance));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator TimedHordeRushWarnsAndSpawnsArenaBurst()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

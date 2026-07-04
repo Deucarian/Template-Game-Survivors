@@ -28,6 +28,7 @@ First 30 seconds:
 
 - The scene starts in Human Playtest, not Debug Fast.
 - Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
+- Nearby enemies should keep slight readable spacing while pressing inward instead of collapsing into one stacked blob.
 - Arc Step moves the player out of a crowded pocket, briefly prevents damage, and shoves nearby enemies without becoming a permanent speed boost.
 - Fast projectile shots should still damage enemies they visibly cross, even during single-frame speed spikes.
 - XP gems should pulse while being pulled in; rapid clusters should show a Gem Rush banner, pickup-range upgrades should affect gems already on the ground, and magnet pickups or `M` should make distant XP gems spin and surge toward the player.

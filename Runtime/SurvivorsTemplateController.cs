@@ -5503,6 +5503,76 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        internal Vector3 ResolveEnemyCrowdSeparation(SurvivorsEnemyActor actor)
+        {
+            if (actor == null || _enemies.Count <= 1)
+            {
+                return Vector3.zero;
+            }
+
+            float strength = Mathf.Max(0f, CurrentTuning.EnemySeparationStrength);
+            float baseRadius = Mathf.Max(0f, CurrentTuning.EnemySeparationRadius);
+            if (strength <= 0f || baseRadius <= 0f)
+            {
+                return Vector3.zero;
+            }
+
+            Vector3 origin = actor.transform.position;
+            Vector3 push = Vector3.zero;
+            int neighborCount = 0;
+            int maxNeighbors = Mathf.Max(1, CurrentTuning.EnemySeparationMaxNeighbors);
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor other = _enemies[i];
+                if (other == null || other == actor || !other.IsAlive)
+                {
+                    continue;
+                }
+
+                float radius = Mathf.Max(baseRadius, actor.Radius + other.Radius);
+                Vector3 away = origin - other.transform.position;
+                away.y = 0f;
+                float sqrDistance = away.sqrMagnitude;
+                if (sqrDistance > radius * radius)
+                {
+                    continue;
+                }
+
+                float distance = 0f;
+                if (sqrDistance <= 0.0001f)
+                {
+                    away = ResolveDeterministicSeparationDirection(actor, other);
+                }
+                else
+                {
+                    distance = Mathf.Sqrt(sqrDistance);
+                    away /= distance;
+                }
+
+                float weight = radius <= 0f ? 0f : 1f - Mathf.Clamp01(distance / radius);
+                push += away * weight;
+                neighborCount++;
+                if (neighborCount >= maxNeighbors)
+                {
+                    break;
+                }
+            }
+
+            if (push.sqrMagnitude <= 0.0001f)
+            {
+                return Vector3.zero;
+            }
+
+            return push.normalized * Mathf.Min(strength, push.magnitude * strength);
+        }
+
+        private static Vector3 ResolveDeterministicSeparationDirection(SurvivorsEnemyActor first, SurvivorsEnemyActor second)
+        {
+            int hash = first.GetInstanceID() ^ (second.GetInstanceID() << 1);
+            float angle = ((hash & 0x7fffffff) % 360) * Mathf.Deg2Rad;
+            return new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+        }
+
         private void TickProjectiles(float deltaTime)
         {
             for (int i = _projectiles.Count - 1; i >= 0; i--)
@@ -7367,19 +7437,30 @@ namespace Deucarian.TemplateGameSurvivors
             Vector3 direction = _controller.PlayerPosition - transform.position;
             direction.y = 0f;
             float distance = direction.magnitude;
+            Vector3 moveDirection = Vector3.zero;
+            Vector3 facingDirection = Vector3.forward;
             if (distance > 0.001f)
             {
                 Vector3 normalized = direction / distance;
-                Vector3 moveDirection = ResolveMoveDirection(normalized, distance);
-                if (moveDirection.sqrMagnitude > 0.001f)
-                {
-                    transform.position += moveDirection.normalized * (_moveSpeed * deltaTime);
-                    transform.forward = moveDirection.normalized;
-                }
-                else
-                {
-                    transform.forward = normalized;
-                }
+                moveDirection = ResolveMoveDirection(normalized, distance);
+                facingDirection = normalized;
+            }
+
+            Vector3 separation = _controller.ResolveEnemyCrowdSeparation(this);
+            if (separation.sqrMagnitude > 0.001f)
+            {
+                moveDirection += separation;
+            }
+
+            if (moveDirection.sqrMagnitude > 0.001f)
+            {
+                Vector3 resolvedMove = moveDirection.normalized;
+                transform.position += resolvedMove * (_moveSpeed * deltaTime);
+                transform.forward = resolvedMove;
+            }
+            else if (distance > 0.001f)
+            {
+                transform.forward = facingDirection;
             }
 
             TickRangedAttack(deltaTime, distance);
