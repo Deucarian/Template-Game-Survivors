@@ -2949,6 +2949,59 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator EliteRewardSelectionTriggersRewardUpgradeSurge()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.RewardUpgradeSurgeDamage = 12f;
+            controller.CurrentTuning.RewardUpgradeSurgeRadius = 4f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor surgeTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.3f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor surgeTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(-1.4f, 0f, 0.6f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.8f, 0f, 1.2f), SurvivorsEnemyRole.Elite, 40f);
+            SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(5.4f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor rewardElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3.4f, 0f, 0f), SurvivorsEnemyRole.Elite, 1f);
+            int killedBeforeRewardSelection = controller.KilledCount;
+
+            rewardElite.ApplyDamage(100f, "test.elite.reward-surge");
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+
+            int choiceIndex = -1;
+            for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
+            {
+                if (controller.GetUpgradeCategoryForTest(controller.CurrentDraftChoices[i].Id.Value) != SurvivorsRunUpgradeCategory.Evolution)
+                {
+                    choiceIndex = i;
+                    break;
+                }
+            }
+
+            Assert.That(choiceIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.IsTrue(controller.SelectUpgrade(choiceIndex));
+            yield return null;
+
+            Assert.AreEqual(1, controller.SelectedRewardUpgradeCount);
+            Assert.AreEqual(1, controller.RewardUpgradeSurgeCount);
+            Assert.AreEqual(2, controller.RewardUpgradeSurgeHitCount);
+            Assert.IsFalse(surgeTargetA.IsAlive);
+            Assert.IsFalse(surgeTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.IsTrue(outsideTarget.IsAlive);
+            Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(killedBeforeRewardSelection + 2));
+            Assert.That(controller.LastRewardUpgradeSurgeFeedbackLabel, Does.Contain("Reward Surge"));
+            Assert.That(controller.LastRewardUpgradeSurgeFeedbackLabel, Does.Contain("2 enemies hit"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Reward Surge"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DreadEliteCountsAsEliteAndOpensRewardChoice()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
@@ -3159,6 +3212,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.RewardSelectionFeedbackCount);
             Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Boss Reward"));
             Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Legendary"));
+            Assert.AreEqual(0, controller.RewardUpgradeSurgeCount);
             Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
             Assert.IsTrue(controller.IsVictory);
             Assert.That(controller.BossRewardGrantCount, Is.GreaterThanOrEqualTo(1));

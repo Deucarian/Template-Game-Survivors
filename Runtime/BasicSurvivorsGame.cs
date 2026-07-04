@@ -217,6 +217,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float StatusBleedDurationSeconds = 5.5f;
         public float EvolutionSurgeDamage = 28f;
         public float EvolutionSurgeRadius = 6.2f;
+        public float RewardUpgradeSurgeDamage = 16f;
+        public float RewardUpgradeSurgeRadius = 4.8f;
         public float BossRelicSurgeDamage = 18f;
         public float BossRelicSurgeRadius = 5.4f;
         public float StartingBarrierCapacity = 8f;
@@ -694,6 +696,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheSurgePickupRangeBonus = 0.75f;
             tuning.RoamingCacheSurgePulseDamage = 20f;
             tuning.RoamingCacheSurgePulseRadius = 4.8f;
+            tuning.RewardUpgradeSurgeDamage = 20f;
+            tuning.RewardUpgradeSurgeRadius = 5.2f;
             tuning.HealthPickupHealAmount = 14;
             tuning.BloodShardPickupAmount = 2;
             tuning.ExperienceRequiredBase = 3;
@@ -793,6 +797,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RoamingCacheSurgePickupRangeBonus = 0.65f;
             tuning.RoamingCacheSurgePulseDamage = 16f;
             tuning.RoamingCacheSurgePulseRadius = 4.5f;
+            tuning.RewardUpgradeSurgeDamage = 18f;
+            tuning.RewardUpgradeSurgeRadius = 5f;
             tuning.HealthPickupHealAmount = 12;
             tuning.BloodShardPickupAmount = 1;
             tuning.ExperienceRequiredBase = 5;

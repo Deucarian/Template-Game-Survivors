@@ -274,6 +274,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int BossRelicSurgeHitCount { get; private set; }
         public string LastBossRelicSurgeFeedbackLabel { get; private set; } = string.Empty;
         public int SelectedRewardUpgradeCount { get; private set; }
+        public int RewardUpgradeSurgeCount { get; private set; }
+        public int RewardUpgradeSurgeHitCount { get; private set; }
+        public string LastRewardUpgradeSurgeFeedbackLabel { get; private set; } = string.Empty;
         public int RewardAutoSelectCount { get; private set; }
         public int EndlessThreatSpawnCount { get; private set; }
         public int HordeRushSpawnCount { get; private set; }
@@ -815,6 +818,9 @@ namespace Deucarian.TemplateGameSurvivors
             BossRelicSurgeHitCount = 0;
             LastBossRelicSurgeFeedbackLabel = string.Empty;
             SelectedRewardUpgradeCount = 0;
+            RewardUpgradeSurgeCount = 0;
+            RewardUpgradeSurgeHitCount = 0;
+            LastRewardUpgradeSurgeFeedbackLabel = string.Empty;
             RewardAutoSelectCount = 0;
             EndlessThreatSpawnCount = 0;
             HordeRushSpawnCount = 0;
@@ -2013,6 +2019,11 @@ namespace Deucarian.TemplateGameSurvivors
             ApplyUpgrade(selected);
             SelectedUpgradeCount++;
             RecordRewardSelectionFeedback(selectionKind, selected);
+            if (IsRewardUpgradeSelectionKind(selectionKind) && !IsEvolutionUpgrade(selected))
+            {
+                TriggerRewardUpgradeSurge(selected, selectionKind);
+            }
+
             CompleteUpgradeDraftSelection(
                 selectionKind,
                 consumeLevelUp: selectionKind == SurvivorsRewardSelectionKind.LevelUp,
@@ -4941,6 +4952,43 @@ namespace Deucarian.TemplateGameSurvivors
             LastWeaponEvolutionSurgeFeedbackLabel = $"{name} Surge: {hitCount} enemies hit";
             RecordStreakRewardFeedback(LastWeaponEvolutionSurgeFeedbackLabel, new Color(0.72f, 0.42f, 1f));
             PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(46 + hitCount * 5, 54, 96), _levelUpClip);
+        }
+
+        private void TriggerRewardUpgradeSurge(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind selectionKind)
+        {
+            float radius = Mathf.Max(0f, CurrentTuning.RewardUpgradeSurgeRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.RewardUpgradeSurgeDamage);
+            string name = upgrade == null ? ResolveRewardKindLabel(selectionKind) : BasicSurvivorsGame.GetUpgradeDisplayName(upgrade.Id);
+            int hitCount = 0;
+            if (radius > 0f && damage > 0f)
+            {
+                var targets = new List<SurvivorsEnemyActor>();
+                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    SurvivorsEnemyActor enemy = targets[i];
+                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+                    {
+                        continue;
+                    }
+
+                    enemy.ApplyDamage(damage, "survivors.reward.surge");
+                    hitCount++;
+                }
+            }
+
+            RewardUpgradeSurgeCount++;
+            RewardUpgradeSurgeHitCount += hitCount;
+            LastRewardUpgradeSurgeFeedbackLabel = $"{name} Reward Surge: {hitCount} enemies hit";
+            Color accent = selectionKind == SurvivorsRewardSelectionKind.BossUpgrade
+                ? new Color(1f, 0.52f, 0.24f)
+                : new Color(0.36f, 0.82f, 1f);
+            RecordStreakRewardFeedback(LastRewardUpgradeSurgeFeedbackLabel, accent);
+            PlayFeedback(
+                selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? _bossPulse : _levelUpPulse,
+                PlayerPosition,
+                Mathf.Clamp(34 + hitCount * 4, 40, 78),
+                selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? _bossClip : _levelUpClip);
         }
 
         private void RecordNewlyEligibleEvolutionFeedback()
