@@ -704,6 +704,37 @@ namespace Deucarian.TemplateGameSurvivors
         public string CurrentHordeRushWarningLabel => IsHordeRushWarningActive ? _hordeRushWarningLabel : string.Empty;
         public float HordeRushWarningRemainingSeconds => IsHordeRushWarningActive ? Mathf.Max(0f, _hordeRushWarningTargetTimeSeconds - RunTimeSeconds) : 0f;
         public float NextHordeRushTimeSecondsForTest => _nextHordeRushTimeSeconds;
+        public string CurrentRunMilestoneName
+        {
+            get
+            {
+                return TryResolveRunMilestone(out string name, out _, out _)
+                    ? name
+                    : string.Empty;
+            }
+        }
+
+        public float CurrentRunMilestoneTargetTimeSeconds
+        {
+            get
+            {
+                return TryResolveRunMilestone(out _, out float targetTimeSeconds, out _)
+                    ? targetTimeSeconds
+                    : 0f;
+            }
+        }
+
+        public float CurrentRunMilestoneRemainingSeconds
+        {
+            get
+            {
+                return TryResolveRunMilestone(out _, out _, out float remainingSeconds)
+                    ? remainingSeconds
+                    : 0f;
+            }
+        }
+
+        public string CurrentRunMilestoneHudLabel => ResolveRunMilestoneHudLabel();
         public string ActiveRewardFeedbackLabel => _rewardFeedbackTimer > 0f ? _rewardFeedbackLabel : string.Empty;
         public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
         public string ActiveStreakRewardFeedbackLabel => _streakRewardFeedbackTimer > 0f ? _streakRewardFeedbackLabel : string.Empty;
@@ -837,22 +868,23 @@ namespace Deucarian.TemplateGameSurvivors
             DrawHudBar(new Rect(24, 98, 318, 18), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
             DrawHudBar(new Rect(24, 122, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
             GUI.Label(new Rect(24, 148, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 170, 318, 22), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 192, 318, 22), $"Split {ActiveSplitterCount}   Call {ActiveSummonerCount}   Elite {ActiveEliteCount}   Mini {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 214, 318, 22), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 236, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
-            GUI.Label(new Rect(24, 258, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 280, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 170, 318, 22), CurrentRunMilestoneHudLabel, _hudLabelStyle);
+            GUI.Label(new Rect(24, 192, 318, 22), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 214, 318, 22), $"Split {ActiveSplitterCount}   Call {ActiveSummonerCount}   Elite {ActiveEliteCount}   Mini {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 236, 318, 22), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 258, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(24, 280, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 302, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
             string surgeHud = ResolveSurgeHudLabel();
-            GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 346, 318, 22), ResolveBuildSlotHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(24, 324, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 346, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 368, 318, 22), ResolveBuildSlotHudLabel(), _hudSmallStyle);
             if (!string.IsNullOrWhiteSpace(evolutionObjectiveHud))
             {
-                GUI.Label(new Rect(24, 368, 318, 22), evolutionObjectiveHud, _hudSmallStyle);
+                GUI.Label(new Rect(24, 390, 318, 22), evolutionObjectiveHud, _hudSmallStyle);
             }
 
-            GUI.Label(new Rect(24, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 368 : 390, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(24, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 390 : 412, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
@@ -9886,6 +9918,101 @@ namespace Deucarian.TemplateGameSurvivors
         private string ResolveRunPhaseHudLabel()
         {
             return IsEndlessRun ? "Endless" : RunPhase.ToString();
+        }
+
+        private string ResolveRunMilestoneHudLabel()
+        {
+            if (!TryResolveRunMilestone(out string milestoneName, out _, out float remainingSeconds))
+            {
+                return "Next Objective: survive";
+            }
+
+            if (State == SurvivorsRunState.Victory)
+            {
+                return "Victory Clear - continue or restart";
+            }
+
+            if (State == SurvivorsRunState.GameOver)
+            {
+                return "Run Ended - restart to try again";
+            }
+
+            return "Next " + milestoneName + " in " + FormatRunTime(remainingSeconds);
+        }
+
+        private bool TryResolveRunMilestone(out string name, out float targetTimeSeconds, out float remainingSeconds)
+        {
+            name = string.Empty;
+            targetTimeSeconds = 0f;
+            remainingSeconds = 0f;
+
+            if (!_runStarted)
+            {
+                return false;
+            }
+
+            if (State == SurvivorsRunState.Victory)
+            {
+                name = "Victory Clear";
+                return true;
+            }
+
+            if (State == SurvivorsRunState.GameOver)
+            {
+                name = "Run Ended";
+                return true;
+            }
+
+            float bestTargetTimeSeconds = float.MaxValue;
+            string bestName = string.Empty;
+            ConsiderRunMilestone("Horde Rush", _nextHordeRushTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+
+            if (IsEndlessRun)
+            {
+                ConsiderRunMilestone(ResolveEndlessMilestoneName(ResolveNextEndlessEliteRole()), _nextEndlessEliteSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone("Endless Miniboss", _nextEndlessMinibossSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone("Endless Boss", _nextEndlessBossSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+            }
+            else if (_runFlow != null && _runFlow.Definition != null)
+            {
+                SurvivorsRunFlowDefinition definition = _runFlow.Definition;
+                ConsiderRunMilestone("Elite", _runFlow.NextEliteSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone("Dread Elite", _runFlow.NextDreadEliteSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone("Miniboss", definition.MinibossSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone("Final Boss", definition.BossSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone("Victory", definition.SurvivalVictoryTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+            }
+
+            if (string.IsNullOrWhiteSpace(bestName) || bestTargetTimeSeconds == float.MaxValue)
+            {
+                return false;
+            }
+
+            name = bestName;
+            targetTimeSeconds = bestTargetTimeSeconds;
+            remainingSeconds = Mathf.Max(0f, bestTargetTimeSeconds - RunTimeSeconds);
+            return true;
+        }
+
+        private void ConsiderRunMilestone(string candidateName, float candidateTimeSeconds, ref string bestName, ref float bestTargetTimeSeconds)
+        {
+            if (string.IsNullOrWhiteSpace(candidateName) || candidateTimeSeconds <= 0f || candidateTimeSeconds <= RunTimeSeconds)
+            {
+                return;
+            }
+
+            if (candidateTimeSeconds < bestTargetTimeSeconds - 0.001f)
+            {
+                bestName = candidateName;
+                bestTargetTimeSeconds = candidateTimeSeconds;
+            }
+        }
+
+        private static string ResolveEndlessMilestoneName(SurvivorsEnemyRole role)
+        {
+            return role == SurvivorsEnemyRole.DreadElite
+                ? "Endless Dread Elite"
+                : "Endless Elite";
         }
 
         private string ResolveUpgradeAffectedLabel(RunUpgradeDefinition choice)

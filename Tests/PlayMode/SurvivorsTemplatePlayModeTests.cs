@@ -3197,8 +3197,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.MinibossSpawnTimeSeconds = 6f;
             controller.CurrentTuning.BossSpawnTimeSeconds = 8f;
             controller.CurrentTuning.SurvivalVictoryTimeSeconds = 12f;
+            controller.CurrentTuning.HordeRushFirstTimeSeconds = 99f;
             controller.StartRun();
             yield return null;
+
+            Assert.AreEqual("Elite", controller.CurrentRunMilestoneName);
+            Assert.That(controller.CurrentRunMilestoneHudLabel, Does.Contain("Next Elite"));
+            Assert.That(controller.CurrentRunMilestoneRemainingSeconds, Is.EqualTo(2f).Within(0.05f));
 
             controller.Simulate(1.5f);
             yield return null;
@@ -3215,6 +3220,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(0, controller.ActiveDreadEliteCount);
             Assert.AreEqual(0, controller.MinibossSpawnCount);
             Assert.IsFalse(controller.IsMajorThreatWarningActive);
+            Assert.AreEqual("Dread Elite", controller.CurrentRunMilestoneName);
+            Assert.That(controller.CurrentRunMilestoneHudLabel, Does.Contain("Next Dread Elite"));
 
             controller.Simulate(controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds - controller.CurrentTuning.MajorThreatWarningLeadSeconds - controller.RunTimeSeconds);
             yield return null;
@@ -3229,6 +3236,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(2));
             Assert.AreEqual(1, controller.ActiveDreadEliteCount);
             Assert.IsFalse(controller.IsMajorThreatWarningActive);
+            Assert.AreEqual("Miniboss", controller.CurrentRunMilestoneName);
 
             controller.Simulate(controller.CurrentTuning.MinibossSpawnTimeSeconds - controller.CurrentTuning.MajorThreatWarningLeadSeconds - controller.RunTimeSeconds);
             yield return null;
@@ -3243,6 +3251,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.ActiveMinibossCount, Is.GreaterThanOrEqualTo(1));
             Assert.IsFalse(controller.IsMajorThreatWarningActive);
+            Assert.AreEqual("Final Boss", controller.CurrentRunMilestoneName);
 
             controller.Simulate(controller.CurrentTuning.BossSpawnTimeSeconds - controller.CurrentTuning.MajorThreatWarningLeadSeconds - controller.RunTimeSeconds);
             yield return null;
@@ -3257,6 +3266,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.BossSpawnCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.ActiveBossCount, Is.GreaterThanOrEqualTo(1));
             Assert.IsFalse(controller.IsMajorThreatWarningActive);
+            Assert.AreEqual("Victory", controller.CurrentRunMilestoneName);
+            Assert.That(controller.CurrentRunMilestoneHudLabel, Does.Contain("Next Victory"));
 
             Object.Destroy(controller.gameObject);
         }
@@ -4090,6 +4101,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.ContinueAfterVictory());
             Assert.IsTrue(controller.IsEndlessRun);
             Assert.AreEqual(0, controller.EndlessThreatSpawnCount);
+            Assert.AreEqual("Endless Elite", controller.CurrentRunMilestoneName);
+            Assert.That(controller.CurrentRunMilestoneHudLabel, Does.Contain("Next Endless Elite"));
 
             int warningCount = controller.MajorThreatWarningCount;
             controller.Simulate(0.31f);
@@ -4099,18 +4112,23 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.IsMajorThreatWarningActive);
             Assert.That(controller.CurrentMajorThreatWarningLabel, Does.Contain("ELITE"));
             Assert.AreEqual(0, controller.EndlessThreatSpawnCount);
+            Assert.AreEqual("Endless Elite", controller.CurrentRunMilestoneName);
 
             controller.Simulate(0.2f);
             yield return null;
 
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.That(controller.EndlessThreatSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual("Endless Miniboss", controller.CurrentRunMilestoneName);
 
             controller.Simulate(0.35f);
             yield return null;
 
             Assert.That(controller.EndlessThreatSpawnCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(
+                controller.CurrentRunMilestoneName == "Endless Dread Elite" || controller.CurrentRunMilestoneName == "Endless Boss",
+                controller.CurrentRunMilestoneName);
 
             controller.Simulate(0.45f);
             yield return null;

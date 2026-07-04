@@ -150,6 +150,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             EditorGUILayout.LabelField("Pacing Profile", BasicSurvivorsGame.GetPacingProfileDisplayName(controller.CurrentPacingProfile));
             EditorGUILayout.LabelField("Time Scale", Time.timeScale.ToString("0.##"));
             EditorGUILayout.LabelField("Run Timer", $"{controller.State}  {controller.RunTimeSeconds:0}s  Level {controller.Level}");
+            EditorGUILayout.LabelField("Next Milestone", controller.CurrentRunMilestoneHudLabel);
             EditorGUILayout.LabelField("Spawn Interval", controller.CurrentEnemySpawnIntervalSeconds.ToString("0.00") + "s");
             EditorGUILayout.LabelField("Spawn Pack", controller.CurrentEnemySpawnPackSize.ToString());
             EditorGUILayout.LabelField("Max Alive", controller.CurrentEnemyMaximumAlive.ToString());
