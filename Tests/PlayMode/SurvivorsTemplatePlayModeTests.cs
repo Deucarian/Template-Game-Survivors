@@ -1201,6 +1201,46 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator NormalLevelUpSelectionFiresLevelPulse()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.LevelUpPulseDamage = 8f;
+            controller.CurrentTuning.LevelUpPulseRadius = 4f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.4f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 2.4f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.8f, 0f, 1.2f), SurvivorsEnemyRole.Elite, 30f);
+            SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(6f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedElite);
+            Assert.NotNull(outsideTarget);
+
+            controller.ForceLevelUpWithLockedChoiceForTest("upgrade.survivors.arcane-damage");
+            yield return null;
+
+            int choiceIndex = IndexOfDraftChoice(controller, "upgrade.survivors.arcane-damage");
+            Assert.That(choiceIndex, Is.GreaterThanOrEqualTo(0));
+            Assert.IsTrue(controller.SelectUpgrade(choiceIndex));
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.LevelUpPulseCount);
+            Assert.AreEqual(2, controller.LevelUpPulseHitCount);
+            Assert.That(controller.LastLevelUpPulseFeedbackLabel, Does.Contain("Arcane Damage"));
+            Assert.That(controller.LastLevelUpPulseFeedbackLabel, Does.Contain("2 enemies hit"));
+            Assert.IsFalse(pulseTargetA.IsAlive);
+            Assert.IsFalse(pulseTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.IsTrue(outsideTarget.IsAlive);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DraftBanishRemovesChoiceFromFutureDrafts()
         {
             SurvivorsTemplateController controller = CreateController();

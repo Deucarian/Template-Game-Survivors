@@ -239,6 +239,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float StatusBleedDurationSeconds = 5.5f;
         public float EvolutionSurgeDamage = 28f;
         public float EvolutionSurgeRadius = 6.2f;
+        public float LevelUpPulseDamage = 7f;
+        public float LevelUpPulseRadius = 3.6f;
         public float RewardUpgradeSurgeDamage = 16f;
         public float RewardUpgradeSurgeRadius = 4.8f;
         public int RewardJackpotExperienceGemBaseCount = 2;
@@ -546,6 +548,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushClearSurgeMoveSpeedBonus = 0.2f;
             tuning.HordeRushClearSurgeCooldownMultiplierBonus = -0.04f;
             tuning.HordeRushClearSurgePickupRangeBonus = 0.4f;
+            tuning.LevelUpPulseDamage = 8f;
+            tuning.LevelUpPulseRadius = 3.8f;
             tuning.MajorThreatEnrageHealthThreshold = 0.52f;
             tuning.MajorThreatEnrageEliteSupportCount = 4;
             tuning.MajorThreatEnrageMinibossSupportCount = 7;
@@ -663,6 +667,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushClearSurgeMoveSpeedBonus = 0.28f;
             tuning.HordeRushClearSurgeCooldownMultiplierBonus = -0.055f;
             tuning.HordeRushClearSurgePickupRangeBonus = 0.58f;
+            tuning.LevelUpPulseDamage = 11f;
+            tuning.LevelUpPulseRadius = 4.2f;
             tuning.MajorThreatEnrageHealthThreshold = 0.6f;
             tuning.MajorThreatEnrageEliteSupportCount = 5;
             tuning.MajorThreatEnrageMinibossSupportCount = 8;
@@ -747,6 +753,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.GemRushMoveSpeedBonus = 0.22f;
             tuning.GemRushCooldownMultiplierBonus = -0.035f;
             tuning.GemRushPickupRangeBonus = 0.62f;
+            tuning.LevelUpPulseDamage = 10f;
+            tuning.LevelUpPulseRadius = 4f;
             tuning.WaystoneDiscoveryRadius = 1.65f;
             tuning.WaystoneExperienceGemCount = 5;
             tuning.WaystoneAmbushBaseEnemyCount = 3;
@@ -882,6 +890,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.WaystoneFocusPickupRangeBonus = 0.6f;
             tuning.RewardUpgradeSurgeDamage = 18f;
             tuning.RewardUpgradeSurgeRadius = 5f;
+            tuning.LevelUpPulseDamage = 9f;
+            tuning.LevelUpPulseRadius = 3.9f;
             tuning.RewardJackpotExperienceGemBaseCount = 3;
             tuning.RewardJackpotExperienceGemPerRarityTier = 1;
             tuning.RewardJackpotBloodShardBaseAmount = 1;

@@ -282,6 +282,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int BossRelicSurgeCount { get; private set; }
         public int BossRelicSurgeHitCount { get; private set; }
         public string LastBossRelicSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public int LevelUpPulseCount { get; private set; }
+        public int LevelUpPulseHitCount { get; private set; }
+        public string LastLevelUpPulseFeedbackLabel { get; private set; } = string.Empty;
         public int SelectedRewardUpgradeCount { get; private set; }
         public int RewardUpgradeSurgeCount { get; private set; }
         public int RewardUpgradeSurgeHitCount { get; private set; }
@@ -868,6 +871,9 @@ namespace Deucarian.TemplateGameSurvivors
             BossRelicSurgeCount = 0;
             BossRelicSurgeHitCount = 0;
             LastBossRelicSurgeFeedbackLabel = string.Empty;
+            LevelUpPulseCount = 0;
+            LevelUpPulseHitCount = 0;
+            LastLevelUpPulseFeedbackLabel = string.Empty;
             SelectedRewardUpgradeCount = 0;
             RewardUpgradeSurgeCount = 0;
             RewardUpgradeSurgeHitCount = 0;
@@ -2126,6 +2132,11 @@ namespace Deucarian.TemplateGameSurvivors
             ApplyUpgrade(selected);
             SelectedUpgradeCount++;
             RecordRewardSelectionFeedback(selectionKind, selected);
+            if (selectionKind == SurvivorsRewardSelectionKind.LevelUp && !IsEvolutionUpgrade(selected))
+            {
+                TriggerLevelUpPulse(selected);
+            }
+
             if (IsRewardUpgradeSelectionKind(selectionKind) && !IsEvolutionUpgrade(selected))
             {
                 TriggerRewardJackpot(selected, selectionKind);
@@ -5139,6 +5150,36 @@ namespace Deucarian.TemplateGameSurvivors
                 PlayerPosition,
                 Mathf.Clamp(34 + hitCount * 4, 40, 78),
                 selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? _bossClip : _levelUpClip);
+        }
+
+        private void TriggerLevelUpPulse(RunUpgradeDefinition upgrade)
+        {
+            float radius = Mathf.Max(0f, CurrentTuning.LevelUpPulseRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.LevelUpPulseDamage);
+            string name = upgrade == null ? "Level Up" : BasicSurvivorsGame.GetUpgradeDisplayName(upgrade.Id);
+            int hitCount = 0;
+            if (radius > 0f && damage > 0f)
+            {
+                var targets = new List<SurvivorsEnemyActor>();
+                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    SurvivorsEnemyActor enemy = targets[i];
+                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+                    {
+                        continue;
+                    }
+
+                    enemy.ApplyDamage(damage, "survivors.level-up.pulse");
+                    hitCount++;
+                }
+            }
+
+            LevelUpPulseCount++;
+            LevelUpPulseHitCount += hitCount;
+            LastLevelUpPulseFeedbackLabel = $"{name} Level Pulse: {hitCount} enemies hit";
+            RecordStreakRewardFeedback(LastLevelUpPulseFeedbackLabel, new Color(1f, 0.84f, 0.32f));
+            PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(20 + hitCount * 4, 26, 64), _levelUpClip);
         }
 
         private void TriggerRewardJackpot(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind selectionKind)
