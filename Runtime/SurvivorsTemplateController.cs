@@ -568,6 +568,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float StreakRewardFeedbackRemainingSeconds => Mathf.Max(0f, _streakRewardFeedbackTimer);
         public string ActiveEvolutionReadyFeedbackLabel => _evolutionReadyFeedbackTimer > 0f ? _evolutionReadyFeedbackLabel : string.Empty;
         public float EvolutionReadyFeedbackRemainingSeconds => Mathf.Max(0f, _evolutionReadyFeedbackTimer);
+        public string CurrentEvolutionGoalHudLabel => ResolveEvolutionGoalHudLabel();
         public string ActiveExperienceComboFeedbackLabel => _experienceComboFeedbackTimer > 0f ? _experienceComboFeedbackLabel : string.Empty;
         public float ExperienceComboFeedbackRemainingSeconds => Mathf.Max(0f, _experienceComboFeedbackTimer);
         public int CurrentExperienceComboPickupCount => _experienceComboTimer > 0f ? _experienceComboPickupCount : 0;
@@ -685,7 +686,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureHudStyles();
-            GUI.Box(new Rect(12, 12, 356, 400), string.Empty);
+            string evolutionGoalHud = CurrentEvolutionGoalHudLabel;
+            GUI.Box(new Rect(12, 12, 356, string.IsNullOrWhiteSpace(evolutionGoalHud) ? 400 : 424), string.Empty);
             GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
             DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
             DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
@@ -702,7 +704,12 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 302, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
             GUI.Label(new Rect(24, 324, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
             GUI.Label(new Rect(24, 346, 318, 22), ResolveBuildSlotHudLabel(), _hudSmallStyle);
-            GUI.Label(new Rect(24, 368, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
+            if (!string.IsNullOrWhiteSpace(evolutionGoalHud))
+            {
+                GUI.Label(new Rect(24, 368, 318, 22), evolutionGoalHud, _hudSmallStyle);
+            }
+
+            GUI.Label(new Rect(24, string.IsNullOrWhiteSpace(evolutionGoalHud) ? 368 : 390, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
@@ -1803,6 +1810,12 @@ namespace Deucarian.TemplateGameSurvivors
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
             };
+
+            string evolutionGoal = ResolveEvolutionGoalHudLabel();
+            if (!string.IsNullOrWhiteSpace(evolutionGoal))
+            {
+                lines.Add(evolutionGoal);
+            }
 
             AppendSelectedUpgradeRankLines(lines);
             return lines;
@@ -8182,6 +8195,25 @@ namespace Deucarian.TemplateGameSurvivors
         private string ResolveBuildSlotHudLabel()
         {
             return $"Build W {ActiveWeaponCount}/{MaxWeaponSlots}   P {ActivePassiveCount}/{MaxPassiveSlots}   Evo {EvolvedWeaponCount}   Relic {SelectedRelicCount}/{ResolveTotalRelicCount()}";
+        }
+
+        private string ResolveEvolutionGoalHudLabel()
+        {
+            if (_upgradeCatalog == null)
+            {
+                return string.Empty;
+            }
+
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition evolution = _upgradeCatalog.Definitions[i];
+                if (TryResolveEvolutionMissingPassive(evolution, out RunUpgradeDefinition passive))
+                {
+                    return $"Goal {BasicSurvivorsGame.GetUpgradeDisplayName(passive.Id)} -> {BasicSurvivorsGame.GetUpgradeDisplayName(evolution.Id)}";
+                }
+            }
+
+            return string.Empty;
         }
 
         private string ResolveSurgeHudLabel()

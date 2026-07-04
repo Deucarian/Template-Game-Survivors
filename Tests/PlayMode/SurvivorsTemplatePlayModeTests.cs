@@ -1010,6 +1010,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.EvolutionGoalFeedbackCount);
             Assert.That(controller.LastEvolutionGoalFeedbackLabel, Does.Contain("Arcane Thesis"));
             Assert.That(controller.LastEvolutionGoalFeedbackLabel, Does.Contain("Arcane Storm"));
+            Assert.That(controller.CurrentEvolutionGoalHudLabel, Does.Contain("Arcane Thesis"));
+            Assert.That(controller.CurrentEvolutionGoalHudLabel, Does.Contain("Arcane Storm"));
+            Assert.That(string.Join("\n", controller.DebugDescribeCurrentBuild()), Does.Contain("Goal Arcane Thesis -> Arcane Storm"));
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             controller.ForceLevelUp();
             yield return null;
@@ -1746,8 +1749,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LastEvolutionGoalFeedbackLabel, Does.Contain("Arcane Storm"));
             Assert.That(controller.ActiveEvolutionReadyFeedbackLabel, Does.Contain("Arcane Thesis"));
             Assert.That(controller.EvolutionReadyFeedbackRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.CurrentEvolutionGoalHudLabel, Does.Contain("Arcane Thesis"));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.IsEmpty(controller.CurrentEvolutionGoalHudLabel);
             Assert.AreEqual(1, controller.EvolutionReadyFeedbackCount);
             Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Evolution Ready"));
             Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Arcane Storm"));
