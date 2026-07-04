@@ -1840,6 +1840,72 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator CompletingWeaponSlotsTriggersArsenalSurge()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.WeaponLoadoutSurgeDurationSeconds = 3f;
+            controller.CurrentTuning.WeaponLoadoutSurgeDamageBonus = 2f;
+            controller.CurrentTuning.WeaponLoadoutSurgeMoveSpeedBonus = 0.5f;
+            controller.CurrentTuning.WeaponLoadoutSurgeCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.WeaponLoadoutSurgePickupRangeBonus = 0.8f;
+            controller.CurrentTuning.WeaponLoadoutSurgePulseDamage = 10f;
+            controller.CurrentTuning.WeaponLoadoutSurgePulseRadius = 4f;
+            controller.StartRun();
+            yield return null;
+
+            Assert.AreEqual(5, controller.ActiveWeaponCount);
+            Assert.AreEqual(0, controller.WeaponLoadoutSurgeActivationCount);
+
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.2f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 2.3f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.8f, 0f, 0f), SurvivorsEnemyRole.Elite, 40f);
+            SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(5.2f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedElite);
+            Assert.NotNull(outsideTarget);
+
+            float startingDamage = controller.ProjectileDamage;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+
+            Assert.AreEqual(controller.MaxWeaponSlots, controller.ActiveWeaponCount);
+            Assert.AreEqual(1, controller.WeaponLoadoutSurgeActivationCount);
+            Assert.AreEqual(2, controller.WeaponLoadoutSurgePulseHitCount);
+            Assert.IsTrue(controller.IsWeaponLoadoutSurgeActive);
+            Assert.That(controller.WeaponLoadoutSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.LastWeaponLoadoutSurgeFeedbackLabel, Does.Contain("Star Beam"));
+            Assert.That(controller.LastWeaponLoadoutSurgeFeedbackLabel, Does.Contain("Arsenal Surge"));
+            Assert.That(controller.LastWeaponLoadoutSurgeFeedbackLabel, Does.Contain("6/6 weapons"));
+            Assert.That(controller.LastWeaponLoadoutSurgeFeedbackLabel, Does.Contain("2 enemies hit"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Arsenal Surge"));
+            Assert.IsFalse(pulseTargetA.IsAlive);
+            Assert.IsFalse(pulseTargetB.IsAlive);
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.IsTrue(outsideTarget.IsAlive);
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
+
+            Assert.IsFalse(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            Assert.AreEqual(1, controller.WeaponLoadoutSurgeActivationCount);
+
+            float surgedDamage = controller.ProjectileDamage;
+            controller.Simulate(controller.CurrentTuning.WeaponLoadoutSurgeDurationSeconds + 0.2f);
+
+            Assert.IsFalse(controller.IsWeaponLoadoutSurgeActive);
+            Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator DraftedPayloadWeaponUnlockOpensPayloadPathAndEvolution()
         {
             SurvivorsTemplateController controller = CreateController();
