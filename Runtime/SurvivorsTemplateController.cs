@@ -60,7 +60,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const float MajorRewardPickupCacheRadiusPadding = 0.55f;
         private const int MajorThreatSlamTelegraphEffectLimit = 12;
         private const float MajorThreatSlamTelegraphFadePaddingSeconds = 0.12f;
-        private const float EnemyRangedAttackFeedbackLifetimeSeconds = 0.24f;
+        private const float EnemyRangedAttackFeedbackLifetimeSeconds = 0.34f;
         private const int EnemyRangedAttackFeedbackLimit = 28;
         private const float EndlessSpawnIntervalMultiplier = 0.82f;
         private const int EndlessEnemyAliveBonus = 24;
@@ -7804,8 +7804,11 @@ namespace Deucarian.TemplateGameSurvivors
         private float _rangedAttackRange;
         private float _rangedAttackDamage;
         private float _rangedAttackInterval;
+        private float _rangedAttackWindupSeconds;
         private float _preferredRange;
         private float _rangedAttackCooldown;
+        private float _rangedAttackWindupTimer;
+        private bool _rangedAttackTelegraphing;
         private float _majorThreatSlamCooldown;
         private float _majorThreatSlamTelegraphTimer;
         private bool _majorThreatSlamTelegraphing;
@@ -7847,8 +7850,11 @@ namespace Deucarian.TemplateGameSurvivors
             _rangedAttackRange = Mathf.Max(0f, profile.RangedAttackRange);
             _rangedAttackDamage = Mathf.Max(0f, profile.RangedAttackDamage);
             _rangedAttackInterval = Mathf.Max(0.05f, profile.RangedAttackIntervalSeconds);
+            _rangedAttackWindupSeconds = controller == null ? 0f : Mathf.Max(0f, controller.CurrentTuning.EnemyRangedAttackWindupSeconds);
             _preferredRange = Mathf.Max(0f, profile.PreferredRange);
             _rangedAttackCooldown = Mathf.Min(0.75f, _rangedAttackInterval);
+            _rangedAttackWindupTimer = 0f;
+            _rangedAttackTelegraphing = false;
             _majorThreatSlamCooldown = ResolveInitialMajorThreatSlamCooldown(profile.Role, controller == null ? null : controller.CurrentTuning);
             _majorThreatSlamTelegraphTimer = 0f;
             _majorThreatSlamTelegraphing = false;
@@ -8089,18 +8095,58 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (_controller == null || _rangedAttackRange <= 0f || _rangedAttackDamage <= 0f)
             {
+                _rangedAttackTelegraphing = false;
+                _rangedAttackWindupTimer = 0f;
                 return;
             }
 
-            _rangedAttackCooldown -= deltaTime;
+            float dt = Mathf.Max(0f, deltaTime);
+            if (_rangedAttackTelegraphing)
+            {
+                _rangedAttackWindupTimer = Mathf.Max(0f, _rangedAttackWindupTimer - dt);
+                if (_rangedAttackWindupTimer > 0f)
+                {
+                    return;
+                }
+
+                _rangedAttackTelegraphing = false;
+                _rangedAttackCooldown = _rangedAttackInterval;
+                if (ResolveDistanceToPlayer() <= _rangedAttackRange)
+                {
+                    _controller.ApplyDamageToPlayer(_rangedAttackDamage, "combatant.survivors.enemy.ranged." + InstanceId.Value);
+                }
+
+                return;
+            }
+
+            _rangedAttackCooldown = Mathf.Max(0f, _rangedAttackCooldown - dt);
             if (_rangedAttackCooldown > 0f || distance > _rangedAttackRange)
             {
                 return;
             }
 
             _controller.RecordEnemyRangedAttackFeedback(transform.position, _controller.PlayerPosition, Role);
-            _controller.ApplyDamageToPlayer(_rangedAttackDamage, "combatant.survivors.enemy.ranged." + InstanceId.Value);
-            _rangedAttackCooldown = _rangedAttackInterval;
+            if (_rangedAttackWindupSeconds <= 0f)
+            {
+                _controller.ApplyDamageToPlayer(_rangedAttackDamage, "combatant.survivors.enemy.ranged." + InstanceId.Value);
+                _rangedAttackCooldown = _rangedAttackInterval;
+                return;
+            }
+
+            _rangedAttackTelegraphing = true;
+            _rangedAttackWindupTimer = _rangedAttackWindupSeconds;
+        }
+
+        private float ResolveDistanceToPlayer()
+        {
+            if (_controller == null)
+            {
+                return float.MaxValue;
+            }
+
+            Vector3 delta = _controller.PlayerPosition - transform.position;
+            delta.y = 0f;
+            return delta.magnitude;
         }
 
         private void TickDamageOverTime(float deltaTime)
@@ -8155,6 +8201,8 @@ namespace Deucarian.TemplateGameSurvivors
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;
             _bleedRemainingSeconds = 0f;
+            _rangedAttackWindupTimer = 0f;
+            _rangedAttackTelegraphing = false;
             _hitFlashTimer = 0f;
             _hitFlashDuration = 0f;
             _hitFlashCritical = false;
@@ -8174,8 +8222,11 @@ namespace Deucarian.TemplateGameSurvivors
             _rangedAttackRange = 0f;
             _rangedAttackDamage = 0f;
             _rangedAttackInterval = 0f;
+            _rangedAttackWindupSeconds = 0f;
             _preferredRange = 0f;
             _rangedAttackCooldown = 0f;
+            _rangedAttackWindupTimer = 0f;
+            _rangedAttackTelegraphing = false;
             _poisonDamagePerSecond = 0f;
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;

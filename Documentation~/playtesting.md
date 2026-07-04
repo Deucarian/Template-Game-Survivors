@@ -52,7 +52,7 @@ After 2 minutes:
 
 After 5 minutes:
 
-- Spitters should have joined the enemy mix, and their ranged hits should show quick hostile shot cues.
+- Spitters should have joined the enemy mix, and their ranged attacks should show quick hostile shot cues before damage lands; moving out of range during the cue should avoid the hit.
 - The first elite should have arrived around 3 minutes and the dread elite should be arriving around 5 minutes; active major threats should show a prioritized health bar, dread elite slam ground discs should warn before any area damage, and killing either elite should open an elite reward draft and scatter a visible XP/special-pickup reward cache that pulls inward after the reward choice resolves.
 - Each scheduled elite should show a short incoming warning before it appears.
 - Damaging an elite below its low-health threshold should trigger one visible support call-in, then further damage to that same elite should not repeatedly spawn extra rings.

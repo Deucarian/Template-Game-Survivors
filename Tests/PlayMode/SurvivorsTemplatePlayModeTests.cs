@@ -298,11 +298,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator RangedEnemyAttackCreatesReadableShotFeedback()
+        public IEnumerator RangedEnemyAttackTelegraphsBeforeDamage()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
             controller.CurrentTuning.StartingBarrierCapacity = 0f;
             controller.CurrentTuning.EnemyMaximumAlive = 1;
+            controller.CurrentTuning.EnemyRangedAttackWindupSeconds = 0.28f;
             controller.StartRun();
 
             SurvivorsEnemyActor spitter = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4.5f, 0f, 0f), SurvivorsEnemyRole.Spitter, 50f);
@@ -313,14 +314,52 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.Simulate(0.8f);
             yield return null;
 
-            Assert.That(controller.PlayerDamageFeedbackCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(0, controller.PlayerDamageFeedbackCount);
             Assert.AreEqual(1, controller.EnemyRangedAttackFeedbackCount);
             Assert.AreEqual(1, controller.ActiveEnemyRangedAttackFeedbackCount);
 
-            controller.Simulate(0.3f);
+            controller.Simulate(0.2f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.PlayerDamageFeedbackCount);
+            Assert.AreEqual(1, controller.ActiveEnemyRangedAttackFeedbackCount);
+
+            controller.Simulate(0.12f);
+            yield return null;
+
+            Assert.That(controller.PlayerDamageFeedbackCount, Is.GreaterThanOrEqualTo(1));
+
+            controller.Simulate(0.1f);
             yield return null;
 
             Assert.AreEqual(0, controller.ActiveEnemyRangedAttackFeedbackCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator RangedEnemyAttackCanBeDodgedDuringWindup()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.StartingBarrierCapacity = 0f;
+            controller.CurrentTuning.EnemyMaximumAlive = 1;
+            controller.CurrentTuning.EnemyRangedAttackWindupSeconds = 0.28f;
+            controller.StartRun();
+
+            SurvivorsEnemyActor spitter = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4.5f, 0f, 0f), SurvivorsEnemyRole.Spitter, 50f);
+            Assert.NotNull(spitter);
+
+            controller.Simulate(0.8f);
+            yield return null;
+
+            Assert.AreEqual(1, controller.EnemyRangedAttackFeedbackCount);
+            Assert.AreEqual(0, controller.PlayerDamageFeedbackCount);
+
+            controller.Simulate(0.4f, Vector2.left);
+            yield return null;
+
+            Assert.AreEqual(0, controller.PlayerDamageFeedbackCount);
+            Assert.That(Vector3.Distance(controller.PlayerPosition, spitter.transform.position), Is.GreaterThan(5.8f));
 
             Object.Destroy(controller.gameObject);
         }
