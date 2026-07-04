@@ -1875,6 +1875,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsEnemyActor surgeTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 2.2f), SurvivorsEnemyRole.Runner, 5f);
             SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.8f, 0f, 1.6f), SurvivorsEnemyRole.Elite, 30f);
             SurvivorsEnemyActor outsideTarget = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(6f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsPickupActor recallGem = controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(-6f, 0f, 0f), 1);
+            Assert.IsNotNull(recallGem);
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
             Assert.AreEqual(1, controller.EvolutionReadyFeedbackCount);
             Assert.IsEmpty(controller.CurrentEvolutionReadyHudLabel);
@@ -1884,6 +1886,15 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.WeaponEvolutionSurgeCount);
             Assert.AreEqual(2, controller.WeaponEvolutionSurgeHitCount);
             Assert.That(controller.LastWeaponEvolutionSurgeFeedbackLabel, Does.Contain("Arcane Storm"));
+            Assert.That(controller.LastWeaponEvolutionSurgeFeedbackLabel, Does.Contain("XP recalled"));
+            Assert.AreEqual(1, controller.EvolutionMagnetRecallCount);
+            Assert.That(controller.EvolutionMagnetRecallGemCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastEvolutionMagnetRecallFeedbackLabel, Does.Contain("Arcane Storm"));
+            Assert.That(controller.LastEvolutionMagnetRecallFeedbackLabel, Does.Contain("XP gems pulled"));
+            Assert.AreEqual(1, controller.MagnetRecallCount);
+            Assert.AreEqual(1, controller.MagnetRecallFeedbackCount);
+            Assert.IsTrue(recallGem.IsGlobalRecallActive);
+            Assert.IsTrue(recallGem.HasShownAttractionFeedback);
             Assert.IsFalse(surgeTargetA.IsAlive);
             Assert.IsFalse(surgeTargetB.IsAlive);
             Assert.IsTrue(protectedElite.IsAlive);

@@ -330,7 +330,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int WeaponEvolutionSurgeCount { get; private set; }
         public int WeaponEvolutionSurgeHitCount { get; private set; }
+        public int EvolutionMagnetRecallCount { get; private set; }
+        public int EvolutionMagnetRecallGemCount { get; private set; }
         public string LastWeaponEvolutionSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public string LastEvolutionMagnetRecallFeedbackLabel { get; private set; } = string.Empty;
         public int MetaUpgradePurchaseCount { get; private set; }
         public string LastMetaUpgradePurchaseFeedbackLabel { get; private set; } = string.Empty;
         public int ResultClassSelectionCount { get; private set; }
@@ -836,7 +839,10 @@ namespace Deucarian.TemplateGameSurvivors
             WeaponEvolutionFeedbackCount = 0;
             WeaponEvolutionSurgeCount = 0;
             WeaponEvolutionSurgeHitCount = 0;
+            EvolutionMagnetRecallCount = 0;
+            EvolutionMagnetRecallGemCount = 0;
             LastWeaponEvolutionSurgeFeedbackLabel = string.Empty;
+            LastEvolutionMagnetRecallFeedbackLabel = string.Empty;
             MetaUpgradePurchaseCount = 0;
             LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
             ResultClassSelectionCount = 0;
@@ -2195,6 +2201,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void TriggerMagnetRecall()
         {
+            StartMagnetRecall();
+        }
+
+        private int StartMagnetRecall()
+        {
             MagnetRecallCount++;
             int recalled = 0;
             for (int i = 0; i < _pickups.Count; i++)
@@ -2212,6 +2223,8 @@ namespace Deucarian.TemplateGameSurvivors
                 MagnetRecallFeedbackCount++;
                 PlayFeedback(_pickupPulse, PlayerPosition, Mathf.Clamp(12 + recalled * 3, 18, 72), _pickupClip);
             }
+
+            return recalled;
         }
 
         internal void ApplyDamageAugmentsToEnemy(SurvivorsEnemyActor enemy, DamageResult damage, string source)
@@ -5056,9 +5069,22 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
+            int recalledGemCount = StartMagnetRecall();
+            if (recalledGemCount > 0)
+            {
+                EvolutionMagnetRecallCount++;
+                EvolutionMagnetRecallGemCount += recalledGemCount;
+                LastEvolutionMagnetRecallFeedbackLabel = $"{name} Recall: {recalledGemCount} XP gems pulled";
+            }
+
             WeaponEvolutionSurgeCount++;
             WeaponEvolutionSurgeHitCount += hitCount;
             LastWeaponEvolutionSurgeFeedbackLabel = $"{name} Surge: {hitCount} enemies hit";
+            if (recalledGemCount > 0)
+            {
+                LastWeaponEvolutionSurgeFeedbackLabel += $", {recalledGemCount} XP recalled";
+            }
+
             RecordStreakRewardFeedback(LastWeaponEvolutionSurgeFeedbackLabel, new Color(0.72f, 0.42f, 1f));
             PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(46 + hitCount * 5, 54, 96), _levelUpClip);
         }
