@@ -292,6 +292,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadDetonationCount { get; private set; }
         public int PayloadExplosionHitCount { get; private set; }
         public int PayloadHazardTickCount { get; private set; }
+        public int PayloadHazardSnareCount { get; private set; }
+        public string LastPayloadHazardSnareFeedbackLabel { get; private set; } = string.Empty;
         public int SplitterChildSpawnCount { get; private set; }
         public int SplitterSplitFeedbackCount { get; private set; }
         public string LastSplitterSplitFeedbackLabel { get; private set; } = string.Empty;
@@ -992,6 +994,8 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadDetonationCount = 0;
             PayloadExplosionHitCount = 0;
             PayloadHazardTickCount = 0;
+            PayloadHazardSnareCount = 0;
+            LastPayloadHazardSnareFeedbackLabel = string.Empty;
             SplitterChildSpawnCount = 0;
             SplitterSplitFeedbackCount = 0;
             LastSplitterSplitFeedbackLabel = string.Empty;
@@ -3216,6 +3220,17 @@ namespace Deucarian.TemplateGameSurvivors
         internal void RecordPayloadHazardTick()
         {
             PayloadHazardTickCount++;
+        }
+
+        internal void RecordPayloadHazardSnare(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition)
+        {
+            if (enemy == null || definition == null)
+            {
+                return;
+            }
+
+            PayloadHazardSnareCount++;
+            LastPayloadHazardSnareFeedbackLabel = $"{definition.DisplayName} hazard snared {enemy.DisplayName}";
         }
 
         private int CountEnemiesByRole(SurvivorsEnemyRole role)

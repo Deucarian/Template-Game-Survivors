@@ -3081,7 +3081,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
-            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 100f);
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 1000f);
 
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));
             yield return SimulateFrames(controller, 80);
@@ -3089,6 +3089,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(0f));
             Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.PayloadExplosionHitCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadHazardSnareCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(enemy.IsMovementSlowed);
+            Assert.That(enemy.CurrentMoveSpeedMultiplier, Is.LessThan(1f));
+            Assert.That(controller.LastPayloadHazardSnareFeedbackLabel, Does.Contain("Gravity Grenade"));
 
             Object.Destroy(controller.gameObject);
         }
@@ -3118,7 +3122,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
 
             int hazardsBefore = Object.FindObjectsByType<SurvivorsPayloadHazardActor>(FindObjectsSortMode.None).Length;
-            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 1000f);
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 1000f);
 
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));
             yield return SimulateFrames(controller, 95);
@@ -3127,6 +3131,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(hazardsAfter - hazardsBefore, Is.GreaterThanOrEqualTo(7));
             Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.PayloadHazardTickCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadHazardSnareCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(enemy.IsMovementSlowed);
+            Assert.That(enemy.CurrentMoveSpeedMultiplier, Is.LessThan(0.7f));
+            Assert.That(controller.LastPayloadHazardSnareFeedbackLabel, Does.Contain("Gravity Grenade"));
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId));
 
             Object.Destroy(controller.gameObject);
@@ -3210,13 +3218,17 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
 
-            controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 1.8f), 100f);
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 1.8f), 1000f);
 
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Mine));
-            yield return SimulateFrames(controller, 150);
+            yield return SimulateFrames(controller, 120);
 
             Assert.That(controller.PayloadDetonationCount, Is.GreaterThanOrEqualTo(1));
             Assert.That(controller.PayloadHazardTickCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadHazardSnareCount, Is.GreaterThanOrEqualTo(1));
+            Assert.IsTrue(enemy.IsMovementSlowed);
+            Assert.That(enemy.CurrentMoveSpeedMultiplier, Is.LessThan(0.7f));
+            Assert.That(controller.LastPayloadHazardSnareFeedbackLabel, Does.Contain("hazard snared"));
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId));
 
             Object.Destroy(controller.gameObject);

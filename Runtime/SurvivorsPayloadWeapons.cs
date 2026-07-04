@@ -13,6 +13,9 @@ namespace Deucarian.TemplateGameSurvivors
         private const float EvolvedHazardDamageMultiplier = 1.25f;
         private const float EvolvedSatelliteHazardRadiusMultiplier = 0.58f;
         private const float EvolvedSatelliteHazardDistanceMultiplier = 0.82f;
+        private const float HazardSnareMoveSpeedMultiplier = 0.82f;
+        private const float EvolvedHazardSnareMoveSpeedMultiplier = 0.58f;
+        private const float HazardSnareDurationMultiplier = 1.35f;
         private readonly List<SurvivorsPayloadActorBase> _payloads = new List<SurvivorsPayloadActorBase>();
         protected readonly List<SurvivorsEnemyActor> DamageTargets = new List<SurvivorsEnemyActor>();
 
@@ -106,10 +109,15 @@ namespace Deucarian.TemplateGameSurvivors
                     hazardDamage *= EvolvedHazardDamageMultiplier;
                 }
 
-                SpawnHazard(origin, hazardRadius, hazardDuration, hazardTickInterval, hazardDamage);
+                float hazardSnareMultiplier = payloadEvolutionActive
+                    ? EvolvedHazardSnareMoveSpeedMultiplier
+                    : HazardSnareMoveSpeedMultiplier;
+                float hazardSnareDuration = Mathf.Max(0.25f, hazardTickInterval * HazardSnareDurationMultiplier);
+
+                SpawnHazard(origin, hazardRadius, hazardDuration, hazardTickInterval, hazardDamage, hazardSnareMultiplier, hazardSnareDuration);
                 if (payloadEvolutionActive)
                 {
-                    SpawnSatelliteHazards(origin, hazardRadius, hazardDuration, hazardTickInterval, hazardDamage);
+                    SpawnSatelliteHazards(origin, hazardRadius, hazardDuration, hazardTickInterval, hazardDamage, hazardSnareMultiplier, hazardSnareDuration);
                 }
             }
         }
@@ -130,7 +138,14 @@ namespace Deucarian.TemplateGameSurvivors
             return false;
         }
 
-        private void SpawnSatelliteHazards(Vector3 origin, float hazardRadius, float durationSeconds, float tickIntervalSeconds, float damagePerTick)
+        private void SpawnSatelliteHazards(
+            Vector3 origin,
+            float hazardRadius,
+            float durationSeconds,
+            float tickIntervalSeconds,
+            float damagePerTick,
+            float snareMoveSpeedMultiplier,
+            float snareDurationSeconds)
         {
             float distance = Mathf.Max(0.35f, hazardRadius * EvolvedSatelliteHazardDistanceMultiplier);
             float satelliteRadius = Mathf.Max(0.25f, hazardRadius * EvolvedSatelliteHazardRadiusMultiplier);
@@ -139,11 +154,18 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 float angle = (360f / EvolvedSatelliteHazardCount) * index;
                 Vector3 offset = Quaternion.Euler(0f, angle, 0f) * (Vector3.forward * distance);
-                SpawnHazard(origin + offset, satelliteRadius, durationSeconds, tickIntervalSeconds, satelliteDamage);
+                SpawnHazard(origin + offset, satelliteRadius, durationSeconds, tickIntervalSeconds, satelliteDamage, snareMoveSpeedMultiplier, snareDurationSeconds);
             }
         }
 
-        private void SpawnHazard(Vector3 origin, float radius, float durationSeconds, float tickIntervalSeconds, float damagePerTick)
+        private void SpawnHazard(
+            Vector3 origin,
+            float radius,
+            float durationSeconds,
+            float tickIntervalSeconds,
+            float damagePerTick,
+            float snareMoveSpeedMultiplier,
+            float snareDurationSeconds)
         {
             GameObject hazardObject = new GameObject(Definition.DisplayName + " Hazard");
             hazardObject.transform.SetParent(Controller.RuntimeWorldRoot, false);
@@ -155,7 +177,9 @@ namespace Deucarian.TemplateGameSurvivors
                 radius,
                 durationSeconds,
                 tickIntervalSeconds,
-                damagePerTick);
+                damagePerTick,
+                snareMoveSpeedMultiplier,
+                snareDurationSeconds);
             RegisterPayload(hazard);
         }
     }
@@ -528,6 +552,8 @@ namespace Deucarian.TemplateGameSurvivors
         private float _tickInterval;
         private float _timeUntilTick;
         private float _damagePerTick;
+        private float _snareMoveSpeedMultiplier;
+        private float _snareDurationSeconds;
 
         public void Initialize(
             SurvivorsTemplateController controller,
@@ -535,7 +561,9 @@ namespace Deucarian.TemplateGameSurvivors
             float radius,
             float duration,
             float tickInterval,
-            float damagePerTick)
+            float damagePerTick,
+            float snareMoveSpeedMultiplier,
+            float snareDurationSeconds)
         {
             _controller = controller;
             _definition = definition;
@@ -544,6 +572,8 @@ namespace Deucarian.TemplateGameSurvivors
             _tickInterval = Mathf.Max(0.05f, tickInterval);
             _timeUntilTick = 0f;
             _damagePerTick = Mathf.Max(0f, damagePerTick);
+            _snareMoveSpeedMultiplier = Mathf.Clamp(snareMoveSpeedMultiplier, 0.15f, 1f);
+            _snareDurationSeconds = Mathf.Max(0f, snareDurationSeconds);
             IsActive = true;
 
             GameObject visual = SurvivorsVisualUtility.CreatePrimitiveVisual("Payload Hazard", PrimitiveType.Cylinder, definition.Tint, transform);
@@ -591,6 +621,12 @@ namespace Deucarian.TemplateGameSurvivors
                 if (enemy.ApplyDamage(_damagePerTick, _definition.Id + ".hazard") != null)
                 {
                     _controller.RecordPayloadHazardTick();
+                    if (_snareMoveSpeedMultiplier < 1f &&
+                        _snareDurationSeconds > 0f &&
+                        enemy.ApplyMovementSlow(_snareMoveSpeedMultiplier, _snareDurationSeconds))
+                    {
+                        _controller.RecordPayloadHazardSnare(enemy, _definition);
+                    }
                 }
             }
 
