@@ -2657,7 +2657,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(7));
             Assert.That(controller.LastMajorRewardCacheFeedbackLabel, Does.Contain("Elite"));
             Assert.That(controller.LastMajorRewardCacheFeedbackLabel, Does.Contain("Cache"));
+            Assert.That(controller.LastMajorRewardCacheFeedbackLabel, Does.Contain("pull"));
+            Assert.That(controller.MajorRewardCacheAttractedPickupCount, Is.GreaterThanOrEqualTo(6));
+            Assert.That(controller.ActiveMajorRewardCacheAttractedPickupCount, Is.GreaterThanOrEqualTo(6));
+            Assert.That(controller.PickupAttractionFeedbackCount, Is.GreaterThanOrEqualTo(5));
             Assert.That(controller.LastStreakRewardFeedbackLabel, Does.Contain("Cache"));
+            int experienceBeforeCachePull = controller.ExperienceCollected;
+            int activeCachePullBefore = controller.ActiveMajorRewardCacheAttractedPickupCount;
 
             controller.Simulate(1.4f);
             yield return null;
@@ -2667,6 +2673,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Elite Reward"));
             Assert.That(controller.ActiveRewardFeedbackLabel, Does.Contain("skipped"));
+
+            controller.Simulate(0.65f);
+            yield return null;
+
+            Assert.That(controller.ExperienceCollected, Is.GreaterThan(experienceBeforeCachePull));
+            Assert.That(controller.ActiveMajorRewardCacheAttractedPickupCount, Is.LessThan(activeCachePullBefore));
 
             Object.Destroy(controller.gameObject);
         }

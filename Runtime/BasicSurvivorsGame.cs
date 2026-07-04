@@ -176,6 +176,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float PickupAttractionSpeed = 4.8f;
         public float PickupCollectRadius = 0.68f;
         public float MagnetRecallSpeedMultiplier = 1.65f;
+        public float MajorRewardCacheAttractionSpeedMultiplier = 2.25f;
         public float RoamingCacheTravelInterval = 18f;
         public int RoamingCacheExperienceGemCount = 3;
         public int RoamingCacheMagnetInterval = 3;
@@ -533,6 +534,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.PickupAttractionSpeed = 4.6f;
             tuning.PickupCollectRadius = 0.72f;
             tuning.MagnetRecallSpeedMultiplier = 2f;
+            tuning.MajorRewardCacheAttractionSpeedMultiplier = 2.35f;
             tuning.RoamingCacheTravelInterval = 16f;
             tuning.RoamingCacheAmbushStartCache = 3;
             tuning.RoamingCacheAmbushInterval = 4;
@@ -633,6 +635,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.PickupAttractRange = 3.5f;
             tuning.PickupAttractionSpeed = 8.5f;
             tuning.MagnetRecallSpeedMultiplier = 2.6f;
+            tuning.MajorRewardCacheAttractionSpeedMultiplier = 2.8f;
             tuning.RoamingCacheTravelInterval = 10f;
             tuning.RoamingCacheMagnetInterval = 2;
             tuning.RoamingCacheBloodShardInterval = 3;
@@ -720,6 +723,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.PickupAttractRange = 2.9f;
             tuning.PickupAttractionSpeed = 6.4f;
             tuning.MagnetRecallSpeedMultiplier = 2.25f;
+            tuning.MajorRewardCacheAttractionSpeedMultiplier = 2.55f;
             tuning.RoamingCacheTravelInterval = 14f;
             tuning.RoamingCacheAmbushStartCache = 3;
             tuning.RoamingCacheAmbushInterval = 3;

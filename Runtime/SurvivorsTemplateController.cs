@@ -284,6 +284,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorRewardCacheDropCount { get; private set; }
         public int MajorRewardCacheExperienceGemDropCount { get; private set; }
         public int MajorRewardCacheSpecialDropCount { get; private set; }
+        public int MajorRewardCacheAttractedPickupCount { get; private set; }
         public int WeaponEvolutionFeedbackCount { get; private set; }
         public int WeaponEvolutionSurgeCount { get; private set; }
         public int WeaponEvolutionSurgeHitCount { get; private set; }
@@ -433,6 +434,24 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveEnemyDeathEffectCount => _worldFeedbackEffects.Count;
         public int ActiveEnemyRangedAttackFeedbackCount => _enemyRangedAttackFeedbackEffects.Count;
         public int ActiveMajorRewardDropFeedbackCount => _rewardDropFeedbackEffects.Count;
+        public int ActiveMajorRewardCacheAttractedPickupCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < _pickups.Count; i++)
+                {
+                    SurvivorsPickupActor pickup = _pickups[i];
+                    if (pickup != null && pickup.IsRewardCacheAttractionActive)
+                    {
+                        count++;
+                    }
+                }
+
+                return count;
+            }
+        }
+
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
         public int ActivePassiveCount => _ownedPassiveUpgradeIds.Count;
         public int EvolvedWeaponCount => _ownedEvolutionUpgradeIds.Count;
@@ -757,6 +776,7 @@ namespace Deucarian.TemplateGameSurvivors
             MajorRewardCacheDropCount = 0;
             MajorRewardCacheExperienceGemDropCount = 0;
             MajorRewardCacheSpecialDropCount = 0;
+            MajorRewardCacheAttractedPickupCount = 0;
             MajorThreatWarningCount = 0;
             MajorThreatEnrageCount = 0;
             MajorThreatEnrageSupportSpawnCount = 0;
@@ -2881,19 +2901,26 @@ namespace Deucarian.TemplateGameSurvivors
             int xpPerGem = ResolveMajorRewardCacheExperiencePerGem(role);
             float cacheRadius = Mathf.Max(0.9f, radius + MajorRewardPickupCacheRadiusPadding);
             int spawnedExperience = 0;
+            int attractedPickupCount = 0;
             for (int i = 0; i < gemCount; i++)
             {
                 float angle = ((i + 0.18f) / gemCount) * Mathf.PI * 2f;
                 float ringOffset = 0.18f * (i % 2);
                 Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (cacheRadius + ringOffset);
-                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
+                SurvivorsPickupActor pickup = SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem);
+                if (pickup != null)
                 {
                     spawnedExperience += xpPerGem;
                     MajorRewardCacheExperienceGemDropCount++;
+                    if (StartMajorRewardCacheAttraction(pickup))
+                    {
+                        attractedPickupCount++;
+                    }
                 }
             }
 
-            int specialDropCount = SpawnMajorRewardSpecialPickups(position, role, cacheRadius);
+            int specialDropCount = SpawnMajorRewardSpecialPickups(position, role, cacheRadius, out int attractedSpecialDropCount);
+            attractedPickupCount += attractedSpecialDropCount;
             if (spawnedExperience <= 0 && specialDropCount <= 0)
             {
                 return;
@@ -2901,9 +2928,11 @@ namespace Deucarian.TemplateGameSurvivors
 
             MajorRewardCacheDropCount++;
             MajorRewardCacheSpecialDropCount += specialDropCount;
+            MajorRewardCacheAttractedPickupCount += attractedPickupCount;
             string rewardLabel = ResolveMajorRewardDropLabel(role);
             string specialLabel = specialDropCount > 0 ? $" + {specialDropCount} special" : string.Empty;
-            string label = $"{rewardLabel}: Cache +{spawnedExperience} XP{specialLabel}";
+            string pullLabel = attractedPickupCount > 0 ? $" pull x{attractedPickupCount}" : string.Empty;
+            string label = $"{rewardLabel}: Cache +{spawnedExperience} XP{specialLabel}{pullLabel}";
             LastMajorRewardCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, ResolveMajorRewardDropColor(role));
         }
@@ -2946,26 +2975,42 @@ namespace Deucarian.TemplateGameSurvivors
             return Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * multiplier * escalationMultiplier));
         }
 
-        private int SpawnMajorRewardSpecialPickups(Vector3 position, SurvivorsEnemyRole role, float cacheRadius)
+        private int SpawnMajorRewardSpecialPickups(Vector3 position, SurvivorsEnemyRole role, float cacheRadius, out int attractedPickupCount)
         {
+            attractedPickupCount = 0;
             int specialDropCount = 0;
             Vector3 magnetPosition = position + new Vector3(cacheRadius * 0.62f, 0f, -cacheRadius * 0.36f);
-            if (SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1) != null)
+            SurvivorsPickupActor magnet = SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1);
+            if (magnet != null)
             {
                 specialDropCount++;
+                if (StartMajorRewardCacheAttraction(magnet))
+                {
+                    attractedPickupCount++;
+                }
             }
 
             int shardAmount = ResolveMajorRewardCacheBloodShardAmount(role);
             if (shardAmount > 0)
             {
                 Vector3 shardPosition = position + new Vector3(-cacheRadius * 0.58f, 0f, cacheRadius * 0.42f);
-                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount) != null)
+                SurvivorsPickupActor shard = SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount);
+                if (shard != null)
                 {
                     specialDropCount++;
+                    if (StartMajorRewardCacheAttraction(shard))
+                    {
+                        attractedPickupCount++;
+                    }
                 }
             }
 
             return specialDropCount;
+        }
+
+        private bool StartMajorRewardCacheAttraction(SurvivorsPickupActor pickup)
+        {
+            return pickup != null && pickup.StartRewardCacheAttraction(CurrentTuning.MajorRewardCacheAttractionSpeedMultiplier);
         }
 
         private int ResolveMajorRewardCacheBloodShardAmount(SurvivorsEnemyRole role)
@@ -8207,6 +8252,7 @@ namespace Deucarian.TemplateGameSurvivors
         private float _attractionSpeed;
         private float _collectRadius;
         private bool _globalRecall;
+        private bool _rewardCacheAttraction;
         private bool _attractionFeedbackSent;
         private float _recallSpeedMultiplier;
         private float _currentSpeed;
@@ -8218,6 +8264,7 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsPickupKind Kind { get; private set; }
         public int Amount { get; private set; }
         public bool IsGlobalRecallActive => IsActive && _globalRecall;
+        public bool IsRewardCacheAttractionActive => IsActive && _rewardCacheAttraction;
         public bool HasShownAttractionFeedback => _attractionFeedbackSent;
 
         public void Initialize(SurvivorsTemplateController controller, SurvivorsPickupKind kind, int amount, float attractRange, float attractionSpeed, float collectRadius)
@@ -8227,6 +8274,7 @@ namespace Deucarian.TemplateGameSurvivors
             Amount = Mathf.Max(1, amount);
             UpdateAttractionSettings(attractRange, attractionSpeed, collectRadius);
             _globalRecall = false;
+            _rewardCacheAttraction = false;
             _attractionFeedbackSent = false;
             _recallSpeedMultiplier = 1f;
             _currentSpeed = 0f;
@@ -8256,6 +8304,20 @@ namespace Deucarian.TemplateGameSurvivors
             BeginAttractionFeedback();
         }
 
+        public bool StartRewardCacheAttraction(float speedMultiplier)
+        {
+            if (!IsActive)
+            {
+                return false;
+            }
+
+            _rewardCacheAttraction = true;
+            _recallSpeedMultiplier = Mathf.Max(_recallSpeedMultiplier, speedMultiplier);
+            _currentSpeed = Mathf.Max(_currentSpeed, _attractionSpeed * 1.25f);
+            BeginAttractionFeedback();
+            return true;
+        }
+
         private static Vector3 ResolvePickupBaseScale(SurvivorsPickupKind kind)
         {
             switch (kind)
@@ -8282,11 +8344,12 @@ namespace Deucarian.TemplateGameSurvivors
             Vector3 offset = playerPosition - transform.position;
             offset.y = 0f;
             float distance = offset.magnitude;
-            bool shouldAttract = _globalRecall || distance <= _attractRange;
+            bool forcedAttraction = _globalRecall || _rewardCacheAttraction;
+            bool shouldAttract = forcedAttraction || distance <= _attractRange;
             if (shouldAttract && distance > 0.001f)
             {
                 BeginAttractionFeedback();
-                float targetSpeed = _attractionSpeed * (_globalRecall ? _recallSpeedMultiplier * Mathf.Clamp(1f + distance * 0.18f, 1f, 10f) : 1f);
+                float targetSpeed = _attractionSpeed * (forcedAttraction ? _recallSpeedMultiplier * Mathf.Clamp(1f + distance * 0.18f, 1f, 10f) : 1f);
                 _currentSpeed = Mathf.MoveTowards(_currentSpeed, targetSpeed, targetSpeed * 8f * deltaTime);
                 float travel = Mathf.Min(distance, _currentSpeed * deltaTime);
                 transform.position += offset.normalized * travel;
@@ -8297,7 +8360,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _currentSpeed = Mathf.MoveTowards(_currentSpeed, 0f, _attractionSpeed * 5f * deltaTime);
             }
 
-            if (_globalRecall)
+            if (forcedAttraction)
             {
                 transform.Rotate(0f, 420f * deltaTime, 0f, Space.Self);
             }
@@ -8331,7 +8394,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             _pulseSeconds += Mathf.Max(0f, deltaTime);
             float scale = 1f;
-            if (_globalRecall)
+            if (_globalRecall || _rewardCacheAttraction)
             {
                 scale = 1.28f + Mathf.Sin(_pulseSeconds * 18f) * 0.16f;
             }
@@ -8352,6 +8415,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             _controller = null;
             IsActive = false;
+            _rewardCacheAttraction = false;
         }
 
         public void ResetForWorldSpawn()
@@ -8360,6 +8424,7 @@ namespace Deucarian.TemplateGameSurvivors
             IsActive = false;
             InstanceId = default;
             _globalRecall = false;
+            _rewardCacheAttraction = false;
             _attractionFeedbackSent = false;
             _currentSpeed = 0f;
             _pulseSeconds = 0f;
