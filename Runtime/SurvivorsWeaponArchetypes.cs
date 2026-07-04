@@ -1141,10 +1141,16 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
+                if (_damage <= 0f)
+                {
+                    continue;
+                }
+
                 if (enemy.ApplyDamage(_damage, _definition.Id) != null)
                 {
                     _nextHitTimeByEnemy[key] = timeSeconds + _tickInterval;
                     _controller.RecordOrbitHit();
+                    _controller.ApplyOrbitKnockback(enemy, _definition);
                 }
             }
         }

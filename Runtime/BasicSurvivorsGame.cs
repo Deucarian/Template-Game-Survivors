@@ -150,6 +150,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float OrbitBladeHitRadius = 0.38f;
         public float OrbitDegreesPerSecond = 95f;
         public float OrbitContactTickIntervalSeconds = 0.46f;
+        public float OrbitKnockbackDistance = 0.22f;
+        public float CrimsonAegisOrbitKnockbackDistance = 0.54f;
         public float MeleeDamage = 3.2f;
         public float MeleeCooldownSeconds = 1.8f;
         public float MeleeRange = 2.5f;
@@ -1833,7 +1835,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata(AetherBloomUpgradeId, "Aether Bloom", SurvivorsRunUpgradeCategory.Mutation, SurvivorsRunBuildSlotKind.None, AetherMineWeaponContentId, "Placed hazard detonations cover a wider area.", AetherMineWeaponContentId, RuneLatticeUpgradeId, 3),
                 UpgradeMetadata(ArcaneStormEvolutionUpgradeId, "Arcane Storm", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Evolution: Arc Bolt becomes a storm of chaining, forking bolts.", ArcaneWandWeaponContentId, "upgrade.survivors.arcane-damage", 5, ArcaneThesisUpgradeId),
                 UpgradeMetadata(BlizzardCrownEvolutionUpgradeId, "Blizzard Crown", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, FrostFanWeaponContentId, "Evolution: Frost Fan expands into a piercing crown of shards.", FrostFanWeaponContentId, FrostFanUpgradeId, 5, FrostNeedleworkUpgradeId),
-                UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo gain a counter-rotating shield ring.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 5, BloodRingCanticleUpgradeId),
+                UpgradeMetadata(CrimsonAegisEvolutionUpgradeId, "Crimson Aegis", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, OrbitWardWeaponContentId, "Evolution: Blood Ring and Thorn Halo gain a counter-rotating shield ring that pushes back the horde.", OrbitWardWeaponContentId, OrbitingFocusUpgradeId, 5, BloodRingCanticleUpgradeId),
                 UpgradeMetadata(InfernoHeartEvolutionUpgradeId, "Inferno Heart", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarNovaWeaponContentId, "Evolution: Cinder Burst repeats, echoes, burns longer, and targets the horde.", StarNovaWeaponContentId, NovaEchoUpgradeId, 5, CinderScriptUpgradeId),
                 UpgradeMetadata(TempestPrismEvolutionUpgradeId, "Tempest Prism", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, StarBeamWeaponContentId, "Evolution: Star Beam becomes a rapid prism that splits into angled side beams.", StarBeamWeaponContentId, StarFocusUpgradeId, 5, TwinCharmUpgradeId),
                 UpgradeMetadata(GravefieldEngineEvolutionUpgradeId, "Gravefield Engine", SurvivorsRunUpgradeCategory.Evolution, SurvivorsRunBuildSlotKind.None, GravityGrenadeWeaponContentId, "Evolution: payload detonations seed satellite danger fields.", GravityGrenadeWeaponContentId, BiggerBoomsUpgradeId, 4, GiantRuneUpgradeId),

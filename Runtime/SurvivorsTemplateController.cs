@@ -279,6 +279,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ProjectileChainHitCount { get; private set; }
         public int ProjectileForkSpawnCount { get; private set; }
         public int ProjectileReturnStartCount { get; private set; }
+        public int OrbitKnockbackCount { get; private set; }
+        public string LastOrbitKnockbackFeedbackLabel { get; private set; } = string.Empty;
         public int FrostFanSlowApplicationCount { get; private set; }
         public string LastFrostFanSlowFeedbackLabel { get; private set; } = string.Empty;
         public int CinderBurnApplicationCount { get; private set; }
@@ -975,6 +977,8 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileChainHitCount = 0;
             ProjectileForkSpawnCount = 0;
             ProjectileReturnStartCount = 0;
+            OrbitKnockbackCount = 0;
+            LastOrbitKnockbackFeedbackLabel = string.Empty;
             FrostFanSlowApplicationCount = 0;
             LastFrostFanSlowFeedbackLabel = string.Empty;
             CinderBurnApplicationCount = 0;
@@ -3076,6 +3080,55 @@ namespace Deucarian.TemplateGameSurvivors
         internal void RecordOrbitHit()
         {
             OrbitHitCount++;
+        }
+
+        internal bool ApplyOrbitKnockback(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition)
+        {
+            if (enemy == null || definition == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+            {
+                return false;
+            }
+
+            bool crimsonAegis = IsCrimsonAegisOrbitDefinition(definition) &&
+                IsEvolutionActive(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId);
+            float distance = crimsonAegis
+                ? Mathf.Max(CurrentTuning.OrbitKnockbackDistance, CurrentTuning.CrimsonAegisOrbitKnockbackDistance)
+                : CurrentTuning.OrbitKnockbackDistance;
+            distance = Mathf.Max(0f, distance);
+            if (distance <= 0f)
+            {
+                return false;
+            }
+
+            Vector3 enemyPosition = enemy.transform.position;
+            Vector3 away = enemyPosition - PlayerPosition;
+            away.y = 0f;
+            if (away.sqrMagnitude <= 0.0001f)
+            {
+                away = PlayerForward;
+            }
+
+            if (away.sqrMagnitude <= 0.0001f)
+            {
+                return false;
+            }
+
+            Vector3 direction = away.normalized;
+            enemy.transform.position += direction * distance;
+            enemy.transform.forward = direction;
+            OrbitKnockbackCount++;
+            string name = string.IsNullOrWhiteSpace(definition.DisplayName) ? "Orbit" : definition.DisplayName;
+            LastOrbitKnockbackFeedbackLabel = crimsonAegis
+                ? $"Crimson Aegis pushed {enemy.DisplayName}"
+                : $"{name} pushed {enemy.DisplayName}";
+            return true;
+        }
+
+        private static bool IsCrimsonAegisOrbitDefinition(SurvivorsWeaponArchetypeDefinition definition)
+        {
+            return definition != null &&
+                (string.Equals(definition.Id, BasicSurvivorsGame.OrbitWardWeaponContentId, StringComparison.Ordinal) ||
+                 string.Equals(definition.Id, BasicSurvivorsGame.ThornHaloWeaponContentId, StringComparison.Ordinal));
         }
 
         internal void RecordMeleeSwing()

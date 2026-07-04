@@ -2810,6 +2810,53 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator OrbitHitsPushRegularEnemiesAndCrimsonAegisPushesHarder()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureOrbitOnlyTuning(controller.CurrentTuning);
+            controller.CurrentTuning.OrbitKnockbackDistance = 0.2f;
+            controller.CurrentTuning.CrimsonAegisOrbitKnockbackDistance = 0.72f;
+            controller.StartRun();
+            yield return null;
+
+            Vector3 basePosition = controller.PlayerPosition + new Vector3(controller.CurrentTuning.OrbitRadius + 0.08f, 0f, 0f);
+            SurvivorsEnemyActor baseEnemy = controller.SpawnEnemyForTest(basePosition, 1000f);
+            float baseDistanceBefore = Vector3.Distance(controller.PlayerPosition, baseEnemy.transform.position);
+            int knockbacksBefore = controller.OrbitKnockbackCount;
+
+            controller.Simulate(1f / 60f);
+            yield return null;
+
+            float basePushDistance = Vector3.Distance(controller.PlayerPosition, baseEnemy.transform.position) - baseDistanceBefore;
+            Assert.That(controller.OrbitKnockbackCount, Is.GreaterThan(knockbacksBefore));
+            Assert.That(basePushDistance, Is.GreaterThan(0.08f));
+            Assert.That(controller.LastOrbitKnockbackFeedbackLabel, Does.Contain("pushed"));
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BloodRingCanticleUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId));
+
+            Vector3 evolvedPosition = controller.PlayerPosition + new Vector3(controller.CurrentTuning.OrbitRadius + 0.08f, 0f, 0f);
+            SurvivorsEnemyActor evolvedEnemy = controller.SpawnEnemyForTest(evolvedPosition, 1000f);
+            float evolvedDistanceBefore = Vector3.Distance(controller.PlayerPosition, evolvedEnemy.transform.position);
+            int evolvedKnockbacksBefore = controller.OrbitKnockbackCount;
+
+            controller.Simulate(1f / 60f);
+            yield return null;
+
+            float evolvedPushDistance = Vector3.Distance(controller.PlayerPosition, evolvedEnemy.transform.position) - evolvedDistanceBefore;
+            Assert.That(controller.OrbitKnockbackCount, Is.GreaterThan(evolvedKnockbacksBefore));
+            Assert.That(evolvedPushDistance, Is.GreaterThan(basePushDistance + 0.25f));
+            Assert.That(controller.LastOrbitKnockbackFeedbackLabel, Does.Contain("Crimson Aegis"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MeleeAndBurstWeaponsCanDamageAndKillEnemies()
         {
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
@@ -4787,6 +4834,20 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             tuning.HitscanDamage = 0f;
             tuning.GrenadeDamage = 0f;
             tuning.PlacedPayloadDamage = 0f;
+        }
+
+        private static void ConfigureOrbitOnlyTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.EnemySpawnIntervalSeconds = 999f;
+            tuning.EnemyMoveSpeed = 0f;
+            tuning.EnemyContactDamage = 0f;
+            tuning.ProjectileDamage = 0f;
+            tuning.MeleeDamage = 0f;
+            tuning.BurstDamage = 0f;
+            tuning.HitscanDamage = 0f;
+            tuning.GrenadeDamage = 0f;
+            tuning.PlacedPayloadDamage = 0f;
+            tuning.OrbitDegreesPerSecond = 0f;
         }
 
         private static void ConfigureHitscanOnlyTuning(SurvivorsTemplateTuning tuning)
