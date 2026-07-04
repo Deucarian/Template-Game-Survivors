@@ -213,6 +213,9 @@ namespace Deucarian.TemplateGameSurvivors
         private float _bossRelicSurgeTimer;
         private float _evolutionChainSurgeTimer;
         private float _endlessSurgeTimer;
+        private float _payloadHazardChainWindowTimer;
+        private float _payloadHazardChainCooldownTimer;
+        private int _payloadHazardChainSnareCount;
         private bool _runStarted;
         private bool _lowHealthClutchPulseUsed;
         private bool _weaponLoadoutSurgeUsed;
@@ -294,6 +297,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadHazardTickCount { get; private set; }
         public int PayloadHazardSnareCount { get; private set; }
         public string LastPayloadHazardSnareFeedbackLabel { get; private set; } = string.Empty;
+        public int PayloadHazardChainActivationCount { get; private set; }
+        public int PayloadHazardChainPulseHitCount { get; private set; }
+        public int PayloadHazardChainExperienceGemDropCount { get; private set; }
+        public string LastPayloadHazardChainFeedbackLabel { get; private set; } = string.Empty;
         public int SplitterChildSpawnCount { get; private set; }
         public int SplitterSplitFeedbackCount { get; private set; }
         public string LastSplitterSplitFeedbackLabel { get; private set; } = string.Empty;
@@ -996,6 +1003,13 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadHazardTickCount = 0;
             PayloadHazardSnareCount = 0;
             LastPayloadHazardSnareFeedbackLabel = string.Empty;
+            PayloadHazardChainActivationCount = 0;
+            PayloadHazardChainPulseHitCount = 0;
+            PayloadHazardChainExperienceGemDropCount = 0;
+            LastPayloadHazardChainFeedbackLabel = string.Empty;
+            _payloadHazardChainSnareCount = 0;
+            _payloadHazardChainWindowTimer = 0f;
+            _payloadHazardChainCooldownTimer = 0f;
             SplitterChildSpawnCount = 0;
             SplitterSplitFeedbackCount = 0;
             LastSplitterSplitFeedbackLabel = string.Empty;
@@ -1367,6 +1381,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickWeaponLoadoutSurge(dt);
             TickPassiveLoadoutSurge(dt);
             TickBossRelicSurge(dt);
+            TickPayloadHazardChain(dt);
             TickGemRush(dt);
             TickEvolutionChainSurge(dt);
             TickEndlessSurge(dt);
@@ -3222,7 +3237,7 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadHazardTickCount++;
         }
 
-        internal void RecordPayloadHazardSnare(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition)
+        internal void RecordPayloadHazardSnare(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition, Vector3 origin)
         {
             if (enemy == null || definition == null)
             {
@@ -3231,6 +3246,101 @@ namespace Deucarian.TemplateGameSurvivors
 
             PayloadHazardSnareCount++;
             LastPayloadHazardSnareFeedbackLabel = $"{definition.DisplayName} hazard snared {enemy.DisplayName}";
+            RegisterPayloadHazardChainSnare(origin, definition);
+        }
+
+        private void RegisterPayloadHazardChainSnare(Vector3 origin, SurvivorsWeaponArchetypeDefinition definition)
+        {
+            if (_payloadHazardChainCooldownTimer > 0f)
+            {
+                return;
+            }
+
+            if (_payloadHazardChainWindowTimer <= 0f)
+            {
+                _payloadHazardChainSnareCount = 0;
+            }
+
+            _payloadHazardChainSnareCount++;
+            _payloadHazardChainWindowTimer = Mathf.Max(0.05f, CurrentTuning.PayloadHazardChainWindowSeconds);
+            int threshold = Mathf.Max(1, CurrentTuning.PayloadHazardChainSnareThreshold);
+            if (_payloadHazardChainSnareCount < threshold)
+            {
+                return;
+            }
+
+            TriggerPayloadHazardChain(origin, definition);
+        }
+
+        private void TriggerPayloadHazardChain(Vector3 origin, SurvivorsWeaponArchetypeDefinition definition)
+        {
+            int caughtSnares = Mathf.Max(1, _payloadHazardChainSnareCount);
+            _payloadHazardChainSnareCount = 0;
+            _payloadHazardChainWindowTimer = 0f;
+            _payloadHazardChainCooldownTimer = Mathf.Max(0f, CurrentTuning.PayloadHazardChainCooldownSeconds);
+
+            float radius = Mathf.Max(0f, CurrentTuning.PayloadHazardChainPulseRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.PayloadHazardChainPulseDamage);
+            int hitCount = 0;
+            if (radius > 0f && damage > 0f)
+            {
+                var targets = new List<SurvivorsEnemyActor>();
+                CollectEnemiesWithinRadius(origin, radius, targets);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    SurvivorsEnemyActor target = targets[i];
+                    if (target == null || !target.IsAlive || IsMajorRewardRole(target.Role))
+                    {
+                        continue;
+                    }
+
+                    target.ApplyDamage(damage, "survivors.payload-hazard.chain");
+                    hitCount++;
+                }
+            }
+
+            int gemCount = Mathf.Max(0, CurrentTuning.PayloadHazardChainExperienceGemCount);
+            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * Mathf.Max(0.1f, CurrentTuning.PayloadHazardChainExperienceMultiplier)));
+            int spawnedExperience = 0;
+            for (int i = 0; i < gemCount; i++)
+            {
+                float angle = ((i + 0.23f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 0.78f;
+                if (SpawnPickup(SurvivorsPickupKind.Experience, origin + offset, xpPerGem) != null)
+                {
+                    spawnedExperience += xpPerGem;
+                    PayloadHazardChainExperienceGemDropCount++;
+                }
+            }
+
+            PayloadHazardChainActivationCount++;
+            PayloadHazardChainPulseHitCount += hitCount;
+            string name = definition == null || string.IsNullOrWhiteSpace(definition.DisplayName)
+                ? "Payload"
+                : definition.DisplayName;
+            LastPayloadHazardChainFeedbackLabel = $"Trap Chain: {name} caught {caughtSnares} snares, +{spawnedExperience} XP, {hitCount} enemies hit";
+            RecordStreakRewardFeedback(LastPayloadHazardChainFeedbackLabel, new Color(0.62f, 0.9f, 1f));
+            PlayFeedback(_levelUpPulse, origin, Mathf.Clamp(28 + hitCount * 4, 34, 78), _pickupClip);
+        }
+
+        private void TickPayloadHazardChain(float deltaTime)
+        {
+            float dt = Mathf.Max(0f, deltaTime);
+            if (_payloadHazardChainCooldownTimer > 0f)
+            {
+                _payloadHazardChainCooldownTimer = Mathf.Max(0f, _payloadHazardChainCooldownTimer - dt);
+            }
+
+            if (_payloadHazardChainWindowTimer <= 0f)
+            {
+                return;
+            }
+
+            _payloadHazardChainWindowTimer = Mathf.Max(0f, _payloadHazardChainWindowTimer - dt);
+            if (_payloadHazardChainWindowTimer <= 0f)
+            {
+                _payloadHazardChainSnareCount = 0;
+            }
         }
 
         private int CountEnemiesByRole(SurvivorsEnemyRole role)

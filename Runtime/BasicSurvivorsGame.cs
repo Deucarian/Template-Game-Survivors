@@ -190,6 +190,13 @@ namespace Deucarian.TemplateGameSurvivors
         public float PayloadHazardDurationSeconds = 1.6f;
         public float PayloadHazardTickIntervalSeconds = 0.45f;
         public float PayloadHazardDamageRatio = 0.18f;
+        public int PayloadHazardChainSnareThreshold = 5;
+        public float PayloadHazardChainWindowSeconds = 1.35f;
+        public float PayloadHazardChainCooldownSeconds = 3.2f;
+        public int PayloadHazardChainExperienceGemCount = 2;
+        public float PayloadHazardChainExperienceMultiplier = 1.75f;
+        public float PayloadHazardChainPulseDamage = 10f;
+        public float PayloadHazardChainPulseRadius = 4.2f;
         public float PickupAttractRange = 2.5f;
         public float PickupAttractionSpeed = 4.8f;
         public float PickupCollectRadius = 0.68f;

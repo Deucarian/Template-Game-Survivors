@@ -625,7 +625,7 @@ namespace Deucarian.TemplateGameSurvivors
                         _snareDurationSeconds > 0f &&
                         enemy.ApplyMovementSlow(_snareMoveSpeedMultiplier, _snareDurationSeconds))
                     {
-                        _controller.RecordPayloadHazardSnare(enemy, _definition);
+                        _controller.RecordPayloadHazardSnare(enemy, _definition, transform.position);
                     }
                 }
             }

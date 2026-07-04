@@ -3098,6 +3098,42 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator PayloadHazardSnareChainDropsExperienceAndPulsesHorde()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureGrenadeOnlyTuning(controller.CurrentTuning);
+            controller.CurrentTuning.PayloadHazardChainSnareThreshold = 3;
+            controller.CurrentTuning.PayloadHazardChainCooldownSeconds = 3f;
+            controller.CurrentTuning.PayloadHazardChainExperienceGemCount = 2;
+            controller.CurrentTuning.PayloadHazardChainExperienceMultiplier = 2f;
+            controller.CurrentTuning.PayloadHazardChainPulseDamage = 4f;
+            controller.CurrentTuning.PayloadHazardChainPulseRadius = 4.2f;
+            controller.StartRun();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            Vector3 center = controller.PlayerPosition + new Vector3(0.8f, 0f, 0f);
+            SurvivorsEnemyActor first = controller.SpawnEnemyForTest(center, SurvivorsEnemyRole.Swarm, 1000f);
+            controller.SpawnEnemyForTest(center + new Vector3(0.25f, 0f, 0.1f), SurvivorsEnemyRole.Swarm, 1000f);
+            controller.SpawnEnemyForTest(center + new Vector3(-0.2f, 0f, -0.12f), SurvivorsEnemyRole.Runner, 1000f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(center + new Vector3(3.2f, 0f, 0f), SurvivorsEnemyRole.Elite, 1000f);
+
+            Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));
+            yield return SimulateFrames(controller, 95);
+
+            Assert.That(controller.PayloadHazardSnareCount, Is.GreaterThanOrEqualTo(3));
+            Assert.That(controller.PayloadHazardChainActivationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.PayloadHazardChainExperienceGemDropCount, Is.EqualTo(2));
+            Assert.That(controller.PayloadHazardChainPulseHitCount, Is.EqualTo(3));
+            Assert.IsTrue(first.IsMovementSlowed);
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.That(controller.LastPayloadHazardChainFeedbackLabel, Does.Contain("Trap Chain"));
+            Assert.That(controller.LastPayloadHazardChainFeedbackLabel, Does.Contain("XP"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator GravefieldEngineEvolutionMakesGravityGrenadeLeaveSatelliteHazards()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

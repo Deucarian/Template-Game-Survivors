@@ -59,7 +59,7 @@
 - targeted burst and burst-echo hooks for Cinder Burst-style mutation routes
 - swept projectile hit checks for fast shots crossing enemies between frames
 - local projectile modifier behavior for pierce, chain, fork/split, and return/boomerang
-- short-lived primitive visuals, Arc Step dash feedback, dodgeable ranged-enemy warning cues, waystone discovery and Waystone Chain reward beats, roaming arena reward caches with optional special drops, clearable ambush packs, Arena Trial enemy rings, major-enemy pickup caches with cache-pull attraction, and HUD banners for sample-only feedback
+- short-lived primitive visuals, Arc Step dash feedback, dodgeable ranged-enemy warning cues, payload hazard Trap Chain XP/pulse payoffs, waystone discovery and Waystone Chain reward beats, roaming arena reward caches with optional special drops, clearable ambush packs, Arena Trial enemy rings, major-enemy pickup caches with cache-pull attraction, and HUD banners for sample-only feedback
 
 `Runtime/SurvivorsPayloadWeapons.cs` contains the local Survivors payload-kit runtimes:
 
