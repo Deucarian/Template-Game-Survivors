@@ -652,6 +652,8 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 FirstInfiniteArenaTilePositionForTest => _arenaTiles.Count == 0 || _arenaTiles[0] == null ? Vector3.zero : _arenaTiles[0].position;
         public Vector3 FirstInfiniteArenaLandmarkPositionForTest => _arenaLandmarks.Count == 0 || _arenaLandmarks[0] == null ? Vector3.zero : _arenaLandmarks[0].position;
         public Vector3 ClosestInfiniteArenaLandmarkPositionForTest => ResolveClosestArenaLandmarkPositionForTest();
+        public float CurrentWaystoneCompassDistanceForTest => TryResolveClosestArenaLandmark(ignoreDiscovered: true, out _, out float distance, out _) ? distance : 0f;
+        public string CurrentWaystoneCompassHudLabel => ResolveWaystoneCompassHudLabel();
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + ArenaShrineSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + WaystoneChainSurgeMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus + WeaponLoadoutSurgeMoveSpeedBonus + PassiveLoadoutSurgeMoveSpeedBonus + BossRelicSurgeMoveSpeedBonus + GemRushMoveSpeedBonus + EvolutionChainSurgeMoveSpeedBonus + EndlessSurgeMoveSpeedBonus;
@@ -869,7 +871,8 @@ namespace Deucarian.TemplateGameSurvivors
 
             EnsureHudStyles();
             string evolutionObjectiveHud = ResolveEvolutionObjectiveHudLabel();
-            GUI.Box(new Rect(12, 12, 356, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 400 : 424), string.Empty);
+            string waystoneCompassHud = ResolveWaystoneCompassHudLabel();
+            GUI.Box(new Rect(12, 12, 356, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 424 : 448), string.Empty);
             GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
             DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
             DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
@@ -887,12 +890,13 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 324, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
             GUI.Label(new Rect(24, 346, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
             GUI.Label(new Rect(24, 368, 318, 22), ResolveBuildSlotHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(24, 390, 318, 22), waystoneCompassHud, _hudSmallStyle);
             if (!string.IsNullOrWhiteSpace(evolutionObjectiveHud))
             {
-                GUI.Label(new Rect(24, 390, 318, 22), evolutionObjectiveHud, _hudSmallStyle);
+                GUI.Label(new Rect(24, 412, 318, 22), evolutionObjectiveHud, _hudSmallStyle);
             }
 
-            GUI.Label(new Rect(24, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 390 : 412, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(24, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 412 : 434, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
@@ -2037,14 +2041,23 @@ namespace Deucarian.TemplateGameSurvivors
 
         private Vector3 ResolveClosestArenaLandmarkPositionForTest()
         {
+            return TryResolveClosestArenaLandmark(ignoreDiscovered: false, out Vector3 closest, out _, out _)
+                ? closest
+                : Vector3.zero;
+        }
+
+        private bool TryResolveClosestArenaLandmark(bool ignoreDiscovered, out Vector3 closest, out float closestDistance, out Vector3 closestDelta)
+        {
+            closest = Vector3.zero;
+            closestDistance = 0f;
+            closestDelta = Vector3.zero;
             if (_arenaLandmarks.Count == 0)
             {
-                return Vector3.zero;
+                return false;
             }
 
             Vector3 player = PlayerPosition;
-            Vector3 closest = Vector3.zero;
-            float closestDistance = float.MaxValue;
+            float closestDistanceSquared = float.MaxValue;
             for (int i = 0; i < _arenaLandmarks.Count; i++)
             {
                 Transform landmark = _arenaLandmarks[i];
@@ -2053,17 +2066,31 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
+                if (ignoreDiscovered &&
+                    i < _arenaLandmarkKeys.Count &&
+                    _discoveredArenaWaystones.Contains(_arenaLandmarkKeys[i]))
+                {
+                    continue;
+                }
+
                 Vector3 delta = landmark.position - player;
                 delta.y = 0f;
-                float distance = delta.sqrMagnitude;
-                if (distance < closestDistance)
+                float distanceSquared = delta.sqrMagnitude;
+                if (distanceSquared < closestDistanceSquared)
                 {
-                    closestDistance = distance;
+                    closestDistanceSquared = distanceSquared;
                     closest = landmark.position;
+                    closestDelta = delta;
                 }
             }
 
-            return closestDistance < float.MaxValue ? closest : Vector3.zero;
+            if (closestDistanceSquared >= float.MaxValue)
+            {
+                return false;
+            }
+
+            closestDistance = Mathf.Sqrt(closestDistanceSquared);
+            return true;
         }
 
         public bool IsUpgradeEligibleInCurrentBuildForTest(string upgradeId)
@@ -9894,6 +9921,51 @@ namespace Deucarian.TemplateGameSurvivors
         private string ResolveBuildSlotHudLabel()
         {
             return $"Build W {ActiveWeaponCount}/{MaxWeaponSlots}   P {ActivePassiveCount}/{MaxPassiveSlots}   Evo {EvolvedWeaponCount}   Relic {SelectedRelicCount}/{ResolveTotalRelicCount()}";
+        }
+
+        private string ResolveWaystoneCompassHudLabel()
+        {
+            if (CurrentTuning.WaystoneDiscoveryRadius <= 0f)
+            {
+                return $"Explore Waystones off   Found {WaystoneDiscoveryCount}";
+            }
+
+            if (TryResolveClosestArenaLandmark(ignoreDiscovered: true, out _, out float distance, out Vector3 delta))
+            {
+                return $"Explore Waystone {ResolveCompassDirectionLabel(delta)} {distance:0}m   Found {WaystoneDiscoveryCount}";
+            }
+
+            if (TryResolveClosestArenaLandmark(ignoreDiscovered: false, out _, out _, out _))
+            {
+                return $"Explore Waystone new grid   Found {WaystoneDiscoveryCount}";
+            }
+
+            return $"Explore Waystone --   Found {WaystoneDiscoveryCount}";
+        }
+
+        private static string ResolveCompassDirectionLabel(Vector3 delta)
+        {
+            delta.y = 0f;
+            if (delta.sqrMagnitude <= 0.0001f)
+            {
+                return "here";
+            }
+
+            float absX = Mathf.Abs(delta.x);
+            float absZ = Mathf.Abs(delta.z);
+            string horizontal = delta.x >= 0f ? "E" : "W";
+            string vertical = delta.z >= 0f ? "N" : "S";
+            if (absX > absZ * 1.85f)
+            {
+                return horizontal;
+            }
+
+            if (absZ > absX * 1.85f)
+            {
+                return vertical;
+            }
+
+            return vertical + horizontal;
         }
 
         private string ResolveEvolutionGoalHudLabel()
