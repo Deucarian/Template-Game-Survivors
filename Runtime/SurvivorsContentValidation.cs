@@ -1738,6 +1738,31 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "roaming cache surge pickup range bonus", profile.roamingCacheSurgePickupRangeBonus, result);
             ValidatePositive(profileId, "roaming cache surge pulse damage", profile.roamingCacheSurgePulseDamage, result);
             ValidatePositive(profileId, "roaming cache surge pulse radius", profile.roamingCacheSurgePulseRadius, result);
+            ValidatePositive(profileId, "arena shrine travel interval", profile.arenaShrineTravelInterval, result);
+            ValidatePositive(profileId, "arena shrine base enemy count", profile.arenaShrineBaseEnemyCount, result);
+            ValidatePositive(profileId, "arena shrine enemy count increase", profile.arenaShrineEnemyCountIncreasePerTrial, result);
+            ValidatePositive(profileId, "arena shrine max enemy count", profile.arenaShrineMaxEnemyCount, result);
+            if (profile.arenaShrineMaxEnemyCount < profile.arenaShrineBaseEnemyCount)
+            {
+                result.AddError($"Run flow profile {profileId} arena shrine max enemy count must be at least the base count.");
+            }
+
+            ValidatePositive(profileId, "arena shrine extra alive allowance", profile.arenaShrineExtraAliveAllowance, result);
+            ValidatePositive(profileId, "arena shrine spawn radius", profile.arenaShrineSpawnRadius, result);
+            ValidatePositive(profileId, "arena shrine clear XP gem count", profile.arenaShrineClearExperienceGemCount, result);
+            ValidatePositive(profileId, "arena shrine clear XP multiplier", profile.arenaShrineClearExperienceMultiplier, result);
+            ValidatePositive(profileId, "arena shrine clear blood shard amount", profile.arenaShrineClearBloodShardAmount, result);
+            ValidatePositive(profileId, "arena shrine surge duration", profile.arenaShrineSurgeDurationSeconds, result);
+            ValidatePositive(profileId, "arena shrine surge damage bonus", profile.arenaShrineSurgeDamageBonus, result);
+            ValidatePositive(profileId, "arena shrine surge move speed bonus", profile.arenaShrineSurgeMoveSpeedBonus, result);
+            if (profile.arenaShrineSurgeCooldownMultiplierBonus >= 0f || profile.arenaShrineSurgeCooldownMultiplierBonus <= -0.75f)
+            {
+                result.AddError($"Run flow profile {profileId} arena shrine surge cooldown multiplier must be below zero and above -0.75.");
+            }
+
+            ValidatePositive(profileId, "arena shrine surge pickup range bonus", profile.arenaShrineSurgePickupRangeBonus, result);
+            ValidatePositive(profileId, "arena shrine surge pulse damage", profile.arenaShrineSurgePulseDamage, result);
+            ValidatePositive(profileId, "arena shrine surge pulse radius", profile.arenaShrineSurgePulseRadius, result);
             ValidatePositive(profileId, "draft choice count", profile.draftChoiceCount, result);
             ValidatePositive(profileId, "draft reroll charges", profile.draftRerollCharges, result);
             ValidatePositive(profileId, "draft banish charges", profile.draftBanishCharges, result);
@@ -2766,6 +2791,22 @@ namespace Deucarian.TemplateGameSurvivors
             public float roamingCacheSurgePickupRangeBonus;
             public float roamingCacheSurgePulseDamage;
             public float roamingCacheSurgePulseRadius;
+            public float arenaShrineTravelInterval;
+            public int arenaShrineBaseEnemyCount;
+            public int arenaShrineEnemyCountIncreasePerTrial;
+            public int arenaShrineMaxEnemyCount;
+            public int arenaShrineExtraAliveAllowance;
+            public float arenaShrineSpawnRadius;
+            public int arenaShrineClearExperienceGemCount;
+            public float arenaShrineClearExperienceMultiplier;
+            public int arenaShrineClearBloodShardAmount;
+            public float arenaShrineSurgeDurationSeconds;
+            public float arenaShrineSurgeDamageBonus;
+            public float arenaShrineSurgeMoveSpeedBonus;
+            public float arenaShrineSurgeCooldownMultiplierBonus;
+            public float arenaShrineSurgePickupRangeBonus;
+            public float arenaShrineSurgePulseDamage;
+            public float arenaShrineSurgePulseRadius;
             public int draftChoiceCount;
             public int draftRerollCharges;
             public int draftBanishCharges;

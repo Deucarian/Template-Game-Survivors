@@ -465,6 +465,16 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.EndlessSurgePickupRangeBonus, Is.GreaterThan(0f));
             Assert.That(tuning.EndlessSurgePulseDamage, Is.GreaterThan(0f));
             Assert.That(tuning.EndlessSurgePulseRadius, Is.InRange(5f, 7f));
+            Assert.That(tuning.ArenaShrineTravelInterval, Is.GreaterThan(30f));
+            Assert.That(tuning.ArenaShrineBaseEnemyCount, Is.GreaterThanOrEqualTo(4));
+            Assert.That(tuning.ArenaShrineMaxEnemyCount, Is.GreaterThanOrEqualTo(tuning.ArenaShrineBaseEnemyCount));
+            Assert.That(tuning.ArenaShrineClearExperienceGemCount, Is.GreaterThanOrEqualTo(4));
+            Assert.That(tuning.ArenaShrineClearExperienceMultiplier, Is.GreaterThan(1f));
+            Assert.That(tuning.ArenaShrineClearBloodShardAmount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(tuning.ArenaShrineSurgeDurationSeconds, Is.InRange(5f, 8f));
+            Assert.That(tuning.ArenaShrineSurgeDamageBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.ArenaShrineSurgeCooldownMultiplierBonus, Is.LessThan(0f));
+            Assert.That(tuning.ArenaShrineSurgePulseRadius, Is.GreaterThan(4f));
             Assert.That(tuning.MajorThreatWarningLeadSeconds, Is.InRange(5f, 12f));
             Assert.That(tuning.FirstEliteSpawnTimeSeconds, Is.InRange(120f, 240f));
             Assert.That(tuning.EliteSpawnIntervalSeconds, Is.InRange(180f, 240f));

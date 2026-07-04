@@ -1752,6 +1752,94 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ArenaTravelCanTriggerShrineTrialAndClearReward()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ProjectileDamage = 0f;
+            controller.CurrentTuning.OrbitDamage = 0f;
+            controller.CurrentTuning.MeleeDamage = 0f;
+            controller.CurrentTuning.BurstDamage = 0f;
+            controller.CurrentTuning.HitscanDamage = 0f;
+            controller.CurrentTuning.GrenadeDamage = 0f;
+            controller.CurrentTuning.PlacedPayloadDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.GemRushDurationSeconds = 0f;
+            controller.CurrentTuning.RoamingCacheTravelInterval = 999f;
+            controller.CurrentTuning.WaystoneDiscoveryRadius = 0f;
+            controller.CurrentTuning.ArenaShrineTravelInterval = 1.2f;
+            controller.CurrentTuning.ArenaShrineBaseEnemyCount = 3;
+            controller.CurrentTuning.ArenaShrineEnemyCountIncreasePerTrial = 1;
+            controller.CurrentTuning.ArenaShrineMaxEnemyCount = 3;
+            controller.CurrentTuning.ArenaShrineExtraAliveAllowance = 6;
+            controller.CurrentTuning.ArenaShrineSpawnRadius = 3f;
+            controller.CurrentTuning.ArenaShrineClearExperienceGemCount = 3;
+            controller.CurrentTuning.ArenaShrineClearExperienceMultiplier = 2.5f;
+            controller.CurrentTuning.ArenaShrineClearBloodShardAmount = 1;
+            controller.CurrentTuning.ArenaShrineSurgeDurationSeconds = 3f;
+            controller.CurrentTuning.ArenaShrineSurgeDamageBonus = 2f;
+            controller.CurrentTuning.ArenaShrineSurgeMoveSpeedBonus = 0.45f;
+            controller.CurrentTuning.ArenaShrineSurgeCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.ArenaShrineSurgePickupRangeBonus = 0.8f;
+            controller.CurrentTuning.ArenaShrineSurgePulseDamage = 40f;
+            controller.CurrentTuning.ArenaShrineSurgePulseRadius = 10f;
+            controller.StartRun();
+            yield return null;
+
+            yield return SimulateFrames(controller, 20, Vector2.right);
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.ArenaShrineTrialCount);
+            Assert.AreEqual(3, controller.ArenaShrineEnemySpawnCount);
+            Assert.AreEqual(3, controller.ActiveArenaShrineEnemyCount);
+            Assert.That(controller.LastArenaShrineFeedbackLabel, Does.Contain("Arena Trial"));
+            Assert.That(controller.LastArenaShrineFeedbackLabel, Does.Contain("x3"));
+
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.9f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 1.2f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, -1.6f), SurvivorsEnemyRole.Elite, 35f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedElite);
+
+            float startingDamage = controller.ProjectileDamage;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
+
+            Assert.AreEqual(3, controller.KillActiveArenaShrineEnemiesForTest());
+            yield return null;
+
+            Assert.AreEqual(0, controller.ActiveArenaShrineEnemyCount);
+            Assert.AreEqual(1, controller.ArenaShrineClearRewardCount);
+            Assert.AreEqual(3, controller.ArenaShrineClearExperienceGemDropCount);
+            Assert.AreEqual(1, controller.ArenaShrineClearBloodShardDropCount);
+            Assert.AreEqual(1, controller.ArenaShrineSurgeActivationCount);
+            Assert.That(controller.ArenaShrineSurgePulseHitCount, Is.GreaterThanOrEqualTo(2));
+            Assert.IsTrue(controller.IsArenaShrineSurgeActive);
+            Assert.That(controller.ArenaShrineSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.IsTrue(protectedElite.IsAlive);
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
+            Assert.That(controller.LastArenaShrineClearFeedbackLabel, Does.Contain("Arena Trial Cleared"));
+            Assert.That(controller.LastArenaShrineClearFeedbackLabel, Does.Contain("Shrine Surge"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Arena Trial Cleared"));
+
+            float surgedDamage = controller.ProjectileDamage;
+            controller.Simulate(controller.CurrentTuning.ArenaShrineSurgeDurationSeconds + 0.2f);
+            yield return null;
+
+            Assert.IsFalse(controller.IsArenaShrineSurgeActive);
+            Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RapidKillsCreateStreakBonusDropsAndMagnet()
         {
             SurvivorsTemplateController controller = CreateController();
