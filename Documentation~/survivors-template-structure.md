@@ -103,6 +103,7 @@
 - valid boss/miniboss enemy roles, spawn times, and combat stats
 - valid pickup IDs, display names, attraction values, and behavior descriptions
 - valid run-upgrade target references
+- valid upgrade draft-card display names, categories, and description text
 - valid reward currency, legacy XP, persistent upgrade, rank cost, and target references
 - valid relic IDs, effect kinds, targets, weights, and amounts
 - valid class IDs, default class references, starting weapon/loadout references, class-gated upgrade references, unlock reward IDs, and starting stat modifiers

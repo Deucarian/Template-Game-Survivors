@@ -69,7 +69,7 @@ Default play uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` is re
 ## What To Customize First
 
 - Weapon and projectile feel: edit `Samples~/BasicSurvivorsGame/Content/DefaultWeapons/weapons.json`, then compare with `Runtime/BasicSurvivorsGame.cs` and `CreateWeaponArchetypeDefinitions`.
-- Upgrades, evolutions, class gates, passive atlases, and weapon tracks: edit `Samples~/BasicSurvivorsGame/Content/DefaultUpgrades/upgrades.json`, `Samples~/BasicSurvivorsGame/Content/DefaultProgression/progression.json`, `CreateRunUpgradeCatalog`, `CreateRunUpgradeMetadata`, and `CreateProgressionTrackDefinitions`. Class gates are derived from class-specific progression tracks.
+- Upgrades, evolutions, class gates, passive atlases, and weapon tracks: edit `Samples~/BasicSurvivorsGame/Content/DefaultUpgrades/upgrades.json`, `Samples~/BasicSurvivorsGame/Content/DefaultProgression/progression.json`, `CreateRunUpgradeCatalog`, `CreateRunUpgradeMetadata`, and `CreateProgressionTrackDefinitions`. Upgrade JSON records carry draft-card `displayName`, `category`, and `description` text so asset flips keep readable choices; class gates are derived from class-specific progression tracks.
 - Enemies, pickups, miniboss, boss, and rewards: edit `Samples~/BasicSurvivorsGame/Content/DefaultEnemies/enemies.json`, `Samples~/BasicSurvivorsGame/Content/DefaultPickups/pickups.json`, `Samples~/BasicSurvivorsGame/Content/DefaultRewards/rewards.json`, and `CreateRunFlowDefinition`.
 - Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
 - Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.

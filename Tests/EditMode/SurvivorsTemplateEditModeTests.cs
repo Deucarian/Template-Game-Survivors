@@ -716,6 +716,21 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void InvalidUpgradeSampleContentReportsMissingDraftCardMetadata()
+        {
+            string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";
+            string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("missing a display name", errors);
+            StringAssert.Contains("missing a draft category", errors);
+            StringAssert.Contains("missing draft description text", errors);
+        }
+
+        [Test]
         public void SampleUpgradeContentRequiresEvolutionRecords()
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";

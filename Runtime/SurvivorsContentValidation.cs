@@ -995,8 +995,22 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError($"Upgrade {upgrade.id} references unknown rarity: {upgrade.rarity}");
             }
 
+            if (string.IsNullOrWhiteSpace(upgrade.displayName))
+            {
+                result.AddError($"Upgrade {upgrade.id} is missing a display name.");
+            }
+
+            if (string.IsNullOrWhiteSpace(upgrade.description))
+            {
+                result.AddError($"Upgrade {upgrade.id} is missing draft description text.");
+            }
+
             bool isEvolution = false;
-            if (!string.IsNullOrWhiteSpace(upgrade.category))
+            if (string.IsNullOrWhiteSpace(upgrade.category))
+            {
+                result.AddError($"Upgrade {upgrade.id} is missing a draft category.");
+            }
+            else
             {
                 if (!Enum.TryParse(upgrade.category, ignoreCase: true, out SurvivorsRunUpgradeCategory parsedCategory) ||
                     !Enum.IsDefined(typeof(SurvivorsRunUpgradeCategory), parsedCategory))
