@@ -559,6 +559,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float EndlessSurgeMoveSpeedBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgeMoveSpeedBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
         public float EndlessSurgeCooldownMultiplierBonus => IsEndlessSurgeActive ? Mathf.Min(0f, CurrentTuning.EndlessSurgeCooldownMultiplierBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
         public float EndlessSurgePickupRangeBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgePickupRangeBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
+        public int EndlessExplorationBonusTier => ResolveEndlessExplorationBonusTier();
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
         public int BloodShardsEarnedThisRun { get; private set; }
@@ -6657,8 +6658,8 @@ namespace Deucarian.TemplateGameSurvivors
 
             Vector3 side = new Vector3(-forward.z, 0f, forward.x);
             int nextCacheNumber = RoamingCacheDropCount + 1;
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1f + RunEscalationLevel * 0.08f)));
-            int gemCount = Mathf.Max(1, CurrentTuning.RoamingCacheExperienceGemCount);
+            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1f + RunEscalationLevel * 0.08f) * ResolveEndlessExplorationExperienceMultiplier()));
+            int gemCount = Mathf.Max(1, CurrentTuning.RoamingCacheExperienceGemCount + ResolveEndlessExplorationGemBonus());
             int spawnedExperience = 0;
             Vector3 origin = PlayerPosition + forward * (3.1f + sequenceOffset * 0.45f);
             for (int i = 0; i < gemCount; i++)
@@ -6687,7 +6688,8 @@ namespace Deucarian.TemplateGameSurvivors
             if (ShouldTriggerRoamingCacheCadence(nextCacheNumber, CurrentTuning.RoamingCacheBloodShardInterval))
             {
                 Vector3 shardPosition = origin - forward * 0.35f;
-                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, CurrentTuning.BloodShardPickupAmount) != null)
+                int shardAmount = CurrentTuning.BloodShardPickupAmount + ResolveEndlessExplorationShardBonus();
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount) != null)
                 {
                     spawnedBloodShard = true;
                     RoamingCacheBloodShardDropCount++;
@@ -6723,6 +6725,7 @@ namespace Deucarian.TemplateGameSurvivors
                 label += $" + Wayfinder Surge (+{surgeExperience} XP, {surgeHitCount} hit)";
             }
 
+            label += ResolveEndlessExplorationLabelSuffix();
             LastRoamingCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.35f, 0.9f, 1f));
         }
@@ -6738,9 +6741,9 @@ namespace Deucarian.TemplateGameSurvivors
             _roamingCacheSurgeTimer = Mathf.Max(0.1f, CurrentTuning.RoamingCacheSurgeDurationSeconds);
             RoamingCacheSurgeActivationCount++;
 
-            int gemCount = Mathf.Max(0, CurrentTuning.RoamingCacheSurgeBonusGemCount);
+            int gemCount = Mathf.Max(0, CurrentTuning.RoamingCacheSurgeBonusGemCount + ResolveEndlessExplorationGemBonus());
             int spawnedExperience = 0;
-            int bonusXpPerGem = Mathf.Max(1, xpPerGem * 2);
+            int bonusXpPerGem = Mathf.Max(1, Mathf.RoundToInt(xpPerGem * (2f + ResolveEndlessExplorationBonusTier() * 0.12f)));
             Vector3 center = origin + forward * 1.15f;
             for (int i = 0; i < gemCount; i++)
             {
@@ -6754,14 +6757,14 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             pulseHitCount = TriggerRoamingCacheSurgePulse(center);
-            LastRoamingCacheSurgeFeedbackLabel = $"Wayfinder Surge: +{spawnedExperience} XP, {pulseHitCount} enemies hit";
+            LastRoamingCacheSurgeFeedbackLabel = $"Wayfinder Surge: +{spawnedExperience} XP, {pulseHitCount} enemies hit{ResolveEndlessExplorationLabelSuffix()}";
             return spawnedExperience;
         }
 
         private int TriggerRoamingCacheSurgePulse(Vector3 center)
         {
             float radius = Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePulseDamage);
+            float damage = Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePulseDamage * ResolveEndlessExplorationPulseMultiplier());
             int hitCount = 0;
             if (radius > 0f && damage > 0f)
             {
@@ -6803,7 +6806,7 @@ namespace Deucarian.TemplateGameSurvivors
             int start = Mathf.Max(1, CurrentTuning.RoamingCacheAmbushStartCache);
             int distancePressureBonus = Mathf.Max(0, cacheNumber - start) / (interval * 2);
             int escalationBonus = Mathf.Max(0, RunEscalationLevel) / 3;
-            int targetCount = Mathf.Clamp(baseCount + distancePressureBonus + escalationBonus, 1, maxCount);
+            int targetCount = Mathf.Clamp(baseCount + distancePressureBonus + escalationBonus + ResolveEndlessExplorationPressureBonus(), 1, maxCount);
             int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.RoamingCacheAmbushExtraAliveAllowance) - _enemies.Count);
             targetCount = Mathf.Min(targetCount, available);
             if (targetCount <= 0)
@@ -6867,8 +6870,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void SpawnRoamingCacheAmbushClearReward(Vector3 position)
         {
-            int gemCount = Mathf.Max(1, CurrentTuning.RoamingCacheExperienceGemCount + 1);
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.35f + RunEscalationLevel * 0.08f)));
+            int gemCount = Mathf.Max(1, CurrentTuning.RoamingCacheExperienceGemCount + 1 + ResolveEndlessExplorationGemBonus());
+            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.35f + RunEscalationLevel * 0.08f) * ResolveEndlessExplorationExperienceMultiplier()));
             float radius = 0.72f + Mathf.Min(0.9f, gemCount * 0.08f);
             int spawnedExperience = 0;
             for (int i = 0; i < gemCount; i++)
@@ -6903,7 +6906,8 @@ namespace Deucarian.TemplateGameSurvivors
             if (ShouldTriggerRoamingCacheCadence(clearNumber, CurrentTuning.RoamingCacheAmbushClearBloodShardInterval))
             {
                 Vector3 shardPosition = position + new Vector3(-radius * 0.7f, 0f, radius * 0.45f);
-                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, CurrentTuning.BloodShardPickupAmount) != null)
+                int shardAmount = CurrentTuning.BloodShardPickupAmount + ResolveEndlessExplorationShardBonus();
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount) != null)
                 {
                     spawnedBloodShard = true;
                     RoamingCacheAmbushClearBloodShardDropCount++;
@@ -6922,6 +6926,7 @@ namespace Deucarian.TemplateGameSurvivors
                 label += " + Shard";
             }
 
+            label += ResolveEndlessExplorationLabelSuffix();
             LastRoamingCacheAmbushClearFeedbackLabel = label;
             LastRoamingCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.5f, 1f, 0.68f));
@@ -6959,7 +6964,7 @@ namespace Deucarian.TemplateGameSurvivors
             int baseCount = Mathf.Max(1, CurrentTuning.ArenaShrineBaseEnemyCount);
             int maxCount = Mathf.Max(baseCount, CurrentTuning.ArenaShrineMaxEnemyCount);
             int targetCount = Mathf.Clamp(
-                baseCount + Mathf.Max(0, trialNumber - 1) * Mathf.Max(0, CurrentTuning.ArenaShrineEnemyCountIncreasePerTrial) + Mathf.Max(0, RunEscalationLevel) / 3,
+                baseCount + Mathf.Max(0, trialNumber - 1) * Mathf.Max(0, CurrentTuning.ArenaShrineEnemyCountIncreasePerTrial) + Mathf.Max(0, RunEscalationLevel) / 3 + ResolveEndlessExplorationPressureBonus(),
                 1,
                 maxCount);
             int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.ArenaShrineExtraAliveAllowance) - _enemies.Count);
@@ -6994,7 +6999,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             ArenaShrineTrialCount++;
             ArenaShrineEnemySpawnCount += spawned;
-            LastArenaShrineFeedbackLabel = $"Arena Trial {ArenaShrineTrialCount}: shrine ring x{spawned}";
+            LastArenaShrineFeedbackLabel = $"Arena Trial {ArenaShrineTrialCount}: shrine ring x{spawned}{ResolveEndlessExplorationLabelSuffix()}";
             LastRoamingCacheFeedbackLabel = LastArenaShrineFeedbackLabel;
             RecordStreakRewardFeedback(LastArenaShrineFeedbackLabel, new Color(1f, 0.78f, 0.35f));
             PlayFeedback(_bossPulse, center, Mathf.Clamp(28 + spawned * 3, 36, 82), _dangerClip);
@@ -7025,9 +7030,9 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void SpawnArenaShrineClearReward(Vector3 position)
         {
-            int gemCount = Mathf.Max(1, CurrentTuning.ArenaShrineClearExperienceGemCount);
+            int gemCount = Mathf.Max(1, CurrentTuning.ArenaShrineClearExperienceGemCount + ResolveEndlessExplorationGemBonus());
             float xpMultiplier = Mathf.Max(0.1f, CurrentTuning.ArenaShrineClearExperienceMultiplier);
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * xpMultiplier * (1f + RunEscalationLevel * 0.1f)));
+            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * xpMultiplier * (1f + RunEscalationLevel * 0.1f) * ResolveEndlessExplorationExperienceMultiplier()));
             float radius = 0.95f + Mathf.Min(1.25f, gemCount * 0.09f);
             int spawnedExperience = 0;
             for (int i = 0; i < gemCount; i++)
@@ -7041,7 +7046,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            int shardAmount = Mathf.Max(0, CurrentTuning.ArenaShrineClearBloodShardAmount);
+            int shardAmount = Mathf.Max(0, CurrentTuning.ArenaShrineClearBloodShardAmount + ResolveEndlessExplorationShardBonus());
             bool spawnedBloodShard = false;
             if (shardAmount > 0 && SpawnPickup(SurvivorsPickupKind.BloodShard, position + new Vector3(-radius * 0.75f, 0f, radius * 0.45f), shardAmount) != null)
             {
@@ -7064,6 +7069,7 @@ namespace Deucarian.TemplateGameSurvivors
                 label += $" {ArenaShrineSurgeRemainingSeconds:0.#}s";
             }
 
+            label += ResolveEndlessExplorationLabelSuffix();
             LastArenaShrineClearFeedbackLabel = label;
             LastArenaShrineFeedbackLabel = label;
             LastRoamingCacheFeedbackLabel = label;
@@ -7087,7 +7093,7 @@ namespace Deucarian.TemplateGameSurvivors
         private int TriggerArenaShrineSurgePulse(Vector3 position)
         {
             float radius = Mathf.Max(0f, CurrentTuning.ArenaShrineSurgePulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.ArenaShrineSurgePulseDamage);
+            float damage = Mathf.Max(0f, CurrentTuning.ArenaShrineSurgePulseDamage * ResolveEndlessExplorationPulseMultiplier());
             if (radius <= 0f || damage <= 0f)
             {
                 return 0;
@@ -7267,8 +7273,8 @@ namespace Deucarian.TemplateGameSurvivors
         {
             int discoveryNumber = WaystoneDiscoveryCount + 1;
             bool focusActivated = ActivateWaystoneFocus();
-            int gemCount = Mathf.Max(1, CurrentTuning.WaystoneExperienceGemCount);
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.45f + RunEscalationLevel * 0.08f)));
+            int gemCount = Mathf.Max(1, CurrentTuning.WaystoneExperienceGemCount + ResolveEndlessExplorationGemBonus());
+            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.45f + RunEscalationLevel * 0.08f) * ResolveEndlessExplorationExperienceMultiplier()));
             int spawnedExperience = 0;
             float rewardRadius = 0.7f + Mathf.Min(0.8f, gemCount * 0.08f);
             for (int i = 0; i < gemCount; i++)
@@ -7285,7 +7291,8 @@ namespace Deucarian.TemplateGameSurvivors
             bool spawnedBloodShard = false;
             if (ShouldTriggerRoamingCacheCadence(discoveryNumber, CurrentTuning.WaystoneBloodShardInterval))
             {
-                if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + new Vector3(-rewardRadius, 0f, rewardRadius * 0.45f), CurrentTuning.BloodShardPickupAmount) != null)
+                int shardAmount = CurrentTuning.BloodShardPickupAmount + ResolveEndlessExplorationShardBonus();
+                if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + new Vector3(-rewardRadius, 0f, rewardRadius * 0.45f), shardAmount) != null)
                 {
                     spawnedBloodShard = true;
                     WaystoneBloodShardDropCount++;
@@ -7316,6 +7323,7 @@ namespace Deucarian.TemplateGameSurvivors
                 label += $" + Waystone Chain (+{chainExperience} XP, {chainHitCount} hit)";
             }
 
+            label += ResolveEndlessExplorationLabelSuffix();
             LastWaystoneDiscoveryFeedbackLabel = label;
             LastRoamingCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.58f, 0.95f, 1f));
@@ -7346,9 +7354,9 @@ namespace Deucarian.TemplateGameSurvivors
             _waystoneChainSurgeTimer = Mathf.Max(0.1f, CurrentTuning.WaystoneChainDurationSeconds);
             WaystoneChainSurgeActivationCount++;
 
-            int gemCount = Mathf.Max(0, CurrentTuning.WaystoneChainBonusGemCount);
+            int gemCount = Mathf.Max(0, CurrentTuning.WaystoneChainBonusGemCount + ResolveEndlessExplorationGemBonus());
             int spawnedExperience = 0;
-            int bonusXpPerGem = Mathf.Max(1, Mathf.RoundToInt(xpPerGem * 2.35f));
+            int bonusXpPerGem = Mathf.Max(1, Mathf.RoundToInt(xpPerGem * (2.35f + ResolveEndlessExplorationBonusTier() * 0.12f)));
             float rewardRadius = 0.85f + Mathf.Min(0.95f, gemCount * 0.09f);
             for (int i = 0; i < gemCount; i++)
             {
@@ -7362,14 +7370,14 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             pulseHitCount = TriggerWaystoneChainSurgePulse(position);
-            LastWaystoneChainSurgeFeedbackLabel = $"Waystone Chain: {discoveryNumber} discoveries, +{spawnedExperience} XP, {pulseHitCount} enemies hit";
+            LastWaystoneChainSurgeFeedbackLabel = $"Waystone Chain: {discoveryNumber} discoveries, +{spawnedExperience} XP, {pulseHitCount} enemies hit{ResolveEndlessExplorationLabelSuffix()}";
             return spawnedExperience;
         }
 
         private int TriggerWaystoneChainSurgePulse(Vector3 center)
         {
             float radius = Mathf.Max(0f, CurrentTuning.WaystoneChainPulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.WaystoneChainPulseDamage);
+            float damage = Mathf.Max(0f, CurrentTuning.WaystoneChainPulseDamage * ResolveEndlessExplorationPulseMultiplier());
             int hitCount = 0;
             if (radius > 0f && damage > 0f)
             {
@@ -7407,7 +7415,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.WaystoneAmbushExtraAliveAllowance) - _enemies.Count);
-            int targetCount = Mathf.Min(baseCount + Mathf.Max(0, RunEscalationLevel) / 4, available);
+            int targetCount = Mathf.Min(baseCount + Mathf.Max(0, RunEscalationLevel) / 4 + ResolveEndlessExplorationPressureBonus(), available);
             if (targetCount <= 0)
             {
                 return 0;
@@ -7788,6 +7796,52 @@ namespace Deucarian.TemplateGameSurvivors
         private float ResolveEndlessSurgeIntensityMultiplier()
         {
             return Mathf.Clamp(1f + Mathf.Max(0, EndlessSurgeTier - 1) * 0.16f, 1f, 2.25f);
+        }
+
+        private int ResolveEndlessExplorationBonusTier()
+        {
+            if (!_victoryClearedThisRun)
+            {
+                return 0;
+            }
+
+            return Mathf.Clamp(Mathf.Max(1, EndlessSurgeTier), 1, 12);
+        }
+
+        private float ResolveEndlessExplorationExperienceMultiplier()
+        {
+            int tier = ResolveEndlessExplorationBonusTier();
+            return tier <= 0 ? 1f : Mathf.Clamp(1f + tier * 0.12f, 1f, 2.5f);
+        }
+
+        private float ResolveEndlessExplorationPulseMultiplier()
+        {
+            int tier = ResolveEndlessExplorationBonusTier();
+            return tier <= 0 ? 1f : Mathf.Clamp(1f + tier * 0.08f, 1f, 2f);
+        }
+
+        private int ResolveEndlessExplorationGemBonus()
+        {
+            int tier = ResolveEndlessExplorationBonusTier();
+            return tier <= 0 ? 0 : Mathf.Min(6, (tier + 1) / 2);
+        }
+
+        private int ResolveEndlessExplorationPressureBonus()
+        {
+            int tier = ResolveEndlessExplorationBonusTier();
+            return tier <= 0 ? 0 : Mathf.Min(8, 1 + tier / 2);
+        }
+
+        private int ResolveEndlessExplorationShardBonus()
+        {
+            int tier = ResolveEndlessExplorationBonusTier();
+            return tier <= 1 ? 0 : Mathf.Min(4, 1 + tier / 3);
+        }
+
+        private string ResolveEndlessExplorationLabelSuffix()
+        {
+            int tier = ResolveEndlessExplorationBonusTier();
+            return tier <= 0 ? string.Empty : $" + Endless T{tier}";
         }
 
         private static int ResolveEndlessSurgeThreatTier(SurvivorsEnemyRole role)

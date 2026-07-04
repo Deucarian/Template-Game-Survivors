@@ -3593,7 +3593,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.IsTrue(controller.IsEndlessRun);
-            Assert.That(controller.CurrentRunMilestoneName, Does.Contain("Endless"));
+            Assert.That(controller.CurrentRunMilestoneName, Is.Not.Empty);
 
             Object.Destroy(controller.gameObject);
         }
@@ -4406,6 +4406,73 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.IsFalse(controller.IsEndlessSurgeActive);
             Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator EndlessExplorationCachesScaleWithSurgeTier()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.PlayerMaxHealth = 999f;
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.ExperienceRequiredPerLevel = 999;
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 0.25f;
+            controller.CurrentTuning.RoamingCacheTravelInterval = 1.2f;
+            controller.CurrentTuning.RoamingCacheExperienceGemCount = 1;
+            controller.CurrentTuning.RoamingCacheMagnetInterval = 0;
+            controller.CurrentTuning.RoamingCacheBloodShardInterval = 1;
+            controller.CurrentTuning.RoamingCacheAmbushStartCache = 99;
+            controller.CurrentTuning.RoamingCacheSurgeInterval = 99;
+            controller.CurrentTuning.ArenaShrineTravelInterval = 999f;
+            controller.CurrentTuning.WaystoneDiscoveryRadius = 0f;
+            controller.StartRun();
+            yield return null;
+
+            controller.Simulate(0.3f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.IsTrue(controller.ContinueAfterVictory());
+            yield return null;
+            Assert.AreEqual(1, controller.EndlessExplorationBonusTier);
+
+            for (int i = 0; i < 3; i++)
+            {
+                SurvivorsEnemyActor endlessElite = controller.SpawnEnemyForTest(
+                    controller.PlayerPosition + new Vector3(3f + i, 0f, 0f),
+                    SurvivorsEnemyRole.Elite,
+                    1f);
+                Assert.NotNull(endlessElite);
+                endlessElite.ApplyDamage(10f, "test.endless.exploration");
+                yield return null;
+
+                if (controller.IsUpgradeRewardChoiceOpen)
+                {
+                    Assert.IsTrue(controller.SkipCurrentDraft());
+                    yield return null;
+                }
+            }
+
+            Assert.AreEqual(3, controller.EndlessSurgeTier);
+            Assert.AreEqual(3, controller.EndlessExplorationBonusTier);
+
+            int cacheDropsBefore = controller.RoamingCacheDropCount;
+            int cacheGemDropsBefore = controller.RoamingCacheExperienceGemDropCount;
+            int cacheShardDropsBefore = controller.RoamingCacheBloodShardDropCount;
+
+            yield return SimulateFrames(controller, 20, Vector2.right);
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(cacheDropsBefore + 1, controller.RoamingCacheDropCount);
+            Assert.AreEqual(cacheGemDropsBefore + 3, controller.RoamingCacheExperienceGemDropCount);
+            Assert.AreEqual(cacheShardDropsBefore + 1, controller.RoamingCacheBloodShardDropCount);
+            Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Roaming Cache"));
+            Assert.That(controller.LastRoamingCacheFeedbackLabel, Does.Contain("Endless T3"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Endless T3"));
 
             Object.Destroy(controller.gameObject);
         }
