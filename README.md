@@ -173,7 +173,7 @@ No screenshot or GIF assets are committed yet. Add `Documentation~/media/` captu
 - Weapons do not fire: enemies must be in range; move near the horde and wait for auto-fire cadence.
 - Combat feedback is hard to read: confirm the imported sample is current, then damage enemies or take a hit; enemies should flash on hit, deaths should leave a short burst, ranged attackers should draw a quick hostile shot cue before damage lands, streak drops should show a short reward banner, major reward kills should pop a colored cache beacon and pull their cache pickups inward, resolved damage should appear as short-lived numbers, and low health should pulse a red screen-edge warning.
 - Draft choices do not appear: collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.
-- Relic choices do not appear: defeat the miniboss first.
+- Relic choices do not appear: defeat the miniboss first, then resolve its upgrade reward; the boss relic draft opens immediately after that reward.
 - Persistent class or meta state looks stale: use the template reset/debug hooks from tests or clear the local sample save before validating a fresh profile.
 - Defeat or victory is stuck: press `R` or click the restart button.
 

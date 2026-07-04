@@ -185,6 +185,7 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _metaProfileLoaded;
         private bool _runRewardsGranted;
         private bool _pendingVictoryAfterRewardDraft;
+        private bool _pendingBossRelicAfterRewardDraft;
         private bool _victoryClearedThisRun;
         private bool _firstEliteWarningShown;
         private bool _firstDreadEliteWarningShown;
@@ -5997,6 +5998,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardSelectionTimer = 0f;
             _currentDraftRerollIndex = 0;
             _pendingVictoryAfterRewardDraft = false;
+            _pendingBossRelicAfterRewardDraft = false;
         }
 
         private int GainExperience(int amount)
@@ -6108,6 +6110,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = selectionKind;
             _pendingVictoryAfterRewardDraft = role == SurvivorsEnemyRole.Boss && !_victoryClearedThisRun;
+            _pendingBossRelicAfterRewardDraft = role == SurvivorsEnemyRole.Miniboss;
             if (role == SurvivorsEnemyRole.Boss)
             {
                 BossUpgradeDraftOpenCount++;
@@ -6339,7 +6342,25 @@ namespace Deucarian.TemplateGameSurvivors
             if (selectionKind == SurvivorsRewardSelectionKind.BossUpgrade && _pendingVictoryAfterRewardDraft)
             {
                 _pendingVictoryAfterRewardDraft = false;
+                _pendingBossRelicAfterRewardDraft = false;
                 EnterVictory();
+            }
+            else if (_pendingBossRelicAfterRewardDraft)
+            {
+                _pendingBossRelicAfterRewardDraft = false;
+                if (OpenBossRelicDraft())
+                {
+                    return;
+                }
+
+                if (PendingLevelUps > 0)
+                {
+                    OpenLevelUpDraft();
+                }
+                else
+                {
+                    State = SurvivorsRunState.Playing;
+                }
             }
             else if (PendingLevelUps > 0)
             {
@@ -6366,6 +6387,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             _rewardSelectionTimer = 0f;
             _pendingVictoryAfterRewardDraft = false;
+            _pendingBossRelicAfterRewardDraft = false;
             _currentDraftRerollIndex = 0;
             if (PendingLevelUps > 0)
             {

@@ -22,7 +22,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Long movement through the endless arena drops small roaming XP caches, and later caches can add magnet recall pickups, shard bonuses, or clearable trailing ambush packs so repositioning has a reward beat with some pressure.
 - The HUD shows current weapon slots, passive slots, and evolved weapon count so build pressure is visible during the run.
 - Elites, minibosses, and bosses add blood shard and legacy XP reward bonuses to the run summary, then drop visible reward caches whose pickups pulse and pull inward once the reward moment resolves.
-- Elite and miniboss defeat open stronger upgrade reward drafts.
+- Elite defeat opens a stronger upgrade reward draft; miniboss defeat opens that stronger upgrade reward and then chains into a boss relic draft.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
 - Mid-run level-up drafts guarantee one Rare-or-better choice when eligible, and late-run drafts guarantee one Epic-or-better choice when eligible.
 - Human Playtest level-up, elite reward, boss evolution, and boss relic choices do not auto-pick; faster validation profiles can use timed auto-pick.
@@ -56,7 +56,7 @@ First run target:
 - For a default-class evolution, rank Arcane Damage five times and take Arcane Thesis to build Arc Bolt toward Arcane Storm, rank Frost Fan five times and take Frost Needlework, rank Orbiting Focus five times and take Blood Ring Canticle, or rank Nova Echo five times and take Cinder Script.
 - After unlocking Ember Vanguard, rank Moonlit Edge five times and take Moon Oath to build Moon Slash toward Eclipse Waltz.
 - For the Ember Vanguard hazard build, rank Rune Lattice five times and take Siege Payloads to build Rune Trap and Aether Mine toward Aetherfield Matrix satellite hazards.
-- Defeat the miniboss, pick the elite upgrade reward, and watch its reward cache pickups surge inward as play resumes.
+- Defeat the miniboss, pick or skip the elite upgrade reward, then pick a boss relic before watching its reward cache pickups surge inward as play resumes.
 - Watch the major-threat health bar drop while fighting the miniboss and final boss, back away from their slam warning disc, then dodge the support ring each major threat calls in near low health.
 - Build toward an evolution by ranking a weapon path and taking the matching passive; the HUD should briefly announce Evolution Ready once the requirements are met.
 - Select an evolution reward and watch its surge clear nearby non-major enemies before the evolved behavior takes over.

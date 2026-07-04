@@ -2760,11 +2760,14 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator MinibossDeathOpensEliteUpgradeRewardChoice()
+        public IEnumerator MinibossDeathChainsUpgradeRewardIntoBossRelicChoice()
         {
             SurvivorsTemplateController controller = CreateController();
             yield return null;
 
+            float previousRelicDamage = controller.RelicDamageBonus;
+            float previousRelicCooldown = controller.RelicCooldownMultiplierBonus;
+            float previousRelicPickup = controller.RelicPickupRangeBonus;
             SurvivorsEnemyActor miniboss = controller.SpawnMinibossForTest(controller.PlayerPosition + new Vector3(2.4f, 0f, 0f), 1f);
             miniboss.ApplyDamage(100f, "test.miniboss");
             yield return null;
@@ -2775,8 +2778,22 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.EliteUpgradeDraftOpenCount, Is.GreaterThanOrEqualTo(1));
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
             Assert.IsTrue(controller.SelectUpgrade(0));
-            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.IsTrue(controller.IsRelicChoiceOpen);
+            Assert.That(controller.BossRelicDraftOpenCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(3, controller.CurrentRelicChoices.Count);
             Assert.AreEqual(1, controller.SelectedRewardUpgradeCount);
+            Assert.IsTrue(controller.SelectRelicForTest(0));
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(1, controller.SelectedRelicCount);
+            bool relicChanged = controller.RelicDamageBonus != previousRelicDamage ||
+                controller.RelicCooldownMultiplierBonus != previousRelicCooldown ||
+                controller.RelicPickupRangeBonus != previousRelicPickup;
+            Assert.IsTrue(relicChanged);
 
             Object.Destroy(controller.gameObject);
         }

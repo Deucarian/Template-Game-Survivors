@@ -61,7 +61,7 @@ After 5 minutes:
 
 After 7 minutes:
 
-- The miniboss should have appeared, shown a health bar while alive, and may have opened an elite reward draft; its death should burst into a larger reward cache whose drops pull inward when the run resumes.
+- The miniboss should have appeared, shown a health bar while alive, opened an elite reward draft on death, then chained into a boss relic choice before play resumes; its death should burst into a larger reward cache whose drops pull inward when the reward sequence resolves.
 - The miniboss warning should have appeared shortly before the miniboss entered.
 - The miniboss should paint a slam warning disc before area damage and call in a larger support ring near low health, making the fight briefly spike without hiding the health bar or reward flow.
 - The run should have a clear build direction from weapon ranks, passives, or branch mutations.
