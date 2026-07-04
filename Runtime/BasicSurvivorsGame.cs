@@ -216,6 +216,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int WaystoneAmbushBaseEnemyCount = 2;
         public int WaystoneAmbushExtraAliveAllowance = 8;
         public float WaystoneAmbushRadius = 3.4f;
+        public float WaystoneFocusDurationSeconds = 5.5f;
+        public float WaystoneFocusDamageBonus = 1.1f;
+        public float WaystoneFocusMoveSpeedBonus = 0.22f;
+        public float WaystoneFocusCooldownMultiplierBonus = -0.035f;
+        public float WaystoneFocusPickupRangeBonus = 0.45f;
         public int HealthPickupHealAmount = 10;
         public int BloodShardPickupAmount = 1;
         public int ExperienceRequiredBase = 8;
@@ -707,6 +712,11 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.WaystoneExperienceGemCount = 5;
             tuning.WaystoneAmbushBaseEnemyCount = 3;
             tuning.WaystoneAmbushExtraAliveAllowance = 14;
+            tuning.WaystoneFocusDurationSeconds = 5f;
+            tuning.WaystoneFocusDamageBonus = 1.8f;
+            tuning.WaystoneFocusMoveSpeedBonus = 0.32f;
+            tuning.WaystoneFocusCooldownMultiplierBonus = -0.055f;
+            tuning.WaystoneFocusPickupRangeBonus = 0.72f;
             tuning.RewardUpgradeSurgeDamage = 20f;
             tuning.RewardUpgradeSurgeRadius = 5.2f;
             tuning.HealthPickupHealAmount = 14;
@@ -812,6 +822,11 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.WaystoneExperienceGemCount = 5;
             tuning.WaystoneAmbushBaseEnemyCount = 3;
             tuning.WaystoneAmbushExtraAliveAllowance = 12;
+            tuning.WaystoneFocusDurationSeconds = 5.5f;
+            tuning.WaystoneFocusDamageBonus = 1.4f;
+            tuning.WaystoneFocusMoveSpeedBonus = 0.28f;
+            tuning.WaystoneFocusCooldownMultiplierBonus = -0.045f;
+            tuning.WaystoneFocusPickupRangeBonus = 0.6f;
             tuning.RewardUpgradeSurgeDamage = 18f;
             tuning.RewardUpgradeSurgeRadius = 5f;
             tuning.HealthPickupHealAmount = 12;

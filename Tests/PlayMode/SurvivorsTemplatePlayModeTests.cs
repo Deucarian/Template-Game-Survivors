@@ -1345,10 +1345,19 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.WaystoneAmbushInterval = 1;
             controller.CurrentTuning.WaystoneAmbushBaseEnemyCount = 2;
             controller.CurrentTuning.WaystoneAmbushExtraAliveAllowance = 4;
+            controller.CurrentTuning.WaystoneFocusDurationSeconds = 4f;
+            controller.CurrentTuning.WaystoneFocusDamageBonus = 2f;
+            controller.CurrentTuning.WaystoneFocusMoveSpeedBonus = 0.5f;
+            controller.CurrentTuning.WaystoneFocusCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.WaystoneFocusPickupRangeBonus = 0.8f;
             controller.StartRun();
             yield return null;
 
             Assert.That(controller.InfiniteArenaLandmarkCountForTest, Is.GreaterThanOrEqualTo(8));
+            float startingDamage = controller.ProjectileDamage;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
             Vector3 target = controller.ClosestInfiniteArenaLandmarkPositionForTest;
             Vector3 toTarget = target - controller.PlayerPosition;
             Vector2 movement = new Vector2(toTarget.x, toTarget.z).normalized;
@@ -1370,14 +1379,27 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1, controller.WaystoneBloodShardDropCount, "Waystone blood shard drop count");
             Assert.AreEqual(1, controller.WaystoneAmbushCount, "Waystone ambush count");
             Assert.AreEqual(2, controller.WaystoneAmbushEnemySpawnCount, "Waystone ambush enemy spawn count");
+            Assert.AreEqual(1, controller.WaystoneFocusActivationCount, "Waystone focus activation count");
+            Assert.IsTrue(controller.IsWaystoneFocusActive, "Waystone focus should be active after discovery");
+            Assert.That(controller.WaystoneFocusRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
             Assert.That(controller.LastWaystoneDiscoveryFeedbackLabel, Does.Contain("Waystone Discovered"));
             Assert.That(controller.LastWaystoneDiscoveryFeedbackLabel, Does.Contain("Shard"));
+            Assert.That(controller.LastWaystoneDiscoveryFeedbackLabel, Does.Contain("Focus"));
             Assert.That(controller.LastWaystoneDiscoveryFeedbackLabel, Does.Contain("Ambush"));
             Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Waystone"));
 
             yield return SimulateFrames(controller, 12);
 
             Assert.AreEqual(1, controller.WaystoneDiscoveryCount, "Waystone discovery should not repeat while staying on the same marker");
+            controller.Simulate(controller.CurrentTuning.WaystoneFocusDurationSeconds + 0.25f);
+            yield return null;
+
+            Assert.IsFalse(controller.IsWaystoneFocusActive, "Waystone focus should expire");
+            Assert.That(controller.ProjectileDamage, Is.EqualTo(startingDamage).Within(0.001f));
 
             Object.Destroy(controller.gameObject);
         }

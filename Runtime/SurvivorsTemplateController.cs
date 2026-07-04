@@ -191,6 +191,7 @@ namespace Deucarian.TemplateGameSurvivors
         private int _currentDraftRerollIndex;
         private float _streakSurgeTimer;
         private float _roamingCacheSurgeTimer;
+        private float _waystoneFocusTimer;
         private bool _runStarted;
         private bool _ownsMetaProgressionService;
         private bool _metaProfileLoaded;
@@ -379,6 +380,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int WaystoneBloodShardDropCount { get; private set; }
         public int WaystoneAmbushCount { get; private set; }
         public int WaystoneAmbushEnemySpawnCount { get; private set; }
+        public int WaystoneFocusActivationCount { get; private set; }
         public string LastWaystoneDiscoveryFeedbackLabel { get; private set; } = string.Empty;
         public int BestKillStreak { get; private set; }
         public int StreakBonusDropCount { get; private set; }
@@ -402,6 +404,12 @@ namespace Deucarian.TemplateGameSurvivors
         public float RoamingCacheSurgeMoveSpeedBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgeMoveSpeedBonus) : 0f;
         public float RoamingCacheSurgeCooldownMultiplierBonus => IsRoamingCacheSurgeActive ? Mathf.Min(0f, CurrentTuning.RoamingCacheSurgeCooldownMultiplierBonus) : 0f;
         public float RoamingCacheSurgePickupRangeBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePickupRangeBonus) : 0f;
+        public bool IsWaystoneFocusActive => _waystoneFocusTimer > 0f;
+        public float WaystoneFocusRemainingSeconds => Mathf.Max(0f, _waystoneFocusTimer);
+        public float WaystoneFocusDamageBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusDamageBonus) : 0f;
+        public float WaystoneFocusMoveSpeedBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusMoveSpeedBonus) : 0f;
+        public float WaystoneFocusCooldownMultiplierBonus => IsWaystoneFocusActive ? Mathf.Min(0f, CurrentTuning.WaystoneFocusCooldownMultiplierBonus) : 0f;
+        public float WaystoneFocusPickupRangeBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusPickupRangeBonus) : 0f;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
         public int BloodShardsEarnedThisRun { get; private set; }
@@ -524,13 +532,13 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 ClosestInfiniteArenaLandmarkPositionForTest => ResolveClosestArenaLandmarkPositionForTest();
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
-        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus;
+        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus;
         public float DashCooldownRemainingSeconds => Mathf.Max(0f, _dashCooldownTimer);
         public float PlayerSafetyRemainingSeconds => Mathf.Max(0f, _playerInvulnerabilityTimer);
         public bool IsPlayerSafetyActive => _playerInvulnerabilityTimer > 0f;
-        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus);
-        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus));
-        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus);
+        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus);
+        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus));
+        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus);
         public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
         public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
         public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
@@ -920,6 +928,7 @@ namespace Deucarian.TemplateGameSurvivors
             WaystoneBloodShardDropCount = 0;
             WaystoneAmbushCount = 0;
             WaystoneAmbushEnemySpawnCount = 0;
+            WaystoneFocusActivationCount = 0;
             LastWaystoneDiscoveryFeedbackLabel = string.Empty;
             _discoveredArenaWaystones.Clear();
             BestKillStreak = 0;
@@ -1012,6 +1021,7 @@ namespace Deucarian.TemplateGameSurvivors
             _killStreakCount = 0;
             _streakSurgeTimer = 0f;
             _roamingCacheSurgeTimer = 0f;
+            _waystoneFocusTimer = 0f;
             _announcedEvolutionGoalUpgradeIds.Clear();
             _announcedEvolutionReadyUpgradeIds.Clear();
             _evolutionReadyFeedbackLabel = string.Empty;
@@ -1098,6 +1108,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickKillStreak(dt);
             TickStreakSurge(dt);
             TickRoamingCacheSurge(dt);
+            TickWaystoneFocus(dt);
             TickBarrier(dt);
             MovePlayer(movementInput, dt);
             TickArenaWaystoneDiscoveries();
@@ -1867,7 +1878,7 @@ namespace Deucarian.TemplateGameSurvivors
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
                 $"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}",
-                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
+                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
@@ -2540,7 +2551,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return 0f;
             }
 
-            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus);
+            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus);
         }
 
         internal float ResolveWeaponCooldownSeconds(SurvivorsWeaponArchetypeDefinition definition)
@@ -2550,7 +2561,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return WeaponCooldownSeconds;
             }
 
-            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus));
+            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus));
         }
 
         internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction)
@@ -5939,6 +5950,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void SpawnWaystoneDiscoveryReward(Vector3 position)
         {
             int discoveryNumber = WaystoneDiscoveryCount + 1;
+            bool focusActivated = ActivateWaystoneFocus();
             int gemCount = Mathf.Max(1, CurrentTuning.WaystoneExperienceGemCount);
             int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.45f + RunEscalationLevel * 0.08f)));
             int spawnedExperience = 0;
@@ -5972,6 +5984,11 @@ namespace Deucarian.TemplateGameSurvivors
                 label += " + Shard";
             }
 
+            if (focusActivated)
+            {
+                label += $" + Focus {WaystoneFocusRemainingSeconds:0.#}s";
+            }
+
             if (ambushSpawned > 0)
             {
                 label += $" + Ambush x{ambushSpawned}";
@@ -5981,6 +5998,19 @@ namespace Deucarian.TemplateGameSurvivors
             LastRoamingCacheFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.58f, 0.95f, 1f));
             PlayFeedback(_levelUpPulse, position, ambushSpawned > 0 ? 24 : 16, _pickupClip);
+        }
+
+        private bool ActivateWaystoneFocus()
+        {
+            float duration = Mathf.Max(0f, CurrentTuning.WaystoneFocusDurationSeconds);
+            if (duration <= 0f)
+            {
+                return false;
+            }
+
+            _waystoneFocusTimer = Mathf.Max(_waystoneFocusTimer, duration);
+            WaystoneFocusActivationCount++;
+            return true;
         }
 
         private int SpawnWaystoneDiscoveryAmbush(Vector3 position, int discoveryNumber)
@@ -7475,6 +7505,16 @@ namespace Deucarian.TemplateGameSurvivors
             _roamingCacheSurgeTimer = Mathf.Max(0f, _roamingCacheSurgeTimer - Mathf.Max(0f, deltaTime));
         }
 
+        private void TickWaystoneFocus(float deltaTime)
+        {
+            if (_waystoneFocusTimer <= 0f)
+            {
+                return;
+            }
+
+            _waystoneFocusTimer = Mathf.Max(0f, _waystoneFocusTimer - Mathf.Max(0f, deltaTime));
+        }
+
         private void TickBarrier(float deltaTime)
         {
             float regen = Mathf.Max(0f, CurrentTuning.BaseBarrierRegenPerSecond + BarrierRegenPerSecondBonus);
@@ -8696,6 +8736,12 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 string travel = $"Way {RoamingCacheSurgeRemainingSeconds:0.0}s";
                 label = string.IsNullOrEmpty(label) ? "   " + travel : label + "   " + travel;
+            }
+
+            if (IsWaystoneFocusActive)
+            {
+                string focus = $"Focus {WaystoneFocusRemainingSeconds:0.0}s";
+                label = string.IsNullOrEmpty(label) ? "   " + focus : label + "   " + focus;
             }
 
             return label;
