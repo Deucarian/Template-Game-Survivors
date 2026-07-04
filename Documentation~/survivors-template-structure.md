@@ -99,6 +99,7 @@
 - valid relic IDs, effect kinds, targets, weights, and amounts
 - valid class IDs, default class references, starting weapon/loadout references, class-gated upgrade references, unlock reward IDs, and starting stat modifiers
 - valid progression track IDs, passive atlas ownership, weapon-track targets, progression node references, point costs, and max-rank promises
+- valid run-flow pacing values, slot limits, rarity tables, endless intervals, and ranged-shot dodge XP rewards
 
 This is reusable Survivors template-kit code, not concrete product content.
 
@@ -116,8 +117,9 @@ This is reusable Survivors template-kit code, not concrete product content.
 - `Content/DefaultRelics/relics.json`
 - `Content/DefaultClasses/classes.json`
 - `Content/DefaultProgression/progression.json`
+- `Content/DefaultRunFlow/run-flow.json`
 
-The sample includes basic swarm, runner, bruiser, ranged spitter with dodgeable shot wind-up, elite, scheduled miniboss, and final boss entries; XP, magnet, vital-shard, and blood-shard pickup entries with Arc Step dash tuning, roaming arena caches, roaming cache special-drop/ambush tuning, major-enemy support call-ins, major-enemy slam timing/ground telegraphs, major-enemy reward caches with cache-pull attraction, streak reward banners, and Tempo Surge stat spikes; blood shards; legacy XP; seven persistent upgrades; boss/final-boss reward definitions; six boss relics chained after miniboss upgrade rewards; a default class with five core weapons; one-rank weapon unlock definitions for every authored weapon; deeper Frost Fan, Blood Ring, Thorn Halo, Cinder Burst, and Star Beam rank/mutation/evolution paths including Serrated Orbit and Bramble Guard branches; public Star Beam and Gravity Grenade rank/mutation/evolution paths; one unlockable class with an advanced loadout/stat profile, class-gated Moon Slash rank/mutation/evolution path, and class-gated Rune Trap/Aether Mine rank/mutation/evolution path; draftable XP-gain and area-scaling passives; Epic upgrade spikes; normal/elite/boss rarity-weight tables; compact passive atlases; weapon skill tracks; and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
+The sample includes basic swarm, runner, bruiser, ranged spitter with dodgeable shot wind-up and authored dodge XP rewards, elite, scheduled miniboss, and final boss entries; XP, magnet, vital-shard, and blood-shard pickup entries with Arc Step dash tuning, roaming arena caches, roaming cache special-drop/ambush tuning, major-enemy support call-ins, major-enemy slam timing/ground telegraphs, major-enemy reward caches with cache-pull attraction, streak reward banners, and Tempo Surge stat spikes; blood shards; legacy XP; seven persistent upgrades; boss/final-boss reward definitions; six boss relics chained after miniboss upgrade rewards; a default class with five core weapons; one-rank weapon unlock definitions for every authored weapon; deeper Frost Fan, Blood Ring, Thorn Halo, Cinder Burst, and Star Beam rank/mutation/evolution paths including Serrated Orbit and Bramble Guard branches; public Star Beam and Gravity Grenade rank/mutation/evolution paths; one unlockable class with an advanced loadout/stat profile, class-gated Moon Slash rank/mutation/evolution path, and class-gated Rune Trap/Aether Mine rank/mutation/evolution path; draftable XP-gain and area-scaling passives; Epic upgrade spikes; normal/elite/boss rarity-weight tables; compact passive atlases; weapon skill tracks; and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
 
 ## Tests
 

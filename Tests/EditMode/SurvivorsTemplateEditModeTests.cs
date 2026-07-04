@@ -505,6 +505,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             RunFlowProfileForTest debugFast = FindRunFlowProfile(library, SurvivorsPacingProfile.DebugFast.ToString());
             RunFlowProfileForTest showcase = FindRunFlowProfile(library, SurvivorsPacingProfile.Showcase.ToString());
 
+            Assert.That(human.enemyRangedAttackDodgeExperienceReward, Is.GreaterThanOrEqualTo(1));
             Assert.That(human.roamingCacheSurgeInterval, Is.InRange(3, 6));
             Assert.That(human.roamingCacheSurgeBonusGemCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(human.roamingCacheSurgeDurationSeconds, Is.InRange(4f, 8f));
@@ -531,6 +532,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(debugFast.roamingCacheAmbushStartCache, Is.LessThan(human.roamingCacheAmbushStartCache));
             Assert.That(debugFast.roamingCacheAmbushMaxEnemyCount, Is.GreaterThan(human.roamingCacheAmbushMaxEnemyCount));
             Assert.That(debugFast.roamingCacheAmbushClearMagnetInterval, Is.LessThanOrEqualTo(human.roamingCacheAmbushClearMagnetInterval));
+            Assert.That(debugFast.enemyRangedAttackDodgeExperienceReward, Is.GreaterThanOrEqualTo(human.enemyRangedAttackDodgeExperienceReward));
             Assert.That(showcase.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
             Assert.That(showcase.roamingCacheSurgePickupRangeBonus, Is.GreaterThan(human.roamingCacheSurgePickupRangeBonus));
             Assert.That(showcase.roamingCacheSurgePulseRadius, Is.GreaterThan(human.roamingCacheSurgePulseRadius));
@@ -642,6 +644,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsFalse(result.Succeeded);
             StringAssert.Contains("Run flow", errors);
             StringAssert.Contains("enemy spawn interval", errors);
+            StringAssert.Contains("enemy ranged dodge XP reward", errors);
             StringAssert.Contains("horde rush", errors);
             StringAssert.Contains("roaming cache ambush", errors);
             StringAssert.Contains("roaming cache surge", errors);
@@ -1408,6 +1411,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         private sealed class RunFlowProfileForTest
         {
             public string id;
+            public int enemyRangedAttackDodgeExperienceReward;
             public int roamingCacheMagnetInterval;
             public int roamingCacheBloodShardInterval;
             public int roamingCacheAmbushStartCache;

@@ -1673,6 +1673,7 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "enemy maximum alive", profile.enemyMaximumAlive, result);
             ValidatePositive(profileId, "enemy spawn pack base count", profile.enemySpawnPackBaseCount, result);
             ValidatePositive(profileId, "enemy spawn pack max count", profile.enemySpawnPackMaxCount, result);
+            ValidatePositive(profileId, "enemy ranged dodge XP reward", profile.enemyRangedAttackDodgeExperienceReward, result);
             if (profile.enemySpawnPackMaxCount < profile.enemySpawnPackBaseCount)
             {
                 result.AddError($"Run flow profile {profileId} max spawn pack count must be at least the base spawn pack count.");
@@ -2675,6 +2676,7 @@ namespace Deucarian.TemplateGameSurvivors
             public int enemyMaximumAlive;
             public int enemySpawnPackBaseCount;
             public int enemySpawnPackMaxCount;
+            public int enemyRangedAttackDodgeExperienceReward;
             public float escalationIntervalSeconds;
             public float minimumEnemySpawnIntervalSeconds;
             public float enemySpawnIntervalReductionPerEscalation;
