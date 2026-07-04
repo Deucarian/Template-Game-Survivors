@@ -1683,12 +1683,26 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "horde rush interval", profile.hordeRushIntervalSeconds, result);
             ValidatePositive(profileId, "horde rush warning lead", profile.hordeRushWarningLeadSeconds, result);
             ValidatePositive(profileId, "horde rush base enemy count", profile.hordeRushBaseEnemyCount, result);
+            ValidatePositive(profileId, "horde rush enemy count increase", profile.hordeRushEnemyCountIncreasePerRush, result);
             ValidatePositive(profileId, "horde rush max enemy count", profile.hordeRushMaxEnemyCount, result);
             if (profile.hordeRushMaxEnemyCount < profile.hordeRushBaseEnemyCount)
             {
                 result.AddError($"Run flow profile {profileId} horde rush max enemy count must be at least the base count.");
             }
 
+            ValidatePositive(profileId, "horde rush extra alive allowance", profile.hordeRushExtraAliveAllowance, result);
+            ValidatePositive(profileId, "horde rush spawn radius", profile.hordeRushSpawnRadius, result);
+            ValidatePositive(profileId, "horde rush clear XP gem count", profile.hordeRushClearExperienceGemCount, result);
+            ValidatePositive(profileId, "horde rush clear XP multiplier", profile.hordeRushClearExperienceMultiplier, result);
+            ValidatePositive(profileId, "horde rush clear magnet cadence", profile.hordeRushClearMagnetEveryRush, result);
+            ValidatePositive(profileId, "horde rush clear blood shard cadence", profile.hordeRushClearBloodShardEveryRush, result);
+            if (profile.hordeRushClearBloodShardEveryRush <= profile.hordeRushClearMagnetEveryRush)
+            {
+                result.AddError($"Run flow profile {profileId} horde rush clear blood shard cadence must be longer than magnet cadence.");
+            }
+
+            ValidatePositive(profileId, "horde rush clear pulse damage", profile.hordeRushClearPulseDamage, result);
+            ValidatePositive(profileId, "horde rush clear pulse radius", profile.hordeRushClearPulseRadius, result);
             ValidatePositive(profileId, "roaming cache travel interval", profile.roamingCacheTravelInterval, result);
             ValidatePositive(profileId, "roaming cache XP gem count", profile.roamingCacheExperienceGemCount, result);
             ValidatePositive(profileId, "roaming cache magnet interval", profile.roamingCacheMagnetInterval, result);
@@ -2695,7 +2709,16 @@ namespace Deucarian.TemplateGameSurvivors
             public float hordeRushIntervalSeconds;
             public float hordeRushWarningLeadSeconds;
             public int hordeRushBaseEnemyCount;
+            public int hordeRushEnemyCountIncreasePerRush;
             public int hordeRushMaxEnemyCount;
+            public int hordeRushExtraAliveAllowance;
+            public float hordeRushSpawnRadius;
+            public int hordeRushClearExperienceGemCount;
+            public float hordeRushClearExperienceMultiplier;
+            public int hordeRushClearMagnetEveryRush;
+            public int hordeRushClearBloodShardEveryRush;
+            public float hordeRushClearPulseDamage;
+            public float hordeRushClearPulseRadius;
             public float roamingCacheTravelInterval;
             public int roamingCacheExperienceGemCount;
             public int roamingCacheMagnetInterval;
