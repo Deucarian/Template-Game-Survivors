@@ -72,6 +72,7 @@
 `Runtime/SurvivorsRelicsAndClasses.cs` contains local Survivors reward/class definitions:
 
 - boss relic definitions and deterministic relic draft selection
+- current-run relic ownership is tracked by the controller so boss relic drafts stop repeating selected relics
 - simple class definitions
 - class-owned starting weapon loadouts
 - starting stat modifiers

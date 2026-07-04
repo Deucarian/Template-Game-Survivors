@@ -112,6 +112,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _announcedEvolutionReadyUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _selectedRelicIds = new HashSet<string>(StringComparer.Ordinal);
         private Transform _worldRoot;
         private Transform _prefabRoot;
         private Transform _arenaTileRoot;
@@ -713,6 +714,7 @@ namespace Deucarian.TemplateGameSurvivors
             BuildUpgradeMetadataIndex();
             _ownedPassiveUpgradeIds.Clear();
             _ownedEvolutionUpgradeIds.Clear();
+            _selectedRelicIds.Clear();
             _playerHealth = new HealthState(new CombatantId("combatant.survivors.player"), resolved.PlayerMaxHealth, resolved.PlayerMaxHealth);
             Level = 1;
             Experience = 0;
@@ -6145,8 +6147,9 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureClassLibraryLoaded();
+            IReadOnlyList<SurvivorsRelicDefinition> availableRelics = CreateAvailableRelicDefinitions();
             _currentRelicDraft = SurvivorsRelicDraftService.Generate(
-                _relicDefinitions,
+                availableRelics,
                 CurrentTuning.DraftChoiceCount,
                 CurrentTuning.RunSeed + MinibossKilledCount + SelectedRelicCount + 97);
             if (_currentRelicDraft == null || _currentRelicDraft.Choices.Count == 0)
@@ -6164,6 +6167,33 @@ namespace Deucarian.TemplateGameSurvivors
             BeginRewardSelectionTimeout();
             PlayFeedback(_bossPulse, PlayerPosition, 44, _bossClip);
             return true;
+        }
+
+        private IReadOnlyList<SurvivorsRelicDefinition> CreateAvailableRelicDefinitions()
+        {
+            if (_relicDefinitions == null || _relicDefinitions.Count == 0)
+            {
+                return EmptyRelicChoices;
+            }
+
+            if (_selectedRelicIds.Count == 0)
+            {
+                return _relicDefinitions;
+            }
+
+            var availableRelics = new List<SurvivorsRelicDefinition>(_relicDefinitions.Count);
+            for (int i = 0; i < _relicDefinitions.Count; i++)
+            {
+                SurvivorsRelicDefinition relic = _relicDefinitions[i];
+                if (relic == null || string.IsNullOrWhiteSpace(relic.Id) || _selectedRelicIds.Contains(relic.Id))
+                {
+                    continue;
+                }
+
+                availableRelics.Add(relic);
+            }
+
+            return availableRelics.Count == 0 ? EmptyRelicChoices : availableRelics;
         }
 
         private void BeginRewardSelectionTimeout()
@@ -6380,6 +6410,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SurvivorsRelicDefinition selected = _currentRelicDraft.Choices[index];
+            if (selected == null || string.IsNullOrWhiteSpace(selected.Id) || !_selectedRelicIds.Add(selected.Id))
+            {
+                return false;
+            }
+
             ApplyRelic(selected);
             SelectedRelicCount++;
             RecordRelicSelectionFeedback(selected);

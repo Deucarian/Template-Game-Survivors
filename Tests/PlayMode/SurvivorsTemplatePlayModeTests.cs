@@ -2827,6 +2827,46 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator BossRelicDraftsDoNotRepeatSelectedRelics()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            int expectedRelicCount = BasicSurvivorsGame.CreateRelicDefinitions().Count;
+            var selectedRelicIds = new HashSet<string>(StringComparer.Ordinal);
+            int openedDraftCount = 0;
+            while (controller.OpenBossRelicDraftForTest())
+            {
+                openedDraftCount++;
+                Assert.That(controller.CurrentRelicChoices.Count, Is.GreaterThan(0));
+                Assert.That(controller.CurrentRelicChoices.Count, Is.LessThanOrEqualTo(3));
+
+                for (int i = 0; i < controller.CurrentRelicChoices.Count; i++)
+                {
+                    SurvivorsRelicDefinition relic = controller.CurrentRelicChoices[i];
+                    Assert.IsNotNull(relic);
+                    Assert.IsFalse(selectedRelicIds.Contains(relic.Id), $"Relic repeated in draft: {relic.Id}");
+                }
+
+                string selectedRelicId = controller.CurrentRelicChoices[0].Id;
+                selectedRelicIds.Add(selectedRelicId);
+                Assert.IsTrue(controller.SelectRelicForTest(0));
+                yield return null;
+
+                Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+                Assert.AreEqual(selectedRelicIds.Count, controller.SelectedRelicCount);
+                Assert.That(openedDraftCount, Is.LessThanOrEqualTo(expectedRelicCount));
+            }
+
+            Assert.AreEqual(expectedRelicCount, selectedRelicIds.Count);
+            Assert.AreEqual(expectedRelicCount, controller.SelectedRelicCount);
+            Assert.IsFalse(controller.IsRelicChoiceOpen);
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator EligibleBossEvolutionRewardDelaysVictoryUntilSelected()
         {
             SurvivorsTemplateController controller = CreateController();
