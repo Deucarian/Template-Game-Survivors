@@ -90,6 +90,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int HordeRushClearBloodShardEveryRush = 3;
         public float HordeRushClearPulseDamage = 12f;
         public float HordeRushClearPulseRadius = 4.6f;
+        public float HordeRushClearSurgeDurationSeconds = 5f;
+        public float HordeRushClearSurgeDamageBonus = 1.3f;
+        public float HordeRushClearSurgeMoveSpeedBonus = 0.18f;
+        public float HordeRushClearSurgeCooldownMultiplierBonus = -0.035f;
+        public float HordeRushClearSurgePickupRangeBonus = 0.35f;
         public float MajorThreatEnrageHealthThreshold = 0.5f;
         public int MajorThreatEnrageEliteSupportCount = 4;
         public int MajorThreatEnrageMinibossSupportCount = 6;
@@ -526,6 +531,11 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushExtraAliveAllowance = 20;
             tuning.HordeRushClearPulseDamage = 14f;
             tuning.HordeRushClearPulseRadius = 4.8f;
+            tuning.HordeRushClearSurgeDurationSeconds = 5.5f;
+            tuning.HordeRushClearSurgeDamageBonus = 1.45f;
+            tuning.HordeRushClearSurgeMoveSpeedBonus = 0.2f;
+            tuning.HordeRushClearSurgeCooldownMultiplierBonus = -0.04f;
+            tuning.HordeRushClearSurgePickupRangeBonus = 0.4f;
             tuning.MajorThreatEnrageHealthThreshold = 0.52f;
             tuning.MajorThreatEnrageEliteSupportCount = 4;
             tuning.MajorThreatEnrageMinibossSupportCount = 7;
@@ -633,6 +643,11 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushSpawnRadius = 7.5f;
             tuning.HordeRushClearPulseDamage = 18f;
             tuning.HordeRushClearPulseRadius = 5.2f;
+            tuning.HordeRushClearSurgeDurationSeconds = 5f;
+            tuning.HordeRushClearSurgeDamageBonus = 1.9f;
+            tuning.HordeRushClearSurgeMoveSpeedBonus = 0.28f;
+            tuning.HordeRushClearSurgeCooldownMultiplierBonus = -0.055f;
+            tuning.HordeRushClearSurgePickupRangeBonus = 0.58f;
             tuning.MajorThreatEnrageHealthThreshold = 0.6f;
             tuning.MajorThreatEnrageEliteSupportCount = 5;
             tuning.MajorThreatEnrageMinibossSupportCount = 8;
@@ -771,6 +786,11 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushSpawnRadius = 8f;
             tuning.HordeRushClearPulseDamage = 15f;
             tuning.HordeRushClearPulseRadius = 5f;
+            tuning.HordeRushClearSurgeDurationSeconds = 5.5f;
+            tuning.HordeRushClearSurgeDamageBonus = 1.6f;
+            tuning.HordeRushClearSurgeMoveSpeedBonus = 0.24f;
+            tuning.HordeRushClearSurgeCooldownMultiplierBonus = -0.045f;
+            tuning.HordeRushClearSurgePickupRangeBonus = 0.48f;
             tuning.MajorThreatEnrageHealthThreshold = 0.55f;
             tuning.MajorThreatEnrageEliteSupportCount = 5;
             tuning.MajorThreatEnrageMinibossSupportCount = 8;

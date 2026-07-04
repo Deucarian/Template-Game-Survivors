@@ -192,6 +192,7 @@ namespace Deucarian.TemplateGameSurvivors
         private float _streakSurgeTimer;
         private float _roamingCacheSurgeTimer;
         private float _waystoneFocusTimer;
+        private float _hordeRushClearSurgeTimer;
         private bool _runStarted;
         private bool _ownsMetaProgressionService;
         private bool _metaProfileLoaded;
@@ -298,6 +299,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int HordeRushClearSpecialDropCount { get; private set; }
         public int HordeRushClearPulseCount { get; private set; }
         public int HordeRushClearPulseHitCount { get; private set; }
+        public int HordeRushClearSurgeActivationCount { get; private set; }
         public string LastHordeRushFeedbackLabel { get; private set; } = string.Empty;
         public string LastHordeRushClearFeedbackLabel { get; private set; } = string.Empty;
         public string LastHordeRushClearPulseFeedbackLabel { get; private set; } = string.Empty;
@@ -415,6 +417,12 @@ namespace Deucarian.TemplateGameSurvivors
         public float WaystoneFocusMoveSpeedBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusMoveSpeedBonus) : 0f;
         public float WaystoneFocusCooldownMultiplierBonus => IsWaystoneFocusActive ? Mathf.Min(0f, CurrentTuning.WaystoneFocusCooldownMultiplierBonus) : 0f;
         public float WaystoneFocusPickupRangeBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusPickupRangeBonus) : 0f;
+        public bool IsHordeRushClearSurgeActive => _hordeRushClearSurgeTimer > 0f;
+        public float HordeRushClearSurgeRemainingSeconds => Mathf.Max(0f, _hordeRushClearSurgeTimer);
+        public float HordeRushClearSurgeDamageBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, CurrentTuning.HordeRushClearSurgeDamageBonus) : 0f;
+        public float HordeRushClearSurgeMoveSpeedBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, CurrentTuning.HordeRushClearSurgeMoveSpeedBonus) : 0f;
+        public float HordeRushClearSurgeCooldownMultiplierBonus => IsHordeRushClearSurgeActive ? Mathf.Min(0f, CurrentTuning.HordeRushClearSurgeCooldownMultiplierBonus) : 0f;
+        public float HordeRushClearSurgePickupRangeBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, CurrentTuning.HordeRushClearSurgePickupRangeBonus) : 0f;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
         public int BloodShardsEarnedThisRun { get; private set; }
@@ -537,13 +545,13 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 ClosestInfiniteArenaLandmarkPositionForTest => ResolveClosestArenaLandmarkPositionForTest();
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
-        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus;
+        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus;
         public float DashCooldownRemainingSeconds => Mathf.Max(0f, _dashCooldownTimer);
         public float PlayerSafetyRemainingSeconds => Mathf.Max(0f, _playerInvulnerabilityTimer);
         public bool IsPlayerSafetyActive => _playerInvulnerabilityTimer > 0f;
-        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus);
-        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus));
-        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus);
+        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + HordeRushClearSurgeDamageBonus);
+        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus));
+        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus + HordeRushClearSurgePickupRangeBonus);
         public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
         public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
         public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
@@ -863,6 +871,7 @@ namespace Deucarian.TemplateGameSurvivors
             HordeRushClearSpecialDropCount = 0;
             HordeRushClearPulseCount = 0;
             HordeRushClearPulseHitCount = 0;
+            HordeRushClearSurgeActivationCount = 0;
             LastHordeRushFeedbackLabel = string.Empty;
             LastHordeRushClearFeedbackLabel = string.Empty;
             LastHordeRushClearPulseFeedbackLabel = string.Empty;
@@ -1032,6 +1041,7 @@ namespace Deucarian.TemplateGameSurvivors
             _streakSurgeTimer = 0f;
             _roamingCacheSurgeTimer = 0f;
             _waystoneFocusTimer = 0f;
+            _hordeRushClearSurgeTimer = 0f;
             _announcedEvolutionGoalUpgradeIds.Clear();
             _announcedEvolutionReadyUpgradeIds.Clear();
             _evolutionReadyFeedbackLabel = string.Empty;
@@ -1119,6 +1129,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickStreakSurge(dt);
             TickRoamingCacheSurge(dt);
             TickWaystoneFocus(dt);
+            TickHordeRushClearSurge(dt);
             TickBarrier(dt);
             MovePlayer(movementInput, dt);
             TickArenaWaystoneDiscoveries();
@@ -1888,7 +1899,7 @@ namespace Deucarian.TemplateGameSurvivors
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
                 $"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}",
-                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
+                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + HordeRushClearSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
@@ -2562,7 +2573,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return 0f;
             }
 
-            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus);
+            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + HordeRushClearSurgeDamageBonus);
         }
 
         internal float ResolveWeaponCooldownSeconds(SurvivorsWeaponArchetypeDefinition definition)
@@ -2572,7 +2583,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return WeaponCooldownSeconds;
             }
 
-            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus));
+            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus));
         }
 
         internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction)
@@ -6575,13 +6586,28 @@ namespace Deucarian.TemplateGameSurvivors
             HordeRushClearRewardCount++;
             HordeRushClearSpecialDropCount += specialDropCount;
             int pulseHitCount = TriggerHordeRushClearPulse(position);
+            bool surgeActivated = ActivateHordeRushClearSurge();
             string specialLabel = specialDropCount > 0 ? $" + {specialDropCount} special" : string.Empty;
             string pulseLabel = pulseHitCount > 0 ? $" + Breaker Pulse ({pulseHitCount} hit)" : string.Empty;
-            string label = $"Horde Rush Cleared: +{spawnedExperience} XP{specialLabel}{pulseLabel}";
+            string surgeLabel = surgeActivated ? $" + Breaker Surge {HordeRushClearSurgeRemainingSeconds:0.#}s" : string.Empty;
+            string label = $"Horde Rush Cleared: +{spawnedExperience} XP{specialLabel}{pulseLabel}{surgeLabel}";
             LastHordeRushClearFeedbackLabel = label;
             LastHordeRushFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(1f, 0.74f, 0.24f));
             PlayFeedback(_levelUpPulse, position, Mathf.Clamp(24 + pulseHitCount * 5, 28, 78), _pickupClip);
+        }
+
+        private bool ActivateHordeRushClearSurge()
+        {
+            float duration = Mathf.Max(0f, CurrentTuning.HordeRushClearSurgeDurationSeconds);
+            if (duration <= 0f)
+            {
+                return false;
+            }
+
+            _hordeRushClearSurgeTimer = Mathf.Max(_hordeRushClearSurgeTimer, duration);
+            HordeRushClearSurgeActivationCount++;
+            return true;
         }
 
         private int TriggerHordeRushClearPulse(Vector3 position)
@@ -7599,6 +7625,16 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _waystoneFocusTimer = Mathf.Max(0f, _waystoneFocusTimer - Mathf.Max(0f, deltaTime));
+        }
+
+        private void TickHordeRushClearSurge(float deltaTime)
+        {
+            if (_hordeRushClearSurgeTimer <= 0f)
+            {
+                return;
+            }
+
+            _hordeRushClearSurgeTimer = Mathf.Max(0f, _hordeRushClearSurgeTimer - Mathf.Max(0f, deltaTime));
         }
 
         private void TickBarrier(float deltaTime)
@@ -8828,6 +8864,12 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 string focus = $"Focus {WaystoneFocusRemainingSeconds:0.0}s";
                 label = string.IsNullOrEmpty(label) ? "   " + focus : label + "   " + focus;
+            }
+
+            if (IsHordeRushClearSurgeActive)
+            {
+                string breaker = $"Breaker {HordeRushClearSurgeRemainingSeconds:0.0}s";
+                label = string.IsNullOrEmpty(label) ? "   " + breaker : label + "   " + breaker;
             }
 
             return label;

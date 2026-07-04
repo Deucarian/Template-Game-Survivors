@@ -772,7 +772,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.EnemyMaximumAlive = 40;
             controller.CurrentTuning.EnemyContactDamage = 0f;
             controller.CurrentTuning.HordeRushFirstTimeSeconds = 0.5f;
-            controller.CurrentTuning.HordeRushIntervalSeconds = 1.1f;
+            controller.CurrentTuning.HordeRushIntervalSeconds = 999f;
             controller.CurrentTuning.HordeRushWarningLeadSeconds = 0.25f;
             controller.CurrentTuning.HordeRushBaseEnemyCount = 6;
             controller.CurrentTuning.HordeRushEnemyCountIncreasePerRush = 2;
@@ -784,6 +784,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.HordeRushClearBloodShardEveryRush = 1;
             controller.CurrentTuning.HordeRushClearPulseDamage = 8f;
             controller.CurrentTuning.HordeRushClearPulseRadius = 12f;
+            controller.CurrentTuning.HordeRushClearSurgeDurationSeconds = 3f;
+            controller.CurrentTuning.HordeRushClearSurgeDamageBonus = 2f;
+            controller.CurrentTuning.HordeRushClearSurgeMoveSpeedBonus = 0.5f;
+            controller.CurrentTuning.HordeRushClearSurgeCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.HordeRushClearSurgePickupRangeBonus = 0.8f;
             controller.StartRun();
 
             Assert.AreEqual(0, controller.HordeRushSpawnCount);
@@ -814,6 +819,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.2f, 0f, 0f), SurvivorsEnemyRole.Swarm, 6f);
             SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(-1.2f, 0f, 0f), SurvivorsEnemyRole.Runner, 6f);
             SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 1.7f), SurvivorsEnemyRole.Elite, 30f);
+            float startingDamage = controller.ProjectileDamage;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
             int pickupCountBeforeClear = controller.ActivePickupCount;
             Assert.AreEqual(6, controller.KillActiveHordeRushEnemiesForTest());
             yield return null;
@@ -825,14 +834,29 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(2, controller.HordeRushClearSpecialDropCount);
             Assert.AreEqual(1, controller.HordeRushClearPulseCount);
             Assert.That(controller.HordeRushClearPulseHitCount, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(1, controller.HordeRushClearSurgeActivationCount);
+            Assert.IsTrue(controller.IsHordeRushClearSurgeActive);
+            Assert.That(controller.HordeRushClearSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
             Assert.IsFalse(pulseTargetA.IsAlive);
             Assert.IsFalse(pulseTargetB.IsAlive);
             Assert.IsTrue(protectedElite.IsAlive);
             Assert.That(controller.ActivePickupCount, Is.GreaterThanOrEqualTo(pickupCountBeforeClear + 12));
             Assert.That(controller.LastHordeRushClearFeedbackLabel, Does.Contain("Cleared"));
             Assert.That(controller.LastHordeRushClearFeedbackLabel, Does.Contain("Breaker Pulse"));
+            Assert.That(controller.LastHordeRushClearFeedbackLabel, Does.Contain("Breaker Surge"));
             Assert.That(controller.LastHordeRushClearPulseFeedbackLabel, Does.Contain("enemies hit"));
             Assert.That(controller.LastHordeRushFeedbackLabel, Does.Contain("Cleared"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Breaker Surge"));
+
+            controller.Simulate(controller.CurrentTuning.HordeRushClearSurgeDurationSeconds + 0.25f);
+            yield return null;
+
+            Assert.IsFalse(controller.IsHordeRushClearSurgeActive);
+            Assert.That(controller.ProjectileDamage, Is.EqualTo(startingDamage).Within(0.001f));
 
             Object.Destroy(controller.gameObject);
         }
