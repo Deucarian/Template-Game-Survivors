@@ -412,6 +412,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.WaystoneFocusMoveSpeedBonus, Is.GreaterThan(0f));
             Assert.That(tuning.WaystoneFocusCooldownMultiplierBonus, Is.LessThan(0f));
             Assert.That(tuning.WaystoneFocusPickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.WaystoneChainInterval, Is.InRange(2, 4));
+            Assert.That(tuning.WaystoneChainBonusGemCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(tuning.WaystoneChainDurationSeconds, Is.InRange(4f, 8f));
+            Assert.That(tuning.WaystoneChainDamageBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.WaystoneChainMoveSpeedBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.WaystoneChainCooldownMultiplierBonus, Is.LessThan(0f));
+            Assert.That(tuning.WaystoneChainPickupRangeBonus, Is.GreaterThan(0f));
+            Assert.That(tuning.WaystoneChainPulseDamage, Is.GreaterThan(0f));
+            Assert.That(tuning.WaystoneChainPulseRadius, Is.InRange(4f, 6f));
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
             Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));

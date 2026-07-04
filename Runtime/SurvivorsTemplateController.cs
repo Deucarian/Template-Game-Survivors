@@ -192,6 +192,7 @@ namespace Deucarian.TemplateGameSurvivors
         private float _streakSurgeTimer;
         private float _roamingCacheSurgeTimer;
         private float _waystoneFocusTimer;
+        private float _waystoneChainSurgeTimer;
         private float _hordeRushClearSurgeTimer;
         private float _weaponLoadoutSurgeTimer;
         private float _passiveLoadoutSurgeTimer;
@@ -417,7 +418,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int WaystoneAmbushCount { get; private set; }
         public int WaystoneAmbushEnemySpawnCount { get; private set; }
         public int WaystoneFocusActivationCount { get; private set; }
+        public int WaystoneChainSurgeActivationCount { get; private set; }
+        public int WaystoneChainSurgeBonusExperienceGemDropCount { get; private set; }
+        public int WaystoneChainSurgePulseHitCount { get; private set; }
         public string LastWaystoneDiscoveryFeedbackLabel { get; private set; } = string.Empty;
+        public string LastWaystoneChainSurgeFeedbackLabel { get; private set; } = string.Empty;
         public int BestKillStreak { get; private set; }
         public int StreakBonusDropCount { get; private set; }
         public int StreakHealthDropCount { get; private set; }
@@ -446,6 +451,12 @@ namespace Deucarian.TemplateGameSurvivors
         public float WaystoneFocusMoveSpeedBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusMoveSpeedBonus) : 0f;
         public float WaystoneFocusCooldownMultiplierBonus => IsWaystoneFocusActive ? Mathf.Min(0f, CurrentTuning.WaystoneFocusCooldownMultiplierBonus) : 0f;
         public float WaystoneFocusPickupRangeBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusPickupRangeBonus) : 0f;
+        public bool IsWaystoneChainSurgeActive => _waystoneChainSurgeTimer > 0f;
+        public float WaystoneChainSurgeRemainingSeconds => Mathf.Max(0f, _waystoneChainSurgeTimer);
+        public float WaystoneChainSurgeDamageBonus => IsWaystoneChainSurgeActive ? Mathf.Max(0f, CurrentTuning.WaystoneChainDamageBonus) : 0f;
+        public float WaystoneChainSurgeMoveSpeedBonus => IsWaystoneChainSurgeActive ? Mathf.Max(0f, CurrentTuning.WaystoneChainMoveSpeedBonus) : 0f;
+        public float WaystoneChainSurgeCooldownMultiplierBonus => IsWaystoneChainSurgeActive ? Mathf.Min(0f, CurrentTuning.WaystoneChainCooldownMultiplierBonus) : 0f;
+        public float WaystoneChainSurgePickupRangeBonus => IsWaystoneChainSurgeActive ? Mathf.Max(0f, CurrentTuning.WaystoneChainPickupRangeBonus) : 0f;
         public bool IsHordeRushClearSurgeActive => _hordeRushClearSurgeTimer > 0f;
         public float HordeRushClearSurgeRemainingSeconds => Mathf.Max(0f, _hordeRushClearSurgeTimer);
         public float HordeRushClearSurgeDamageBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, CurrentTuning.HordeRushClearSurgeDamageBonus) : 0f;
@@ -605,13 +616,13 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 ClosestInfiniteArenaLandmarkPositionForTest => ResolveClosestArenaLandmarkPositionForTest();
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
-        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus + WeaponLoadoutSurgeMoveSpeedBonus + PassiveLoadoutSurgeMoveSpeedBonus + BossRelicSurgeMoveSpeedBonus + GemRushMoveSpeedBonus + EvolutionChainSurgeMoveSpeedBonus;
+        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + WaystoneChainSurgeMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus + WeaponLoadoutSurgeMoveSpeedBonus + PassiveLoadoutSurgeMoveSpeedBonus + BossRelicSurgeMoveSpeedBonus + GemRushMoveSpeedBonus + EvolutionChainSurgeMoveSpeedBonus;
         public float DashCooldownRemainingSeconds => Mathf.Max(0f, _dashCooldownTimer);
         public float PlayerSafetyRemainingSeconds => Mathf.Max(0f, _playerInvulnerabilityTimer);
         public bool IsPlayerSafetyActive => _playerInvulnerabilityTimer > 0f;
-        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus);
-        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus));
-        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus + HordeRushClearSurgePickupRangeBonus + WeaponLoadoutSurgePickupRangeBonus + PassiveLoadoutSurgePickupRangeBonus + BossRelicSurgePickupRangeBonus + GemRushPickupRangeBonus + EvolutionChainSurgePickupRangeBonus);
+        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus);
+        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + WaystoneChainSurgeCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus));
+        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus + WaystoneChainSurgePickupRangeBonus + HordeRushClearSurgePickupRangeBonus + WeaponLoadoutSurgePickupRangeBonus + PassiveLoadoutSurgePickupRangeBonus + BossRelicSurgePickupRangeBonus + GemRushPickupRangeBonus + EvolutionChainSurgePickupRangeBonus);
         public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
         public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
         public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
@@ -1028,7 +1039,11 @@ namespace Deucarian.TemplateGameSurvivors
             WaystoneAmbushCount = 0;
             WaystoneAmbushEnemySpawnCount = 0;
             WaystoneFocusActivationCount = 0;
+            WaystoneChainSurgeActivationCount = 0;
+            WaystoneChainSurgeBonusExperienceGemDropCount = 0;
+            WaystoneChainSurgePulseHitCount = 0;
             LastWaystoneDiscoveryFeedbackLabel = string.Empty;
+            LastWaystoneChainSurgeFeedbackLabel = string.Empty;
             _discoveredArenaWaystones.Clear();
             BestKillStreak = 0;
             StreakBonusDropCount = 0;
@@ -1124,6 +1139,7 @@ namespace Deucarian.TemplateGameSurvivors
             _streakSurgeTimer = 0f;
             _roamingCacheSurgeTimer = 0f;
             _waystoneFocusTimer = 0f;
+            _waystoneChainSurgeTimer = 0f;
             _hordeRushClearSurgeTimer = 0f;
             _weaponLoadoutSurgeTimer = 0f;
             _passiveLoadoutSurgeTimer = 0f;
@@ -1218,6 +1234,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickStreakSurge(dt);
             TickRoamingCacheSurge(dt);
             TickWaystoneFocus(dt);
+            TickWaystoneChainSurge(dt);
             TickHordeRushClearSurge(dt);
             TickWeaponLoadoutSurge(dt);
             TickPassiveLoadoutSurge(dt);
@@ -1993,7 +2010,7 @@ namespace Deucarian.TemplateGameSurvivors
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
                 $"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}",
-                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus:P0}",
+                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
@@ -2732,7 +2749,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return 0f;
             }
 
-            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus);
+            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus);
         }
 
         internal float ResolveWeaponCooldownSeconds(SurvivorsWeaponArchetypeDefinition definition)
@@ -2742,7 +2759,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return WeaponCooldownSeconds;
             }
 
-            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus));
+            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + WaystoneChainSurgeCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus));
         }
 
         internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction)
@@ -6430,6 +6447,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             int ambushSpawned = SpawnWaystoneDiscoveryAmbush(position, discoveryNumber);
+            int chainExperience = TryActivateWaystoneChainSurge(discoveryNumber, position, xpPerGem, out int chainHitCount);
             WaystoneDiscoveryCount++;
             string label = $"Waystone Discovered: +{spawnedExperience} XP";
             if (spawnedBloodShard)
@@ -6445,6 +6463,11 @@ namespace Deucarian.TemplateGameSurvivors
             if (ambushSpawned > 0)
             {
                 label += $" + Ambush x{ambushSpawned}";
+            }
+
+            if (chainExperience > 0 || chainHitCount > 0)
+            {
+                label += $" + Waystone Chain (+{chainExperience} XP, {chainHitCount} hit)";
             }
 
             LastWaystoneDiscoveryFeedbackLabel = label;
@@ -6464,6 +6487,64 @@ namespace Deucarian.TemplateGameSurvivors
             _waystoneFocusTimer = Mathf.Max(_waystoneFocusTimer, duration);
             WaystoneFocusActivationCount++;
             return true;
+        }
+
+        private int TryActivateWaystoneChainSurge(int discoveryNumber, Vector3 position, int xpPerGem, out int pulseHitCount)
+        {
+            pulseHitCount = 0;
+            if (!ShouldTriggerRoamingCacheCadence(discoveryNumber, CurrentTuning.WaystoneChainInterval))
+            {
+                return 0;
+            }
+
+            _waystoneChainSurgeTimer = Mathf.Max(0.1f, CurrentTuning.WaystoneChainDurationSeconds);
+            WaystoneChainSurgeActivationCount++;
+
+            int gemCount = Mathf.Max(0, CurrentTuning.WaystoneChainBonusGemCount);
+            int spawnedExperience = 0;
+            int bonusXpPerGem = Mathf.Max(1, Mathf.RoundToInt(xpPerGem * 2.35f));
+            float rewardRadius = 0.85f + Mathf.Min(0.95f, gemCount * 0.09f);
+            for (int i = 0; i < gemCount; i++)
+            {
+                float angle = ((i + 0.4f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * rewardRadius;
+                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, bonusXpPerGem) != null)
+                {
+                    spawnedExperience += bonusXpPerGem;
+                    WaystoneChainSurgeBonusExperienceGemDropCount++;
+                }
+            }
+
+            pulseHitCount = TriggerWaystoneChainSurgePulse(position);
+            LastWaystoneChainSurgeFeedbackLabel = $"Waystone Chain: {discoveryNumber} discoveries, +{spawnedExperience} XP, {pulseHitCount} enemies hit";
+            return spawnedExperience;
+        }
+
+        private int TriggerWaystoneChainSurgePulse(Vector3 center)
+        {
+            float radius = Mathf.Max(0f, CurrentTuning.WaystoneChainPulseRadius);
+            float damage = Mathf.Max(0f, CurrentTuning.WaystoneChainPulseDamage);
+            int hitCount = 0;
+            if (radius > 0f && damage > 0f)
+            {
+                var targets = new List<SurvivorsEnemyActor>();
+                CollectEnemiesWithinRadius(center, radius, targets);
+                for (int i = 0; i < targets.Count; i++)
+                {
+                    SurvivorsEnemyActor enemy = targets[i];
+                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
+                    {
+                        continue;
+                    }
+
+                    enemy.ApplyDamage(damage, "survivors.waystone.chain-surge");
+                    hitCount++;
+                }
+            }
+
+            WaystoneChainSurgePulseHitCount += hitCount;
+            PlayFeedback(_levelUpPulse, center, Mathf.Clamp(34 + hitCount * 5, 42, 86), _pickupClip);
+            return hitCount;
         }
 
         private int SpawnWaystoneDiscoveryAmbush(Vector3 position, int discoveryNumber)
@@ -8003,6 +8084,16 @@ namespace Deucarian.TemplateGameSurvivors
             _waystoneFocusTimer = Mathf.Max(0f, _waystoneFocusTimer - Mathf.Max(0f, deltaTime));
         }
 
+        private void TickWaystoneChainSurge(float deltaTime)
+        {
+            if (_waystoneChainSurgeTimer <= 0f)
+            {
+                return;
+            }
+
+            _waystoneChainSurgeTimer = Mathf.Max(0f, _waystoneChainSurgeTimer - Mathf.Max(0f, deltaTime));
+        }
+
         private void TickHordeRushClearSurge(float deltaTime)
         {
             if (_hordeRushClearSurgeTimer <= 0f)
@@ -9301,6 +9392,12 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 string focus = $"Focus {WaystoneFocusRemainingSeconds:0.0}s";
                 label = string.IsNullOrEmpty(label) ? "   " + focus : label + "   " + focus;
+            }
+
+            if (IsWaystoneChainSurgeActive)
+            {
+                string chain = $"Chain {WaystoneChainSurgeRemainingSeconds:0.0}s";
+                label = string.IsNullOrEmpty(label) ? "   " + chain : label + "   " + chain;
             }
 
             if (IsHordeRushClearSurgeActive)

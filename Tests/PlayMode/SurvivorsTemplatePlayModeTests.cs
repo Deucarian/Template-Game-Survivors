@@ -1539,6 +1539,74 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator RepeatedArenaWaystonesTriggerChainSurge()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.ExperienceRequiredPerLevel = 999;
+            controller.CurrentTuning.GemRushDurationSeconds = 0f;
+            controller.CurrentTuning.WaystoneDiscoveryRadius = 80f;
+            controller.CurrentTuning.WaystoneExperienceGemCount = 1;
+            controller.CurrentTuning.WaystoneBloodShardInterval = 99;
+            controller.CurrentTuning.WaystoneAmbushInterval = 99;
+            controller.CurrentTuning.WaystoneFocusDurationSeconds = 0f;
+            controller.CurrentTuning.WaystoneChainInterval = 2;
+            controller.CurrentTuning.WaystoneChainBonusGemCount = 2;
+            controller.CurrentTuning.WaystoneChainDurationSeconds = 3f;
+            controller.CurrentTuning.WaystoneChainDamageBonus = 1.5f;
+            controller.CurrentTuning.WaystoneChainMoveSpeedBonus = 0.4f;
+            controller.CurrentTuning.WaystoneChainCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.WaystoneChainPickupRangeBonus = 0.8f;
+            controller.CurrentTuning.WaystoneChainPulseDamage = 50f;
+            controller.CurrentTuning.WaystoneChainPulseRadius = 120f;
+            controller.StartRun();
+
+            SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.1f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
+            SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 1.4f), SurvivorsEnemyRole.Runner, 5f);
+            SurvivorsEnemyActor protectedElite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, -1.7f), SurvivorsEnemyRole.Elite, 35f);
+            Assert.NotNull(pulseTargetA);
+            Assert.NotNull(pulseTargetB);
+            Assert.NotNull(protectedElite);
+
+            float startingDamage = controller.ProjectileDamage;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
+
+            yield return SimulateFrames(controller, 1);
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.That(controller.WaystoneDiscoveryCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.WaystoneChainSurgeActivationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.WaystoneChainSurgeBonusExperienceGemDropCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.WaystoneChainSurgePulseHitCount, Is.GreaterThanOrEqualTo(2));
+            Assert.IsTrue(controller.IsWaystoneChainSurgeActive);
+            Assert.That(controller.WaystoneChainSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.IsTrue(protectedElite.IsAlive, "Waystone Chain should leave major threats alive.");
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
+            Assert.That(controller.LastWaystoneDiscoveryFeedbackLabel, Does.Contain("Waystone Chain"));
+            Assert.That(controller.LastWaystoneChainSurgeFeedbackLabel, Does.Contain("Waystone Chain"));
+            Assert.That(controller.LastWaystoneChainSurgeFeedbackLabel, Does.Contain("enemies hit"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Waystone Chain"));
+
+            float surgedDamage = controller.ProjectileDamage;
+            controller.CurrentTuning.WaystoneDiscoveryRadius = 0f;
+            controller.Simulate(controller.CurrentTuning.WaystoneChainDurationSeconds + 0.2f);
+            yield return null;
+
+            Assert.IsFalse(controller.IsWaystoneChainSurgeActive, "Waystone Chain should expire after its duration when no new waystones are discovered.");
+            Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RoamingArenaTravelDropsRewardCaches()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
