@@ -67,7 +67,7 @@ After 7 minutes:
 
 - The miniboss should have appeared, shown a health bar while alive, opened an elite reward draft on death, then chained into a boss relic choice before play resumes; its death should burst into a larger reward cache whose drops pull inward when the reward sequence resolves.
 - The boss relic choice should not include relics already selected earlier in the same run; if every relic has been claimed, the reward sequence should close and resume cleanly.
-- Selecting a boss relic should emit a brief relic surge that damages nearby non-major enemies without deleting the major-threat reward flow.
+- Selecting a boss relic should emit a brief Relic Surge that damages nearby non-major enemies without deleting the major-threat reward flow, briefly improves damage, cooldown, movement, and pickup attraction, and shows a Relic timer in the HUD.
 - After selecting a relic, the build HUD should update its relic count, and the eventual victory or defeat summary should include relics alongside weapons, passives, and evolutions.
 - The miniboss warning should have appeared shortly before the miniboss entered.
 - The miniboss should paint a slam warning disc before area damage and call in a larger support ring near low health, making the fight briefly spike without hiding the health bar or reward flow.

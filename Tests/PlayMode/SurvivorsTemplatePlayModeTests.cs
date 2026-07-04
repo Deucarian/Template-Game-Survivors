@@ -3451,6 +3451,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateController();
             controller.CurrentTuning.BossRelicSurgeDamage = 12f;
             controller.CurrentTuning.BossRelicSurgeRadius = 4f;
+            controller.CurrentTuning.BossRelicSurgeDurationSeconds = 3f;
+            controller.CurrentTuning.BossRelicSurgeDamageBonus = 2f;
+            controller.CurrentTuning.BossRelicSurgeMoveSpeedBonus = 0.5f;
+            controller.CurrentTuning.BossRelicSurgeCooldownMultiplierBonus = -0.1f;
+            controller.CurrentTuning.BossRelicSurgePickupRangeBonus = 0.8f;
             yield return null;
 
             SurvivorsEnemyActor surgeTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.4f, 0f, 0f), 1f);
@@ -3463,6 +3468,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             float previousRelicDamage = controller.RelicDamageBonus;
             float previousRelicCooldown = controller.RelicCooldownMultiplierBonus;
             float previousRelicPickup = controller.RelicPickupRangeBonus;
+            float startingDamage = controller.ProjectileDamage;
+            float startingMoveSpeed = controller.PlayerMoveSpeed;
+            float startingCooldown = controller.WeaponCooldownSeconds;
+            float startingPickupRange = controller.CurrentPickupAttractRange;
 
             Assert.IsTrue(controller.SelectRelicForTest(0));
             yield return null;
@@ -3487,7 +3496,14 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(killedBeforeRelic + 2));
             Assert.That(controller.LastBossRelicSurgeFeedbackLabel, Does.Contain(selectedRelic.DisplayName));
             Assert.That(controller.LastBossRelicSurgeFeedbackLabel, Does.Contain("2 enemies hit"));
+            Assert.That(controller.LastBossRelicSurgeFeedbackLabel, Does.Contain("rush"));
             Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Surge"));
+            Assert.IsTrue(controller.IsBossRelicSurgeActive);
+            Assert.That(controller.BossRelicSurgeRemainingSeconds, Is.GreaterThan(0f));
+            Assert.That(controller.ProjectileDamage, Is.GreaterThan(startingDamage));
+            Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(startingMoveSpeed));
+            Assert.That(controller.WeaponCooldownSeconds, Is.LessThan(startingCooldown));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingPickupRange));
             Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3));
             Assert.AreEqual(1, controller.RewardSelectionFeedbackCount);
             Assert.That(controller.LastRewardSelectionFeedbackLabel, Does.Contain("Boss Relic"));
@@ -3495,6 +3511,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             string buildSummary = string.Join("\n", controller.DebugDescribeCurrentBuild());
             Assert.That(buildSummary, Does.Contain("Relics 1/"));
             Assert.That(buildSummary, Does.Contain(selectedRelic.DisplayName));
+
+            float surgedDamage = controller.ProjectileDamage;
+            controller.Simulate(controller.CurrentTuning.BossRelicSurgeDurationSeconds + 0.2f);
+            Assert.IsFalse(controller.IsBossRelicSurgeActive);
+            Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
 
             controller.KillPlayerForTest();
             yield return null;
