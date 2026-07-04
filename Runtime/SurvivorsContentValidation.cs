@@ -872,6 +872,114 @@ namespace Deucarian.TemplateGameSurvivors
 
                 ValidateAllowedClassIds("Upgrade " + upgrade.id, upgrade.allowedClasses, knownClassIds, result);
             }
+
+            for (int i = 0; i < library.upgrades.Length; i++)
+            {
+                UpgradeRecordJson upgrade = library.upgrades[i];
+                if (upgrade != null && !string.IsNullOrWhiteSpace(upgrade.id))
+                {
+                    ValidateUpgradeRecordMetadata(upgrade, upgradeIds, result);
+                }
+            }
+
+            ValidateSampleEvolutionUpgradeCoverage(upgradeIds, result);
+        }
+
+        private static void ValidateUpgradeRecordMetadata(
+            UpgradeRecordJson upgrade,
+            HashSet<string> knownUpgradeIds,
+            SurvivorsContentValidationResult result)
+        {
+            RunUpgradeRarity parsedRarity = default;
+            bool rarityValid = !string.IsNullOrWhiteSpace(upgrade.rarity) &&
+                Enum.TryParse(upgrade.rarity, ignoreCase: true, out parsedRarity) &&
+                Enum.IsDefined(typeof(RunUpgradeRarity), parsedRarity);
+            if (!rarityValid)
+            {
+                result.AddError($"Upgrade {upgrade.id} references unknown rarity: {upgrade.rarity}");
+            }
+
+            bool isEvolution = false;
+            if (!string.IsNullOrWhiteSpace(upgrade.category))
+            {
+                if (!Enum.TryParse(upgrade.category, ignoreCase: true, out SurvivorsRunUpgradeCategory parsedCategory) ||
+                    !Enum.IsDefined(typeof(SurvivorsRunUpgradeCategory), parsedCategory))
+                {
+                    result.AddError($"Upgrade {upgrade.id} references unknown category: {upgrade.category}");
+                }
+                else
+                {
+                    isEvolution = parsedCategory == SurvivorsRunUpgradeCategory.Evolution;
+                }
+            }
+
+            ValidateOptionalUpgradeReference(upgrade.id, "required upgrade", upgrade.requiredUpgradeId, knownUpgradeIds, result);
+            ValidateOptionalUpgradeReference(upgrade.id, "required passive upgrade", upgrade.requiredPassiveUpgradeId, knownUpgradeIds, result);
+            if (upgrade.requiredUpgradeRank < 0)
+            {
+                result.AddError($"Upgrade {upgrade.id} cannot require a negative upgrade rank.");
+            }
+
+            if (!isEvolution)
+            {
+                return;
+            }
+
+            if (parsedRarity != RunUpgradeRarity.Legendary)
+            {
+                result.AddError($"Evolution upgrade {upgrade.id} must use Legendary rarity.");
+            }
+
+            if (string.IsNullOrWhiteSpace(upgrade.requiredUpgradeId))
+            {
+                result.AddError($"Evolution upgrade {upgrade.id} requires a ranked upgrade prerequisite.");
+            }
+
+            if (upgrade.requiredUpgradeRank <= 0)
+            {
+                result.AddError($"Evolution upgrade {upgrade.id} requires prerequisite rank above zero.");
+            }
+
+            if (string.IsNullOrWhiteSpace(upgrade.requiredPassiveUpgradeId))
+            {
+                result.AddError($"Evolution upgrade {upgrade.id} requires a passive prerequisite.");
+            }
+        }
+
+        private static void ValidateOptionalUpgradeReference(
+            string upgradeId,
+            string label,
+            string referencedUpgradeId,
+            HashSet<string> knownUpgradeIds,
+            SurvivorsContentValidationResult result)
+        {
+            if (string.IsNullOrWhiteSpace(referencedUpgradeId))
+            {
+                return;
+            }
+
+            if (knownUpgradeIds == null || !knownUpgradeIds.Contains(referencedUpgradeId))
+            {
+                result.AddError($"Upgrade {upgradeId} references unknown {label}: {referencedUpgradeId}");
+            }
+        }
+
+        private static void ValidateSampleEvolutionUpgradeCoverage(HashSet<string> sampleUpgradeIds, SurvivorsContentValidationResult result)
+        {
+            IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata = BasicSurvivorsGame.CreateRunUpgradeMetadata();
+            for (int i = 0; i < metadata.Count; i++)
+            {
+                SurvivorsRunUpgradeMetadata entry = metadata[i];
+                if (entry == null || !entry.IsEvolution)
+                {
+                    continue;
+                }
+
+                if (sampleUpgradeIds == null || !sampleUpgradeIds.Contains(entry.UpgradeId))
+                {
+                    result.AddError($"Sample upgrade library missing evolution upgrade: {entry.UpgradeId}");
+                }
+            }
         }
 
         private static void ValidateRewardLibrary(RewardLibraryJson library, SurvivorsContentValidationResult result)
@@ -2323,9 +2431,15 @@ namespace Deucarian.TemplateGameSurvivors
         private sealed class UpgradeRecordJson
         {
             public string id;
+            public string displayName;
+            public string category;
             public string rarity;
             public string effect;
             public string target;
+            public string description;
+            public string requiredUpgradeId;
+            public int requiredUpgradeRank;
+            public string requiredPassiveUpgradeId;
             public string[] allowedClasses;
         }
 
