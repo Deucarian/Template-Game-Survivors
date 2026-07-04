@@ -101,6 +101,89 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ImportedPlayableSampleSceneSelectsFirstDraftAndResumesCombat()
+        {
+#if UNITY_EDITOR
+            string fullScenePath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), ImportedPlayableScenePath);
+            if (!System.IO.File.Exists(fullScenePath))
+            {
+                Assert.Ignore("Imported playtest scene is not present in this project.");
+            }
+#endif
+            AsyncOperation load = EditorSceneManager.LoadSceneAsyncInPlayMode(
+                ImportedPlayableScenePath,
+                new LoadSceneParameters(LoadSceneMode.Additive));
+            Assert.IsNotNull(load);
+            yield return WaitForAsyncOperation(load, 10f);
+
+            Scene scene = SceneManager.GetSceneByPath(ImportedPlayableScenePath);
+            Assert.IsTrue(scene.IsValid(), ImportedPlayableScenePath);
+            Assert.IsTrue(scene.isLoaded, ImportedPlayableScenePath);
+            Assert.IsNotNull(FindRootInScene(scene, PlayableSceneMarkerName));
+
+            SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
+            Assert.IsNotNull(controller);
+
+            float startingRunTime = controller.RunTimeSeconds;
+            for (int i = 0; i < 180 && (!controller.IsPlaying || controller.RunTimeSeconds <= startingRunTime); i++)
+            {
+                yield return null;
+            }
+
+            Assert.IsTrue(controller.IsPlaying);
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.ExperienceRequiredPerLevel = 999;
+            int startingSpawned = controller.SpawnedCount;
+            for (int i = 0; i < 180 && controller.SpawnedCount <= startingSpawned; i++)
+            {
+                controller.Simulate(1f / 60f, new Vector2(0.7f, 0.25f));
+                yield return null;
+            }
+
+            Assert.That(controller.SpawnedCount, Is.GreaterThan(startingSpawned), "Imported playtest scene did not advance into enemy spawning.");
+            Assert.That(controller.ActiveEnemyCount, Is.GreaterThan(0));
+
+            int startingLevel = controller.Level;
+            controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.2f, 0f, 0.2f), controller.RequiredExperienceForNextLevel);
+            for (int i = 0; i < 45 && controller.State != SurvivorsRunState.LevelUp; i++)
+            {
+                controller.Simulate(1f / 60f);
+                yield return null;
+            }
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State, "Imported playtest scene did not open the first level-up draft after XP collection.");
+            Assert.That(controller.Level, Is.GreaterThan(startingLevel));
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            Assert.IsTrue(controller.SelectUpgrade(0), "Imported playtest scene rejected the first level-up choice.");
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State, "Imported playtest scene did not resume after selecting the first draft choice.");
+
+            float resumedRunTime = controller.RunTimeSeconds;
+            int resumedSpawned = controller.SpawnedCount;
+            int resumedProjectileLaunches = controller.ProjectileLaunchCount;
+            for (int i = 0; i < 240; i++)
+            {
+                controller.Simulate(1f / 30f, new Vector2(Mathf.Sin(i * 0.13f), Mathf.Cos(i * 0.11f)));
+                if (i % 8 == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State, "Imported playtest scene left combat after the first draft choice.");
+            Assert.That(controller.RunTimeSeconds, Is.GreaterThan(resumedRunTime + 5f));
+            Assert.That(controller.SpawnedCount, Is.GreaterThan(resumedSpawned), "Imported playtest scene stopped spawning after the first draft choice.");
+            Assert.That(controller.ProjectileLaunchCount, Is.GreaterThan(resumedProjectileLaunches), "Imported playtest scene stopped auto-attacking after the first draft choice.");
+
+            AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
+            if (unload != null)
+            {
+                yield return WaitForAsyncOperation(unload, 10f);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator EnemyDamageSpawnsShortLivedFeedbackNumbers()
         {
             SurvivorsTemplateController controller = CreateController();
