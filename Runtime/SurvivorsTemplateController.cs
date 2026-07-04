@@ -283,6 +283,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int RewardUpgradeSurgeCount { get; private set; }
         public int RewardUpgradeSurgeHitCount { get; private set; }
         public string LastRewardUpgradeSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public int RewardJackpotCount { get; private set; }
+        public int RewardJackpotExperienceGemDropCount { get; private set; }
+        public int RewardJackpotBloodShardDropCount { get; private set; }
+        public int RewardJackpotBloodShardsDropped { get; private set; }
+        public string LastRewardJackpotFeedbackLabel { get; private set; } = string.Empty;
         public int RewardAutoSelectCount { get; private set; }
         public int EndlessThreatSpawnCount { get; private set; }
         public int HordeRushSpawnCount { get; private set; }
@@ -843,6 +848,11 @@ namespace Deucarian.TemplateGameSurvivors
             RewardUpgradeSurgeCount = 0;
             RewardUpgradeSurgeHitCount = 0;
             LastRewardUpgradeSurgeFeedbackLabel = string.Empty;
+            RewardJackpotCount = 0;
+            RewardJackpotExperienceGemDropCount = 0;
+            RewardJackpotBloodShardDropCount = 0;
+            RewardJackpotBloodShardsDropped = 0;
+            LastRewardJackpotFeedbackLabel = string.Empty;
             RewardAutoSelectCount = 0;
             EndlessThreatSpawnCount = 0;
             HordeRushSpawnCount = 0;
@@ -2086,6 +2096,7 @@ namespace Deucarian.TemplateGameSurvivors
             RecordRewardSelectionFeedback(selectionKind, selected);
             if (IsRewardUpgradeSelectionKind(selectionKind) && !IsEvolutionUpgrade(selected))
             {
+                TriggerRewardJackpot(selected, selectionKind);
                 TriggerRewardUpgradeSurge(selected, selectionKind);
             }
 
@@ -5076,6 +5087,81 @@ namespace Deucarian.TemplateGameSurvivors
                 PlayerPosition,
                 Mathf.Clamp(34 + hitCount * 4, 40, 78),
                 selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? _bossClip : _levelUpClip);
+        }
+
+        private void TriggerRewardJackpot(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind selectionKind)
+        {
+            if (upgrade == null || upgrade.Rarity < RunUpgradeRarity.Rare || !IsRewardUpgradeSelectionKind(selectionKind))
+            {
+                return;
+            }
+
+            int rarityTier = Mathf.Max(0, (int)upgrade.Rarity - (int)RunUpgradeRarity.Rare);
+            int rewardTierBonus = selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? 1 : 0;
+            int gemCount = Mathf.Max(
+                0,
+                CurrentTuning.RewardJackpotExperienceGemBaseCount +
+                rarityTier * Mathf.Max(0, CurrentTuning.RewardJackpotExperienceGemPerRarityTier) +
+                rewardTierBonus);
+            int xpPerGem = Mathf.Max(
+                1,
+                Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (2.5f + rarityTier * 0.7f + rewardTierBonus * 0.5f)));
+            int shardAmount = Mathf.Max(
+                0,
+                CurrentTuning.RewardJackpotBloodShardBaseAmount +
+                rarityTier +
+                rewardTierBonus +
+                (upgrade.Rarity >= RunUpgradeRarity.Legendary ? Mathf.Max(0, CurrentTuning.RewardJackpotLegendaryExtraBloodShardAmount) : 0));
+
+            Vector3 origin = PlayerPosition;
+            float cacheRadius = 0.82f + rarityTier * 0.12f;
+            int spawnedGems = 0;
+            for (int i = 0; i < gemCount; i++)
+            {
+                float angle = ((i + 0.35f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * cacheRadius;
+                SurvivorsPickupActor pickup = SpawnPickup(SurvivorsPickupKind.Experience, origin + offset, xpPerGem);
+                if (pickup != null)
+                {
+                    spawnedGems++;
+                    RewardJackpotExperienceGemDropCount++;
+                    StartMajorRewardCacheAttraction(pickup);
+                }
+            }
+
+            int spawnedShardAmount = 0;
+            if (shardAmount > 0)
+            {
+                SurvivorsPickupActor shard = SpawnPickup(SurvivorsPickupKind.BloodShard, origin + new Vector3(0f, 0f, cacheRadius * 0.45f), shardAmount);
+                if (shard != null)
+                {
+                    spawnedShardAmount = shardAmount;
+                    RewardJackpotBloodShardDropCount++;
+                    RewardJackpotBloodShardsDropped += shardAmount;
+                    StartMajorRewardCacheAttraction(shard);
+                }
+            }
+
+            if (spawnedGems <= 0 && spawnedShardAmount <= 0)
+            {
+                return;
+            }
+
+            RewardJackpotCount++;
+            string rewardLabel = ResolveRewardKindLabel(selectionKind);
+            int totalExperience = spawnedGems * xpPerGem;
+            LastRewardJackpotFeedbackLabel = $"{rewardLabel} Jackpot: {upgrade.Rarity} +{totalExperience} XP";
+            if (spawnedShardAmount > 0)
+            {
+                LastRewardJackpotFeedbackLabel += $" +{spawnedShardAmount} shards";
+            }
+
+            RecordStreakRewardFeedback(LastRewardJackpotFeedbackLabel, ResolveRarityAccentColor(upgrade.Rarity));
+            PlayFeedback(
+                selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? _bossPulse : _levelUpPulse,
+                origin,
+                Mathf.Clamp(24 + spawnedGems * 4 + spawnedShardAmount * 3, 32, 86),
+                _pickupClip);
         }
 
         private void RecordNewlyEligibleEvolutionFeedback()

@@ -25,7 +25,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Elite defeat opens a stronger upgrade reward draft; miniboss defeat opens that stronger upgrade reward and then chains into a boss relic draft.
 - Boss relic picks are unique within the current run, so later relic drafts remove anything already claimed and simply resume play if the collection is exhausted. Choosing a relic emits an immediate surge through nearby non-major enemies, and the build HUD and result summary show the current relic count.
 - Boss defeat strongly prefers an eligible legendary weapon evolution; if no evolution is ready, it falls back to a stronger rare-or-better reward draft before resolving victory.
-- Elite and boss fallback reward drafts lock a reward-tier first card when no evolution is ready, while ready evolutions still lead the reward draft; selecting a fallback reward fires a Reward Surge using `SurvivorsTemplateTuning.RewardUpgradeSurgeDamage` and `RewardUpgradeSurgeRadius`.
+- Elite and boss fallback reward drafts lock a reward-tier first card when no evolution is ready, while ready evolutions still lead the reward draft; selecting a Rare-or-better fallback reward fires a Reward Surge using `SurvivorsTemplateTuning.RewardUpgradeSurgeDamage` and `RewardUpgradeSurgeRadius` and drops a pulled-in XP/shard jackpot.
 - Mid-run level-up drafts guarantee one Rare-or-better choice when eligible, and late-run drafts guarantee one Epic-or-better choice when eligible.
 - Before the player owns a passive, normal level-up drafts reserve one Common/Uncommon passive hook and fill the remaining cards from the normal rarity table.
 - Once a weapon path reaches an evolution requirement, normal level-up drafts reserve the missing matching passive when the current rarity table allows it.
@@ -65,7 +65,7 @@ First run target:
 - Watch the major-threat health bar drop while fighting the miniboss and final boss, back away from their slam warning disc, then dodge the support ring each major threat calls in near low health.
 - Build toward an evolution by ranking a weapon path and taking the matching passive; the HUD should briefly announce Evolution Ready once the requirements are met.
 - Select an evolution reward and watch its surge clear nearby non-major enemies before the evolved behavior takes over.
-- Defeat the final boss, collect its larger reward cache, then if an evolution is eligible pick the boss evolution reward; otherwise pick or skip the strong fallback reward. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile; select Ember Vanguard in the result panel before restarting to try the broader loadout, or press `C` to continue the same build into endless escalation with recurring major-threat rewards.
+- Defeat the final boss, collect its larger reward cache, then if an evolution is eligible pick the boss evolution reward; otherwise pick the strong fallback reward and watch its jackpot pull in, or skip for shards. Victory unlocks the Ember Vanguard sample class and persists the run summary to the local meta profile; select Ember Vanguard in the result panel before restarting to try the broader loadout, or press `C` to continue the same build into endless escalation with recurring major-threat rewards.
 
 For manual timing checks, use the host scene path above rather than the package source scene.
 

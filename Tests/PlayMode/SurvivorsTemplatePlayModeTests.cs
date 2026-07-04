@@ -3352,6 +3352,48 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator BossFallbackRewardSelectionDropsRarityJackpot()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.RewardJackpotExperienceGemBaseCount = 2;
+            controller.CurrentTuning.RewardJackpotExperienceGemPerRarityTier = 1;
+            controller.CurrentTuning.RewardJackpotBloodShardBaseAmount = 1;
+            controller.CurrentTuning.RewardJackpotLegendaryExtraBloodShardAmount = 1;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
+            boss.ApplyDamage(100f, "test.boss.reward-jackpot");
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.LevelUp, controller.State);
+            Assert.IsTrue(controller.IsUpgradeRewardChoiceOpen);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
+            RunUpgradeRarity selectedRarity = controller.CurrentDraftChoices[0].Rarity;
+            Assert.That((int)selectedRarity, Is.GreaterThanOrEqualTo((int)RunUpgradeRarity.Rare));
+            int activePickupsBefore = controller.ActivePickupCount;
+
+            Assert.IsTrue(controller.SelectUpgrade(0));
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.AreEqual(1, controller.SelectedRewardUpgradeCount);
+            Assert.AreEqual(1, controller.RewardJackpotCount);
+            Assert.That(controller.RewardJackpotExperienceGemDropCount, Is.GreaterThanOrEqualTo(3));
+            Assert.AreEqual(1, controller.RewardJackpotBloodShardDropCount);
+            Assert.That(controller.RewardJackpotBloodShardsDropped, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.ActivePickupCount, Is.GreaterThan(activePickupsBefore));
+            Assert.That(controller.LastRewardJackpotFeedbackLabel, Does.Contain("Boss Reward Jackpot"));
+            Assert.That(controller.LastRewardJackpotFeedbackLabel, Does.Contain(selectedRarity.ToString()));
+            Assert.That(controller.LastRewardJackpotFeedbackLabel, Does.Contain("XP"));
+            Assert.That(controller.LastRewardJackpotFeedbackLabel, Does.Contain("shards"));
+            Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Reward Surge"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator SurvivalDurationCanTriggerVictory()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

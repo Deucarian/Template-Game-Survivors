@@ -231,6 +231,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float EvolutionSurgeRadius = 6.2f;
         public float RewardUpgradeSurgeDamage = 16f;
         public float RewardUpgradeSurgeRadius = 4.8f;
+        public int RewardJackpotExperienceGemBaseCount = 2;
+        public int RewardJackpotExperienceGemPerRarityTier = 1;
+        public int RewardJackpotBloodShardBaseAmount = 1;
+        public int RewardJackpotLegendaryExtraBloodShardAmount = 1;
         public float BossRelicSurgeDamage = 18f;
         public float BossRelicSurgeRadius = 5.4f;
         public float StartingBarrierCapacity = 8f;
@@ -719,6 +723,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.WaystoneFocusPickupRangeBonus = 0.72f;
             tuning.RewardUpgradeSurgeDamage = 20f;
             tuning.RewardUpgradeSurgeRadius = 5.2f;
+            tuning.RewardJackpotExperienceGemBaseCount = 3;
+            tuning.RewardJackpotExperienceGemPerRarityTier = 2;
+            tuning.RewardJackpotBloodShardBaseAmount = 2;
+            tuning.RewardJackpotLegendaryExtraBloodShardAmount = 2;
             tuning.HealthPickupHealAmount = 14;
             tuning.BloodShardPickupAmount = 2;
             tuning.ExperienceRequiredBase = 3;
@@ -829,6 +837,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.WaystoneFocusPickupRangeBonus = 0.6f;
             tuning.RewardUpgradeSurgeDamage = 18f;
             tuning.RewardUpgradeSurgeRadius = 5f;
+            tuning.RewardJackpotExperienceGemBaseCount = 3;
+            tuning.RewardJackpotExperienceGemPerRarityTier = 1;
+            tuning.RewardJackpotBloodShardBaseAmount = 1;
+            tuning.RewardJackpotLegendaryExtraBloodShardAmount = 2;
             tuning.HealthPickupHealAmount = 12;
             tuning.BloodShardPickupAmount = 1;
             tuning.ExperienceRequiredBase = 5;

@@ -397,6 +397,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
             Assert.That(tuning.EvolutionSurgeDamage, Is.GreaterThan(0f));
             Assert.That(tuning.EvolutionSurgeRadius, Is.InRange(4f, 8f));
+            Assert.That(tuning.RewardJackpotExperienceGemBaseCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(tuning.RewardJackpotExperienceGemPerRarityTier, Is.GreaterThanOrEqualTo(1));
+            Assert.That(tuning.RewardJackpotBloodShardBaseAmount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(tuning.RewardJackpotLegendaryExtraBloodShardAmount, Is.GreaterThanOrEqualTo(1));
             Assert.That(tuning.BossRelicSurgeDamage, Is.GreaterThan(0f));
             Assert.That(tuning.BossRelicSurgeRadius, Is.InRange(4f, 7f));
             Assert.That(tuning.MajorThreatWarningLeadSeconds, Is.InRange(5f, 12f));
