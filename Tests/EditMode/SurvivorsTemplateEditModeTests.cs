@@ -72,6 +72,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.ScholarsLensUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GiantRuneUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.TwinCharmUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FateLensUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AstralConvergenceUpgradeId));
             AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.ArcaneWandUnlockUpgradeId, BasicSurvivorsGame.ArcaneWandWeaponContentId);
             AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.FrostFanUnlockUpgradeId, BasicSurvivorsGame.FrostFanWeaponContentId);
@@ -947,6 +948,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 float previousExecute = controller.ExecuteThresholdNormalized;
                 float previousCriticalChance = controller.CriticalChanceNormalized;
                 float previousCriticalDamageMultiplier = controller.CriticalDamageMultiplier;
+                float previousDraftLuck = controller.DraftLuckBonus;
                 float previousLifesteal = controller.LifestealRatio;
                 float previousExperienceGain = controller.ExperienceGainMultiplierBonus;
                 float previousAreaRadius = controller.AreaRadiusBonus;
@@ -980,6 +982,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     controller.ExecuteThresholdNormalized > previousExecute ||
                     controller.CriticalChanceNormalized > previousCriticalChance ||
                     controller.CriticalDamageMultiplier > previousCriticalDamageMultiplier ||
+                    controller.DraftLuckBonus > previousDraftLuck ||
                     controller.LifestealRatio > previousLifesteal ||
                     controller.ExperienceGainMultiplierBonus > previousExperienceGain ||
                     controller.AreaRadiusBonus > previousAreaRadius ||

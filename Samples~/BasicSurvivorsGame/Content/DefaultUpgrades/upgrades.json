@@ -6,6 +6,7 @@
     { "id": "upgrade.survivors.gem-magnet", "rarity": "Uncommon", "effect": "survivors.pickup.range", "target": "survivors.pickups" },
     { "id": "upgrade.survivors.iron-blood", "rarity": "Rare", "effect": "survivors.player.max_health", "target": "survivors.player" },
     { "id": "upgrade.survivors.keen-edge", "rarity": "Rare", "effect": "survivors.critical.chance", "target": "survivors.critical" },
+    { "id": "upgrade.survivors.fate-lens", "rarity": "Rare", "effect": "survivors.draft.luck", "target": "survivors.draft" },
     { "id": "upgrade.survivors.weapon.arcane-wand", "rarity": "Common", "effect": "survivors.weapon.unlock", "target": "survivors.weapon.arcane-wand" },
     { "id": "upgrade.survivors.weapon.frost-fan", "rarity": "Uncommon", "effect": "survivors.weapon.unlock", "target": "survivors.weapon.frost-fan" },
     { "id": "upgrade.survivors.weapon.orbit-ward", "rarity": "Uncommon", "effect": "survivors.weapon.unlock", "target": "survivors.weapon.orbit-ward" },

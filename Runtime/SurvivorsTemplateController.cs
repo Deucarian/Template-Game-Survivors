@@ -356,6 +356,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float ExecuteThresholdNormalized { get; private set; }
         public float CriticalChanceBonus { get; private set; }
         public float CriticalDamageMultiplierBonus { get; private set; }
+        public float DraftLuckBonus { get; private set; }
         public float LifestealRatio { get; private set; }
         public float ExperienceGainMultiplierBonus { get; private set; }
         public float AreaRadiusBonus { get; private set; }
@@ -781,6 +782,7 @@ namespace Deucarian.TemplateGameSurvivors
             ExecuteThresholdNormalized = 0f;
             CriticalChanceBonus = 0f;
             CriticalDamageMultiplierBonus = 0f;
+            DraftLuckBonus = 0f;
             LifestealRatio = 0f;
             ExperienceGainMultiplierBonus = 0f;
             AreaRadiusBonus = 0f;
@@ -1324,6 +1326,12 @@ namespace Deucarian.TemplateGameSurvivors
             return string.IsNullOrWhiteSpace(upgradeId) ? 0 : _upgradeState.GetRank(new RunUpgradeId(upgradeId));
         }
 
+        public int GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity rarity)
+        {
+            EnsureRunStartedForTest();
+            return ResolveDraftRarityWeight(DraftRarityProfile.NormalMid, rarity);
+        }
+
         public bool HasEvolvedUpgradeForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
@@ -1342,7 +1350,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
-                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
+                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
@@ -3406,6 +3414,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         private int ResolveDraftRarityWeight(DraftRarityProfile profile, RunUpgradeRarity rarity)
         {
+            return ApplyDraftLuckToRarityWeight(ResolveBaseDraftRarityWeight(profile, rarity), rarity);
+        }
+
+        private int ResolveBaseDraftRarityWeight(DraftRarityProfile profile, RunUpgradeRarity rarity)
+        {
             switch (profile)
             {
                 case DraftRarityProfile.NormalEarly:
@@ -3421,6 +3434,40 @@ namespace Deucarian.TemplateGameSurvivors
                 default:
                     return 100;
             }
+        }
+
+        private int ApplyDraftLuckToRarityWeight(int baseWeight, RunUpgradeRarity rarity)
+        {
+            if (baseWeight <= 0 || DraftLuckBonus <= 0f)
+            {
+                return baseWeight;
+            }
+
+            float luck = Mathf.Max(0f, DraftLuckBonus);
+            float multiplier;
+            switch (rarity)
+            {
+                case RunUpgradeRarity.Common:
+                    multiplier = Mathf.Max(0.35f, 1f - luck * 0.35f);
+                    break;
+                case RunUpgradeRarity.Uncommon:
+                    multiplier = 1f + luck * 0.15f;
+                    break;
+                case RunUpgradeRarity.Rare:
+                    multiplier = 1f + luck;
+                    break;
+                case RunUpgradeRarity.Epic:
+                    multiplier = 1f + luck * 1.6f;
+                    break;
+                case RunUpgradeRarity.Legendary:
+                    multiplier = 1f + luck * 2.2f;
+                    break;
+                default:
+                    multiplier = 1f;
+                    break;
+            }
+
+            return Mathf.Max(1, Mathf.RoundToInt(baseWeight * multiplier));
         }
 
         private int ResolveNormalEarlyRarityWeight(RunUpgradeRarity rarity)
@@ -5707,6 +5754,10 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalDamageEffect))
                 {
                     CriticalDamageMultiplierBonus += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.DraftLuckEffect))
+                {
+                    DraftLuckBonus += Mathf.Max(0f, (float)effect.Amount);
                 }
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect))
                 {

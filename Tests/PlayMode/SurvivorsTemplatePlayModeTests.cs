@@ -728,6 +728,30 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator FateLensBiasesFutureDraftsTowardHigherRarities()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            int commonBefore = controller.GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity.Common);
+            int rareBefore = controller.GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity.Rare);
+            int epicBefore = controller.GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity.Epic);
+            int legendaryBefore = controller.GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity.Legendary);
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FateLensUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FateLensUpgradeId));
+
+            Assert.That(controller.DraftLuckBonus, Is.GreaterThan(0f));
+            Assert.That(controller.GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity.Common), Is.LessThan(commonBefore));
+            Assert.That(controller.GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity.Rare), Is.GreaterThan(rareBefore));
+            Assert.That(controller.GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity.Epic), Is.GreaterThan(epicBefore));
+            Assert.AreEqual(legendaryBefore, controller.GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity.Legendary));
+            Assert.That(string.Join("\n", controller.DebugDescribeCurrentBuild()), Does.Contain("luck +"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator MidLevelDraftLocksRareOrBetterFirstChoiceWhenEligible()
         {
             SurvivorsTemplateController controller = CreateController();
