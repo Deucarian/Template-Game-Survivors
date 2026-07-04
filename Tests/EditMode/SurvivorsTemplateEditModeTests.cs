@@ -302,6 +302,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.MajorThreatEnrageHealthThreshold, Is.InRange(0.4f, 0.65f));
             Assert.That(tuning.MajorThreatEnrageBossSupportCount, Is.GreaterThan(tuning.MajorThreatEnrageMinibossSupportCount));
             Assert.That(tuning.MajorThreatEnrageMinibossSupportCount, Is.GreaterThan(tuning.MajorThreatEnrageEliteSupportCount));
+            Assert.That(tuning.SummonerSupportCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(tuning.SummonerSupportInitialDelaySeconds, Is.InRange(0.5f, 2f));
+            Assert.That(tuning.SummonerSupportIntervalSeconds, Is.InRange(3.5f, 6f));
+            Assert.That(tuning.SummonerSupportExtraAliveAllowance, Is.GreaterThanOrEqualTo(4));
             Assert.That(tuning.MajorThreatSlamIntervalSeconds, Is.InRange(4f, 7f));
             Assert.That(tuning.MajorThreatSlamTelegraphSeconds, Is.InRange(0.4f, 0.9f));
             Assert.That(tuning.MajorThreatSlamRadius, Is.InRange(2.5f, 4.5f));
@@ -357,6 +361,19 @@ namespace Deucarian.TemplateGameSurvivors.Tests
 
             runtime.Tick(60f);
             Assert.That(runtime.ResolveMaximumAlive(tuning.EnemyMaximumAlive), Is.InRange(36, 48));
+
+            runtime.Tick(180f);
+            bool sawSummoner = false;
+            for (long sequence = 0L; sequence < 80L; sequence++)
+            {
+                if (runtime.ResolveNextSwarmRole(180f, sequence) == SurvivorsEnemyRole.Summoner)
+                {
+                    sawSummoner = true;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(sawSummoner);
 
             runtime.Tick(240f);
             Assert.That(runtime.ResolveMaximumAlive(tuning.EnemyMaximumAlive), Is.InRange(64, 84));
@@ -1091,6 +1108,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Bruiser).MaxHealth, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Swarm).MaxHealth));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Spitter).RangedAttackRange, Is.GreaterThan(0f));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Splitter).MaxHealth, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Swarm).MaxHealth));
+            Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Summoner).PreferredRange, Is.GreaterThan(0f));
+            Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Summoner).ExperienceReward, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Runner).ExperienceReward));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Elite).ExperienceReward, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Bruiser).ExperienceReward));
             Assert.That(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.DreadElite).RangedAttackRange, Is.GreaterThan(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Elite).RangedAttackRange));
             Assert.IsTrue(BasicSurvivorsGame.CreateMetaProgressionDefinition().TryGetReward(BasicSurvivorsGame.EliteRewardId, out _));

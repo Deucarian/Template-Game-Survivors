@@ -63,6 +63,19 @@
       "spawnTimeSeconds": 210
     },
     {
+      "id": "enemy.survivors.summoner",
+      "displayName": "Rift Caller",
+      "role": "Summoner",
+      "health": 24.5,
+      "moveSpeed": 1.05,
+      "radius": 0.53,
+      "contactDamage": 2.5,
+      "contactIntervalSeconds": 0.74,
+      "experienceDrop": 6,
+      "spawnTimeSeconds": 155,
+      "behavior": "Periodically calls in two nearby support enemies while alive."
+    },
+    {
       "id": "enemy.survivors.elite",
       "displayName": "Blood Warden Elite",
       "role": "Elite",

@@ -14,7 +14,8 @@ namespace Deucarian.TemplateGameSurvivors
         Elite = 5,
         Miniboss = 6,
         Boss = 7,
-        DreadElite = 8
+        DreadElite = 8,
+        Summoner = 9
     }
 
     public enum SurvivorsRunPhase
@@ -351,8 +352,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             int totalWeight = 0;
-            SurvivorsEnemyRole[] roles = new SurvivorsEnemyRole[7];
-            int[] weights = new int[7];
+            SurvivorsEnemyRole[] roles = new SurvivorsEnemyRole[8];
+            int[] weights = new int[8];
             int candidateCount = 0;
             AddCandidate(SurvivorsEnemyRole.Swarm, 60, ref candidateCount, roles, weights, ref totalWeight);
             if (elapsedTimeSeconds >= 20f)
@@ -373,6 +374,11 @@ namespace Deucarian.TemplateGameSurvivors
             if (elapsedTimeSeconds >= 125f)
             {
                 AddCandidate(SurvivorsEnemyRole.Splitter, 8 + Math.Min(12, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
+            }
+
+            if (elapsedTimeSeconds >= 155f)
+            {
+                AddCandidate(SurvivorsEnemyRole.Summoner, 5 + Math.Min(10, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
             if (elapsedTimeSeconds >= 170f)

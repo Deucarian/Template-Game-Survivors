@@ -2384,6 +2384,36 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator SummonerPeriodicallyCallsSupportEnemies()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMaximumAlive = 1;
+            controller.CurrentTuning.SummonerSupportInitialDelaySeconds = 0.05f;
+            controller.CurrentTuning.SummonerSupportIntervalSeconds = 0.2f;
+            controller.CurrentTuning.SummonerSupportCount = 2;
+            controller.CurrentTuning.SummonerSupportExtraAliveAllowance = 4;
+            controller.StartRun();
+            yield return null;
+
+            int activeBeforeSummoner = controller.ActiveEnemyCount;
+            int activeSummonersBefore = controller.ActiveSummonerCount;
+            SurvivorsEnemyActor summoner = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(5f, 0f, 0f), SurvivorsEnemyRole.Summoner, 30f);
+            Assert.NotNull(summoner);
+            Assert.AreEqual(activeSummonersBefore + 1, controller.ActiveSummonerCount);
+            Assert.AreEqual(activeBeforeSummoner + 1, controller.ActiveEnemyCount);
+
+            controller.Simulate(0.06f);
+            yield return null;
+
+            Assert.AreEqual(2, controller.SummonerSupportSpawnCount);
+            Assert.AreEqual(activeSummonersBefore + 1, controller.ActiveSummonerCount);
+            Assert.AreEqual(activeBeforeSummoner + 3, controller.ActiveEnemyCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RunFlowCanSpawnTimedElitesMinibossAndBossOverTime()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

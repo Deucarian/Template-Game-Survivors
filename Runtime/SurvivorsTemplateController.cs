@@ -249,6 +249,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadExplosionHitCount { get; private set; }
         public int PayloadHazardTickCount { get; private set; }
         public int SplitterChildSpawnCount { get; private set; }
+        public int SummonerSupportSpawnCount { get; private set; }
         public int MinibossSpawnCount { get; private set; }
         public int BossSpawnCount { get; private set; }
         public int EliteKilledCount { get; private set; }
@@ -413,6 +414,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveBruiserCount => CountEnemiesByRole(SurvivorsEnemyRole.Bruiser);
         public int ActiveSpitterCount => CountEnemiesByRole(SurvivorsEnemyRole.Spitter);
         public int ActiveSplitterCount => CountEnemiesByRole(SurvivorsEnemyRole.Splitter);
+        public int ActiveSummonerCount => CountEnemiesByRole(SurvivorsEnemyRole.Summoner);
         public int ActiveEliteCount => CountEliteEnemies();
         public int ActiveDreadEliteCount => CountEnemiesByRole(SurvivorsEnemyRole.DreadElite);
         public int ActiveMinibossCount => CountEnemiesByRole(SurvivorsEnemyRole.Miniboss);
@@ -664,7 +666,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawHudBar(new Rect(24, 122, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
             GUI.Label(new Rect(24, 148, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}", _hudLabelStyle);
             GUI.Label(new Rect(24, 170, 318, 22), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 192, 318, 22), $"Split {ActiveSplitterCount}   Elite {ActiveEliteCount}   Miniboss {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
+            GUI.Label(new Rect(24, 192, 318, 22), $"Split {ActiveSplitterCount}   Call {ActiveSummonerCount}   Elite {ActiveEliteCount}   Mini {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
             GUI.Label(new Rect(24, 214, 318, 22), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
             GUI.Label(new Rect(24, 236, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
             GUI.Label(new Rect(24, 258, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
@@ -744,6 +746,7 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadExplosionHitCount = 0;
             PayloadHazardTickCount = 0;
             SplitterChildSpawnCount = 0;
+            SummonerSupportSpawnCount = 0;
             MinibossSpawnCount = 0;
             BossSpawnCount = 0;
             EliteKilledCount = 0;
@@ -5732,6 +5735,11 @@ namespace Deucarian.TemplateGameSurvivors
                 return "group.survivors.splitters";
             }
 
+            if (role == SurvivorsEnemyRole.Summoner)
+            {
+                return "group.survivors.summoners";
+            }
+
             if (role == SurvivorsEnemyRole.Elite)
             {
                 return "group.survivors.elites";
@@ -5842,6 +5850,47 @@ namespace Deucarian.TemplateGameSurvivors
                     SplitterChildSpawnCount++;
                 }
             }
+        }
+
+        internal int SpawnSummonerSupport(SurvivorsEnemyActor summoner)
+        {
+            if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory || summoner == null || !summoner.IsAlive)
+            {
+                return 0;
+            }
+
+            int requested = Mathf.Max(0, CurrentTuning.SummonerSupportCount);
+            int available = Mathf.Max(
+                0,
+                ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.SummonerSupportExtraAliveAllowance) - _enemies.Count);
+            int count = Mathf.Min(requested, available);
+            if (count <= 0)
+            {
+                return 0;
+            }
+
+            Vector3 center = summoner.transform.position;
+            float radius = Mathf.Max(summoner.Radius + 0.85f, CurrentTuning.SummonerSupportRadius);
+            int spawned = 0;
+            int sequenceOffset = SummonerSupportSpawnCount;
+            for (int index = 0; index < count; index++)
+            {
+                float angle = ((index + 0.5f) / count) * Mathf.PI * 2f;
+                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
+                SurvivorsEnemyRole role = ResolveSummonerSupportRole(sequenceOffset + index);
+                if (SpawnEnemy(center + offset, explicitPosition: true, role) != null)
+                {
+                    spawned++;
+                }
+            }
+
+            SummonerSupportSpawnCount += spawned;
+            return spawned;
+        }
+
+        private static SurvivorsEnemyRole ResolveSummonerSupportRole(int sequence)
+        {
+            return sequence % 4 == 3 ? SurvivorsEnemyRole.Runner : SurvivorsEnemyRole.Swarm;
         }
 
         private SurvivorsPickupActor SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount)
@@ -7941,6 +7990,7 @@ namespace Deucarian.TemplateGameSurvivors
         private float _rangedAttackCooldown;
         private float _rangedAttackWindupTimer;
         private bool _rangedAttackTelegraphing;
+        private float _summonSupportCooldown;
         private float _majorThreatSlamCooldown;
         private float _majorThreatSlamTelegraphTimer;
         private bool _majorThreatSlamTelegraphing;
@@ -7987,6 +8037,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rangedAttackCooldown = Mathf.Min(0.75f, _rangedAttackInterval);
             _rangedAttackWindupTimer = 0f;
             _rangedAttackTelegraphing = false;
+            _summonSupportCooldown = ResolveInitialSummonSupportCooldown(profile.Role, controller == null ? null : controller.CurrentTuning);
             _majorThreatSlamCooldown = ResolveInitialMajorThreatSlamCooldown(profile.Role, controller == null ? null : controller.CurrentTuning);
             _majorThreatSlamTelegraphTimer = 0f;
             _majorThreatSlamTelegraphing = false;
@@ -8051,6 +8102,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             TickMajorThreatSlam(deltaTime, distance);
             TickRangedAttack(deltaTime, distance);
+            TickSummonSupport(deltaTime);
             _contactCooldown -= deltaTime;
             if (_contactCooldown <= 0f && distance <= Radius + _controller.CurrentTuning.PlayerRadius)
             {
@@ -8223,6 +8275,16 @@ namespace Deucarian.TemplateGameSurvivors
             return Mathf.Max(0f, tuning.MajorThreatSlamIntervalSeconds);
         }
 
+        private static float ResolveInitialSummonSupportCooldown(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
+        {
+            if (tuning == null || role != SurvivorsEnemyRole.Summoner)
+            {
+                return 0f;
+            }
+
+            return Mathf.Max(0f, tuning.SummonerSupportInitialDelaySeconds);
+        }
+
         private void TickRangedAttack(float deltaTime, float distance)
         {
             if (_controller == null || _rangedAttackRange <= 0f || _rangedAttackDamage <= 0f)
@@ -8267,6 +8329,30 @@ namespace Deucarian.TemplateGameSurvivors
 
             _rangedAttackTelegraphing = true;
             _rangedAttackWindupTimer = _rangedAttackWindupSeconds;
+        }
+
+        private void TickSummonSupport(float deltaTime)
+        {
+            if (_controller == null || Role != SurvivorsEnemyRole.Summoner)
+            {
+                return;
+            }
+
+            SurvivorsTemplateTuning tuning = _controller.CurrentTuning;
+            float interval = Mathf.Max(0f, tuning.SummonerSupportIntervalSeconds);
+            if (interval <= 0f || tuning.SummonerSupportCount <= 0)
+            {
+                return;
+            }
+
+            _summonSupportCooldown = Mathf.Max(0f, _summonSupportCooldown - Mathf.Max(0f, deltaTime));
+            if (_summonSupportCooldown > 0f)
+            {
+                return;
+            }
+
+            int spawned = _controller.SpawnSummonerSupport(this);
+            _summonSupportCooldown = spawned > 0 ? interval : Mathf.Min(interval, 0.75f);
         }
 
         private float ResolveDistanceToPlayer()
@@ -8335,6 +8421,7 @@ namespace Deucarian.TemplateGameSurvivors
             _bleedRemainingSeconds = 0f;
             _rangedAttackWindupTimer = 0f;
             _rangedAttackTelegraphing = false;
+            _summonSupportCooldown = 0f;
             _hitFlashTimer = 0f;
             _hitFlashDuration = 0f;
             _hitFlashCritical = false;
@@ -8359,6 +8446,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rangedAttackCooldown = 0f;
             _rangedAttackWindupTimer = 0f;
             _rangedAttackTelegraphing = false;
+            _summonSupportCooldown = 0f;
             _poisonDamagePerSecond = 0f;
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;

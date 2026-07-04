@@ -93,6 +93,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorThreatEnrageBossSupportCount = 10;
         public int MajorThreatEnrageExtraAliveAllowance = 12;
         public float MajorThreatEnrageSupportRadius = 3.6f;
+        public float SummonerSupportInitialDelaySeconds = 1.35f;
+        public float SummonerSupportIntervalSeconds = 4.8f;
+        public int SummonerSupportCount = 2;
+        public int SummonerSupportExtraAliveAllowance = 8;
+        public float SummonerSupportRadius = 1.75f;
         public float MajorThreatSlamIntervalSeconds = 5.5f;
         public float MajorThreatSlamTelegraphSeconds = 0.65f;
         public float MajorThreatSlamRadius = 3.25f;
@@ -491,6 +496,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatEnrageBossSupportCount = 12;
             tuning.MajorThreatEnrageExtraAliveAllowance = 16;
             tuning.MajorThreatEnrageSupportRadius = 3.9f;
+            tuning.SummonerSupportIntervalSeconds = 4.4f;
+            tuning.SummonerSupportExtraAliveAllowance = 10;
             tuning.MajorThreatSlamIntervalSeconds = 5f;
             tuning.MajorThreatSlamDamage = 8f;
             tuning.FirstEliteSpawnTimeSeconds = 120f;
@@ -592,6 +599,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatEnrageBossSupportCount = 12;
             tuning.MajorThreatEnrageExtraAliveAllowance = 24;
             tuning.MajorThreatEnrageSupportRadius = 3.4f;
+            tuning.SummonerSupportInitialDelaySeconds = 0.65f;
+            tuning.SummonerSupportIntervalSeconds = 2.3f;
+            tuning.SummonerSupportExtraAliveAllowance = 16;
             tuning.MajorThreatSlamIntervalSeconds = 3.5f;
             tuning.MajorThreatSlamTelegraphSeconds = 0.5f;
             tuning.MajorThreatSlamRadius = 3.5f;
@@ -698,6 +708,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatEnrageBossSupportCount = 12;
             tuning.MajorThreatEnrageExtraAliveAllowance = 20;
             tuning.MajorThreatEnrageSupportRadius = 3.75f;
+            tuning.SummonerSupportIntervalSeconds = 3.5f;
+            tuning.SummonerSupportExtraAliveAllowance = 12;
             tuning.MajorThreatSlamIntervalSeconds = 4.4f;
             tuning.MajorThreatSlamTelegraphSeconds = 0.55f;
             tuning.MajorThreatSlamRadius = 3.4f;
@@ -810,6 +822,7 @@ namespace Deucarian.TemplateGameSurvivors
                 CreateEnemyProfile(SurvivorsEnemyRole.Bruiser, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Spitter, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Splitter, resolved),
+                CreateEnemyProfile(SurvivorsEnemyRole.Summoner, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Elite, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.DreadElite, resolved),
                 CreateEnemyProfile(SurvivorsEnemyRole.Miniboss, resolved),
@@ -874,6 +887,19 @@ namespace Deucarian.TemplateGameSurvivors
                         resolved.EnemyContactIntervalSeconds * 1.08f,
                         Mathf.Max(1, Mathf.RoundToInt(resolved.EnemyExperienceReward * 3.1f)),
                         new Color(0.36f, 0.54f, 0.92f));
+                case SurvivorsEnemyRole.Summoner:
+                    return new SurvivorsEnemyProfile(
+                        SurvivorsEnemyRole.Summoner,
+                        "enemy.survivors.summoner",
+                        "Rift Caller",
+                        resolved.EnemyMaxHealth * 1.75f,
+                        resolved.EnemyMoveSpeed * 0.76f,
+                        resolved.EnemyRadius * 1.1f,
+                        resolved.EnemyContactDamage * 0.72f,
+                        resolved.EnemyContactIntervalSeconds * 1.05f,
+                        Mathf.Max(1, Mathf.RoundToInt(resolved.EnemyExperienceReward * 2.8f)),
+                        new Color(0.2f, 0.9f, 0.78f),
+                        preferredRange: 3.7f);
                 case SurvivorsEnemyRole.Elite:
                     return new SurvivorsEnemyProfile(
                         SurvivorsEnemyRole.Elite,
