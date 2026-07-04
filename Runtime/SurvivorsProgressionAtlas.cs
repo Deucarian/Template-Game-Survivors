@@ -14,7 +14,8 @@ namespace Deucarian.TemplateGameSurvivors
         Passive = 0,
         WeaponRank = 1,
         WeaponMutation = 2,
-        WeaponUnlock = 3
+        WeaponUnlock = 3,
+        Evolution = 4
     }
 
     public sealed class SurvivorsProgressionNodeDefinition

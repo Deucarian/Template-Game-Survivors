@@ -38,7 +38,8 @@
         { "id": "node.survivors.arc-bolt.damage", "displayName": "Arcane Damage", "upgradeId": "upgrade.survivors.arcane-damage", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 8 },
         { "id": "node.survivors.arc-bolt.pierce", "displayName": "Piercing Bolts", "upgradeId": "upgrade.survivors.piercing-bolts", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 },
         { "id": "node.survivors.arc-bolt.chain", "displayName": "Chain Bolts", "upgradeId": "upgrade.survivors.chain-bolts", "kind": "WeaponMutation", "tier": 3, "pointCost": 2, "maxRank": 3 },
-        { "id": "node.survivors.arc-bolt.return", "displayName": "Returning Bolts", "upgradeId": "upgrade.survivors.returning-bolts", "kind": "WeaponMutation", "tier": 4, "pointCost": 2, "maxRank": 2 }
+        { "id": "node.survivors.arc-bolt.return", "displayName": "Returning Bolts", "upgradeId": "upgrade.survivors.returning-bolts", "kind": "WeaponMutation", "tier": 4, "pointCost": 2, "maxRank": 2 },
+        { "id": "node.survivors.arc-bolt.evolution", "displayName": "Arcane Storm", "upgradeId": "upgrade.survivors.evolution.arcane-storm", "kind": "Evolution", "tier": 5, "pointCost": 3, "maxRank": 1 }
       ]
     },
     {
@@ -52,7 +53,8 @@
         { "id": "node.survivors.frost-fan.rank", "displayName": "Frost Fan", "upgradeId": "upgrade.survivors.frost-fan", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.frost-fan.splinter", "displayName": "Frost Splinter", "upgradeId": "upgrade.survivors.frost-splinter", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 3 },
         { "id": "node.survivors.frost-fan.ricochet", "displayName": "Frost Ricochet", "upgradeId": "upgrade.survivors.frost-ricochet", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 2 },
-        { "id": "node.survivors.frost-fan.needles", "displayName": "Frost Needlework", "upgradeId": "upgrade.survivors.frost-needlework", "kind": "WeaponMutation", "tier": 4, "pointCost": 1, "maxRank": 3 }
+        { "id": "node.survivors.frost-fan.needles", "displayName": "Frost Needlework", "upgradeId": "upgrade.survivors.frost-needlework", "kind": "WeaponMutation", "tier": 4, "pointCost": 1, "maxRank": 3 },
+        { "id": "node.survivors.frost-fan.evolution", "displayName": "Blizzard Crown", "upgradeId": "upgrade.survivors.evolution.blizzard-crown", "kind": "Evolution", "tier": 5, "pointCost": 3, "maxRank": 1 }
       ]
     },
     {
@@ -65,7 +67,8 @@
         { "id": "node.survivors.blood-ring.unlock", "displayName": "Blood Ring", "upgradeId": "upgrade.survivors.weapon.orbit-ward", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
         { "id": "node.survivors.blood-ring.focus", "displayName": "Orbiting Focus", "upgradeId": "upgrade.survivors.orbiting-focus", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.blood-ring.serrated-orbit", "displayName": "Serrated Orbit", "upgradeId": "upgrade.survivors.serrated-orbit", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 2 },
-        { "id": "node.survivors.blood-ring.canticle", "displayName": "Blood Ring Canticle", "upgradeId": "upgrade.survivors.blood-ring-canticle", "kind": "WeaponMutation", "tier": 2, "pointCost": 2, "maxRank": 3 }
+        { "id": "node.survivors.blood-ring.canticle", "displayName": "Blood Ring Canticle", "upgradeId": "upgrade.survivors.blood-ring-canticle", "kind": "WeaponMutation", "tier": 2, "pointCost": 2, "maxRank": 3 },
+        { "id": "node.survivors.blood-ring.evolution", "displayName": "Crimson Aegis", "upgradeId": "upgrade.survivors.evolution.crimson-aegis", "kind": "Evolution", "tier": 5, "pointCost": 3, "maxRank": 1 }
       ]
     },
     {
@@ -78,7 +81,8 @@
         { "id": "node.survivors.thorn-halo.unlock", "displayName": "Thorn Halo", "upgradeId": "upgrade.survivors.weapon.thorn-halo", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
         { "id": "node.survivors.thorn-halo.bramble-guard", "displayName": "Bramble Guard", "upgradeId": "upgrade.survivors.bramble-guard", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.thorn-halo.wall", "displayName": "Thorn Halo Wall", "upgradeId": "upgrade.survivors.thorn-halo-wall", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 3 },
-        { "id": "node.survivors.thorn-halo.spiral", "displayName": "Halo Spiral", "upgradeId": "upgrade.survivors.halo-spiral", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 2 }
+        { "id": "node.survivors.thorn-halo.spiral", "displayName": "Halo Spiral", "upgradeId": "upgrade.survivors.halo-spiral", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 2 },
+        { "id": "node.survivors.thorn-halo.evolution", "displayName": "Crimson Aegis", "upgradeId": "upgrade.survivors.evolution.crimson-aegis", "kind": "Evolution", "tier": 5, "pointCost": 3, "maxRank": 1 }
       ]
     },
     {
@@ -91,7 +95,8 @@
         { "id": "node.survivors.cinder-burst.unlock", "displayName": "Cinder Burst", "upgradeId": "upgrade.survivors.weapon.star-nova", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
         { "id": "node.survivors.cinder-burst.nova-echo", "displayName": "Nova Echo", "upgradeId": "upgrade.survivors.nova-echo", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.cinder-burst.cinder-echoes", "displayName": "Cinder Echoes", "upgradeId": "upgrade.survivors.cinder-echoes", "kind": "WeaponMutation", "tier": 2, "pointCost": 2, "maxRank": 3 },
-        { "id": "node.survivors.cinder-burst.targeted-sigils", "displayName": "Targeted Burst Sigils", "upgradeId": "upgrade.survivors.targeted-burst-sigils", "kind": "WeaponMutation", "tier": 3, "pointCost": 2, "maxRank": 1 }
+        { "id": "node.survivors.cinder-burst.targeted-sigils", "displayName": "Targeted Burst Sigils", "upgradeId": "upgrade.survivors.targeted-burst-sigils", "kind": "WeaponMutation", "tier": 3, "pointCost": 2, "maxRank": 1 },
+        { "id": "node.survivors.cinder-burst.evolution", "displayName": "Inferno Heart", "upgradeId": "upgrade.survivors.evolution.inferno-heart", "kind": "Evolution", "tier": 5, "pointCost": 3, "maxRank": 1 }
       ]
     },
     {
@@ -104,7 +109,8 @@
         { "id": "node.survivors.star-beam.unlock", "displayName": "Star Beam", "upgradeId": "upgrade.survivors.weapon.star-beam", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
         { "id": "node.survivors.star-beam.focus", "displayName": "Star Focus", "upgradeId": "upgrade.survivors.star-focus", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.star-beam.prismatic-beam", "displayName": "Prismatic Beam", "upgradeId": "upgrade.survivors.prismatic-beam", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 3 },
-        { "id": "node.survivors.star-beam.pulse", "displayName": "Star Pulse", "upgradeId": "upgrade.survivors.star-pulse", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 2 }
+        { "id": "node.survivors.star-beam.pulse", "displayName": "Star Pulse", "upgradeId": "upgrade.survivors.star-pulse", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 2 },
+        { "id": "node.survivors.star-beam.evolution", "displayName": "Tempest Prism", "upgradeId": "upgrade.survivors.evolution.tempest-prism", "kind": "Evolution", "tier": 5, "pointCost": 3, "maxRank": 1 }
       ]
     },
     {
@@ -117,7 +123,8 @@
         { "id": "node.survivors.ember-vanguard.moon-slash.unlock", "displayName": "Moon Slash", "upgradeId": "upgrade.survivors.weapon.moon-slash", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
         { "id": "node.survivors.ember-vanguard.moon-slash.edge", "displayName": "Moonlit Edge", "upgradeId": "upgrade.survivors.moonlit-edge", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.ember-vanguard.moon-slash.crescent-chain", "displayName": "Crescent Chain", "upgradeId": "upgrade.survivors.crescent-chain", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 },
-        { "id": "node.survivors.ember-vanguard.moon-slash.tempo", "displayName": "Lunar Tempo", "upgradeId": "upgrade.survivors.lunar-tempo", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 2 }
+        { "id": "node.survivors.ember-vanguard.moon-slash.tempo", "displayName": "Lunar Tempo", "upgradeId": "upgrade.survivors.lunar-tempo", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 2 },
+        { "id": "node.survivors.ember-vanguard.moon-slash.evolution", "displayName": "Eclipse Waltz", "upgradeId": "upgrade.survivors.evolution.eclipse-waltz", "kind": "Evolution", "tier": 5, "pointCost": 3, "maxRank": 1 }
       ]
     },
     {
@@ -130,7 +137,8 @@
         { "id": "node.survivors.gravity-grenade.unlock", "displayName": "Gravity Grenade", "upgradeId": "upgrade.survivors.weapon.gravity-grenade", "kind": "WeaponUnlock", "tier": 0, "pointCost": 1, "maxRank": 1 },
         { "id": "node.survivors.gravity-grenade.extra", "displayName": "Extra Payload", "upgradeId": "upgrade.survivors.extra-payload", "kind": "WeaponRank", "tier": 1, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.gravity-grenade.bigger-booms", "displayName": "Bigger Booms", "upgradeId": "upgrade.survivors.bigger-booms", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 },
-        { "id": "node.survivors.gravity-grenade.wider-triggers", "displayName": "Wider Triggers", "upgradeId": "upgrade.survivors.wider-triggers", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 }
+        { "id": "node.survivors.gravity-grenade.wider-triggers", "displayName": "Wider Triggers", "upgradeId": "upgrade.survivors.wider-triggers", "kind": "WeaponMutation", "tier": 2, "pointCost": 1, "maxRank": 4 },
+        { "id": "node.survivors.gravity-grenade.evolution", "displayName": "Gravefield Engine", "upgradeId": "upgrade.survivors.evolution.gravefield-engine", "kind": "Evolution", "tier": 5, "pointCost": 3, "maxRank": 1 }
       ]
     },
     {
@@ -145,7 +153,8 @@
         { "id": "node.survivors.ember-vanguard.payloads.rune-lattice", "displayName": "Rune Lattice", "upgradeId": "upgrade.survivors.rune-lattice", "kind": "WeaponRank", "tier": 2, "pointCost": 1, "maxRank": 5 },
         { "id": "node.survivors.ember-vanguard.payloads.snaring-runes", "displayName": "Snaring Runes", "upgradeId": "upgrade.survivors.snaring-runes", "kind": "WeaponMutation", "tier": 3, "pointCost": 1, "maxRank": 3 },
         { "id": "node.survivors.ember-vanguard.payloads.aether-bloom", "displayName": "Aether Bloom", "upgradeId": "upgrade.survivors.aether-bloom", "kind": "WeaponMutation", "tier": 4, "pointCost": 1, "maxRank": 3 },
-        { "id": "node.survivors.ember-vanguard.payloads.siege", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "WeaponRank", "tier": 5, "pointCost": 2, "maxRank": 3 }
+        { "id": "node.survivors.ember-vanguard.payloads.siege", "displayName": "Siege Payloads", "upgradeId": "upgrade.survivors.siege-payloads", "kind": "WeaponRank", "tier": 5, "pointCost": 2, "maxRank": 3 },
+        { "id": "node.survivors.ember-vanguard.payloads.evolution", "displayName": "Aetherfield Matrix", "upgradeId": "upgrade.survivors.evolution.aetherfield-matrix", "kind": "Evolution", "tier": 6, "pointCost": 3, "maxRank": 1 }
       ]
     }
   ]

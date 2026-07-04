@@ -982,6 +982,24 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static void ValidateSampleEvolutionProgressionCoverage(HashSet<string> sampleEvolutionNodeUpgradeIds, SurvivorsContentValidationResult result)
+        {
+            IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata = BasicSurvivorsGame.CreateRunUpgradeMetadata();
+            for (int i = 0; i < metadata.Count; i++)
+            {
+                SurvivorsRunUpgradeMetadata entry = metadata[i];
+                if (entry == null || !entry.IsEvolution)
+                {
+                    continue;
+                }
+
+                if (sampleEvolutionNodeUpgradeIds == null || !sampleEvolutionNodeUpgradeIds.Contains(entry.UpgradeId))
+                {
+                    result.AddError($"Sample progression library missing evolution node: {entry.UpgradeId}");
+                }
+            }
+        }
+
         private static void ValidateRewardLibrary(RewardLibraryJson library, SurvivorsContentValidationResult result)
         {
             if (library == null)
@@ -1304,6 +1322,7 @@ namespace Deucarian.TemplateGameSurvivors
             var trackIds = new HashSet<string>(StringComparer.Ordinal);
             var nodeIds = new HashSet<string>(StringComparer.Ordinal);
             var passiveAtlasClassIds = new HashSet<string>(StringComparer.Ordinal);
+            var evolutionNodeUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < library.tracks.Length; i++)
             {
                 ProgressionTrackRecordJson track = library.tracks[i];
@@ -1359,6 +1378,14 @@ namespace Deucarian.TemplateGameSurvivors
                         knownUpgradeIds,
                         nodeIds,
                         result);
+
+                    if (!string.IsNullOrWhiteSpace(node.kind) &&
+                        Enum.TryParse(node.kind, ignoreCase: true, out SurvivorsProgressionNodeKind parsedKind) &&
+                        parsedKind == SurvivorsProgressionNodeKind.Evolution &&
+                        !string.IsNullOrWhiteSpace(node.upgradeId))
+                    {
+                        evolutionNodeUpgradeIds.Add(node.upgradeId);
+                    }
                 }
             }
 
@@ -1373,6 +1400,8 @@ namespace Deucarian.TemplateGameSurvivors
                     }
                 }
             }
+
+            ValidateSampleEvolutionProgressionCoverage(evolutionNodeUpgradeIds, result);
         }
 
         private static void ValidateEnemyLibrary(EnemyLibraryJson library, SurvivorsContentValidationResult result)

@@ -1576,7 +1576,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.arc-bolt.damage", "Arcane Damage", "upgrade.survivors.arcane-damage", SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 8),
                     Node("node.survivors.arc-bolt.pierce", "Piercing Bolts", "upgrade.survivors.piercing-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4),
                     Node("node.survivors.arc-bolt.chain", "Chain Bolts", "upgrade.survivors.chain-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 3, 2, 3),
-                    Node("node.survivors.arc-bolt.return", "Returning Bolts", "upgrade.survivors.returning-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 4, 2, 2)),
+                    Node("node.survivors.arc-bolt.return", "Returning Bolts", "upgrade.survivors.returning-bolts", SurvivorsProgressionNodeKind.WeaponMutation, 4, 2, 2),
+                    Node("node.survivors.arc-bolt.evolution", "Arcane Storm", ArcaneStormEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 5, 3, 1)),
                 Track(
                     "progression.survivors.frost-fan.weapon",
                     "Frost Fan Skill Track",
@@ -1587,7 +1588,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.frost-fan.rank", "Frost Fan", FrostFanUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
                     Node("node.survivors.frost-fan.splinter", "Frost Splinter", FrostSplinterUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 3),
                     Node("node.survivors.frost-fan.ricochet", "Frost Ricochet", FrostRicochetUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2),
-                    Node("node.survivors.frost-fan.needles", "Frost Needlework", FrostNeedleworkUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 4, 1, 3)),
+                    Node("node.survivors.frost-fan.needles", "Frost Needlework", FrostNeedleworkUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 4, 1, 3),
+                    Node("node.survivors.frost-fan.evolution", "Blizzard Crown", BlizzardCrownEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 5, 3, 1)),
                 Track(
                     "progression.survivors.blood-ring.weapon",
                     "Blood Ring Skill Track",
@@ -1597,7 +1599,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.blood-ring.unlock", "Blood Ring", OrbitWardUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
                     Node("node.survivors.blood-ring.focus", "Orbiting Focus", OrbitingFocusUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
                     Node("node.survivors.blood-ring.serrated-orbit", "Serrated Orbit", SerratedOrbitUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 2),
-                    Node("node.survivors.blood-ring.canticle", "Blood Ring Canticle", BloodRingCanticleUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 3)),
+                    Node("node.survivors.blood-ring.canticle", "Blood Ring Canticle", BloodRingCanticleUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 3),
+                    Node("node.survivors.blood-ring.evolution", "Crimson Aegis", CrimsonAegisEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 5, 3, 1)),
                 Track(
                     "progression.survivors.thorn-halo.weapon",
                     "Thorn Halo Skill Track",
@@ -1607,7 +1610,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.thorn-halo.unlock", "Thorn Halo", ThornHaloUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
                     Node("node.survivors.thorn-halo.bramble-guard", "Bramble Guard", BrambleGuardUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
                     Node("node.survivors.thorn-halo.wall", "Thorn Halo Wall", ThornHaloUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 3),
-                    Node("node.survivors.thorn-halo.spiral", "Halo Spiral", HaloSpiralUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2)),
+                    Node("node.survivors.thorn-halo.spiral", "Halo Spiral", HaloSpiralUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2),
+                    Node("node.survivors.thorn-halo.evolution", "Crimson Aegis", CrimsonAegisEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 5, 3, 1)),
                 Track(
                     "progression.survivors.cinder-burst.weapon",
                     "Cinder Burst Skill Track",
@@ -1617,7 +1621,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.cinder-burst.unlock", "Cinder Burst", StarNovaUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
                     Node("node.survivors.cinder-burst.nova-echo", "Nova Echo", NovaEchoUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
                     Node("node.survivors.cinder-burst.cinder-echoes", "Cinder Echoes", CinderEchoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 2, 3),
-                    Node("node.survivors.cinder-burst.targeted-sigils", "Targeted Burst Sigils", TargetedSigilUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 2, 1)),
+                    Node("node.survivors.cinder-burst.targeted-sigils", "Targeted Burst Sigils", TargetedSigilUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 2, 1),
+                    Node("node.survivors.cinder-burst.evolution", "Inferno Heart", InfernoHeartEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 5, 3, 1)),
                 Track(
                     "progression.survivors.star-beam.weapon",
                     "Star Beam Skill Track",
@@ -1627,7 +1632,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.star-beam.unlock", "Star Beam", StarBeamUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
                     Node("node.survivors.star-beam.focus", "Star Focus", StarFocusUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
                     Node("node.survivors.star-beam.prismatic-beam", "Prismatic Beam", PrismaticBeamUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 3),
-                    Node("node.survivors.star-beam.pulse", "Star Pulse", StarPulseUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2)),
+                    Node("node.survivors.star-beam.pulse", "Star Pulse", StarPulseUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2),
+                    Node("node.survivors.star-beam.evolution", "Tempest Prism", TempestPrismEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 5, 3, 1)),
                 Track(
                     "progression.survivors.ember-vanguard.moon-slash.weapon",
                     "Ember Vanguard Moon Slash Track",
@@ -1637,7 +1643,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.ember-vanguard.moon-slash.unlock", "Moon Slash", MoonSlashUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
                     Node("node.survivors.ember-vanguard.moon-slash.edge", "Moonlit Edge", MoonlitEdgeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
                     Node("node.survivors.ember-vanguard.moon-slash.crescent-chain", "Crescent Chain", CrescentChainUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4),
-                    Node("node.survivors.ember-vanguard.moon-slash.tempo", "Lunar Tempo", LunarTempoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2)),
+                    Node("node.survivors.ember-vanguard.moon-slash.tempo", "Lunar Tempo", LunarTempoUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 2),
+                    Node("node.survivors.ember-vanguard.moon-slash.evolution", "Eclipse Waltz", EclipseWaltzEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 5, 3, 1)),
                 Track(
                     "progression.survivors.gravity-grenade.unlock",
                     "Gravity Grenade Skill Track",
@@ -1647,7 +1654,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.gravity-grenade.unlock", "Gravity Grenade", GravityGrenadeUnlockUpgradeId, SurvivorsProgressionNodeKind.WeaponUnlock, 0, 1, 1),
                     Node("node.survivors.gravity-grenade.extra", "Extra Payload", ExtraPayloadUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 1, 1, 5),
                     Node("node.survivors.gravity-grenade.bigger-booms", "Bigger Booms", BiggerBoomsUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4),
-                    Node("node.survivors.gravity-grenade.wider-triggers", "Wider Triggers", WiderTriggersUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4)),
+                    Node("node.survivors.gravity-grenade.wider-triggers", "Wider Triggers", WiderTriggersUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 2, 1, 4),
+                    Node("node.survivors.gravity-grenade.evolution", "Gravefield Engine", GravefieldEngineEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 5, 3, 1)),
                 Track(
                     "progression.survivors.ember-vanguard.payloads.weapon",
                     "Ember Vanguard Payload Track",
@@ -1659,7 +1667,8 @@ namespace Deucarian.TemplateGameSurvivors
                     Node("node.survivors.ember-vanguard.payloads.rune-lattice", "Rune Lattice", RuneLatticeUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 2, 1, 5),
                     Node("node.survivors.ember-vanguard.payloads.snaring-runes", "Snaring Runes", SnaringRunesUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 3, 1, 3),
                     Node("node.survivors.ember-vanguard.payloads.aether-bloom", "Aether Bloom", AetherBloomUpgradeId, SurvivorsProgressionNodeKind.WeaponMutation, 4, 1, 3),
-                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 5, 2, 3))
+                    Node("node.survivors.ember-vanguard.payloads.siege", "Siege Payloads", SiegePayloadsUpgradeId, SurvivorsProgressionNodeKind.WeaponRank, 5, 2, 3),
+                    Node("node.survivors.ember-vanguard.payloads.evolution", "Aetherfield Matrix", AetherfieldMatrixEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution, 6, 3, 1))
             };
         }
 

@@ -112,6 +112,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(GetMaxRank(upgrades, BasicSurvivorsGame.ExtraPayloadUpgradeId), Is.GreaterThanOrEqualTo(5));
             AssertProgressionTrackContains(progressionTracks, "progression.survivors.blood-ring.weapon", BasicSurvivorsGame.SerratedOrbitUpgradeId);
             AssertProgressionTrackContains(progressionTracks, "progression.survivors.thorn-halo.weapon", BasicSurvivorsGame.BrambleGuardUpgradeId);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.arc-bolt.weapon", BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.frost-fan.weapon", BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.blood-ring.weapon", BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.thorn-halo.weapon", BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.cinder-burst.weapon", BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.star-beam.weapon", BasicSurvivorsGame.TempestPrismEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.ember-vanguard.moon-slash.weapon", BasicSurvivorsGame.EclipseWaltzEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.gravity-grenade.unlock", BasicSurvivorsGame.GravefieldEngineEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
+            AssertProgressionTrackContainsNode(progressionTracks, "progression.survivors.ember-vanguard.payloads.weapon", BasicSurvivorsGame.AetherfieldMatrixEvolutionUpgradeId, SurvivorsProgressionNodeKind.Evolution);
             Assert.That(CountUpgradesByRarity(upgrades, RunUpgradeRarity.Epic), Is.GreaterThanOrEqualTo(2));
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
@@ -140,6 +149,38 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 }
 
                 Assert.Fail("Track " + trackId + " is missing upgrade " + upgradeId);
+            }
+
+            Assert.Fail("Missing progression track " + trackId);
+        }
+
+        private static void AssertProgressionTrackContainsNode(
+            IReadOnlyList<SurvivorsProgressionTrackDefinition> tracks,
+            string trackId,
+            string upgradeId,
+            SurvivorsProgressionNodeKind kind)
+        {
+            Assert.NotNull(tracks);
+            for (int trackIndex = 0; trackIndex < tracks.Count; trackIndex++)
+            {
+                SurvivorsProgressionTrackDefinition track = tracks[trackIndex];
+                if (track == null || !string.Equals(track.Id, trackId, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                for (int nodeIndex = 0; nodeIndex < track.Nodes.Count; nodeIndex++)
+                {
+                    SurvivorsProgressionNodeDefinition node = track.Nodes[nodeIndex];
+                    if (node != null &&
+                        string.Equals(node.UpgradeId, upgradeId, StringComparison.Ordinal) &&
+                        node.Kind == kind)
+                    {
+                        return;
+                    }
+                }
+
+                Assert.Fail("Track " + trackId + " is missing " + kind + " upgrade " + upgradeId);
             }
 
             Assert.Fail("Missing progression track " + trackId);
@@ -466,6 +507,27 @@ namespace Deucarian.TemplateGameSurvivors.Tests
 
             Assert.IsFalse(result.Succeeded);
             StringAssert.Contains("missing evolution upgrade", errors);
+            StringAssert.Contains(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId, errors);
+        }
+
+        [Test]
+        public void SampleProgressionContentRequiresEvolutionNodes()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
+
+            progressionJson = progressionJson.Replace(
+                "\"id\": \"node.survivors.arc-bolt.evolution\", \"displayName\": \"Arcane Storm\", \"upgradeId\": \"upgrade.survivors.evolution.arcane-storm\", \"kind\": \"Evolution\"",
+                "\"id\": \"node.survivors.arc-bolt.evolution\", \"displayName\": \"Arcane Storm\", \"upgradeId\": \"upgrade.survivors.evolution.arcane-storm\", \"kind\": \"WeaponMutation\"");
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, classJson: classJson, progressionJson: progressionJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("missing evolution node", errors);
             StringAssert.Contains(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId, errors);
         }
 
