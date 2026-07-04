@@ -48,6 +48,7 @@ namespace Deucarian.TemplateGameSurvivors
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
+        private const float ClassUnlockRewardFeedbackDurationSeconds = 2.65f;
         private const float EvolutionReadyFeedbackDurationSeconds = 2.4f;
         private const float FrostFanEnemyMoveSpeedMultiplier = 0.68f;
         private const float FrostFanEnemySlowDurationSeconds = 1.65f;
@@ -252,6 +253,8 @@ namespace Deucarian.TemplateGameSurvivors
         private string _streakRewardFeedbackLabel = string.Empty;
         private Color _streakRewardFeedbackColor = Color.white;
         private float _streakRewardFeedbackTimer;
+        private string _classUnlockRewardFeedbackLabel = string.Empty;
+        private float _classUnlockRewardFeedbackTimer;
         private string _evolutionReadyFeedbackLabel = string.Empty;
         private float _evolutionReadyFeedbackTimer;
         private string _experienceComboFeedbackLabel = string.Empty;
@@ -364,6 +367,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftBanishCount { get; private set; }
         public int DraftSkipCount { get; private set; }
         public int ClassUnlockRewardCount { get; private set; }
+        public string LastClassUnlockRewardFeedbackLabel { get; private set; } = string.Empty;
         public int DamagePopupSpawnCount { get; private set; }
         public int PlayerDamageFeedbackCount { get; private set; }
         public int LowHealthClutchPulseCount { get; private set; }
@@ -774,6 +778,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
         public string ActiveStreakRewardFeedbackLabel => _streakRewardFeedbackTimer > 0f ? _streakRewardFeedbackLabel : string.Empty;
         public float StreakRewardFeedbackRemainingSeconds => Mathf.Max(0f, _streakRewardFeedbackTimer);
+        public string ActiveClassUnlockRewardFeedbackLabel => _classUnlockRewardFeedbackTimer > 0f ? _classUnlockRewardFeedbackLabel : string.Empty;
+        public float ClassUnlockRewardFeedbackRemainingSeconds => Mathf.Max(0f, _classUnlockRewardFeedbackTimer);
         public string ActiveEvolutionReadyFeedbackLabel => _evolutionReadyFeedbackTimer > 0f ? _evolutionReadyFeedbackLabel : string.Empty;
         public float EvolutionReadyFeedbackRemainingSeconds => Mathf.Max(0f, _evolutionReadyFeedbackTimer);
         public string CurrentEvolutionGoalHudLabel => ResolveEvolutionGoalHudLabel();
@@ -825,6 +831,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickStreakRewardFeedback(Time.deltaTime);
+                TickClassUnlockRewardFeedback(Time.deltaTime);
                 TickEvolutionReadyFeedback(Time.deltaTime);
                 TickExperienceComboFeedback(Time.deltaTime);
                 TickRewardSelectionTimeout(Time.deltaTime);
@@ -842,6 +849,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TickMajorRewardDropFeedbackEffects(Time.deltaTime);
                 TickRewardFeedback(Time.deltaTime);
                 TickStreakRewardFeedback(Time.deltaTime);
+                TickClassUnlockRewardFeedback(Time.deltaTime);
                 TickEvolutionReadyFeedback(Time.deltaTime);
                 TickExperienceComboFeedback(Time.deltaTime);
                 if (HandleResultMetaUpgradeInput())
@@ -930,6 +938,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawMajorThreatHealthBar();
             DrawRewardSelectionFeedback();
             DrawStreakRewardFeedback();
+            DrawClassUnlockRewardFeedback();
             DrawEvolutionReadyFeedback();
             DrawExperienceComboFeedback();
             DrawDamagePopups();
@@ -1091,6 +1100,9 @@ namespace Deucarian.TemplateGameSurvivors
             DraftBanishCount = 0;
             DraftSkipCount = 0;
             ClassUnlockRewardCount = 0;
+            LastClassUnlockRewardFeedbackLabel = string.Empty;
+            _classUnlockRewardFeedbackLabel = string.Empty;
+            _classUnlockRewardFeedbackTimer = 0f;
             DamagePopupSpawnCount = 0;
             PlayerDamageFeedbackCount = 0;
             LowHealthClutchPulseCount = 0;
@@ -1347,6 +1359,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickMajorRewardDropFeedbackEffects(dt);
             TickRewardFeedback(dt);
             TickStreakRewardFeedback(dt);
+            TickClassUnlockRewardFeedback(dt);
             TickEvolutionReadyFeedback(dt);
             TickExperienceComboFeedback(dt);
             if (State == SurvivorsRunState.LevelUp)
@@ -6418,7 +6431,22 @@ namespace Deucarian.TemplateGameSurvivors
             if (_metaProgression != null && _metaProgression.UnlockClass(BasicSurvivorsGame.EmberVanguardClassId, _classLibrary))
             {
                 ClassUnlockRewardCount++;
+                RecordClassUnlockRewardFeedback();
             }
+        }
+
+        private void RecordClassUnlockRewardFeedback()
+        {
+            LastClassUnlockRewardFeedbackLabel = "Class Unlocked: Ember Vanguard";
+            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            if (definition.TryGetReward(BasicSurvivorsGame.EmberVanguardUnlockRewardId, out SurvivorsRewardDefinition reward))
+            {
+                LastClassUnlockRewardFeedbackLabel += $" +{reward.CurrencyAmount} shards +{reward.TrackAmount} XP";
+            }
+
+            _classUnlockRewardFeedbackLabel = LastClassUnlockRewardFeedbackLabel;
+            _classUnlockRewardFeedbackTimer = ClassUnlockRewardFeedbackDurationSeconds;
+            PlayFeedback(_bossPulse, PlayerPosition, 52, _levelUpClip);
         }
 
         private bool ShouldGrantVictoryClassUnlockReward(bool victory)
@@ -10013,6 +10041,34 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
         }
 
+        private void DrawClassUnlockRewardFeedback()
+        {
+            if (_classUnlockRewardFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_classUnlockRewardFeedbackLabel))
+            {
+                return;
+            }
+
+            float width = Mathf.Min(500f, Mathf.Max(0f, Screen.width - 32f));
+            if (width <= 0f)
+            {
+                return;
+            }
+
+            float pulse = 0.7f + Mathf.Sin(Time.unscaledTime * 8f) * 0.3f;
+            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, 188f, width, 44f);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.032f, 0.018f, 0.012f, 0.78f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 0.62f, 0.24f, 0.22f + 0.16f * pulse);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(1f, 0.78f, 0.36f, 0.96f);
+            GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(panel.x, panel.y + panel.height - 3f, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 6f, panel.width - 24f, panel.height - 12f), _classUnlockRewardFeedbackLabel, _rewardFeedbackStyle);
+            GUI.color = oldColor;
+        }
+
         private void DrawExperienceComboFeedback()
         {
             if (_experienceComboFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_experienceComboFeedbackLabel))
@@ -10149,6 +10205,20 @@ namespace Deucarian.TemplateGameSurvivors
             if (_streakRewardFeedbackTimer <= 0f)
             {
                 _streakRewardFeedbackLabel = string.Empty;
+            }
+        }
+
+        private void TickClassUnlockRewardFeedback(float deltaTime)
+        {
+            if (_classUnlockRewardFeedbackTimer <= 0f)
+            {
+                return;
+            }
+
+            _classUnlockRewardFeedbackTimer = Mathf.Max(0f, _classUnlockRewardFeedbackTimer - Mathf.Max(0f, deltaTime));
+            if (_classUnlockRewardFeedbackTimer <= 0f)
+            {
+                _classUnlockRewardFeedbackLabel = string.Empty;
             }
         }
 

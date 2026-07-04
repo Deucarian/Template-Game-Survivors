@@ -4067,6 +4067,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.MetaBloodShards, Is.GreaterThanOrEqualTo(28));
             Assert.AreEqual(1, controller.MetaBossVictories);
             Assert.That(controller.ClassUnlockRewardCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastClassUnlockRewardFeedbackLabel, Does.Contain("Class Unlocked"));
+            Assert.That(controller.LastClassUnlockRewardFeedbackLabel, Does.Contain("Ember Vanguard"));
+            Assert.That(controller.LastClassUnlockRewardFeedbackLabel, Does.Contain("+10 shards"));
+            Assert.That(controller.LastClassUnlockRewardFeedbackLabel, Does.Contain("+60 XP"));
+            Assert.That(controller.ActiveClassUnlockRewardFeedbackLabel, Does.Contain("Class Unlocked"));
             Assert.IsTrue(controller.IsClassUnlockedForTest(BasicSurvivorsGame.EmberVanguardClassId));
             Assert.That(controller.LastRunSummaryLines.Count, Is.GreaterThanOrEqualTo(6));
             string victorySummary = string.Join("\n", controller.LastRunSummaryLines);
