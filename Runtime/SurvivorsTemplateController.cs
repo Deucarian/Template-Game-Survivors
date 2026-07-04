@@ -112,6 +112,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _announcedEvolutionGoalUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _announcedEvolutionReadyUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _selectedRelicIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly List<SurvivorsRelicDefinition> _selectedRelics = new List<SurvivorsRelicDefinition>(8);
@@ -329,6 +330,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ExperiencePickupFeedbackCount { get; private set; }
         public int ExperienceComboFeedbackCount { get; private set; }
         public string LastExperienceComboFeedbackLabel { get; private set; } = string.Empty;
+        public int EvolutionGoalFeedbackCount { get; private set; }
+        public string LastEvolutionGoalFeedbackLabel { get; private set; } = string.Empty;
         public int EvolutionReadyFeedbackCount { get; private set; }
         public string LastEvolutionReadyFeedbackLabel { get; private set; } = string.Empty;
         public int HealthPickupCollectedCount { get; private set; }
@@ -791,6 +794,8 @@ namespace Deucarian.TemplateGameSurvivors
             LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
             ResultClassSelectionCount = 0;
             LastResultClassSelectionFeedbackLabel = string.Empty;
+            EvolutionGoalFeedbackCount = 0;
+            LastEvolutionGoalFeedbackLabel = string.Empty;
             EvolutionReadyFeedbackCount = 0;
             LastEvolutionReadyFeedbackLabel = string.Empty;
             BossRelicDraftOpenCount = 0;
@@ -971,6 +976,7 @@ namespace Deucarian.TemplateGameSurvivors
             _killStreakCount = 0;
             _streakSurgeTimer = 0f;
             _roamingCacheSurgeTimer = 0f;
+            _announcedEvolutionGoalUpgradeIds.Clear();
             _announcedEvolutionReadyUpgradeIds.Clear();
             _evolutionReadyFeedbackLabel = string.Empty;
             _evolutionReadyFeedbackTimer = 0f;
@@ -4373,30 +4379,8 @@ namespace Deucarian.TemplateGameSurvivors
             for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
             {
                 RunUpgradeDefinition evolution = _upgradeCatalog.Definitions[i];
-                if (evolution == null ||
-                    !TryGetUpgradeMetadata(evolution.Id.Value, out SurvivorsRunUpgradeMetadata evolutionMetadata) ||
-                    !evolutionMetadata.IsEvolution ||
-                    string.IsNullOrWhiteSpace(evolutionMetadata.RequiredUpgradeId) ||
-                    string.IsNullOrWhiteSpace(evolutionMetadata.RequiredPassiveUpgradeId) ||
-                    _upgradeState.GetRank(evolution.Id) > 0)
-                {
-                    continue;
-                }
-
-                int requiredRank = Mathf.Max(1, evolutionMetadata.RequiredUpgradeRank);
-                if (_upgradeState.GetRank(new RunUpgradeId(evolutionMetadata.RequiredUpgradeId)) < requiredRank)
-                {
-                    continue;
-                }
-
-                var requiredPassiveId = new RunUpgradeId(evolutionMetadata.RequiredPassiveUpgradeId);
-                if (_upgradeState.GetRank(requiredPassiveId) > 0 ||
-                    !seenPassiveIds.Add(requiredPassiveId) ||
-                    !TryGetRunUpgrade(evolutionMetadata.RequiredPassiveUpgradeId, out RunUpgradeDefinition passive) ||
-                    !IsUpgradeEligibleForCurrentBuild(passive) ||
-                    !TryGetUpgradeMetadata(passive.Id.Value, out SurvivorsRunUpgradeMetadata passiveMetadata) ||
-                    passiveMetadata.Category != SurvivorsRunUpgradeCategory.Passive ||
-                    !passiveMetadata.UsesPassiveSlot)
+                if (!TryResolveEvolutionMissingPassive(evolution, out RunUpgradeDefinition passive) ||
+                    !seenPassiveIds.Add(passive.Id))
                 {
                     continue;
                 }
@@ -4541,6 +4525,41 @@ namespace Deucarian.TemplateGameSurvivors
             return definition != null &&
                 TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata) &&
                 metadata.IsEvolution;
+        }
+
+        private bool TryResolveEvolutionMissingPassive(RunUpgradeDefinition evolution, out RunUpgradeDefinition passive)
+        {
+            passive = null;
+            if (evolution == null ||
+                _upgradeState == null ||
+                !TryGetUpgradeMetadata(evolution.Id.Value, out SurvivorsRunUpgradeMetadata evolutionMetadata) ||
+                !evolutionMetadata.IsEvolution ||
+                string.IsNullOrWhiteSpace(evolutionMetadata.RequiredUpgradeId) ||
+                string.IsNullOrWhiteSpace(evolutionMetadata.RequiredPassiveUpgradeId) ||
+                _upgradeState.GetRank(evolution.Id) > 0)
+            {
+                return false;
+            }
+
+            int requiredRank = Mathf.Max(1, evolutionMetadata.RequiredUpgradeRank);
+            if (_upgradeState.GetRank(new RunUpgradeId(evolutionMetadata.RequiredUpgradeId)) < requiredRank)
+            {
+                return false;
+            }
+
+            var requiredPassiveId = new RunUpgradeId(evolutionMetadata.RequiredPassiveUpgradeId);
+            if (_upgradeState.GetRank(requiredPassiveId) > 0 ||
+                !TryGetRunUpgrade(evolutionMetadata.RequiredPassiveUpgradeId, out passive) ||
+                !IsUpgradeEligibleForCurrentBuild(passive) ||
+                !TryGetUpgradeMetadata(passive.Id.Value, out SurvivorsRunUpgradeMetadata passiveMetadata) ||
+                passiveMetadata.Category != SurvivorsRunUpgradeCategory.Passive ||
+                !passiveMetadata.UsesPassiveSlot)
+            {
+                passive = null;
+                return false;
+            }
+
+            return true;
         }
 
         private int CountEvolutionChoices(IReadOnlyList<RunUpgradeDefinition> definitions)
@@ -4855,12 +4874,30 @@ namespace Deucarian.TemplateGameSurvivors
 
                 if (!IsUpgradeEligibleForCurrentBuild(definition))
                 {
+                    if (!_announcedEvolutionGoalUpgradeIds.Contains(upgradeId) &&
+                        TryResolveEvolutionMissingPassive(definition, out RunUpgradeDefinition missingPassive))
+                    {
+                        _announcedEvolutionGoalUpgradeIds.Add(upgradeId);
+                        RecordEvolutionGoalFeedback(definition, missingPassive);
+                    }
+
                     continue;
                 }
 
                 _announcedEvolutionReadyUpgradeIds.Add(upgradeId);
                 RecordEvolutionReadyFeedback(definition);
             }
+        }
+
+        private void RecordEvolutionGoalFeedback(RunUpgradeDefinition evolution, RunUpgradeDefinition missingPassive)
+        {
+            string evolutionName = evolution == null ? "Evolution" : BasicSurvivorsGame.GetUpgradeDisplayName(evolution.Id);
+            string passiveName = missingPassive == null ? "matching passive" : BasicSurvivorsGame.GetUpgradeDisplayName(missingPassive.Id);
+            _evolutionReadyFeedbackLabel = $"Evolution Goal: {passiveName} for {evolutionName}";
+            _evolutionReadyFeedbackTimer = EvolutionReadyFeedbackDurationSeconds;
+            EvolutionGoalFeedbackCount++;
+            LastEvolutionGoalFeedbackLabel = _evolutionReadyFeedbackLabel;
+            PlayFeedback(_levelUpPulse, PlayerPosition, 22, _levelUpClip);
         }
 
         private void RecordEvolutionReadyFeedback(RunUpgradeDefinition evolution)
