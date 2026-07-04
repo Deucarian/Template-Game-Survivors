@@ -3541,6 +3541,64 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator HumanPlaytestAuthoredArcCanReachVictoryAndContinueEndless()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.PlayerMaxHealth = 99999f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.MinibossContactDamage = 0f;
+            controller.CurrentTuning.BossContactDamage = 0f;
+            controller.CurrentTuning.MajorThreatSlamDamage = 0f;
+            controller.StartRun();
+            yield return null;
+
+            Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
+            int openingMaxAlive = controller.CurrentEnemyMaximumAlive;
+            float targetSeconds = controller.CurrentTuning.SurvivalVictoryTimeSeconds + 2f;
+            int safetySteps = Mathf.CeilToInt(targetSeconds) + 600;
+            int resolvedChoices = 0;
+
+            for (int step = 0; step < safetySteps && controller.State != SurvivorsRunState.Victory && controller.State != SurvivorsRunState.GameOver; step++)
+            {
+                resolvedChoices += ResolveOpenChoiceForLongRunSmoke(controller);
+                Vector2 movement = new Vector2(Mathf.Sin(step * 0.17f), Mathf.Cos(step * 0.13f));
+                controller.Simulate(1f, movement);
+                if (step % 30 == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            resolvedChoices += ResolveOpenChoiceForLongRunSmoke(controller);
+
+            string arcState = $"time={controller.RunTimeSeconds:0}s state={controller.State} spawned={controller.SpawnedCount} escalation={controller.RunEscalationLevel} choices={resolvedChoices} horde={controller.HordeRushSpawnCount} warnings={controller.MajorThreatWarningCount}";
+            Assert.AreNotEqual(SurvivorsRunState.GameOver, controller.State, arcState);
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State, arcState);
+            Assert.That(controller.RunTimeSeconds, Is.GreaterThanOrEqualTo(controller.CurrentTuning.BossSpawnTimeSeconds), arcState);
+            Assert.That(controller.SpawnedCount, Is.GreaterThan(50), arcState);
+            Assert.That(controller.RunEscalationLevel, Is.GreaterThanOrEqualTo(10), arcState);
+            Assert.That(controller.CurrentEnemyMaximumAlive, Is.GreaterThan(openingMaxAlive), arcState);
+            Assert.That(controller.HordeRushWarningCount, Is.GreaterThanOrEqualTo(1), arcState);
+            Assert.That(controller.HordeRushSpawnCount, Is.GreaterThanOrEqualTo(1), arcState);
+            Assert.That(controller.ActiveEliteCount + controller.EliteKilledCount, Is.GreaterThanOrEqualTo(1), arcState);
+            Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1), arcState);
+            Assert.That(controller.BossSpawnCount, Is.GreaterThanOrEqualTo(1), arcState);
+            Assert.That(controller.MajorThreatWarningCount, Is.GreaterThanOrEqualTo(3), arcState);
+            Assert.That(controller.RewardCardPresentationCount, Is.GreaterThanOrEqualTo(3), arcState);
+            Assert.That(resolvedChoices, Is.GreaterThanOrEqualTo(1), arcState);
+            Assert.That(controller.LastRunSummaryLines.Count, Is.GreaterThanOrEqualTo(6), arcState);
+
+            Assert.IsTrue(controller.ContinueAfterVictory(), arcState);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.IsTrue(controller.IsEndlessRun);
+            Assert.That(controller.CurrentRunMilestoneName, Does.Contain("Endless"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RecurringTimedElitesKeepMidRunRewardPressure()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
@@ -4866,6 +4924,38 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             Assert.IsTrue(operation == null || operation.isDone);
+        }
+
+        private static int ResolveOpenChoiceForLongRunSmoke(SurvivorsTemplateController controller)
+        {
+            int resolved = 0;
+            for (int guard = 0; guard < 8 && controller != null && controller.State == SurvivorsRunState.LevelUp; guard++)
+            {
+                if (controller.IsRelicChoiceOpen)
+                {
+                    Assert.That(controller.CurrentRelicChoices.Count, Is.GreaterThan(0), "Long-run smoke opened an empty relic draft.");
+                    Assert.IsTrue(controller.SelectRelicForTest(0), "Long-run smoke could not select the first relic choice.");
+                    resolved++;
+                    continue;
+                }
+
+                if (controller.CurrentDraftChoices.Count > 0)
+                {
+                    Assert.IsTrue(controller.SelectUpgrade(0), "Long-run smoke could not select the first upgrade choice.");
+                    resolved++;
+                    continue;
+                }
+
+                controller.Simulate(0f);
+                if (controller.State == SurvivorsRunState.LevelUp)
+                {
+                    Assert.IsTrue(controller.SkipCurrentDraft(), "Long-run smoke could not resolve an empty draft.");
+                    resolved++;
+                }
+            }
+
+            Assert.IsTrue(controller == null || controller.State != SurvivorsRunState.LevelUp, "Long-run smoke could not resolve the open reward choice.");
+            return resolved;
         }
 
         private static T FindComponentInScene<T>(Scene scene)
