@@ -284,6 +284,15 @@ namespace Deucarian.TemplateGameSurvivors
         private float _firstEvolutionAcquiredTimeSeconds;
         private float _damageTakenThisRun;
         private int _draftOpenCount;
+        private float _levelUpDraftCooldownTimer;
+        private int _levelAtOneMinute;
+        private int _levelAtTwoMinutes;
+        private int _levelAtThreeMinutes;
+        private int _levelAtFourMinutes;
+        private int _levelAtFiveMinutes;
+        private float _pickupMagnetPulseTimer;
+        private string _lastMagnetPulseFeedbackLabel = string.Empty;
+        private string _lastOffscreenThreatMarkerLabel = string.Empty;
 
         public SurvivorsRunState State { get; private set; } = SurvivorsRunState.Booting;
         public int Level { get; private set; } = 1;
@@ -627,6 +636,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadCountBonus { get; private set; }
         public float PayloadExplosionRadiusBonus { get; private set; }
         public float PayloadTriggerRadiusBonus { get; private set; }
+        public float PickupAttractionSpeedBonus { get; private set; }
+        public float PickupMagnetPulseIntervalReductionBonus { get; private set; }
         public int ActiveEnemyCount => _enemies.Count;
         public int ActiveRunnerCount => CountEnemiesByRole(SurvivorsEnemyRole.Runner);
         public int ActiveBruiserCount => CountEnemiesByRole(SurvivorsEnemyRole.Bruiser);
@@ -671,6 +682,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveMajorRewardDropFeedbackCount => _rewardDropFeedbackEffects.Count;
         public int ActiveMajorThreatSlamTelegraphEffectCount => _majorThreatSlamTelegraphEffects.Count;
         public int ActiveIncomingThreatTelegraphEffectCount => _incomingThreatTelegraphEffects.Count;
+        public int NormalEnemyRecycleCount { get; private set; }
+        public int MajorThreatRepositionCount { get; private set; }
+        public int ActiveOffscreenThreatMarkerCount => CountOffscreenMajorThreatMarkers();
+        public string CurrentOffscreenThreatMarkerLabel => ResolveFirstOffscreenMajorThreatMarkerLabel();
+        public string LastOffscreenThreatMarkerLabel => _lastOffscreenThreatMarkerLabel;
         public int ActiveMajorRewardCacheAttractedPickupCount
         {
             get
@@ -713,6 +729,16 @@ namespace Deucarian.TemplateGameSurvivors
         public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus);
         public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + ArenaShrineSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + WaystoneChainSurgeCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus + EndlessSurgeCooldownMultiplierBonus));
         public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + ArenaShrineSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus + WaystoneChainSurgePickupRangeBonus + HordeRushClearSurgePickupRangeBonus + WeaponLoadoutSurgePickupRangeBonus + PassiveLoadoutSurgePickupRangeBonus + BossRelicSurgePickupRangeBonus + GemRushPickupRangeBonus + EvolutionChainSurgePickupRangeBonus + EndlessSurgePickupRangeBonus);
+        public float CurrentPickupAttractionSpeed => Mathf.Max(0.1f, CurrentTuning.PickupAttractionSpeed + PickupAttractionSpeedBonus);
+        public float CurrentPickupMagnetPulseIntervalSeconds => ResolvePickupMagnetPulseIntervalSeconds();
+        public float LevelUpDraftCooldownRemainingSeconds => Mathf.Max(0f, _levelUpDraftCooldownTimer);
+        public int LevelAtOneMinute => _levelAtOneMinute;
+        public int LevelAtTwoMinutes => _levelAtTwoMinutes;
+        public int LevelAtThreeMinutes => _levelAtThreeMinutes;
+        public int LevelAtFourMinutes => _levelAtFourMinutes;
+        public int LevelAtFiveMinutes => _levelAtFiveMinutes;
+        public int MagnetPulseActivationCount { get; private set; }
+        public string LastMagnetPulseFeedbackLabel => _lastMagnetPulseFeedbackLabel;
         public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
         public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
         public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
@@ -1401,6 +1427,13 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadCountBonus = 0;
             PayloadExplosionRadiusBonus = 0f;
             PayloadTriggerRadiusBonus = 0f;
+            PickupAttractionSpeedBonus = 0f;
+            PickupMagnetPulseIntervalReductionBonus = 0f;
+            NormalEnemyRecycleCount = 0;
+            MajorThreatRepositionCount = 0;
+            MagnetPulseActivationCount = 0;
+            _lastMagnetPulseFeedbackLabel = string.Empty;
+            _lastOffscreenThreatMarkerLabel = string.Empty;
             _runRewardsGranted = false;
             _pendingVictoryAfterRewardDraft = false;
             _victoryClearedThisRun = false;
@@ -1430,6 +1463,8 @@ namespace Deucarian.TemplateGameSurvivors
             _bonusBloodShardsEarnedThisRun = 0;
             _bonusLegacyExperienceEarnedThisRun = 0;
             _enemySpawnTimer = 0f;
+            _levelUpDraftCooldownTimer = 0f;
+            _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
             _playerInvulnerabilityTimer = 0f;
             _lowHealthClutchPulseUsed = false;
             _dashCooldownTimer = 0f;
@@ -1525,6 +1560,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             RunTimeSeconds += dt;
+            RecordLevelCheckpoints();
+            TickLevelUpDraftCooldown(dt);
             TickMajorThreatWarnings();
             TickRunFlow();
             if (State != SurvivorsRunState.Playing)
@@ -1547,6 +1584,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickBossRelicSurge(dt);
             TickPayloadHazardChain(dt);
             TickGemRush(dt);
+            TickPickupMagnetPulse(dt);
             TickEvolutionChainSurge(dt);
             TickEndlessSurge(dt);
             TickBarrier(dt);
@@ -2381,7 +2419,7 @@ namespace Deucarian.TemplateGameSurvivors
                 $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
                 $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
                 $"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}",
-                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, XP +{ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus:P0}",
+                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, pull {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, XP +{ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus:P0}",
                 $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
                 $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
                 $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
@@ -2490,9 +2528,16 @@ namespace Deucarian.TemplateGameSurvivors
             AppendMetricTime(_runMetricsLines, "First boss kill", _firstBossKillTimeSeconds);
             AppendMetricTime(_runMetricsLines, "First evolution ready", _firstEvolutionEligibilityTimeSeconds);
             AppendMetricTime(_runMetricsLines, "First evolution acquired", _firstEvolutionAcquiredTimeSeconds);
+            _runMetricsLines.Add($"Levels 1m {FormatMetricLevel(_levelAtOneMinute)}, 2m {FormatMetricLevel(_levelAtTwoMinutes)}, 3m {FormatMetricLevel(_levelAtThreeMinutes)}, 4m {FormatMetricLevel(_levelAtFourMinutes)}, 5m {FormatMetricLevel(_levelAtFiveMinutes)}");
             _runMetricsLines.Add($"Drafts {_draftOpenCount}, weapons {ActiveWeaponCount}/{MaxWeaponSlots}, passives {ActivePassiveCount}/{MaxPassiveSlots}, evolutions {EvolvedWeaponCount}");
             _runMetricsLines.Add($"Kills {KilledCount}, XP {ExperienceCollected}, damage taken {_damageTakenThisRun:0.#}");
+            _runMetricsLines.Add($"Pickup range {CurrentPickupAttractRange:0.#}, pull {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, markers {ActiveOffscreenThreatMarkerCount}, recycles {NormalEnemyRecycleCount}, major repositions {MajorThreatRepositionCount}");
             return _runMetricsLines;
+        }
+
+        private static string FormatMetricLevel(int level)
+        {
+            return level > 0 ? level.ToString() : "not yet";
         }
 
         private static void AppendMetricTime(List<string> lines, string label, float seconds)
@@ -2520,6 +2565,11 @@ namespace Deucarian.TemplateGameSurvivors
             _firstEvolutionAcquiredTimeSeconds = -1f;
             _damageTakenThisRun = 0f;
             _draftOpenCount = 0;
+            _levelAtOneMinute = -1;
+            _levelAtTwoMinutes = -1;
+            _levelAtThreeMinutes = -1;
+            _levelAtFourMinutes = -1;
+            _levelAtFiveMinutes = -1;
             _runMetricsLines.Clear();
         }
 
@@ -2529,6 +2579,45 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 field = RunTimeSeconds;
             }
+        }
+
+        private void RecordLevelCheckpoints()
+        {
+            if (_levelAtOneMinute < 0 && RunTimeSeconds >= 60f)
+            {
+                _levelAtOneMinute = Level;
+            }
+
+            if (_levelAtTwoMinutes < 0 && RunTimeSeconds >= 120f)
+            {
+                _levelAtTwoMinutes = Level;
+            }
+
+            if (_levelAtThreeMinutes < 0 && RunTimeSeconds >= 180f)
+            {
+                _levelAtThreeMinutes = Level;
+            }
+
+            if (_levelAtFourMinutes < 0 && RunTimeSeconds >= 240f)
+            {
+                _levelAtFourMinutes = Level;
+            }
+
+            if (_levelAtFiveMinutes < 0 && RunTimeSeconds >= 300f)
+            {
+                _levelAtFiveMinutes = Level;
+            }
+        }
+
+        private void TickLevelUpDraftCooldown(float deltaTime)
+        {
+            if (_levelUpDraftCooldownTimer > 0f)
+            {
+                _levelUpDraftCooldownTimer = Mathf.Max(0f, _levelUpDraftCooldownTimer - Mathf.Max(0f, deltaTime));
+            }
+
+            ResolveLevelUpsFromExperienceBudget();
+            TryOpenPendingLevelUpDraft();
         }
 
         public bool OpenBossRelicDraftForTest()
@@ -2811,6 +2900,50 @@ namespace Deucarian.TemplateGameSurvivors
         public void TriggerMagnetRecall()
         {
             StartMagnetRecall();
+        }
+
+        private float ResolvePickupMagnetPulseIntervalSeconds()
+        {
+            if (PickupMagnetPulseIntervalReductionBonus <= 0f)
+            {
+                return -1f;
+            }
+
+            float baseInterval = Mathf.Max(1f, CurrentTuning.PickupMagnetPulseBaseIntervalSeconds);
+            float minimum = Mathf.Max(1f, CurrentTuning.PickupMagnetPulseMinimumIntervalSeconds);
+            return Mathf.Max(minimum, baseInterval - PickupMagnetPulseIntervalReductionBonus);
+        }
+
+        private void TickPickupMagnetPulse(float deltaTime)
+        {
+            float interval = ResolvePickupMagnetPulseIntervalSeconds();
+            if (interval <= 0f || _pickups.Count == 0)
+            {
+                _pickupMagnetPulseTimer = interval;
+                return;
+            }
+
+            if (_pickupMagnetPulseTimer <= 0f)
+            {
+                _pickupMagnetPulseTimer = interval;
+            }
+
+            _pickupMagnetPulseTimer -= Mathf.Max(0f, deltaTime);
+            if (_pickupMagnetPulseTimer > 0f)
+            {
+                return;
+            }
+
+            _pickupMagnetPulseTimer = interval;
+            int recalled = StartMagnetRecall();
+            if (recalled <= 0)
+            {
+                return;
+            }
+
+            MagnetPulseActivationCount++;
+            _lastMagnetPulseFeedbackLabel = $"Vacuum Pulse: {recalled} XP gems pulled";
+            RecordStreakRewardFeedback(_lastMagnetPulseFeedbackLabel, new Color(0.42f, 0.88f, 1f));
         }
 
         private int StartMagnetRecall()
@@ -8742,7 +8875,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SurvivorsPickupActor pickup = result.Instance.GetComponent<SurvivorsPickupActor>();
-            pickup.Initialize(this, kind, Mathf.Max(1, amount), CurrentPickupAttractRange, CurrentTuning.PickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
+            pickup.Initialize(this, kind, Mathf.Max(1, amount), CurrentPickupAttractRange, CurrentPickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
             _pickups.Add(pickup);
             return pickup;
         }
@@ -8878,7 +9011,7 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
-                pickup.UpdateAttractionSettings(CurrentPickupAttractRange, CurrentTuning.PickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
+                pickup.UpdateAttractionSettings(CurrentPickupAttractRange, CurrentPickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
                 pickup.Simulate(deltaTime);
             }
         }
@@ -8900,19 +9033,36 @@ namespace Deucarian.TemplateGameSurvivors
             int gained = Mathf.Max(1, Mathf.RoundToInt(baseAmount * Mathf.Max(0.1f, 1f + ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus)));
             ExperienceCollected += gained;
             Experience += gained;
-            while (Experience >= RequiredExperienceForNextLevel)
+            ResolveLevelUpsFromExperienceBudget();
+            TryOpenPendingLevelUpDraft();
+
+            return gained;
+        }
+
+        private void ResolveLevelUpsFromExperienceBudget()
+        {
+            int queueLimit = Mathf.Max(1, CurrentTuning.MaximumQueuedLevelUps);
+            int guard = 0;
+            while (Experience >= RequiredExperienceForNextLevel && PendingLevelUps < queueLimit && guard++ < 256)
             {
                 Experience -= RequiredExperienceForNextLevel;
                 Level++;
                 PendingLevelUps++;
             }
+        }
 
-            if (PendingLevelUps > 0 && State == SurvivorsRunState.Playing)
+        private bool TryOpenPendingLevelUpDraft()
+        {
+            if (PendingLevelUps <= 0 ||
+                State != SurvivorsRunState.Playing ||
+                _rewardSelectionKind != SurvivorsRewardSelectionKind.None ||
+                _levelUpDraftCooldownTimer > 0f)
             {
-                OpenLevelUpDraft();
+                return false;
             }
 
-            return gained;
+            OpenLevelUpDraft();
+            return State == SurvivorsRunState.LevelUp;
         }
 
         private void RecordExperienceCombo(int gained)
@@ -8992,6 +9142,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
             _draftOpenCount++;
+            _levelUpDraftCooldownTimer = Mathf.Max(0f, CurrentTuning.LevelUpDraftCooldownSeconds);
             RecordMetricTime(ref _firstLevelUpDraftTimeSeconds);
             RecordRewardCardPresentation(_rewardSelectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
@@ -9298,22 +9449,19 @@ namespace Deucarian.TemplateGameSurvivors
                     return;
                 }
 
-                if (PendingLevelUps > 0)
+                ResolveLevelUpsFromExperienceBudget();
+                if (TryOpenPendingLevelUpDraft())
                 {
-                    OpenLevelUpDraft();
+                    return;
                 }
-                else
-                {
-                    State = SurvivorsRunState.Playing;
-                }
-            }
-            else if (PendingLevelUps > 0)
-            {
-                OpenLevelUpDraft();
+
+                State = SurvivorsRunState.Playing;
             }
             else
             {
                 State = SurvivorsRunState.Playing;
+                ResolveLevelUpsFromExperienceBudget();
+                TryOpenPendingLevelUpDraft();
             }
         }
 
@@ -9341,13 +9489,11 @@ namespace Deucarian.TemplateGameSurvivors
             _pendingVictoryAfterRewardDraft = false;
             _pendingBossRelicAfterRewardDraft = false;
             _currentDraftRerollIndex = 0;
-            if (PendingLevelUps > 0)
+            State = SurvivorsRunState.Playing;
+            ResolveLevelUpsFromExperienceBudget();
+            if (TryOpenPendingLevelUpDraft())
             {
-                OpenLevelUpDraft();
-            }
-            else
-            {
-                State = SurvivorsRunState.Playing;
+                return true;
             }
 
             return true;
@@ -9617,6 +9763,18 @@ namespace Deucarian.TemplateGameSurvivors
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect))
                 {
                     PickupRangeBonus += (float)effect.Amount;
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetSpeedEffect))
+                {
+                    PickupAttractionSpeedBonus += Mathf.Max(0f, (float)effect.Amount);
+                }
+                else if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetPulseEffect))
+                {
+                    PickupMagnetPulseIntervalReductionBonus += Mathf.Max(0f, (float)effect.Amount);
+                    if (_pickupMagnetPulseTimer <= 0f)
+                    {
+                        _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
+                    }
                 }
                 else if (effect.EffectId.Equals(BasicSurvivorsGame.MaxHealthEffect) && _playerHealth != null)
                 {
@@ -10723,6 +10881,7 @@ namespace Deucarian.TemplateGameSurvivors
             AppendPassiveBuildHudLines(lines);
             lines.Add($"Evolutions {EvolvedWeaponCount}");
             AppendEvolutionBuildHudLines(lines);
+            lines.Add($"Pickup range {CurrentPickupAttractRange:0.#}   Pull {CurrentPickupAttractionSpeed:0.#}   Pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}");
             lines.Add("Relics " + FormatSelectedRelicList());
             return lines;
         }
@@ -11549,6 +11708,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float CurrentHealth => _health == null ? 0f : (float)_health.CurrentHealth;
         public float MaxHealth => _health == null ? 0f : (float)_health.MaximumHealth;
         public float HealthFraction => MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth;
+        public float LeashTimerSeconds { get; private set; }
         public bool IsMovementSlowed => _slowRemainingSeconds > 0f && _moveSpeedMultiplier < 1f;
         public float CurrentMoveSpeedMultiplier => IsMovementSlowed ? _moveSpeedMultiplier : 1f;
         public bool IsBurning => _burnRemainingSeconds > 0f && _burnDamagePerSecond > 0f;
@@ -11594,7 +11754,18 @@ namespace Deucarian.TemplateGameSurvivors
             _hitFlashTimer = 0f;
             _hitFlashDuration = 0f;
             _hitFlashCritical = false;
+            LeashTimerSeconds = 0f;
             ApplyTint(profile.Tint);
+        }
+
+        public void AddLeashTime(float deltaTime)
+        {
+            LeashTimerSeconds += Mathf.Max(0f, deltaTime);
+        }
+
+        public void ResetLeashTimer()
+        {
+            LeashTimerSeconds = 0f;
         }
 
         public void Simulate(float deltaTime)
@@ -11633,7 +11804,8 @@ namespace Deucarian.TemplateGameSurvivors
             if (moveDirection.sqrMagnitude > 0.001f)
             {
                 Vector3 resolvedMove = moveDirection.normalized;
-                transform.position += resolvedMove * (_moveSpeed * CurrentMoveSpeedMultiplier * deltaTime);
+                float catchUpMultiplier = _controller.ResolveEnemyCatchUpMoveSpeedMultiplier(this, distance);
+                transform.position += resolvedMove * (_moveSpeed * CurrentMoveSpeedMultiplier * catchUpMultiplier * deltaTime);
                 transform.forward = resolvedMove;
             }
             else if (distance > 0.001f)
