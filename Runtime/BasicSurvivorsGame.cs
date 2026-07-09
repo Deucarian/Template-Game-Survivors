@@ -74,6 +74,16 @@ namespace Deucarian.TemplateGameSurvivors
         public float EnemyContactDamage = 3.5f;
         public float EnemyContactIntervalSeconds = 0.7f;
         public float EnemyRangedAttackWindupSeconds = 0.28f;
+        public float EnemySoftLeashRadius = 21f;
+        public float EnemyHardRecycleRadius = 34f;
+        public float EnemyRecycleDelaySeconds = 2.4f;
+        public float EnemyRecycleMinimumRespawnDistance = 10.5f;
+        public float EnemyRecycleMaximumRespawnDistance = 14.5f;
+        public float MajorThreatCatchUpRadius = 19f;
+        public float MajorThreatCatchUpSpeedMultiplier = 1.65f;
+        public float MajorThreatRepositionRadius = 44f;
+        public float MajorThreatRepositionDelaySeconds = 4.5f;
+        public float OffscreenThreatMarkerDistance = 11f;
         public int EnemyRangedAttackDodgeExperienceReward = 2;
         public int EnemyExperienceReward = 2;
         public float RunEscalationIntervalSeconds = 45f;
@@ -209,6 +219,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float PickupAttractionSpeed = 6.2f;
         public float PickupCollectRadius = 0.78f;
         public float MagnetRecallSpeedMultiplier = 2.1f;
+        public float PickupMagnetPulseBaseIntervalSeconds = 46f;
+        public float PickupMagnetPulseMinimumIntervalSeconds = 18f;
         public float GemRushDurationSeconds = 3.5f;
         public float GemRushDamageBonus = 0.95f;
         public float GemRushMoveSpeedBonus = 0.2f;
@@ -339,6 +351,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftRerollCharges = 3;
         public int DraftBanishCharges = 3;
         public int DraftSkipBloodShards = 1;
+        public float LevelUpDraftCooldownSeconds = 0f;
+        public int MaximumQueuedLevelUps = 32;
         public int MaxWeaponSlots = 6;
         public int MaxPassiveSlots = 6;
         public int DraftMidRarityLevel = 5;
@@ -461,6 +475,9 @@ namespace Deucarian.TemplateGameSurvivors
         public const string SiegePayloadsUpgradeId = "upgrade.survivors.siege-payloads";
         public const string EmberWardUpgradeId = "upgrade.survivors.ember-ward";
         public const string ScholarsLensUpgradeId = "upgrade.survivors.scholars-lens";
+        public const string GemMagnetUpgradeId = "upgrade.survivors.gem-magnet";
+        public const string LodestoneSigilUpgradeId = "upgrade.survivors.lodestone-sigil";
+        public const string VacuumPulseUpgradeId = "upgrade.survivors.vacuum-pulse";
         public const string GiantRuneUpgradeId = "upgrade.survivors.giant-rune";
         public const string TwinCharmUpgradeId = "upgrade.survivors.twin-charm";
         public const string KeenEdgeUpgradeId = "upgrade.survivors.keen-edge";
@@ -489,6 +506,8 @@ namespace Deucarian.TemplateGameSurvivors
         public static readonly RunUpgradeEffectId FireRateEffect = new RunUpgradeEffectId("survivors.weapon.cooldown_multiplier");
         public static readonly RunUpgradeEffectId MoveSpeedEffect = new RunUpgradeEffectId("survivors.player.move_speed");
         public static readonly RunUpgradeEffectId MagnetRangeEffect = new RunUpgradeEffectId("survivors.pickup.range");
+        public static readonly RunUpgradeEffectId MagnetSpeedEffect = new RunUpgradeEffectId("survivors.pickup.pull_speed");
+        public static readonly RunUpgradeEffectId MagnetPulseEffect = new RunUpgradeEffectId("survivors.pickup.magnet_pulse");
         public static readonly RunUpgradeEffectId MaxHealthEffect = new RunUpgradeEffectId("survivors.player.max_health");
         public static readonly RunUpgradeEffectId OrbitBladeEffect = new RunUpgradeEffectId("survivors.orbit.blade_count");
         public static readonly RunUpgradeEffectId OrbitRadiusEffect = new RunUpgradeEffectId("survivors.orbit.radius");
@@ -791,7 +810,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RunModeDurationLabel = "6 min";
             tuning.RunModeDescription = "Accelerated validation profile with early threats and timed reward choices.";
             tuning.TargetDurationSeconds = 360f;
-            tuning.PlayerMoveSpeed = 5.75f;
+            tuning.PlayerMoveSpeed = 5.45f;
+            tuning.PlayerMaxHealth = 38f;
             tuning.DashDistance = 3.4f;
             tuning.DashCooldownSeconds = 1.6f;
             tuning.DashKnockbackDistance = 1.45f;
@@ -1066,26 +1086,36 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.DashCooldownSeconds = 1.85f;
             tuning.DashKnockbackDistance = 1.45f;
             tuning.DashDamage = 3f;
-            tuning.EnemySpawnRadius = 12f;
-            tuning.EnemySpawnIntervalSeconds = 0.55f;
-            tuning.EnemyMaximumAlive = 52;
+            tuning.EnemySpawnRadius = 9.8f;
+            tuning.EnemySpawnIntervalSeconds = 0.72f;
+            tuning.EnemyMaximumAlive = 46;
             tuning.EnemySpawnPackBaseCount = 2;
-            tuning.EnemySpawnPackMaxCount = 7;
+            tuning.EnemySpawnPackMaxCount = 6;
             tuning.EnemySpawnPackIncreaseEveryEscalations = 1;
-            tuning.EnemyMaxHealth = 9.5f;
-            tuning.EnemyMoveSpeed = 1.75f;
+            tuning.EnemyMaxHealth = 15.5f;
+            tuning.EnemyMoveSpeed = 2.25f;
             tuning.EnemySeparationStrength = 0.9f;
-            tuning.EnemyContactDamage = 4.5f;
+            tuning.EnemyContactDamage = 6.5f;
             tuning.EnemyRangedAttackWindupSeconds = 0.2f;
-            tuning.EnemyRangedAttackDodgeExperienceReward = 3;
-            tuning.EnemyExperienceReward = 3;
+            tuning.EnemySoftLeashRadius = 16f;
+            tuning.EnemyHardRecycleRadius = 26f;
+            tuning.EnemyRecycleDelaySeconds = 1.8f;
+            tuning.EnemyRecycleMinimumRespawnDistance = 8.2f;
+            tuning.EnemyRecycleMaximumRespawnDistance = 11.5f;
+            tuning.MajorThreatCatchUpRadius = 14f;
+            tuning.MajorThreatCatchUpSpeedMultiplier = 1.9f;
+            tuning.MajorThreatRepositionRadius = 32f;
+            tuning.MajorThreatRepositionDelaySeconds = 3f;
+            tuning.OffscreenThreatMarkerDistance = 8.5f;
+            tuning.EnemyRangedAttackDodgeExperienceReward = 1;
+            tuning.EnemyExperienceReward = 1;
             tuning.RunEscalationIntervalSeconds = 30f;
-            tuning.MinimumEnemySpawnIntervalSeconds = 0.18f;
-            tuning.EnemySpawnIntervalReductionPerEscalation = 0.045f;
-            tuning.EnemyMaximumAliveIncreasePerEscalation = 10;
-            tuning.EnemyHealthMultiplierPerEscalation = 0.16f;
-            tuning.EnemyMoveSpeedMultiplierPerEscalation = 0.032f;
-            tuning.EnemyExperienceMultiplierPerEscalation = 0.18f;
+            tuning.MinimumEnemySpawnIntervalSeconds = 0.34f;
+            tuning.EnemySpawnIntervalReductionPerEscalation = 0.035f;
+            tuning.EnemyMaximumAliveIncreasePerEscalation = 7;
+            tuning.EnemyHealthMultiplierPerEscalation = 0.18f;
+            tuning.EnemyMoveSpeedMultiplierPerEscalation = 0.036f;
+            tuning.EnemyExperienceMultiplierPerEscalation = 0.04f;
             tuning.MajorThreatWarningLeadSeconds = 6f;
             tuning.HordeRushFirstTimeSeconds = 120f;
             tuning.HordeRushIntervalSeconds = 80f;
@@ -1095,8 +1125,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.HordeRushMaxEnemyCount = 34;
             tuning.HordeRushExtraAliveAllowance = 24;
             tuning.HordeRushSpawnRadius = 8f;
-            tuning.HordeRushClearExperienceGemCount = 5;
-            tuning.HordeRushClearExperienceMultiplier = 2.7f;
+            tuning.HordeRushClearExperienceGemCount = 2;
+            tuning.HordeRushClearExperienceMultiplier = 1.8f;
             tuning.HordeRushClearMagnetEveryRush = 1;
             tuning.HordeRushClearBloodShardEveryRush = 2;
             tuning.HordeRushClearPulseDamage = 18f;
@@ -1125,21 +1155,21 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MinibossMaxHealth = 155f;
             tuning.MinibossMoveSpeed = 1.9f;
             tuning.MinibossContactDamage = 9f;
-            tuning.MinibossExperienceReward = 48;
+            tuning.MinibossExperienceReward = 22;
             tuning.BossSpawnTimeSeconds = 270f;
             tuning.BossMaxHealth = 680f;
             tuning.BossMoveSpeed = 1.65f;
-            tuning.BossExperienceReward = 120;
+            tuning.BossExperienceReward = 48;
             tuning.SurvivalVictoryTimeSeconds = 300f;
             tuning.EndlessEliteSpawnIntervalSeconds = 45f;
             tuning.EndlessMinibossSpawnIntervalSeconds = 90f;
             tuning.EndlessBossSpawnIntervalSeconds = 150f;
-            tuning.WeaponCooldownSeconds = 0.56f;
-            tuning.WeaponRange = 13f;
-            tuning.ProjectileDamage = 7.2f;
+            tuning.WeaponCooldownSeconds = 0.68f;
+            tuning.WeaponRange = 7.6f;
+            tuning.ProjectileDamage = 5.6f;
             tuning.ProjectileSpeed = 10.75f;
-            tuning.ProjectileLifetimeSeconds = 2.35f;
-            tuning.OrbitDamage = 2.2f;
+            tuning.ProjectileLifetimeSeconds = 1.5f;
+            tuning.OrbitDamage = 1.8f;
             tuning.OrbitDegreesPerSecond = 165f;
             tuning.OrbitContactTickIntervalSeconds = 0.32f;
             tuning.MeleeDamage = 5f;
@@ -1159,14 +1189,16 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.PayloadHazardChainSnareThreshold = 4;
             tuning.PayloadHazardChainWindowSeconds = 1.05f;
             tuning.PayloadHazardChainCooldownSeconds = 2f;
-            tuning.PayloadHazardChainExperienceGemCount = 3;
-            tuning.PayloadHazardChainExperienceMultiplier = 2.2f;
+            tuning.PayloadHazardChainExperienceGemCount = 1;
+            tuning.PayloadHazardChainExperienceMultiplier = 1.6f;
             tuning.PayloadHazardChainPulseDamage = 16f;
             tuning.PayloadHazardChainPulseRadius = 4.8f;
-            tuning.PickupAttractRange = 3.35f;
-            tuning.PickupAttractionSpeed = 8f;
+            tuning.PickupAttractRange = 2.4f;
+            tuning.PickupAttractionSpeed = 6.2f;
             tuning.PickupCollectRadius = 0.82f;
-            tuning.MagnetRecallSpeedMultiplier = 2.55f;
+            tuning.MagnetRecallSpeedMultiplier = 2.2f;
+            tuning.PickupMagnetPulseBaseIntervalSeconds = 44f;
+            tuning.PickupMagnetPulseMinimumIntervalSeconds = 18f;
             tuning.GemRushDurationSeconds = 3.8f;
             tuning.GemRushDamageBonus = 1.05f;
             tuning.GemRushMoveSpeedBonus = 0.24f;
@@ -1198,8 +1230,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.ArenaShrineMaxEnemyCount = 20;
             tuning.ArenaShrineExtraAliveAllowance = 24;
             tuning.ArenaShrineSpawnRadius = 5f;
-            tuning.ArenaShrineClearExperienceGemCount = 7;
-            tuning.ArenaShrineClearExperienceMultiplier = 3.5f;
+            tuning.ArenaShrineClearExperienceGemCount = 2;
+            tuning.ArenaShrineClearExperienceMultiplier = 2f;
             tuning.ArenaShrineClearBloodShardAmount = 2;
             tuning.ArenaShrineSurgeDurationSeconds = 5.5f;
             tuning.ArenaShrineSurgeDamageBonus = 2f;
@@ -1209,7 +1241,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.ArenaShrineSurgePulseDamage = 28f;
             tuning.ArenaShrineSurgePulseRadius = 6f;
             tuning.WaystoneDiscoveryRadius = 1.65f;
-            tuning.WaystoneExperienceGemCount = 6;
+            tuning.WaystoneExperienceGemCount = 2;
             tuning.WaystoneAmbushBaseEnemyCount = 3;
             tuning.WaystoneAmbushExtraAliveAllowance = 12;
             tuning.WaystoneFocusDurationSeconds = 5f;
@@ -1218,7 +1250,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.WaystoneFocusCooldownMultiplierBonus = -0.055f;
             tuning.WaystoneFocusPickupRangeBonus = 0.72f;
             tuning.WaystoneChainInterval = 2;
-            tuning.WaystoneChainBonusGemCount = 4;
+            tuning.WaystoneChainBonusGemCount = 1;
             tuning.WaystoneChainDurationSeconds = 5f;
             tuning.WaystoneChainDamageBonus = 1.9f;
             tuning.WaystoneChainMoveSpeedBonus = 0.34f;
@@ -1254,8 +1286,8 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.LevelUpPulseRadius = 4.4f;
             tuning.RewardUpgradeSurgeDamage = 24f;
             tuning.RewardUpgradeSurgeRadius = 5.8f;
-            tuning.RewardJackpotExperienceGemBaseCount = 4;
-            tuning.RewardJackpotExperienceGemPerRarityTier = 2;
+            tuning.RewardJackpotExperienceGemBaseCount = 1;
+            tuning.RewardJackpotExperienceGemPerRarityTier = 1;
             tuning.RewardJackpotBloodShardBaseAmount = 1;
             tuning.RewardJackpotLegendaryExtraBloodShardAmount = 2;
             tuning.BossRelicSurgeDamage = 22f;
@@ -1277,8 +1309,12 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EndlessSurgePulseRadius = 6.2f;
             tuning.HealthPickupHealAmount = 12;
             tuning.BloodShardPickupAmount = 1;
-            tuning.ExperienceRequiredBase = 3;
-            tuning.ExperienceRequiredPerLevel = 2;
+            tuning.StartingBarrierCapacity = 2f;
+            tuning.BaseBarrierRegenPerSecond = 0.04f;
+            tuning.ExperienceRequiredBase = 24;
+            tuning.ExperienceRequiredPerLevel = 18;
+            tuning.LevelUpDraftCooldownSeconds = 6f;
+            tuning.MaximumQueuedLevelUps = 2;
             tuning.DraftRerollCharges = 5;
             tuning.DraftBanishCharges = 5;
             tuning.DraftMidRarityLevel = 3;
@@ -1906,7 +1942,9 @@ namespace Deucarian.TemplateGameSurvivors
                 Upgrade("upgrade.survivors.arcane-damage", RunUpgradeRarity.Common, 70, 8, DamageBonusEffect, WeaponTarget, 2.0d),
                 Upgrade("upgrade.survivors.quick-casting", RunUpgradeRarity.Common, 60, 6, FireRateEffect, WeaponTarget, -0.08d),
                 Upgrade("upgrade.survivors.swift-steps", RunUpgradeRarity.Uncommon, 44, 5, MoveSpeedEffect, PlayerTarget, 0.45d),
-                Upgrade("upgrade.survivors.gem-magnet", RunUpgradeRarity.Uncommon, 44, 5, MagnetRangeEffect, PickupTarget, 1.1d),
+                Upgrade(GemMagnetUpgradeId, RunUpgradeRarity.Uncommon, 52, 5, MagnetRangeEffect, PickupTarget, 1.05d),
+                Upgrade(LodestoneSigilUpgradeId, RunUpgradeRarity.Uncommon, 42, 5, MagnetSpeedEffect, PickupTarget, 1.25d),
+                Upgrade(VacuumPulseUpgradeId, RunUpgradeRarity.Rare, 22, 4, MagnetPulseEffect, PickupTarget, 7.0d),
                 Upgrade("upgrade.survivors.iron-blood", RunUpgradeRarity.Rare, 28, 4, MaxHealthEffect, PlayerTarget, 8.0d),
                 UpgradeMulti(
                     KeenEdgeUpgradeId,
@@ -2084,7 +2122,9 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeMetadata("upgrade.survivors.arcane-damage", "Arcane Damage", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt deals more damage.", ArcaneWandWeaponContentId),
                 UpgradeMetadata("upgrade.survivors.quick-casting", "Quick Casting", SurvivorsRunUpgradeCategory.WeaponUpgrade, SurvivorsRunBuildSlotKind.None, ArcaneWandWeaponContentId, "Arc Bolt fires more often.", ArcaneWandWeaponContentId),
                 UpgradeMetadata("upgrade.survivors.swift-steps", "Swift Steps", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: move faster through horde pressure."),
-                UpgradeMetadata("upgrade.survivors.gem-magnet", "Gem Magnet", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PickupTarget.Value, "Passive: pull XP gems from farther away."),
+                UpgradeMetadata(GemMagnetUpgradeId, "Gemheart", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PickupTarget.Value, "Passive: pull XP gems from farther away."),
+                UpgradeMetadata(LodestoneSigilUpgradeId, "Lodestone Sigil", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PickupTarget.Value, "Passive: gems fly to you faster once attracted."),
+                UpgradeMetadata(VacuumPulseUpgradeId, "Vacuum Pulse", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PickupTarget.Value, "Passive: periodically recall loose XP gems without adding extra level rewards."),
                 UpgradeMetadata("upgrade.survivors.iron-blood", "Iron Blood", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, PlayerTarget.Value, "Passive: increase maximum health."),
                 UpgradeMetadata(KeenEdgeUpgradeId, "Keen Edge", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, CriticalTarget.Value, "Passive: weapon hits can critically strike for higher damage."),
                 UpgradeMetadata(FateLensUpgradeId, "Fate Lens", SurvivorsRunUpgradeCategory.Passive, SurvivorsRunBuildSlotKind.Passive, DraftTarget.Value, "Passive: improve future draft odds for rare, epic, and legendary choices."),
@@ -2549,7 +2589,9 @@ namespace Deucarian.TemplateGameSurvivors
             if (value == "upgrade.survivors.arcane-damage") return "Arcane Damage";
             if (value == "upgrade.survivors.quick-casting") return "Quick Casting";
             if (value == "upgrade.survivors.swift-steps") return "Swift Steps";
-            if (value == "upgrade.survivors.gem-magnet") return "Gem Magnet";
+            if (value == GemMagnetUpgradeId) return "Gemheart";
+            if (value == LodestoneSigilUpgradeId) return "Lodestone Sigil";
+            if (value == VacuumPulseUpgradeId) return "Vacuum Pulse";
             if (value == "upgrade.survivors.iron-blood") return "Iron Blood";
             if (value == KeenEdgeUpgradeId) return "Keen Edge";
             if (value == FateLensUpgradeId) return "Fate Lens";
