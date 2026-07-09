@@ -42,6 +42,24 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             _scroll = EditorGUILayout.BeginScrollView(_scroll);
             DrawSnapshot(controller);
             EditorGUILayout.Space(8f);
+            EditorGUILayout.BeginHorizontal();
+            if (GUILayout.Button("Start Standard Run"))
+            {
+                controller.SelectStandardRun();
+            }
+
+            if (GUILayout.Button("Start Sprint Run"))
+            {
+                controller.SelectSprintRun();
+            }
+
+            if (GUILayout.Button("Choose Run Mode"))
+            {
+                controller.OpenRunModeSelection();
+            }
+
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.Space(8f);
             _experienceAmount = EditorGUILayout.IntSlider("Grant XP", _experienceAmount, 1, 250);
             if (GUILayout.Button("Grant XP"))
             {
@@ -110,6 +128,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 controller.DebugSpawnBoss(_majorEnemyRadius);
             }
 
+            if (GUILayout.Button("Force Sprint Boss"))
+            {
+                controller.DebugSpawnSprintBoss(_majorEnemyRadius);
+            }
+
             EditorGUILayout.EndHorizontal();
             EditorGUILayout.Space(8f);
             _stressTarget = EditorGUILayout.IntSlider("Stress Target", _stressTarget, 50, 512);
@@ -136,9 +159,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             }
 
             EditorGUILayout.Space(8f);
-            DrawDebugLines("Current Build", controller.DebugDescribeCurrentBuild());
-            DrawDebugLines("Eligible Evolutions", controller.DebugDescribeEligibleEvolutionPool());
-            DrawDebugLines("Current Draft Pool", controller.DebugDescribeCurrentDraftPool());
+            DrawDebugLines("Run Metrics", controller.DebugDescribeRunMetrics());
+            if (controller.IsRunStarted)
+            {
+                DrawDebugLines("Current Build", controller.DebugDescribeCurrentBuild());
+                DrawDebugLines("Eligible Evolutions", controller.DebugDescribeEligibleEvolutionPool());
+                DrawDebugLines("Current Draft Pool", controller.DebugDescribeCurrentDraftPool());
+            }
+
             EditorGUILayout.EndScrollView();
         }
 
@@ -147,7 +175,10 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string rewardTimeout = controller.CurrentTuning.RewardSelectionTimeoutSeconds > 0f
                 ? controller.CurrentTuning.RewardSelectionTimeoutSeconds.ToString("0.#") + "s"
                 : "Off";
+            EditorGUILayout.LabelField("Run Mode", controller.CurrentRunModeDisplayName);
             EditorGUILayout.LabelField("Pacing Profile", BasicSurvivorsGame.GetPacingProfileDisplayName(controller.CurrentPacingProfile));
+            EditorGUILayout.LabelField("Target Duration", controller.CurrentTuning.TargetDurationSeconds.ToString("0") + "s");
+            EditorGUILayout.LabelField("Boss / Victory", $"{controller.CurrentTuning.BossSpawnTimeSeconds:0}s / {controller.CurrentTuning.SurvivalVictoryTimeSeconds:0}s");
             EditorGUILayout.LabelField("Time Scale", Time.timeScale.ToString("0.##"));
             EditorGUILayout.LabelField("Run Timer", $"{controller.State}  {controller.RunTimeSeconds:0}s  Level {controller.Level}");
             EditorGUILayout.LabelField("Next Milestone", controller.CurrentRunMilestoneHudLabel);

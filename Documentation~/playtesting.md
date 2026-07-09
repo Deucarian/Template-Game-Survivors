@@ -12,21 +12,23 @@ Open this imported/editable scene:
 
 `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`
 
-Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should start immediately with no setup menu or repair step.
+Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should open the run-mode selector without requiring a setup or repair step. Choose Standard Run with `1`/Enter for the full 30-minute Human Playtest loop, or Sprint Run with `2`/`S` for the compact 5-minute loop.
 
-## Default Profile
+## Run Modes
 
-The sample defaults to `SurvivorsPacingProfile.HumanPlaytest`.
+Standard Run uses `SurvivorsPacingProfile.HumanPlaytest`.
 
 Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `0.95` seconds, an opening maximum of `38` alive enemies, basic enemy speed of `1.35` versus player speed of `5.55`, a short Arc Step dash on Space for emergency spacing, projectile speed of `9.25`, pickup attract range of `2.9`, center-screen horde-rush and major-threat warnings, and no reward-choice auto-pick timeout.
 
 Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, horde-rush rings begin around `75` seconds and pay out when cleared, the first elite arrives around `135` seconds, the dread elite arrives around `255` seconds, and the miniboss waits until `360` seconds.
 
+Sprint Run uses `SurvivorsPacingProfile.SprintRun`. It targets a 5-minute session with a `300` second victory time, a `270` second boss, a first elite around `82` seconds, horde pressure around `120` seconds, dread/miniboss pressure around `165`-`175` seconds, faster XP and rarity progression, `5` rerolls, `5` banishes, a `0.65` meta reward multiplier, a Sprint-only evolution rank assist, and no endless continuation after victory.
+
 ## What To Check
 
 First 30 seconds:
 
-- The scene starts in Human Playtest, not Debug Fast.
+- The scene opens on the run-mode selector, and Standard Run starts Human Playtest rather than Debug Fast.
 - Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
 - Nearby enemies should keep slight readable spacing while pressing inward instead of collapsing into one stacked blob.
 - Arc Step moves the player out of a crowded pocket, briefly prevents damage, and shoves nearby enemies without becoming a permanent speed boost.
@@ -90,13 +92,27 @@ After defeat:
 
 - The defeat panel should summarize the same run rewards, meta totals, next-run class choices, and affordable meta upgrades, then `R` or the Restart button should begin a fresh run and clear the previous summary.
 
+## Sprint Run Checks
+
+Choose Sprint Run from the selector or start it through the runtime debugger.
+
+- First draft should be reachable around `20`-`35` seconds when the player keeps collecting XP.
+- The player should usually have a second weapon, passive, or meaningful rank identity by about `45`-`60` seconds.
+- First elite should arrive around `82` seconds.
+- Horde pressure should spike around `120` seconds.
+- Dread/miniboss pressure should arrive around `165`-`175` seconds.
+- A focused build should be able to become evolution-eligible between `180` and `240` seconds without changing Standard evolution requirements.
+- Boss should arrive around `270` seconds and victory should resolve around `300` seconds.
+- The victory summary should say Sprint Run, apply the `0.65` reward multiplier, and show Restart without the endless Continue option.
+- The runtime debugger's run metrics should show the selected mode, first draft, first elite, miniboss/dread, boss, evolution, kill, XP, and damage timings when those events happen.
+
 ## Reset Save Data
 
 Enter Play Mode, then open:
 
 `Tools > Deucarian > Templates > Survivors > Runtime Debugger`
 
-Click `Explicitly Reset Save / Progress`. Restart Play Mode to confirm the sample starts from a fresh local meta profile. The same window can grant blood shards for meta-upgrade checks and inspect the current build ranks, eligible evolutions, and current draft pool. Entering Play Mode, restarting the current run, and applying a pacing profile should not wipe saved meta progress.
+Click `Explicitly Reset Save / Progress`. Restart Play Mode to confirm the sample starts from a fresh local meta profile. The same window can start Standard or Sprint, grant blood shards for meta-upgrade checks, force a Sprint boss, inspect run metrics, and inspect the current build ranks, eligible evolutions, and current draft pool. Entering Play Mode, restarting the current run, and applying a pacing profile should not wipe saved meta progress.
 
 ## Enable Debug Fast
 

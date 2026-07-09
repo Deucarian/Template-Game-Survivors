@@ -99,6 +99,9 @@ namespace Deucarian.TemplateGameSurvivors
         private bool autoStart = true;
 
         [SerializeField]
+        private bool showRunModeSelection = false;
+
+        [SerializeField]
         private bool buildVisualsOnAwake = true;
 
         [SerializeField]
@@ -120,6 +123,7 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsIncomingThreatTelegraphEffect> _incomingThreatTelegraphEffects = new List<SurvivorsIncomingThreatTelegraphEffect>(IncomingThreatTelegraphEffectLimit);
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
         private readonly List<string> _lastRunSummaryLines = new List<string>(8);
+        private readonly List<string> _runMetricsLines = new List<string>(16);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
@@ -218,6 +222,7 @@ namespace Deucarian.TemplateGameSurvivors
         private float _payloadHazardChainCooldownTimer;
         private int _payloadHazardChainSnareCount;
         private bool _runStarted;
+        private bool _runModeSelectionOpen;
         private bool _lowHealthClutchPulseUsed;
         private bool _weaponLoadoutSurgeUsed;
         private bool _passiveLoadoutSurgeUsed;
@@ -266,6 +271,19 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _gemRushActivatedForCurrentCombo;
         private int _bonusBloodShardsEarnedThisRun;
         private int _bonusLegacyExperienceEarnedThisRun;
+        private float _firstKillTimeSeconds;
+        private float _firstExperiencePickupTimeSeconds;
+        private float _firstLevelUpDraftTimeSeconds;
+        private float _firstEliteSpawnTimeSeconds;
+        private float _firstEliteKillTimeSeconds;
+        private float _firstMinibossSpawnTimeSeconds;
+        private float _firstMinibossKillTimeSeconds;
+        private float _firstBossSpawnTimeSeconds;
+        private float _firstBossKillTimeSeconds;
+        private float _firstEvolutionEligibilityTimeSeconds;
+        private float _firstEvolutionAcquiredTimeSeconds;
+        private float _damageTakenThisRun;
+        private int _draftOpenCount;
 
         public SurvivorsRunState State { get; private set; } = SurvivorsRunState.Booting;
         public int Level { get; private set; } = 1;
@@ -708,6 +726,9 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsPacingProfile CurrentPacingProfile => CurrentTuning.PacingProfile;
         public bool IsHumanPlaytestPacing => CurrentPacingProfile == SurvivorsPacingProfile.HumanPlaytest;
         public bool IsDebugFastPacing => CurrentPacingProfile == SurvivorsPacingProfile.DebugFast;
+        public bool IsSprintRunMode => CurrentPacingProfile == SurvivorsPacingProfile.SprintRun;
+        public bool IsRunModeSelectionOpen => _runModeSelectionOpen;
+        public string CurrentRunModeDisplayName => CurrentTuning.RunModeDisplayName;
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateTuning(pacingProfile));
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public float CurrentEnemySpawnIntervalSeconds => ResolveEnemySpawnIntervalSeconds();
@@ -728,6 +749,7 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsRunPhase RunPhase => _runFlow == null ? SurvivorsRunPhase.Opening : _runFlow.Phase;
         public int RunEscalationLevel => _runFlow == null ? 0 : _runFlow.EscalationLevel;
         public bool IsPlaying => State == SurvivorsRunState.Playing;
+        public bool IsRunStarted => _runStarted;
         public bool IsLevelUpOpen => State == SurvivorsRunState.LevelUp;
         public bool IsRunUpgradeDraftOpen => State == SurvivorsRunState.LevelUp && _rewardSelectionKind == SurvivorsRewardSelectionKind.LevelUp;
         public bool IsRelicChoiceOpen => State == SurvivorsRunState.LevelUp && _rewardSelectionKind == SurvivorsRewardSelectionKind.BossRelic;
@@ -794,6 +816,19 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftRerollsRemaining => Mathf.Max(0, TotalDraftRerollCharges - DraftRerollCount);
         public int DraftBanishesRemaining => Mathf.Max(0, CurrentTuning.DraftBanishCharges - DraftBanishCount);
         public int DraftSkipBloodShards => Mathf.Max(0, CurrentTuning.DraftSkipBloodShards);
+        public float FirstKillTimeSeconds => _firstKillTimeSeconds;
+        public float FirstExperiencePickupTimeSeconds => _firstExperiencePickupTimeSeconds;
+        public float FirstLevelUpDraftTimeSeconds => _firstLevelUpDraftTimeSeconds;
+        public float FirstEliteSpawnTimeSeconds => _firstEliteSpawnTimeSeconds;
+        public float FirstEliteKillTimeSeconds => _firstEliteKillTimeSeconds;
+        public float FirstMinibossSpawnTimeSeconds => _firstMinibossSpawnTimeSeconds;
+        public float FirstMinibossKillTimeSeconds => _firstMinibossKillTimeSeconds;
+        public float FirstBossSpawnTimeSeconds => _firstBossSpawnTimeSeconds;
+        public float FirstBossKillTimeSeconds => _firstBossKillTimeSeconds;
+        public float FirstEvolutionEligibilityTimeSeconds => _firstEvolutionEligibilityTimeSeconds;
+        public float FirstEvolutionAcquiredTimeSeconds => _firstEvolutionAcquiredTimeSeconds;
+        public float DamageTakenThisRun => _damageTakenThisRun;
+        public int DraftOpenCount => _draftOpenCount;
 
         private void Awake()
         {
@@ -809,6 +844,13 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void Start()
         {
+            if (showRunModeSelection && !_runStarted)
+            {
+                _runModeSelectionOpen = true;
+                autoStart = false;
+                return;
+            }
+
             if (autoStart && !_runStarted)
             {
                 StartRun();
@@ -819,6 +861,11 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (!_runStarted)
             {
+                if (_runModeSelectionOpen)
+                {
+                    HandleRunModeSelectionInput();
+                }
+
                 return;
             }
 
@@ -902,6 +949,12 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (!_runStarted)
             {
+                if (_runModeSelectionOpen)
+                {
+                    EnsureHudStyles();
+                    DrawRunModeSelectionOverlay();
+                }
+
                 return;
             }
 
@@ -920,7 +973,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(24, 214, 318, 22), $"Split {ActiveSplitterCount}   Call {ActiveSummonerCount}   Elite {ActiveEliteCount}   Mini {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
             GUI.Label(new Rect(24, 236, 318, 22), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
             GUI.Label(new Rect(24, 258, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
-            GUI.Label(new Rect(24, 280, 318, 22), $"Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}   TimeScale {Time.timeScale:0.##}", _hudSmallStyle);
+            GUI.Label(new Rect(24, 280, 318, 22), $"Mode {CurrentRunModeDisplayName}   Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}", _hudSmallStyle);
             GUI.Label(new Rect(24, 302, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
             string surgeHud = ResolveSurgeHudLabel();
             GUI.Label(new Rect(24, 324, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
@@ -959,10 +1012,105 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private void HandleRunModeSelectionInput()
+        {
+            if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Return))
+            {
+                SelectStandardRun();
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.S))
+            {
+                SelectSprintRun();
+            }
+        }
+
+        private void DrawRunModeSelectionOverlay()
+        {
+            const float width = 760f;
+            const float height = 330f;
+            Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            GUI.Box(rect, "Choose Run Mode");
+            GUI.Label(new Rect(rect.x + 28f, rect.y + 34f, width - 56f, 28f), "Deucarian Survivors Run", _hudTitleStyle);
+            GUI.Label(new Rect(rect.x + 28f, rect.y + 64f, width - 56f, 22f), "Pick the full 30-minute arc or the compact five-minute loop.", _hudLabelStyle);
+
+            Rect standardRect = new Rect(rect.x + 28f, rect.y + 102f, 336f, 190f);
+            Rect sprintRect = new Rect(rect.x + width - 364f, rect.y + 102f, 336f, 190f);
+            if (DrawRunModeCard(standardRect, SurvivorsPacingProfile.HumanPlaytest, "Start Standard"))
+            {
+                SelectStandardRun();
+            }
+
+            if (DrawRunModeCard(sprintRect, SurvivorsPacingProfile.SprintRun, "Start Sprint"))
+            {
+                SelectSprintRun();
+            }
+        }
+
+        private bool DrawRunModeCard(Rect rect, SurvivorsPacingProfile profile, string buttonLabel)
+        {
+            SurvivorsTemplateTuning preview = BasicSurvivorsGame.CreateTuning(profile);
+            GUI.Box(rect, string.Empty);
+            GUI.Label(new Rect(rect.x + 16f, rect.y + 16f, rect.width - 32f, 24f), preview.RunModeDisplayName, _hudLabelStyle);
+            GUI.Label(new Rect(rect.x + 16f, rect.y + 44f, rect.width - 32f, 20f), preview.RunModeDurationLabel, _hudSmallStyle);
+            GUI.Label(new Rect(rect.x + 16f, rect.y + 70f, rect.width - 32f, 42f), preview.RunModeDescription, _hudSmallStyle);
+            GUI.Label(new Rect(rect.x + 16f, rect.y + 118f, rect.width - 32f, 20f), $"Boss {FormatRunTime(preview.BossSpawnTimeSeconds)}   Victory {FormatRunTime(preview.SurvivalVictoryTimeSeconds)}", _hudSmallStyle);
+            GUI.Label(new Rect(rect.x + 16f, rect.y + 140f, rect.width - 32f, 20f), $"Profile {GetPacingProfileDisplayNameForCard(profile)}", _hudSmallStyle);
+            return GUI.Button(new Rect(rect.x + 16f, rect.yMax - 38f, rect.width - 32f, 28f), buttonLabel);
+        }
+
+        private static string GetPacingProfileDisplayNameForCard(SurvivorsPacingProfile profile)
+        {
+            return BasicSurvivorsGame.GetPacingProfileDisplayName(profile);
+        }
+
+        public void ConfigureRunModeSelection(bool enabled)
+        {
+            showRunModeSelection = enabled;
+            autoStart = !enabled;
+            if (!_runStarted)
+            {
+                _runModeSelectionOpen = enabled;
+                State = SurvivorsRunState.Booting;
+            }
+        }
+
+        public void OpenRunModeSelection()
+        {
+            if (_runStarted)
+            {
+                ClearRun();
+            }
+
+            ClearRewardDrafts();
+            showRunModeSelection = true;
+            autoStart = false;
+            _runModeSelectionOpen = true;
+            State = SurvivorsRunState.Booting;
+        }
+
+        public bool SelectStandardRun()
+        {
+            return SelectRunMode(SurvivorsPacingProfile.HumanPlaytest);
+        }
+
+        public bool SelectSprintRun()
+        {
+            return SelectRunMode(SurvivorsPacingProfile.SprintRun);
+        }
+
+        public bool SelectRunMode(SurvivorsPacingProfile profile)
+        {
+            ApplyPacingProfile(profile, restartRun: false);
+            _runModeSelectionOpen = false;
+            StartRun();
+            return true;
+        }
+
         public void StartRun()
         {
             Time.timeScale = 1f;
             ClearRun();
+            _runModeSelectionOpen = false;
             SurvivorsTemplateTuning resolved = CurrentTuning;
             _combatCatalog = BasicSurvivorsGame.CreateCombatCatalog();
             _combatRandom = new DeterministicRandom(resolved.RunSeed + 4049);
@@ -1209,6 +1357,7 @@ namespace Deucarian.TemplateGameSurvivors
             LegacyExperienceEarnedThisRun = 0;
             LastRunResult = null;
             _lastRunSummaryLines.Clear();
+            ResetRunMetrics();
             RunTimeSeconds = 0f;
             MoveSpeedBonus = 0f;
             DamageBonus = 0f;
@@ -1330,7 +1479,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public bool ContinueAfterVictory()
         {
-            if (State != SurvivorsRunState.Victory || !_runStarted)
+            if (State != SurvivorsRunState.Victory || !_runStarted || !CurrentTuning.EndlessContinuationEnabled)
             {
                 return false;
             }
@@ -1644,6 +1793,21 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsEnemyActor DebugSpawnBoss(float radius)
         {
             return DebugSpawnMajorEnemy(SurvivorsEnemyRole.Boss, radius);
+        }
+
+        public SurvivorsEnemyActor DebugSpawnSprintBoss(float radius)
+        {
+            if (CurrentPacingProfile != SurvivorsPacingProfile.SprintRun)
+            {
+                ApplyPacingProfile(SurvivorsPacingProfile.SprintRun, restartRun: _runStarted);
+            }
+
+            if (!_runStarted)
+            {
+                StartRun();
+            }
+
+            return DebugSpawnBoss(radius);
         }
 
         public SurvivorsEnemyActor DebugSpawnMajorEnemy(SurvivorsEnemyRole role, float radius)
@@ -2303,6 +2467,70 @@ namespace Deucarian.TemplateGameSurvivors
             return lines;
         }
 
+        public IReadOnlyList<string> DebugDescribeRunMetrics()
+        {
+            _runMetricsLines.Clear();
+            _runMetricsLines.Add($"Mode {CurrentRunModeDisplayName} ({BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)})");
+            _runMetricsLines.Add($"Target {FormatMetricTime(CurrentTuning.TargetDurationSeconds)} - boss {FormatMetricTime(CurrentTuning.BossSpawnTimeSeconds)} - victory {FormatMetricTime(CurrentTuning.SurvivalVictoryTimeSeconds)}");
+            if (!_runStarted)
+            {
+                _runMetricsLines.Add(_runModeSelectionOpen ? "Run mode selection open" : "Run not started");
+                return _runMetricsLines;
+            }
+
+            _runMetricsLines.Add($"Runtime {FormatMetricTime(RunTimeSeconds)} - state {State}");
+            AppendMetricTime(_runMetricsLines, "First kill", _firstKillTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First XP pickup", _firstExperiencePickupTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First level-up draft", _firstLevelUpDraftTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First elite spawn", _firstEliteSpawnTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First elite kill", _firstEliteKillTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First miniboss spawn", _firstMinibossSpawnTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First miniboss kill", _firstMinibossKillTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First boss spawn", _firstBossSpawnTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First boss kill", _firstBossKillTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First evolution ready", _firstEvolutionEligibilityTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First evolution acquired", _firstEvolutionAcquiredTimeSeconds);
+            _runMetricsLines.Add($"Drafts {_draftOpenCount}, weapons {ActiveWeaponCount}/{MaxWeaponSlots}, passives {ActivePassiveCount}/{MaxPassiveSlots}, evolutions {EvolvedWeaponCount}");
+            _runMetricsLines.Add($"Kills {KilledCount}, XP {ExperienceCollected}, damage taken {_damageTakenThisRun:0.#}");
+            return _runMetricsLines;
+        }
+
+        private static void AppendMetricTime(List<string> lines, string label, float seconds)
+        {
+            lines.Add(label + ": " + FormatMetricTime(seconds));
+        }
+
+        private static string FormatMetricTime(float seconds)
+        {
+            return seconds >= 0f ? FormatRunTime(seconds) : "not yet";
+        }
+
+        private void ResetRunMetrics()
+        {
+            _firstKillTimeSeconds = -1f;
+            _firstExperiencePickupTimeSeconds = -1f;
+            _firstLevelUpDraftTimeSeconds = -1f;
+            _firstEliteSpawnTimeSeconds = -1f;
+            _firstEliteKillTimeSeconds = -1f;
+            _firstMinibossSpawnTimeSeconds = -1f;
+            _firstMinibossKillTimeSeconds = -1f;
+            _firstBossSpawnTimeSeconds = -1f;
+            _firstBossKillTimeSeconds = -1f;
+            _firstEvolutionEligibilityTimeSeconds = -1f;
+            _firstEvolutionAcquiredTimeSeconds = -1f;
+            _damageTakenThisRun = 0f;
+            _draftOpenCount = 0;
+            _runMetricsLines.Clear();
+        }
+
+        private void RecordMetricTime(ref float field)
+        {
+            if (field < 0f)
+            {
+                field = RunTimeSeconds;
+            }
+        }
+
         public bool OpenBossRelicDraftForTest()
         {
             EnsureRunStartedForTest();
@@ -2388,6 +2616,11 @@ namespace Deucarian.TemplateGameSurvivors
                 sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.enemy" : source),
                 preResolvedCritical: false);
             DamageResolutionResult result = CombatDamageResolver.Resolve(_combatCatalog, _playerHealth, null, request);
+            if (result != null && result.Damage != null)
+            {
+                _damageTakenThisRun += Mathf.Max(0f, (float)result.Damage.HealthDamage);
+            }
+
             RecordPlayerDamageFeedback(result == null ? null : result.Damage, PlayerPosition);
             if (!_playerHealth.IsAlive)
             {
@@ -2750,6 +2983,20 @@ namespace Deucarian.TemplateGameSurvivors
             KilledCount++;
             Vector3 position = enemy.transform.position;
             SurvivorsEnemyRole role = enemy.Role;
+            RecordMetricTime(ref _firstKillTimeSeconds);
+            if (IsEliteRole(role))
+            {
+                RecordMetricTime(ref _firstEliteKillTimeSeconds);
+            }
+            else if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                RecordMetricTime(ref _firstMinibossKillTimeSeconds);
+            }
+            else if (role == SurvivorsEnemyRole.Boss)
+            {
+                RecordMetricTime(ref _firstBossKillTimeSeconds);
+            }
+
             int xp = Mathf.Max(1, enemy.ExperienceReward);
             float radius = enemy.Radius;
             _enemies.Remove(enemy);
@@ -2923,6 +3170,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
             else
             {
+                RecordMetricTime(ref _firstExperiencePickupTimeSeconds);
                 int gained = GainExperience(Mathf.Max(1, pickup.Amount));
                 RecordExperienceCombo(gained);
                 ExperiencePickupFeedbackCount++;
@@ -5522,7 +5770,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
-            int requiredRank = Mathf.Max(1, evolutionMetadata.RequiredUpgradeRank);
+            int requiredRank = ResolveRequiredUpgradeRank(evolutionMetadata);
             if (_upgradeState.GetRank(new RunUpgradeId(evolutionMetadata.RequiredUpgradeId)) < requiredRank)
             {
                 return false;
@@ -5662,6 +5910,22 @@ namespace Deucarian.TemplateGameSurvivors
             return !string.IsNullOrWhiteSpace(upgradeId) && _upgradeMetadataById.TryGetValue(upgradeId, out metadata);
         }
 
+        private int ResolveRequiredUpgradeRank(SurvivorsRunUpgradeMetadata metadata)
+        {
+            if (metadata == null)
+            {
+                return 1;
+            }
+
+            int requiredRank = Mathf.Max(1, metadata.RequiredUpgradeRank);
+            if (metadata.IsEvolution)
+            {
+                requiredRank = Mathf.Max(1, requiredRank - Mathf.Max(0, CurrentTuning.EvolutionRequiredRankReduction));
+            }
+
+            return requiredRank;
+        }
+
         private bool CanRerollCurrentDraft()
         {
             return State == SurvivorsRunState.LevelUp &&
@@ -5741,7 +6005,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (!string.IsNullOrWhiteSpace(metadata.RequiredUpgradeId))
             {
-                int requiredRank = Mathf.Max(1, metadata.RequiredUpgradeRank);
+                int requiredRank = ResolveRequiredUpgradeRank(metadata);
                 if (_upgradeState.GetRank(new RunUpgradeId(metadata.RequiredUpgradeId)) < requiredRank)
                 {
                     return false;
@@ -5800,6 +6064,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (metadata.IsEvolution)
             {
+                RecordMetricTime(ref _firstEvolutionAcquiredTimeSeconds);
                 _ownedEvolutionUpgradeIds.Add(upgrade.Id.Value);
                 WeaponEvolutionFeedbackCount++;
                 TriggerWeaponEvolutionSurge(upgrade);
@@ -6090,6 +6355,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordEvolutionReadyFeedback(RunUpgradeDefinition evolution)
         {
+            RecordMetricTime(ref _firstEvolutionEligibilityTimeSeconds);
             string name = BasicSurvivorsGame.GetUpgradeDisplayName(evolution.Id);
             _evolutionReadyFeedbackLabel = $"Evolution Ready: {name}";
             _evolutionReadyFeedbackTimer = EvolutionReadyFeedbackDurationSeconds;
@@ -6404,6 +6670,7 @@ namespace Deucarian.TemplateGameSurvivors
                 victory,
                 _bonusBloodShardsEarnedThisRun,
                 _bonusLegacyExperienceEarnedThisRun);
+            ApplyRunRewardMultiplier(LastRunResult, CurrentTuning.RunRewardMultiplier);
             BloodShardsEarnedThisRun = LastRunResult.BloodShardsEarned;
             LegacyExperienceEarnedThisRun = LastRunResult.LegacyExperienceEarned;
             if (_metaProgression.GrantRunRewards(LastRunResult).Succeeded)
@@ -6418,14 +6685,42 @@ namespace Deucarian.TemplateGameSurvivors
             RebuildLastRunSummaryLines(victory);
         }
 
+        private static void ApplyRunRewardMultiplier(SurvivorsRunRewardSummary summary, float multiplier)
+        {
+            if (summary == null)
+            {
+                return;
+            }
+
+            float resolvedMultiplier = Mathf.Max(0f, multiplier);
+            if (Mathf.Approximately(resolvedMultiplier, 1f))
+            {
+                return;
+            }
+
+            summary.BloodShardsEarned = ScaleReward(summary.BloodShardsEarned, resolvedMultiplier);
+            summary.LegacyExperienceEarned = ScaleReward(summary.LegacyExperienceEarned, resolvedMultiplier);
+        }
+
+        private static int ScaleReward(int amount, float multiplier)
+        {
+            if (amount <= 0 || multiplier <= 0f)
+            {
+                return 0;
+            }
+
+            return Mathf.Max(1, Mathf.RoundToInt(amount * multiplier));
+        }
+
         private void RebuildLastRunSummaryLines(bool victory)
         {
             _lastRunSummaryLines.Clear();
             string result = victory ? "Victory" : "Defeat";
-            _lastRunSummaryLines.Add($"{result} - {FormatRunTime(RunTimeSeconds)} - Level {Level}");
+            _lastRunSummaryLines.Add($"{CurrentRunModeDisplayName} {result} - {FormatRunTime(RunTimeSeconds)} - Level {Level}");
             _lastRunSummaryLines.Add($"Kills {KilledCount} - Best Streak {BestKillStreak} - Bosses {BossKilledCount}");
             _lastRunSummaryLines.Add($"Build {ActiveWeaponCount}/{MaxWeaponSlots} weapons, {ActivePassiveCount}/{MaxPassiveSlots} passives, {EvolvedWeaponCount} evolutions, {SelectedRelicCount}/{ResolveTotalRelicCount()} relics");
             _lastRunSummaryLines.Add($"Rewards +{BloodShardsEarnedThisRun} shards, +{LegacyExperienceEarnedThisRun} XP");
+            _lastRunSummaryLines.Add($"Mode {CurrentRunModeDisplayName} - target {FormatRunTime(CurrentTuning.TargetDurationSeconds)} - reward x{CurrentTuning.RunRewardMultiplier:0.##}");
             _lastRunSummaryLines.Add($"Meta {MetaBloodShards} shards banked, {LifetimeLegacyExperience} lifetime XP");
             if (ClassUnlockRewardCount > 0)
             {
@@ -8310,16 +8605,19 @@ namespace Deucarian.TemplateGameSurvivors
             SpawnedCount++;
             if (role == SurvivorsEnemyRole.Miniboss)
             {
+                RecordMetricTime(ref _firstMinibossSpawnTimeSeconds);
                 MinibossSpawnCount++;
                 PlayFeedback(_bossPulse, enemy.transform.position, 42, _bossClip);
             }
             else if (role == SurvivorsEnemyRole.Boss)
             {
+                RecordMetricTime(ref _firstBossSpawnTimeSeconds);
                 BossSpawnCount++;
                 PlayFeedback(_bossPulse, enemy.transform.position, 58, _bossClip);
             }
             else if (IsEliteRole(role))
             {
+                RecordMetricTime(ref _firstEliteSpawnTimeSeconds);
                 PlayFeedback(_bossPulse, enemy.transform.position, 30, _bossClip);
             }
             else
@@ -8693,6 +8991,8 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
+            _draftOpenCount++;
+            RecordMetricTime(ref _firstLevelUpDraftTimeSeconds);
             RecordRewardCardPresentation(_rewardSelectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
             PlayFeedback(_levelUpPulse, PlayerPosition, 34, _levelUpClip);
@@ -8736,6 +9036,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             State = SurvivorsRunState.LevelUp;
+            _draftOpenCount++;
             RecordRewardCardPresentation(selectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
             PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 72 : 54, _bossClip);
@@ -8776,6 +9077,7 @@ namespace Deucarian.TemplateGameSurvivors
             _pendingVictoryAfterRewardDraft = false;
             BossRelicDraftOpenCount++;
             State = SurvivorsRunState.LevelUp;
+            _draftOpenCount++;
             RecordRewardCardPresentation(_currentRelicDraft);
             BeginRewardSelectionTimeout();
             PlayFeedback(_bossPulse, PlayerPosition, 44, _bossClip);
@@ -9549,11 +9851,11 @@ namespace Deucarian.TemplateGameSurvivors
         private void DrawRunResultOverlay(bool victory)
         {
             const float width = 560f;
-            float height = victory ? 420f : 390f;
+            float height = victory ? 470f : 440f;
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(rect, victory ? "Victory" : "Game Over");
             IReadOnlyList<string> lines = LastRunSummaryLines;
-            int shown = Mathf.Min(lines == null ? 0 : lines.Count, 6);
+            int shown = Mathf.Min(lines == null ? 0 : lines.Count, 7);
             if (shown == 0)
             {
                 GUI.Label(new Rect(rect.x + 24f, rect.y + 34f, width - 48f, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP", _hudLabelStyle);
@@ -9566,18 +9868,20 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            DrawResultClassOptions(new Rect(rect.x + 24f, rect.y + 166f, width - 48f, 66f));
-            DrawResultMetaUpgradeOptions(new Rect(rect.x + 24f, rect.y + 246f, width - 48f, 96f));
+            DrawResultClassOptions(new Rect(rect.x + 24f, rect.y + 204f, width - 48f, 66f));
+            DrawResultMetaUpgradeOptions(new Rect(rect.x + 24f, rect.y + 284f, width - 48f, 96f));
 
             float buttonY = rect.yMax - 48f;
             if (victory)
             {
-                if (GUI.Button(new Rect(rect.x + 160f, buttonY, 106f, 34f), "Continue"))
+                if (CurrentTuning.EndlessContinuationEnabled && GUI.Button(new Rect(rect.x + 160f, buttonY, 106f, 34f), "Continue"))
                 {
                     ContinueAfterVictory();
                 }
 
-                if (GUI.Button(new Rect(rect.x + width - 266f, buttonY, 106f, 34f), "Restart"))
+                float restartX = CurrentTuning.EndlessContinuationEnabled ? rect.x + width - 266f : rect.x + width * 0.5f - 70f;
+                float restartWidth = CurrentTuning.EndlessContinuationEnabled ? 106f : 140f;
+                if (GUI.Button(new Rect(restartX, buttonY, restartWidth, 34f), "Restart"))
                 {
                     RestartRun();
                 }
