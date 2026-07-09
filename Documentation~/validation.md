@@ -151,8 +151,8 @@ The timeout remains local template UI/runtime behavior. No production UI framewo
 Phase 3I adds human-readable pacing validation:
 
 - `SurvivorsPacingProfile.HumanPlaytest` is the default profile and keeps `Time.timeScale` at `1`.
-- Human Playtest opening spawns use two-enemy packs on a `1.15` second interval, `34` maximum alive enemies, `1.35` basic enemy speed against `5.4` player speed, readable `8.5` projectile speed, `2.5` pickup magnet range, and no reward timeout.
-- Human Playtest max alive rises by `8` about every `45` seconds, spawn pack size grows with escalation up to `5`, the spawn interval drops by `0.08` seconds per escalation, major threats warn before they enter, the first elite arrives around `180` seconds, the dread elite arrives around `300` seconds, the miniboss waits until `420` seconds, the final boss appears around `1200` seconds, and survival victory lands at `1800` seconds.
+- Human Playtest opening spawns use two-enemy packs on a `0.95` second interval, `38` maximum alive enemies, `1.35` basic enemy speed against `5.55` player speed, readable `9.25` projectile speed, `2.9` pickup magnet range, and no reward timeout.
+- Human Playtest max alive rises by `8` about every `45` seconds, spawn pack size grows with escalation up to `6`, the spawn interval drops by `0.08` seconds per escalation, major threats warn before they enter, the first horde rush begins around `75` seconds, the first elite arrives around `135` seconds, the dread elite arrives around `255` seconds, the miniboss waits until `360` seconds, the final boss appears around `1140` seconds, and survival victory lands at `1800` seconds.
 - `SurvivorsPacingProfile.Normal`, `SurvivorsPacingProfile.DebugFast`, and `SurvivorsPacingProfile.Showcase` are explicit profiles for validation and demo work, not sample defaults.
 - EditMode coverage checks Human Playtest readability thresholds and Debug Fast acceleration as opt-in tuning.
 - PlayMode coverage checks waystone discovery, Waystone Chain, roaming cache special-drop, ambush, ambush-clear, and Arena Trial payoff beats using deterministic discovery/cache/travel cadence tuning.

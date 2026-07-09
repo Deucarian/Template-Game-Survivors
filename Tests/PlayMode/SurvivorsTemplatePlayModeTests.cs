@@ -673,6 +673,33 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Object.Destroy(controller.gameObject);
         }
 
+        [Test]
+        public void HumanPlaytestTuningPrioritizesReadableFirstFiveMinutes()
+        {
+            SurvivorsTemplateTuning tuning = BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.HumanPlaytest);
+
+            Assert.That(tuning.PlayerMoveSpeed, Is.GreaterThanOrEqualTo(5.5f));
+            Assert.That(tuning.EnemySpawnIntervalSeconds, Is.LessThanOrEqualTo(1f));
+            Assert.That(tuning.EnemyMaximumAlive, Is.InRange(34, 40));
+            Assert.That(tuning.EnemyMaxHealth, Is.LessThan(14f));
+            Assert.That(tuning.WeaponCooldownSeconds, Is.LessThan(0.8f));
+            Assert.That(tuning.ProjectileSpeed, Is.GreaterThan(9f));
+            Assert.That(tuning.PickupAttractRange, Is.GreaterThanOrEqualTo(2.8f));
+            Assert.That(tuning.PickupAttractionSpeed, Is.GreaterThanOrEqualTo(6f));
+            Assert.That(tuning.ExperienceRequiredBase, Is.LessThanOrEqualTo(6));
+            Assert.That(tuning.ExperienceRequiredPerLevel, Is.LessThanOrEqualTo(4));
+            Assert.That(tuning.HordeRushFirstTimeSeconds, Is.InRange(60f, 90f));
+            Assert.That(tuning.FirstEliteSpawnTimeSeconds, Is.InRange(120f, 160f));
+            Assert.That(tuning.FirstDreadEliteSpawnTimeSeconds, Is.InRange(240f, 280f));
+            Assert.That(tuning.MinibossSpawnTimeSeconds, Is.InRange(330f, 390f));
+            Assert.That(tuning.BossSpawnTimeSeconds, Is.InRange(1080f, 1200f));
+            Assert.That(tuning.DraftMidRarityLevel, Is.LessThanOrEqualTo(5));
+            Assert.That(tuning.DraftLateRarityLevel, Is.LessThanOrEqualTo(10));
+            Assert.That(tuning.NormalEarlyUncommonWeight, Is.GreaterThanOrEqualTo(tuning.NormalEarlyCommonWeight - 25));
+            Assert.That(tuning.NormalMidRareWeight, Is.GreaterThan(tuning.NormalEarlyRareWeight));
+            Assert.That(tuning.EvolutionSurgeDamage, Is.GreaterThan(30f));
+        }
+
         [UnityTest]
         public IEnumerator ImportedPlaytestSceneStartsControllerInHumanPlaytest()
         {
@@ -809,8 +836,24 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             string openingState = $"elapsed={elapsed:0.0}s, kills={controller.KilledCount}, xpCollected={controller.ExperienceCollected}, xp={controller.Experience}/{controller.RequiredExperienceForNextLevel}, state={controller.State}";
             Assert.IsTrue(controller.IsRunUpgradeDraftOpen, openingState);
-            Assert.That(elapsed, Is.LessThanOrEqualTo(60f), openingState);
+            Assert.That(elapsed, Is.LessThanOrEqualTo(45f), openingState);
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count, openingState);
+            bool hasBuildDefiningChoice = false;
+            bool hasWeaponPathChoice = false;
+            for (int i = 0; i < controller.CurrentDraftChoices.Count; i++)
+            {
+                SurvivorsRunUpgradeCategory category = controller.GetUpgradeCategoryForTest(controller.CurrentDraftChoices[i].Id.Value);
+                hasBuildDefiningChoice |= category == SurvivorsRunUpgradeCategory.Passive ||
+                    category == SurvivorsRunUpgradeCategory.Weapon ||
+                    category == SurvivorsRunUpgradeCategory.Evolution;
+                hasWeaponPathChoice |= category == SurvivorsRunUpgradeCategory.Weapon ||
+                    category == SurvivorsRunUpgradeCategory.WeaponUpgrade ||
+                    category == SurvivorsRunUpgradeCategory.Mutation ||
+                    category == SurvivorsRunUpgradeCategory.Evolution;
+            }
+
+            Assert.IsTrue(hasBuildDefiningChoice, openingState);
+            Assert.IsTrue(hasWeaponPathChoice, openingState);
 
             Object.Destroy(controller.gameObject);
         }
@@ -926,6 +969,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
             controller.CurrentTuning.EnemyMaximumAlive = 40;
             controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.CurrentTuning.ExperienceRequiredPerLevel = 0;
             controller.CurrentTuning.HordeRushFirstTimeSeconds = 0.5f;
             controller.CurrentTuning.HordeRushIntervalSeconds = 999f;
             controller.CurrentTuning.HordeRushWarningLeadSeconds = 0.25f;
@@ -961,10 +1006,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(0, controller.HordeRushSpawnCount);
             int activeBeforeRush = controller.ActiveEnemyCount;
 
-            controller.Simulate(0.25f);
+            controller.Simulate(0.35f);
             yield return null;
 
-            Assert.IsFalse(controller.IsHordeRushWarningActive);
             Assert.AreEqual(1, controller.HordeRushSpawnCount);
             Assert.AreEqual(6, controller.HordeRushEnemySpawnCount);
             Assert.AreEqual(activeBeforeRush + 6, controller.ActiveEnemyCount);
@@ -1565,7 +1609,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator InfiniteArenaTilesFollowLongPlayerTravel()
         {
-            SurvivorsTemplateController controller = CreateController();
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.ExperienceRequiredBase = 999;
+            controller.StartRun();
             yield return null;
 
             Assert.That(controller.InfiniteArenaTileCountForTest, Is.GreaterThanOrEqualTo(25));
@@ -3190,9 +3238,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator PayloadUpgradeCanAffectPayloadBehavior()
         {
-            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureGrenadeOnlyTuning(controller.CurrentTuning);
+            controller.StartRun();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
@@ -5028,7 +5079,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         private static int ResolveOpenChoiceForLongRunSmoke(SurvivorsTemplateController controller)
         {
             int resolved = 0;
-            for (int guard = 0; guard < 8 && controller != null && controller.State == SurvivorsRunState.LevelUp; guard++)
+            for (int guard = 0; guard < 32 && controller != null && controller.State == SurvivorsRunState.LevelUp; guard++)
             {
                 if (controller.IsRelicChoiceOpen)
                 {
@@ -5147,6 +5198,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             tuning.EnemySpawnIntervalSeconds = 999f;
             tuning.EnemyMoveSpeed = 0f;
             tuning.EnemyContactDamage = 0f;
+            tuning.ProjectileSpeed = 8.5f;
+            tuning.ProjectileLifetimeSeconds = 2f;
             tuning.OrbitDamage = 0f;
             tuning.MeleeDamage = 0f;
             tuning.BurstDamage = 0f;

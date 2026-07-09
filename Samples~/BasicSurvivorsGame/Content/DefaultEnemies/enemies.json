@@ -88,7 +88,7 @@
       "contactDamage": 10.5,
       "contactIntervalSeconds": 0.63,
       "experienceDrop": 13,
-      "spawnTimeSeconds": 180,
+      "spawnTimeSeconds": 135,
       "rangedAttackRange": 4.6,
       "rangedAttackDamage": 3,
       "preferredRange": 2.8
@@ -103,7 +103,7 @@
       "contactDamage": 4.4,
       "contactIntervalSeconds": 0.7,
       "experienceDrop": 12,
-      "spawnTimeSeconds": 300,
+      "spawnTimeSeconds": 255,
       "rangedAttackRange": 7.4,
       "rangedAttackDamage": 4.9,
       "preferredRange": 5.4
@@ -112,25 +112,25 @@
       "id": "enemy.survivors.miniboss",
       "displayName": "Bloodbound Miniboss",
       "role": "Miniboss",
-      "health": 220,
+      "health": 260,
       "moveSpeed": 2.15,
       "radius": 0.82,
       "contactDamage": 10,
       "contactIntervalSeconds": 0.85,
-      "experienceDrop": 34,
-      "spawnTimeSeconds": 420
+      "experienceDrop": 52,
+      "spawnTimeSeconds": 360
     },
     {
       "id": "enemy.survivors.boss",
       "displayName": "Eclipse Boss",
       "role": "Boss",
-      "health": 1200,
+      "health": 1400,
       "moveSpeed": 1.85,
       "radius": 1.18,
       "contactDamage": 16,
       "contactIntervalSeconds": 0.95,
-      "experienceDrop": 120,
-      "spawnTimeSeconds": 1200,
+      "experienceDrop": 165,
+      "spawnTimeSeconds": 1140,
       "finalBoss": true
     }
   ]

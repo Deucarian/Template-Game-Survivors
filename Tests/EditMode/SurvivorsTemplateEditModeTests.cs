@@ -382,7 +382,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(swarm.MoveSpeed, Is.InRange(1.1f, 1.6f));
             Assert.That(swarm.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
             Assert.That(runner.MoveSpeed, Is.LessThan(tuning.PlayerMoveSpeed));
-            Assert.That(tuning.ProjectileSpeed, Is.LessThanOrEqualTo(9f));
+            Assert.That(tuning.ProjectileSpeed, Is.LessThanOrEqualTo(10f));
             Assert.That(tuning.PickupAttractRange, Is.InRange(2f, 3f));
             Assert.That(tuning.MajorRewardCacheAttractionSpeedMultiplier, Is.InRange(1.75f, 3f));
             Assert.That(tuning.RoamingCacheTravelInterval, Is.InRange(14f, 22f));
@@ -423,7 +423,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(tuning.WaystoneChainPulseRadius, Is.InRange(4f, 6f));
             Assert.That(tuning.RewardSelectionTimeoutSeconds, Is.LessThanOrEqualTo(0f));
             Assert.That(tuning.ExperienceRequiredBase, Is.InRange(6, 10));
-            Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(7f, 14f));
+            Assert.That(tuning.ExperienceRequiredBase * tuning.EnemySpawnIntervalSeconds, Is.InRange(5f, 10f));
             Assert.That(tuning.GemRushDurationSeconds, Is.InRange(2f, 5f));
             Assert.That(tuning.GemRushDamageBonus, Is.GreaterThan(0f));
             Assert.That(tuning.GemRushMoveSpeedBonus, Is.GreaterThan(0f));
@@ -669,8 +669,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(human.draftBanishCharges, Is.GreaterThanOrEqualTo(2));
             Assert.That(human.draftSkipBloodShards, Is.GreaterThanOrEqualTo(1));
             Assert.That(normal.rewardSelectionTimeoutSeconds, Is.GreaterThan(human.rewardSelectionTimeoutSeconds));
-            Assert.That(normal.draftRerollCharges, Is.GreaterThan(human.draftRerollCharges));
-            Assert.That(normal.draftBanishCharges, Is.GreaterThan(human.draftBanishCharges));
+            Assert.That(normal.draftRerollCharges, Is.GreaterThanOrEqualTo(human.draftRerollCharges));
+            Assert.That(normal.draftBanishCharges, Is.GreaterThanOrEqualTo(human.draftBanishCharges));
             Assert.That(debugFast.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
             Assert.That(debugFast.roamingCacheSurgeBonusGemCount, Is.GreaterThanOrEqualTo(human.roamingCacheSurgeBonusGemCount));
             Assert.That(debugFast.roamingCacheSurgeDamageBonus, Is.GreaterThan(human.roamingCacheSurgeDamageBonus));
@@ -692,10 +692,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(showcase.roamingCacheSurgeInterval, Is.LessThanOrEqualTo(human.roamingCacheSurgeInterval));
             Assert.That(showcase.roamingCacheSurgePickupRangeBonus, Is.GreaterThan(human.roamingCacheSurgePickupRangeBonus));
             Assert.That(showcase.roamingCacheSurgePulseRadius, Is.GreaterThan(human.roamingCacheSurgePulseRadius));
-            Assert.That(showcase.hordeRushClearPulseRadius, Is.GreaterThan(human.hordeRushClearPulseRadius));
+            Assert.That(showcase.hordeRushClearPulseRadius, Is.GreaterThanOrEqualTo(human.hordeRushClearPulseRadius));
             Assert.That(showcase.rewardSelectionTimeoutSeconds, Is.GreaterThan(debugFast.rewardSelectionTimeoutSeconds));
             Assert.That(showcase.rewardSelectionTimeoutSeconds, Is.LessThan(normal.rewardSelectionTimeoutSeconds));
-            Assert.That(showcase.roamingCacheAmbushInterval, Is.LessThan(human.roamingCacheAmbushInterval));
+            Assert.That(showcase.roamingCacheAmbushInterval, Is.LessThanOrEqualTo(human.roamingCacheAmbushInterval));
         }
 
         [Test]

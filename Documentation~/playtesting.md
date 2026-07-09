@@ -18,9 +18,9 @@ Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCE
 
 The sample defaults to `SurvivorsPacingProfile.HumanPlaytest`.
 
-Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `1.15` seconds, an opening maximum of `34` alive enemies, basic enemy speed of `1.35` versus player speed of `5.4`, a short Arc Step dash on Space for emergency spacing, projectile speed of `8.5`, pickup attract range of `2.5`, center-screen horde-rush and major-threat warnings, and no reward-choice auto-pick timeout.
+Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `0.95` seconds, an opening maximum of `38` alive enemies, basic enemy speed of `1.35` versus player speed of `5.55`, a short Arc Step dash on Space for emergency spacing, projectile speed of `9.25`, pickup attract range of `2.9`, center-screen horde-rush and major-threat warnings, and no reward-choice auto-pick timeout.
 
-Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, horde-rush rings begin before the first elite and pay out when cleared, the first elite arrives around `180` seconds, the dread elite arrives around `300` seconds, and the miniboss waits until `420` seconds.
+Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, horde-rush rings begin around `75` seconds and pay out when cleared, the first elite arrives around `135` seconds, the dread elite arrives around `255` seconds, and the miniboss waits until `360` seconds.
 
 ## What To Check
 
@@ -59,13 +59,13 @@ After 2 minutes:
 After 5 minutes:
 
 - Spitters should have joined the enemy mix, and their ranged attacks should show quick hostile shot cues before damage lands; moving out of range during the cue should avoid the hit.
-- The first elite should have arrived around 3 minutes and the dread elite should be arriving around 5 minutes; active major threats should show a prioritized health bar, dread elite slam ground discs should warn before any area damage, and killing either elite should open an elite reward draft and scatter a visible XP/special-pickup reward cache that pulls inward after the reward choice resolves.
+- The first elite should have arrived around 2.25 minutes and the dread elite should have arrived around 4.25 minutes; active major threats should show a prioritized health bar, dread elite slam ground discs should warn before any area damage, and killing either elite should open an elite reward draft and scatter a visible XP/special-pickup reward cache that pulls inward after the reward choice resolves.
 - Each scheduled elite should show a short incoming warning before it appears.
 - Damaging an elite below its low-health threshold should trigger one visible support call-in, then further damage to that same elite should not repeatedly spawn extra rings.
 - At least one horde rush should have warned, spawned a mixed enemy ring around the player, briefly announced the rush on the HUD, and dropped a bonus cache after the tracked rush enemies were cleared.
 - The game should feel busier than the first minute without becoming immediate visual noise.
 
-After 7 minutes:
+After 6 minutes:
 
 - The miniboss should have appeared, shown a health bar while alive, opened an elite reward draft on death, then chained into a boss relic choice before play resumes; its death should burst into a larger reward cache whose drops pull inward when the reward sequence resolves.
 - The boss relic choice should not include relics already selected earlier in the same run; if every relic has been claimed, the reward sequence should close and resume cleanly.
