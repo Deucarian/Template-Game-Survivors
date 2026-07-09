@@ -1597,6 +1597,7 @@ namespace Deucarian.TemplateGameSurvivors
             TickEnemies(dt);
             TickProjectiles(dt);
             TickPickups(dt);
+            UpdateOffscreenThreatMarkerSnapshot();
         }
 
         public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, float healthOverride = -1f)
@@ -4137,24 +4138,6 @@ namespace Deucarian.TemplateGameSurvivors
             GameObject followRoot = new GameObject("Survivors Moving Arena Readability");
             followRoot.transform.SetParent(_worldRoot, false);
             _arenaFollowRoot = followRoot.transform;
-
-            CreateArenaPrimitive("Survivors Local Arena Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(17.5f, 0.035f, 17.5f), new Color(0.07f, 0.09f, 0.12f), _arenaFollowRoot);
-            CreateArenaPrimitive("Inner XP Magnet Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(6.4f, 0.04f, 6.4f), new Color(0.09f, 0.16f, 0.2f), _arenaFollowRoot);
-            CreateArenaPrimitive("Player Safe Readability Ring", PrimitiveType.Cylinder, Vector3.zero, new Vector3(2.1f, 0.05f, 2.1f), new Color(0.12f, 0.19f, 0.28f), _arenaFollowRoot);
-
-            float warningOffset = Mathf.Max(7.5f, CurrentTuning.EnemySpawnRadius * 0.68f);
-            CreateArenaPrimitive("North Spawn Warning", PrimitiveType.Cube, new Vector3(0f, 0.09f, warningOffset), new Vector3(4.4f, 0.08f, 0.28f), new Color(0.62f, 0.12f, 0.18f), _arenaFollowRoot);
-            CreateArenaPrimitive("East Spawn Warning", PrimitiveType.Cube, new Vector3(warningOffset, 0.09f, 0f), new Vector3(0.28f, 0.08f, 4.4f), new Color(0.62f, 0.12f, 0.18f), _arenaFollowRoot);
-            CreateArenaPrimitive("South Spawn Warning", PrimitiveType.Cube, new Vector3(0f, 0.09f, -warningOffset), new Vector3(4.4f, 0.08f, 0.28f), new Color(0.62f, 0.12f, 0.18f), _arenaFollowRoot);
-            CreateArenaPrimitive("West Spawn Warning", PrimitiveType.Cube, new Vector3(-warningOffset, 0.09f, 0f), new Vector3(0.28f, 0.08f, 4.4f), new Color(0.62f, 0.12f, 0.18f), _arenaFollowRoot);
-
-            for (int i = 0; i < 12; i++)
-            {
-                float angle = i * 30f * Mathf.Deg2Rad;
-                Vector3 position = new Vector3(Mathf.Cos(angle) * 5.4f, 0.12f, Mathf.Sin(angle) * 5.4f);
-                Vector3 scale = i % 2 == 0 ? new Vector3(0.9f, 0.18f, 0.32f) : new Vector3(0.32f, 0.18f, 0.9f);
-                CreateArenaPrimitive("Rune Lane Marker " + (i + 1).ToString(), PrimitiveType.Cube, position, scale, new Color(0.18f, 0.2f, 0.32f), _arenaFollowRoot);
-            }
 
             BuildWaystoneCompassArrow();
             UpdateArenaPresentation();
@@ -8911,7 +8894,201 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
+                TryUpdateEnemyLeash(enemy, deltaTime);
                 enemy.Simulate(deltaTime);
+            }
+        }
+
+        private void TryUpdateEnemyLeash(SurvivorsEnemyActor enemy, float deltaTime)
+        {
+            if (enemy == null || !enemy.IsAlive)
+            {
+                return;
+            }
+
+            Vector3 playerPosition = PlayerPosition;
+            Vector3 offset = enemy.transform.position - playerPosition;
+            offset.y = 0f;
+            float distance = offset.magnitude;
+            if (IsMajorRewardRole(enemy.Role))
+            {
+                TryUpdateMajorThreatLeash(enemy, playerPosition, distance, deltaTime);
+            }
+            else
+            {
+                TryUpdateNormalEnemyLeash(enemy, playerPosition, distance, deltaTime);
+            }
+        }
+
+        private void TryUpdateNormalEnemyLeash(SurvivorsEnemyActor enemy, Vector3 playerPosition, float distance, float deltaTime)
+        {
+            float softRadius = Mathf.Max(0f, CurrentTuning.EnemySoftLeashRadius);
+            float hardRadius = Mathf.Max(softRadius + 0.1f, CurrentTuning.EnemyHardRecycleRadius);
+            if (softRadius <= 0f || distance <= softRadius)
+            {
+                enemy.ResetLeashTimer();
+                return;
+            }
+
+            enemy.AddLeashTime(deltaTime);
+            if (distance < hardRadius ||
+                enemy.LeashTimerSeconds < Mathf.Max(0f, CurrentTuning.EnemyRecycleDelaySeconds) ||
+                enemy.HealthFraction <= 0.15f)
+            {
+                return;
+            }
+
+            enemy.transform.position = ResolveSafeOffscreenPosition(
+                playerPosition,
+                Mathf.Max(CurrentTuning.EnemyRecycleMinimumRespawnDistance, CurrentTuning.PlayerRadius + enemy.Radius + 1.8f),
+                Mathf.Max(CurrentTuning.EnemyRecycleMaximumRespawnDistance, CurrentTuning.EnemyRecycleMinimumRespawnDistance + 1f),
+                enemy.InstanceId.Value + NormalEnemyRecycleCount + 17);
+            enemy.ResetLeashTimer();
+            NormalEnemyRecycleCount++;
+        }
+
+        private void TryUpdateMajorThreatLeash(SurvivorsEnemyActor enemy, Vector3 playerPosition, float distance, float deltaTime)
+        {
+            float repositionRadius = Mathf.Max(0f, CurrentTuning.MajorThreatRepositionRadius);
+            if (repositionRadius <= 0f || distance <= repositionRadius)
+            {
+                enemy.ResetLeashTimer();
+                return;
+            }
+
+            enemy.AddLeashTime(deltaTime);
+            if (enemy.LeashTimerSeconds < Mathf.Max(0f, CurrentTuning.MajorThreatRepositionDelaySeconds))
+            {
+                return;
+            }
+
+            float minimum = Mathf.Max(CurrentTuning.MajorThreatCatchUpRadius, CurrentTuning.PlayerRadius + enemy.Radius + 3.2f);
+            float maximum = Mathf.Max(minimum + 1.5f, minimum + 4.5f);
+            enemy.transform.position = ResolveSafeOffscreenPosition(
+                playerPosition,
+                minimum,
+                maximum,
+                enemy.InstanceId.Value + MajorThreatRepositionCount + 43);
+            enemy.ResetLeashTimer();
+            MajorThreatRepositionCount++;
+            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
+                ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
+                : enemy.DisplayName;
+            _lastOffscreenThreatMarkerLabel = $"{name} re-entering {ResolveCompassDirectionLabel(enemy.transform.position - playerPosition)}";
+        }
+
+        internal float ResolveEnemyCatchUpMoveSpeedMultiplier(SurvivorsEnemyActor enemy, float distance)
+        {
+            if (enemy == null || !enemy.IsAlive || !IsMajorRewardRole(enemy.Role))
+            {
+                return 1f;
+            }
+
+            float catchUpRadius = Mathf.Max(0f, CurrentTuning.MajorThreatCatchUpRadius);
+            if (catchUpRadius <= 0f || distance <= catchUpRadius)
+            {
+                return 1f;
+            }
+
+            return Mathf.Max(1f, CurrentTuning.MajorThreatCatchUpSpeedMultiplier);
+        }
+
+        private Vector3 ResolveSafeOffscreenPosition(Vector3 center, float minimumDistance, float maximumDistance, long seed)
+        {
+            float min = Mathf.Max(1f, minimumDistance);
+            float max = Mathf.Max(min + 0.1f, maximumDistance);
+            float resolvedSeed = Mathf.Abs((float)(seed % 100000L));
+            float angle = Mathf.Repeat(resolvedSeed * 137.508f, 360f) * Mathf.Deg2Rad;
+            float span = Mathf.Max(0.1f, max - min);
+            float distance = min + Mathf.Repeat(resolvedSeed * 0.381966f, 1f) * span;
+            return center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+        }
+
+        private int CountOffscreenMajorThreatMarkers()
+        {
+            int count = 0;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                if (ShouldShowOffscreenThreatMarker(_enemies[i]))
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private string ResolveFirstOffscreenMajorThreatMarkerLabel()
+        {
+            SurvivorsEnemyActor selected = ResolveFirstOffscreenMajorThreatMarkerEnemy();
+            if (selected == null)
+            {
+                return string.Empty;
+            }
+
+            return FormatOffscreenThreatMarkerLabel(selected);
+        }
+
+        private SurvivorsEnemyActor ResolveFirstOffscreenMajorThreatMarkerEnemy()
+        {
+            SurvivorsEnemyActor selected = null;
+            int selectedPriority = -1;
+            float selectedDistance = 0f;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (!ShouldShowOffscreenThreatMarker(enemy))
+                {
+                    continue;
+                }
+
+                int priority = ResolveMajorThreatHealthPriority(enemy.Role);
+                float distance = Vector3.Distance(PlayerPosition, enemy.transform.position);
+                if (priority > selectedPriority || (priority == selectedPriority && distance > selectedDistance))
+                {
+                    selected = enemy;
+                    selectedPriority = priority;
+                    selectedDistance = distance;
+                }
+            }
+
+            return selected;
+        }
+
+        private bool ShouldShowOffscreenThreatMarker(SurvivorsEnemyActor enemy)
+        {
+            if (enemy == null || !enemy.IsAlive || !IsMajorRewardRole(enemy.Role))
+            {
+                return false;
+            }
+
+            Vector3 offset = enemy.transform.position - PlayerPosition;
+            offset.y = 0f;
+            float markerDistance = Mathf.Max(0.1f, CurrentTuning.OffscreenThreatMarkerDistance);
+            return offset.sqrMagnitude >= markerDistance * markerDistance;
+        }
+
+        private string FormatOffscreenThreatMarkerLabel(SurvivorsEnemyActor enemy)
+        {
+            if (enemy == null)
+            {
+                return string.Empty;
+            }
+
+            Vector3 delta = enemy.transform.position - PlayerPosition;
+            delta.y = 0f;
+            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
+                ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
+                : enemy.DisplayName;
+            return $"{name} {ResolveCompassDirectionLabel(delta)} {delta.magnitude:0}m";
+        }
+
+        private void UpdateOffscreenThreatMarkerSnapshot()
+        {
+            string label = ResolveFirstOffscreenMajorThreatMarkerLabel();
+            if (!string.IsNullOrWhiteSpace(label))
+            {
+                _lastOffscreenThreatMarkerLabel = label;
             }
         }
 
@@ -12217,6 +12394,7 @@ namespace Deucarian.TemplateGameSurvivors
             _hitFlashTimer = 0f;
             _hitFlashDuration = 0f;
             _hitFlashCritical = false;
+            LeashTimerSeconds = 0f;
             if (_runtimeMaterial != null)
             {
                 _runtimeMaterial.color = _baseTint;
@@ -12250,6 +12428,7 @@ namespace Deucarian.TemplateGameSurvivors
             _hitFlashTimer = 0f;
             _hitFlashDuration = 0f;
             _hitFlashCritical = false;
+            LeashTimerSeconds = 0f;
             if (_runtimeMaterial != null)
             {
                 _runtimeMaterial.color = _baseTint;

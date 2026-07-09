@@ -611,6 +611,66 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator PickupMagnetBuildImprovesCollectionWithoutBypassingDraftThrottle()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.ExperienceRequiredBase = 5;
+            controller.CurrentTuning.ExperienceRequiredPerLevel = 5;
+            controller.CurrentTuning.LevelUpDraftCooldownSeconds = 5f;
+            controller.CurrentTuning.MaximumQueuedLevelUps = 1;
+            controller.CurrentTuning.PickupMagnetPulseBaseIntervalSeconds = 1f;
+            controller.CurrentTuning.PickupMagnetPulseMinimumIntervalSeconds = 0.5f;
+            controller.StartRun();
+            yield return null;
+
+            float startingRange = controller.CurrentPickupAttractRange;
+            float startingSpeed = controller.CurrentPickupAttractionSpeed;
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GemMagnetUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.LodestoneSigilUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.VacuumPulseUpgradeId));
+            Assert.That(controller.CurrentPickupAttractRange, Is.GreaterThan(startingRange));
+            Assert.That(controller.CurrentPickupAttractionSpeed, Is.GreaterThan(startingSpeed));
+            Assert.That(controller.CurrentPickupMagnetPulseIntervalSeconds, Is.InRange(0.5f, 1f));
+
+            SurvivorsPickupActor farGem = controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(8f, 0f, 0f), 1);
+            Assert.NotNull(farGem);
+            controller.Simulate(1.1f);
+            yield return null;
+
+            Assert.That(controller.MagnetPulseActivationCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastMagnetPulseFeedbackLabel, Does.Contain("Vacuum Pulse"));
+            Assert.IsTrue(farGem.IsGlobalRecallActive);
+
+            controller.SpawnExperienceForTest(controller.PlayerPosition + new Vector3(0.2f, 0f, 0.1f), 50);
+            for (int i = 0; i < 12 && !controller.IsRunUpgradeDraftOpen; i++)
+            {
+                controller.Simulate(1f / 30f);
+                yield return null;
+            }
+
+            Assert.IsTrue(controller.IsRunUpgradeDraftOpen);
+            Assert.AreEqual(1, controller.PendingLevelUps);
+            Assert.AreEqual(1, controller.DraftOpenCount);
+            Assert.IsTrue(controller.SkipCurrentDraft());
+            yield return null;
+
+            Assert.IsFalse(controller.IsRunUpgradeDraftOpen);
+            Assert.AreEqual(1, controller.PendingLevelUps);
+            controller.Simulate(controller.CurrentTuning.LevelUpDraftCooldownSeconds - 0.2f);
+            yield return null;
+            Assert.IsFalse(controller.IsRunUpgradeDraftOpen);
+
+            controller.Simulate(0.3f);
+            yield return null;
+            Assert.IsTrue(controller.IsRunUpgradeDraftOpen);
+            Assert.AreEqual(2, controller.DraftOpenCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator RapidExperiencePickupShowsGemRushFeedback()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
@@ -849,6 +909,102 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator NormalEnemiesOutsideHardRecycleRadiusSafelyReenterPressureBand()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMoveSpeed = 0f;
+            controller.CurrentTuning.EnemySoftLeashRadius = 5f;
+            controller.CurrentTuning.EnemyHardRecycleRadius = 7f;
+            controller.CurrentTuning.EnemyRecycleDelaySeconds = 0.1f;
+            controller.CurrentTuning.EnemyRecycleMinimumRespawnDistance = 9f;
+            controller.CurrentTuning.EnemyRecycleMaximumRespawnDistance = 10f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(30f, 0f, 0f), SurvivorsEnemyRole.Swarm, 20f);
+            Assert.NotNull(enemy);
+
+            controller.Simulate(0.2f);
+            yield return null;
+
+            float distance = Vector3.Distance(controller.PlayerPosition, enemy.transform.position);
+            Assert.AreEqual(1, controller.NormalEnemyRecycleCount);
+            Assert.IsTrue(enemy.IsAlive);
+            Assert.That(distance, Is.InRange(9f, 10.1f));
+            Assert.AreEqual(0, controller.ActiveOffscreenThreatMarkerCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator MajorThreatsPersistPreserveHealthAndUseOffscreenMarkers()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.BossMoveSpeed = 0f;
+            controller.CurrentTuning.MajorThreatCatchUpRadius = 8f;
+            controller.CurrentTuning.MajorThreatRepositionRadius = 12f;
+            controller.CurrentTuning.MajorThreatRepositionDelaySeconds = 0.1f;
+            controller.CurrentTuning.OffscreenThreatMarkerDistance = 5f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(40f, 0f, 0f), 200f);
+            Assert.NotNull(boss);
+            boss.ApplyDamage(50f, "test.boss-leash");
+            float healthAfterDamage = boss.CurrentHealth;
+
+            controller.Simulate(0.05f);
+            yield return null;
+
+            Assert.AreEqual(0, controller.MajorThreatRepositionCount);
+            Assert.That(controller.ActiveOffscreenThreatMarkerCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.CurrentOffscreenThreatMarkerLabel, Does.Contain("Boss"));
+
+            controller.Simulate(0.1f);
+            yield return null;
+
+            float distance = Vector3.Distance(controller.PlayerPosition, boss.transform.position);
+            Assert.AreEqual(1, controller.MajorThreatRepositionCount);
+            Assert.IsTrue(boss.IsAlive);
+            Assert.That(boss.CurrentHealth, Is.EqualTo(healthAfterDamage).Within(0.001f));
+            Assert.That(distance, Is.GreaterThanOrEqualTo(controller.CurrentTuning.MajorThreatCatchUpRadius - 0.1f));
+            Assert.That(controller.ActiveOffscreenThreatMarkerCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.LastOffscreenThreatMarkerLabel, Does.Contain("Boss"));
+            Assert.IsTrue(controller.IsMajorThreatHealthVisible);
+            Assert.That(controller.CurrentMajorThreatHealthFraction, Is.EqualTo(boss.HealthFraction).Within(0.001f));
+
+            boss.ApplyDamage(500f, "test.boss-marker-clear");
+            controller.Simulate(0.1f);
+            yield return null;
+
+            Assert.IsFalse(boss.IsAlive);
+            Assert.AreEqual(0, controller.ActiveOffscreenThreatMarkerCount);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ArenaReadabilityVisualsOmitDecorativePlayerCircleAndBars()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            yield return null;
+
+            Assert.IsNull(GameObject.Find("Survivors Local Arena Ring"));
+            Assert.IsNull(GameObject.Find("Inner XP Magnet Ring"));
+            Assert.IsNull(GameObject.Find("Player Safe Readability Ring"));
+            Assert.IsNull(GameObject.Find("North Spawn Warning"));
+            Assert.IsNull(GameObject.Find("East Spawn Warning"));
+            Assert.IsNull(GameObject.Find("South Spawn Warning"));
+            Assert.IsNull(GameObject.Find("West Spawn Warning"));
+            Assert.IsNull(GameObject.Find("Rune Lane Marker 1"));
+            Assert.IsNotNull(GameObject.Find("Waystone Compass Arrow"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator HumanPlaytestRewardChoicesWaitForPlayer()
         {
             SurvivorsTemplateController controller = CreateController();
@@ -916,7 +1072,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator OpeningSprintRunCanOpenFirstDraftWithinThirtyFiveSeconds()
+        public IEnumerator OpeningSprintRunCanOpenFirstDraftWithinTargetWindow()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
             controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
@@ -926,7 +1082,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             const float deltaTime = 0.1f;
             float elapsed = 0f;
             int steps = 0;
-            while (elapsed < 35f && !controller.IsRunUpgradeDraftOpen)
+            while (elapsed < 40f && !controller.IsRunUpgradeDraftOpen)
             {
                 Vector2 movement = new Vector2(Mathf.Sin(elapsed * 0.9f), Mathf.Cos(elapsed * 0.7f));
                 controller.Simulate(deltaTime, movement);
@@ -940,11 +1096,88 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             string openingState = $"elapsed={elapsed:0.0}s, kills={controller.KilledCount}, xpCollected={controller.ExperienceCollected}, draftTime={controller.FirstLevelUpDraftTimeSeconds:0.0}, state={controller.State}";
             Assert.IsTrue(controller.IsRunUpgradeDraftOpen, openingState);
-            Assert.That(elapsed, Is.LessThanOrEqualTo(35f), openingState);
-            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.InRange(0f, 35f), openingState);
+            Assert.That(elapsed, Is.InRange(25f, 40f), openingState);
+            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.InRange(25f, 40f), openingState);
             Assert.That(controller.FirstExperiencePickupTimeSeconds, Is.InRange(0f, 25f), openingState);
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count, openingState);
             Assert.That(controller.DraftOpenCount, Is.GreaterThanOrEqualTo(1), openingState);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SprintRunFiveMinuteProgressionStaysInTargetEnvelope()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.MinibossSpawnTimeSeconds = 999f;
+            controller.CurrentTuning.BossSpawnTimeSeconds = 999f;
+            controller.StartRun();
+            yield return null;
+
+            const float deltaTime = 0.2f;
+            int guard = 0;
+            while (controller.State != SurvivorsRunState.Victory && controller.RunTimeSeconds < 300f && guard++ < 2400)
+            {
+                if (controller.State == SurvivorsRunState.LevelUp)
+                {
+                    ResolveOpenChoiceForLongRunSmoke(controller);
+                    yield return null;
+                    continue;
+                }
+
+                float elapsed = controller.RunTimeSeconds;
+                Vector2 movement = new Vector2(Mathf.Sin(elapsed * 0.8f), Mathf.Cos(elapsed * 0.63f));
+                controller.Simulate(deltaTime, movement);
+                if (guard % 10 == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            string pacing = $"level={controller.Level}, drafts={controller.DraftOpenCount}, first={controller.FirstLevelUpDraftTimeSeconds:0.0}, L1={controller.LevelAtOneMinute}, L2={controller.LevelAtTwoMinutes}, L3={controller.LevelAtThreeMinutes}, L4={controller.LevelAtFourMinutes}, L5={controller.LevelAtFiveMinutes}, xp={controller.ExperienceCollected}";
+            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.InRange(25f, 40f), pacing);
+            Assert.That(controller.LevelAtOneMinute, Is.InRange(3, 4), pacing);
+            Assert.That(controller.LevelAtTwoMinutes, Is.InRange(5, 7), pacing);
+            Assert.That(controller.LevelAtThreeMinutes, Is.InRange(8, 10), pacing);
+            Assert.That(controller.LevelAtFourMinutes, Is.InRange(11, 14), pacing);
+            Assert.That(controller.LevelAtFiveMinutes, Is.InRange(14, 18), pacing);
+            Assert.That(controller.DraftOpenCount, Is.InRange(10, 16), pacing);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SprintRunStandingStillTakesSeriousDamageWithinTwoMinutes()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            controller.StartRun();
+            yield return null;
+
+            const float deltaTime = 0.2f;
+            int guard = 0;
+            while (controller.State != SurvivorsRunState.GameOver && controller.RunTimeSeconds < 120f && guard++ < 1200)
+            {
+                if (controller.State == SurvivorsRunState.LevelUp)
+                {
+                    ResolveOpenChoiceForLongRunSmoke(controller);
+                    yield return null;
+                    continue;
+                }
+
+                controller.Simulate(deltaTime, Vector2.zero);
+                if (guard % 10 == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            string threat = $"state={controller.State}, time={controller.RunTimeSeconds:0.0}, health={controller.CurrentHealth:0.0}/{controller.MaxHealth:0.0}, damage={controller.PlayerDamageTaken:0.0}, kills={controller.KilledCount}";
+            Assert.IsTrue(
+                controller.State == SurvivorsRunState.GameOver || controller.CurrentHealth <= controller.MaxHealth * 0.45f,
+                threat);
 
             Object.Destroy(controller.gameObject);
         }

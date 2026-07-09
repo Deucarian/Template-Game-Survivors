@@ -75,6 +75,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.FateLensUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.SoulflareGlyphUpgradeId));
             Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.AstralConvergenceUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.GemMagnetUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.LodestoneSigilUpgradeId));
+            Assert.IsTrue(ContainsUpgrade(upgrades, BasicSurvivorsGame.VacuumPulseUpgradeId));
             AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.ArcaneWandUnlockUpgradeId, BasicSurvivorsGame.ArcaneWandWeaponContentId);
             AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.FrostFanUnlockUpgradeId, BasicSurvivorsGame.FrostFanWeaponContentId);
             AssertWeaponUnlockMetadata(upgrades, upgradeMetadata, BasicSurvivorsGame.OrbitWardUnlockUpgradeId, BasicSurvivorsGame.OrbitWardWeaponContentId);
@@ -618,6 +621,55 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void SampleEnemyContentDefinesThreatLifecycleAuthoring()
+        {
+            string sampleRoot = GetSampleRoot();
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            EnemyLibraryForTest library = JsonUtility.FromJson<EnemyLibraryForTest>(enemyJson);
+
+            Assert.NotNull(library);
+            Assert.NotNull(library.enemies);
+            Assert.That(library.enemies.Length, Is.GreaterThanOrEqualTo(10));
+            for (int i = 0; i < library.enemies.Length; i++)
+            {
+                EnemyRecordForTest enemy = library.enemies[i];
+                Assert.NotNull(enemy);
+                Assert.IsTrue(Enum.TryParse(enemy.role, ignoreCase: true, out SurvivorsEnemyRole role), enemy.id);
+                bool major = role == SurvivorsEnemyRole.Elite ||
+                    role == SurvivorsEnemyRole.DreadElite ||
+                    role == SurvivorsEnemyRole.Miniboss ||
+                    role == SurvivorsEnemyRole.Boss;
+                Assert.IsTrue(enemy.canLeash, enemy.id);
+                Assert.IsTrue(enemy.canReposition, enemy.id);
+                Assert.That(enemy.softLeashRadius, Is.GreaterThan(0f), enemy.id);
+                Assert.That(enemy.hardRecycleRadius, Is.GreaterThan(enemy.softLeashRadius), enemy.id);
+                Assert.That(enemy.catchUpSpeedMultiplier, Is.GreaterThanOrEqualTo(1f), enemy.id);
+                Assert.That(enemy.repositionTimeoutSeconds, Is.GreaterThan(0f), enemy.id);
+                if (major)
+                {
+                    Assert.IsFalse(enemy.canRecycle, enemy.id);
+                    Assert.IsTrue(enemy.showOffscreenMarker, enemy.id);
+                    Assert.IsFalse(string.IsNullOrWhiteSpace(enemy.markerStyle), enemy.id);
+                    if (role == SurvivorsEnemyRole.Boss)
+                    {
+                        Assert.IsTrue(enemy.showBossLifeBar, enemy.id);
+                    }
+                    else
+                    {
+                        Assert.IsTrue(enemy.showOverheadLifeBar, enemy.id);
+                    }
+                }
+                else
+                {
+                    Assert.IsTrue(enemy.canRecycle, enemy.id);
+                    Assert.IsFalse(enemy.showOffscreenMarker, enemy.id);
+                    Assert.IsFalse(enemy.showOverheadLifeBar, enemy.id);
+                    Assert.IsFalse(enemy.showBossLifeBar, enemy.id);
+                }
+            }
+        }
+
+        [Test]
         public void SampleContentValidationRequiresVerticalSliceShape()
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.survivors.arcane-wand\",\"fireMode\":\"Projectile\",\"projectileId\":\"projectile.valid\",\"fanCount\":1}],\"projectiles\":[{\"id\":\"projectile.valid\"}]}";
@@ -682,6 +734,11 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             AssertRunFlowTrapChainMatchesTuning(normal, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Normal));
             AssertRunFlowTrapChainMatchesTuning(debugFast, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.DebugFast));
             AssertRunFlowTrapChainMatchesTuning(showcase, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Showcase));
+            AssertRunFlowLeashAndDraftThrottleMatchesTuning(human, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.HumanPlaytest));
+            AssertRunFlowLeashAndDraftThrottleMatchesTuning(sprint, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.SprintRun));
+            AssertRunFlowLeashAndDraftThrottleMatchesTuning(normal, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Normal));
+            AssertRunFlowLeashAndDraftThrottleMatchesTuning(debugFast, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.DebugFast));
+            AssertRunFlowLeashAndDraftThrottleMatchesTuning(showcase, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Showcase));
             Assert.AreEqual("Sprint Run", sprint.displayName);
             Assert.AreEqual(300f, sprint.targetDurationSeconds);
             Assert.AreEqual(0.65f, sprint.runRewardMultiplier);
@@ -696,6 +753,12 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(sprint.rewardSelectionTimeoutSeconds, Is.GreaterThan(human.rewardSelectionTimeoutSeconds));
             Assert.That(sprint.draftRerollCharges, Is.GreaterThan(human.draftRerollCharges));
             Assert.That(sprint.draftBanishCharges, Is.GreaterThan(human.draftBanishCharges));
+            Assert.That(sprint.hordeRushClearExperienceGemCount, Is.EqualTo(2));
+            Assert.That(sprint.hordeRushClearExperienceMultiplier, Is.EqualTo(1.8f).Within(0.001f));
+            Assert.That(sprint.experienceRequiredBase, Is.EqualTo(24));
+            Assert.That(sprint.experienceRequiredPerLevel, Is.EqualTo(18));
+            Assert.That(sprint.levelUpDraftCooldownSeconds, Is.EqualTo(6f).Within(0.001f));
+            Assert.That(sprint.maximumQueuedLevelUps, Is.EqualTo(2));
             Assert.That(human.payloadHazardChainSnareThreshold, Is.GreaterThanOrEqualTo(4));
             Assert.That(human.payloadHazardChainExperienceGemCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(human.payloadHazardChainPulseDamage, Is.GreaterThan(0f));
@@ -1642,6 +1705,28 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(profile.payloadHazardChainPulseRadius, Is.EqualTo(tuning.PayloadHazardChainPulseRadius).Within(0.001f));
         }
 
+        private static void AssertRunFlowLeashAndDraftThrottleMatchesTuning(RunFlowProfileForTest profile, SurvivorsTemplateTuning tuning)
+        {
+            Assert.NotNull(profile);
+            Assert.NotNull(tuning);
+            Assert.That(profile.enemySoftLeashRadius, Is.EqualTo(tuning.EnemySoftLeashRadius).Within(0.001f));
+            Assert.That(profile.enemyHardRecycleRadius, Is.EqualTo(tuning.EnemyHardRecycleRadius).Within(0.001f));
+            Assert.That(profile.enemyRecycleDelaySeconds, Is.EqualTo(tuning.EnemyRecycleDelaySeconds).Within(0.001f));
+            Assert.That(profile.enemyRecycleMinimumRespawnDistance, Is.EqualTo(tuning.EnemyRecycleMinimumRespawnDistance).Within(0.001f));
+            Assert.That(profile.enemyRecycleMaximumRespawnDistance, Is.EqualTo(tuning.EnemyRecycleMaximumRespawnDistance).Within(0.001f));
+            Assert.That(profile.majorThreatCatchUpRadius, Is.EqualTo(tuning.MajorThreatCatchUpRadius).Within(0.001f));
+            Assert.That(profile.majorThreatCatchUpSpeedMultiplier, Is.EqualTo(tuning.MajorThreatCatchUpSpeedMultiplier).Within(0.001f));
+            Assert.That(profile.majorThreatRepositionRadius, Is.EqualTo(tuning.MajorThreatRepositionRadius).Within(0.001f));
+            Assert.That(profile.majorThreatRepositionDelaySeconds, Is.EqualTo(tuning.MajorThreatRepositionDelaySeconds).Within(0.001f));
+            Assert.That(profile.offscreenThreatMarkerDistance, Is.EqualTo(tuning.OffscreenThreatMarkerDistance).Within(0.001f));
+            Assert.AreEqual(tuning.ExperienceRequiredBase, profile.experienceRequiredBase);
+            Assert.AreEqual(tuning.ExperienceRequiredPerLevel, profile.experienceRequiredPerLevel);
+            Assert.That(profile.levelUpDraftCooldownSeconds, Is.EqualTo(tuning.LevelUpDraftCooldownSeconds).Within(0.001f));
+            Assert.AreEqual(tuning.MaximumQueuedLevelUps, profile.maximumQueuedLevelUps);
+            Assert.That(profile.pickupMagnetPulseBaseIntervalSeconds, Is.EqualTo(tuning.PickupMagnetPulseBaseIntervalSeconds).Within(0.001f));
+            Assert.That(profile.pickupMagnetPulseMinimumIntervalSeconds, Is.EqualTo(tuning.PickupMagnetPulseMinimumIntervalSeconds).Within(0.001f));
+        }
+
         private static void Step(SurvivorsTemplateController controller, int frames, float deltaTime)
         {
             for (int i = 0; i < frames; i++)
@@ -1692,6 +1777,16 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             public float survivalVictoryTimeSeconds;
             public float hordeRushFirstTimeSeconds;
             public int enemyRangedAttackDodgeExperienceReward;
+            public float enemySoftLeashRadius;
+            public float enemyHardRecycleRadius;
+            public float enemyRecycleDelaySeconds;
+            public float enemyRecycleMinimumRespawnDistance;
+            public float enemyRecycleMaximumRespawnDistance;
+            public float majorThreatCatchUpRadius;
+            public float majorThreatCatchUpSpeedMultiplier;
+            public float majorThreatRepositionRadius;
+            public float majorThreatRepositionDelaySeconds;
+            public float offscreenThreatMarkerDistance;
             public int hordeRushEnemyCountIncreasePerRush;
             public int hordeRushExtraAliveAllowance;
             public float hordeRushSpawnRadius;
@@ -1731,6 +1826,36 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             public int draftBanishCharges;
             public int draftSkipBloodShards;
             public float rewardSelectionTimeoutSeconds;
+            public int experienceRequiredBase;
+            public int experienceRequiredPerLevel;
+            public float levelUpDraftCooldownSeconds;
+            public int maximumQueuedLevelUps;
+            public float pickupMagnetPulseBaseIntervalSeconds;
+            public float pickupMagnetPulseMinimumIntervalSeconds;
+        }
+
+        [Serializable]
+        private sealed class EnemyLibraryForTest
+        {
+            public EnemyRecordForTest[] enemies;
+        }
+
+        [Serializable]
+        private sealed class EnemyRecordForTest
+        {
+            public string id;
+            public string role;
+            public bool canRecycle;
+            public bool canLeash;
+            public bool canReposition;
+            public bool showOffscreenMarker;
+            public bool showOverheadLifeBar;
+            public bool showBossLifeBar;
+            public string markerStyle;
+            public float softLeashRadius;
+            public float hardRecycleRadius;
+            public float catchUpSpeedMultiplier;
+            public float repositionTimeoutSeconds;
         }
     }
 }
