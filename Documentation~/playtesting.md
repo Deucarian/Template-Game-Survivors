@@ -18,11 +18,11 @@ Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCE
 
 Standard Run uses `SurvivorsPacingProfile.HumanPlaytest`.
 
-Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `0.95` seconds, an opening maximum of `38` alive enemies, basic enemy speed of `1.35` versus player speed of `5.55`, a short Arc Step dash on Space for emergency spacing, projectile speed of `9.25`, pickup attract range of `2.9`, center-screen horde-rush and major-threat warnings, and no reward-choice auto-pick timeout.
+Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `0.95` seconds, an opening maximum of `38` alive enemies, basic enemy speed of `1.35` versus player speed of `5.55`, a short Arc Step dash on Space for emergency spacing, projectile speed of `9.25`, pickup attract range of `2.9`, center-screen horde-rush and major-threat warnings, offscreen markers for distant major threats, and no reward-choice auto-pick timeout.
 
 Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, horde-rush rings begin around `75` seconds and pay out when cleared, the first elite arrives around `135` seconds, the dread elite arrives around `255` seconds, and the miniboss waits until `360` seconds.
 
-Sprint Run uses `SurvivorsPacingProfile.SprintRun`. It targets a 5-minute session with a `300` second victory time, a `270` second boss, a first elite around `82` seconds, horde pressure around `120` seconds, dread/miniboss pressure around `165`-`175` seconds, faster XP and rarity progression, `5` rerolls, `5` banishes, a `0.65` meta reward multiplier, a Sprint-only evolution rank assist, and no endless continuation after victory.
+Sprint Run uses `SurvivorsPacingProfile.SprintRun`. It targets a 5-minute session with a `300` second victory time, a `270` second boss, a first elite around `82` seconds, horde pressure around `120` seconds, dread/miniboss pressure around `165`-`175` seconds, a Sprint-specific `260 + 54 per level` XP curve, an `18` second normal level-up draft cooldown, at most `1` queued level-up draft, `5` rerolls, `5` banishes, a `0.65` meta reward multiplier, a Sprint-only evolution rank assist, and no endless continuation after victory.
 
 ## What To Check
 
@@ -34,6 +34,7 @@ First 30 seconds:
 - Arc Step moves the player out of a crowded pocket, briefly prevents damage, and shoves nearby enemies without becoming a permanent speed boost.
 - Fast projectile shots should still damage enemies they visibly cross, even during single-frame speed spikes.
 - XP gems should pulse while being pulled in; rapid clusters should show a Gem Rush banner and briefly improve damage, cooldown, movement, and pickup attraction, pickup-range upgrades should affect gems already on the ground, and magnet pickups, evolution selections, or `M` should make distant XP gems spin and surge toward the player.
+- Gemheart, Lodestone Sigil, and Vacuum Pulse should appear as readable pickup-build draft choices over repeated drafts; picking them should widen pickup reach, speed up pulled gems, or trigger periodic recalls without opening back-to-back level-up overlays.
 - Sustained movement through the endless arena should discover colored waystones and drop small roaming XP caches; repeated fresh waystones should eventually flash a Waystone Chain reward with bonus XP, a nearby regular-enemy pulse, and short combat/pickup momentum, longer travel should eventually add magnet recalls, shard bonuses, small trailing ambushes, and periodic Arena Trials, and clearing those extra packs should drop a small XP/shard burst.
 - Sustained kill streaks should briefly announce bonus XP, vital-shard, magnet, and blood-shard drops when they trigger.
 - At longer streak milestones, Tempo Surge should appear and briefly make weapons hit harder, cool down faster, move the player faster, and pull new pickups from farther away.
@@ -57,11 +58,13 @@ After 2 minutes:
 - Runners and bruisers should be present, but the screen should still be understandable.
 - Rewards should stay open until you choose with mouse, `1`, `2`, or `3`, then briefly show a selected-reward banner after the overlay closes.
 - Restart after defeat should still work with `R` or the restart button.
+- Standing still in Sprint should become dangerous by this point unless the build is already unusually strong; Human Playtest should stay readable in its first minute but should not let early/mid-run enemies remain irrelevant forever.
 
 After 5 minutes:
 
 - Spitters should have joined the enemy mix, and their ranged attacks should show quick hostile shot cues before damage lands; moving out of range during the cue should avoid the hit.
 - The first elite should have arrived around 2.25 minutes and the dread elite should have arrived around 4.25 minutes; active major threats should show a prioritized health bar, dread elite slam ground discs should warn before any area damage, and killing either elite should open an elite reward draft and scatter a visible XP/special-pickup reward cache that pulls inward after the reward choice resolves.
+- Moving far away from an active elite or boss should show an edge marker with direction and distance; the threat should keep its health, catch up or safely re-enter from offscreen, and clear its marker/life bar when killed.
 - Each scheduled elite should show a short incoming warning before it appears.
 - Damaging an elite below its low-health threshold should trigger one visible support call-in, then further damage to that same elite should not repeatedly spawn extra rings.
 - At least one horde rush should have warned, spawned a mixed enemy ring around the player, briefly announced the rush on the HUD, and dropped a bonus cache after the tracked rush enemies were cleared.
@@ -96,7 +99,10 @@ After defeat:
 
 Choose Sprint Run from the selector or start it through the runtime debugger.
 
-- First draft should be reachable around `20`-`35` seconds when the player keeps collecting XP.
+- First draft should be reachable around `25`-`40` seconds when the player keeps collecting XP.
+- Level should land around `3`-`4` at 1 minute, `5`-`7` at 2 minutes, `8`-`10` at 3 minutes, `11`-`14` at 4 minutes, and `14`-`18` at 5 minutes.
+- A full 5-minute Sprint should usually produce about `10`-`16` normal level-up drafts, with action time between choices.
+- Standing still from the opening should usually cause death or serious danger inside `60`-`120` seconds.
 - The player should usually have a second weapon, passive, or meaningful rank identity by about `45`-`60` seconds.
 - First elite should arrive around `82` seconds.
 - Horde pressure should spike around `120` seconds.
@@ -105,6 +111,7 @@ Choose Sprint Run from the selector or start it through the runtime debugger.
 - Boss should arrive around `270` seconds and victory should resolve around `300` seconds.
 - The victory summary should say Sprint Run, apply the `0.65` reward multiplier, and show Restart without the endless Continue option.
 - The runtime debugger's run metrics should show the selected mode, first draft, first elite, miniboss/dread, boss, evolution, kill, XP, and damage timings when those events happen.
+- The old player-centered circle and four bar-like arena markers should not appear in normal play; waystone compass guidance and explicit enemy/rush telegraphs should carry the readable navigation and danger information instead.
 
 ## Reset Save Data
 

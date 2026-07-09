@@ -348,6 +348,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int BossRelicDraftOpenCount { get; private set; }
         public int EliteUpgradeDraftOpenCount { get; private set; }
         public int BossUpgradeDraftOpenCount { get; private set; }
+        public int LevelUpDraftOpenCount { get; private set; }
         public int SelectedRelicCount { get; private set; }
         public int BossRelicSurgeCount { get; private set; }
         public int BossRelicSurgeHitCount { get; private set; }
@@ -854,6 +855,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float FirstEvolutionEligibilityTimeSeconds => _firstEvolutionEligibilityTimeSeconds;
         public float FirstEvolutionAcquiredTimeSeconds => _firstEvolutionAcquiredTimeSeconds;
         public float DamageTakenThisRun => _damageTakenThisRun;
+        public int ThrottledExperienceOverflow { get; private set; }
         public int DraftOpenCount => _draftOpenCount;
 
         private void Awake()
@@ -1017,6 +1019,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
             DrawMajorThreatHealthBar();
+            DrawOffscreenThreatMarker();
             DrawRewardSelectionFeedback();
             DrawStreakRewardFeedback();
             DrawClassUnlockRewardFeedback();
@@ -1230,6 +1233,7 @@ namespace Deucarian.TemplateGameSurvivors
             BossRelicDraftOpenCount = 0;
             EliteUpgradeDraftOpenCount = 0;
             BossUpgradeDraftOpenCount = 0;
+            LevelUpDraftOpenCount = 0;
             SelectedRelicCount = 0;
             BossRelicSurgeCount = 0;
             BossRelicSurgeHitCount = 0;
@@ -2530,8 +2534,8 @@ namespace Deucarian.TemplateGameSurvivors
             AppendMetricTime(_runMetricsLines, "First evolution ready", _firstEvolutionEligibilityTimeSeconds);
             AppendMetricTime(_runMetricsLines, "First evolution acquired", _firstEvolutionAcquiredTimeSeconds);
             _runMetricsLines.Add($"Levels 1m {FormatMetricLevel(_levelAtOneMinute)}, 2m {FormatMetricLevel(_levelAtTwoMinutes)}, 3m {FormatMetricLevel(_levelAtThreeMinutes)}, 4m {FormatMetricLevel(_levelAtFourMinutes)}, 5m {FormatMetricLevel(_levelAtFiveMinutes)}");
-            _runMetricsLines.Add($"Drafts {_draftOpenCount}, weapons {ActiveWeaponCount}/{MaxWeaponSlots}, passives {ActivePassiveCount}/{MaxPassiveSlots}, evolutions {EvolvedWeaponCount}");
-            _runMetricsLines.Add($"Kills {KilledCount}, XP {ExperienceCollected}, damage taken {_damageTakenThisRun:0.#}");
+            _runMetricsLines.Add($"Drafts level {LevelUpDraftOpenCount}, total {_draftOpenCount}, pending {PendingLevelUps}, weapons {ActiveWeaponCount}/{MaxWeaponSlots}, passives {ActivePassiveCount}/{MaxPassiveSlots}, evolutions {EvolvedWeaponCount}");
+            _runMetricsLines.Add($"Kills {KilledCount}, XP {ExperienceCollected}, stored {Experience}/{RequiredExperienceForNextLevel}, overflow {ThrottledExperienceOverflow}, damage taken {_damageTakenThisRun:0.#}");
             _runMetricsLines.Add($"Pickup range {CurrentPickupAttractRange:0.#}, pull {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, markers {ActiveOffscreenThreatMarkerCount}, recycles {NormalEnemyRecycleCount}, major repositions {MajorThreatRepositionCount}");
             return _runMetricsLines;
         }
@@ -2565,6 +2569,7 @@ namespace Deucarian.TemplateGameSurvivors
             _firstEvolutionEligibilityTimeSeconds = -1f;
             _firstEvolutionAcquiredTimeSeconds = -1f;
             _damageTakenThisRun = 0f;
+            ThrottledExperienceOverflow = 0;
             _draftOpenCount = 0;
             _levelAtOneMinute = -1;
             _levelAtTwoMinutes = -1;
@@ -9219,6 +9224,14 @@ namespace Deucarian.TemplateGameSurvivors
         private void ResolveLevelUpsFromExperienceBudget()
         {
             int queueLimit = Mathf.Max(1, CurrentTuning.MaximumQueuedLevelUps);
+            if (CurrentTuning.LevelUpDraftCooldownSeconds > 0f &&
+                _levelUpDraftCooldownTimer > 0f &&
+                PendingLevelUps <= 0)
+            {
+                CapStoredExperienceForDraftThrottle();
+                return;
+            }
+
             int guard = 0;
             while (Experience >= RequiredExperienceForNextLevel && PendingLevelUps < queueLimit && guard++ < 256)
             {
@@ -9226,6 +9239,23 @@ namespace Deucarian.TemplateGameSurvivors
                 Level++;
                 PendingLevelUps++;
             }
+
+            if (CurrentTuning.LevelUpDraftCooldownSeconds > 0f && PendingLevelUps >= queueLimit)
+            {
+                CapStoredExperienceForDraftThrottle();
+            }
+        }
+
+        private void CapStoredExperienceForDraftThrottle()
+        {
+            int storedExperienceCap = Mathf.Max(0, RequiredExperienceForNextLevel - 1);
+            if (Experience <= storedExperienceCap)
+            {
+                return;
+            }
+
+            ThrottledExperienceOverflow += Experience - storedExperienceCap;
+            Experience = storedExperienceCap;
         }
 
         private bool TryOpenPendingLevelUpDraft()
@@ -9318,6 +9348,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
+            LevelUpDraftOpenCount++;
             _draftOpenCount++;
             _levelUpDraftCooldownTimer = Mathf.Max(0f, CurrentTuning.LevelUpDraftCooldownSeconds);
             RecordMetricTime(ref _firstLevelUpDraftTimeSeconds);
@@ -10683,6 +10714,59 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
             string label = (string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName) + " HP";
             DrawHudBar(new Rect(panel.x + 10f, panel.y + 13f, panel.width - 20f, 20f), label, enemy.HealthFraction, ResolveMajorRewardDropColor(enemy.Role));
+        }
+
+        private void DrawOffscreenThreatMarker()
+        {
+            if (State != SurvivorsRunState.Playing)
+            {
+                return;
+            }
+
+            SurvivorsEnemyActor enemy = ResolveFirstOffscreenMajorThreatMarkerEnemy();
+            if (enemy == null)
+            {
+                return;
+            }
+
+            Vector3 delta = enemy.transform.position - PlayerPosition;
+            delta.y = 0f;
+            if (delta.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            Vector2 screenDirection = new Vector2(delta.x, -delta.z).normalized;
+            if (screenDirection.sqrMagnitude <= 0.0001f)
+            {
+                return;
+            }
+
+            const float markerWidth = 248f;
+            const float markerHeight = 38f;
+            const float edgeMargin = 18f;
+            float halfWidth = Screen.width * 0.5f;
+            float halfHeight = Screen.height * 0.5f;
+            float xLimit = Mathf.Max(1f, halfWidth - markerWidth * 0.5f - edgeMargin);
+            float yLimit = Mathf.Max(1f, halfHeight - markerHeight * 0.5f - edgeMargin);
+            float xScale = Mathf.Abs(screenDirection.x) <= 0.001f ? float.MaxValue : xLimit / Mathf.Abs(screenDirection.x);
+            float yScale = Mathf.Abs(screenDirection.y) <= 0.001f ? float.MaxValue : yLimit / Mathf.Abs(screenDirection.y);
+            float scale = Mathf.Min(xScale, yScale);
+            Vector2 center = new Vector2(halfWidth, halfHeight) + screenDirection * scale;
+            center.x = Mathf.Clamp(center.x, edgeMargin + markerWidth * 0.5f, Screen.width - edgeMargin - markerWidth * 0.5f);
+            center.y = Mathf.Clamp(center.y, 96f + markerHeight * 0.5f, Screen.height - edgeMargin - markerHeight * 0.5f);
+
+            Rect panel = new Rect(center.x - markerWidth * 0.5f, center.y - markerHeight * 0.5f, markerWidth, markerHeight);
+            Color threatColor = ResolveMajorRewardDropColor(enemy.Role);
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.02f, 0.015f, 0.02f, 0.76f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(threatColor.r, threatColor.g, threatColor.b, 0.92f);
+            GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(panel.x, panel.yMax - 3f, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(panel.x + 10f, panel.y + 7f, panel.width - 20f, panel.height - 12f), FormatOffscreenThreatMarkerLabel(enemy), _hudSmallStyle);
+            GUI.color = oldColor;
         }
 
         private void DrawRewardSelectionFeedback()

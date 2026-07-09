@@ -1311,10 +1311,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.BloodShardPickupAmount = 1;
             tuning.StartingBarrierCapacity = 2f;
             tuning.BaseBarrierRegenPerSecond = 0.04f;
-            tuning.ExperienceRequiredBase = 24;
-            tuning.ExperienceRequiredPerLevel = 18;
-            tuning.LevelUpDraftCooldownSeconds = 6f;
-            tuning.MaximumQueuedLevelUps = 2;
+            tuning.ExperienceRequiredBase = 260;
+            tuning.ExperienceRequiredPerLevel = 54;
+            tuning.LevelUpDraftCooldownSeconds = 18f;
+            tuning.MaximumQueuedLevelUps = 1;
             tuning.DraftRerollCharges = 5;
             tuning.DraftBanishCharges = 5;
             tuning.DraftMidRarityLevel = 3;
