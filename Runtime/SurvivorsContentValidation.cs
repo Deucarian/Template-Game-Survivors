@@ -1785,6 +1785,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             var profileIds = new HashSet<string>(StringComparer.Ordinal);
             bool containsHumanPlaytest = false;
+            bool containsSprintRun = false;
             for (int i = 0; i < library.profiles.Length; i++)
             {
                 RunFlowProfileRecordJson profile = library.profiles[i];
@@ -1808,6 +1809,10 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     containsHumanPlaytest = true;
                 }
+                else if (string.Equals(profile.id, SurvivorsPacingProfile.SprintRun.ToString(), StringComparison.Ordinal))
+                {
+                    containsSprintRun = true;
+                }
 
                 ValidateRunFlowDefinition(CreateRunFlowDefinition(profile), result);
                 ValidateRunFlowPacingRecord(profile, resolvedId, result);
@@ -1816,6 +1821,11 @@ namespace Deucarian.TemplateGameSurvivors
             if (!containsHumanPlaytest)
             {
                 result.AddError("Sample run flow library must include a HumanPlaytest profile.");
+            }
+
+            if (!containsSprintRun)
+            {
+                result.AddError("Sample run flow library must include a SprintRun profile.");
             }
         }
 
@@ -1844,6 +1854,19 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static void ValidateRunFlowPacingRecord(RunFlowProfileRecordJson profile, string profileId, SurvivorsContentValidationResult result)
         {
+            if (string.IsNullOrWhiteSpace(profile.displayName))
+            {
+                result.AddError($"Run flow profile {profileId} is missing a display name.");
+            }
+
+            if (string.IsNullOrWhiteSpace(profile.description))
+            {
+                result.AddError($"Run flow profile {profileId} is missing a description.");
+            }
+
+            ValidatePositive(profileId, "target duration", profile.targetDurationSeconds, result);
+            ValidatePositive(profileId, "run reward multiplier", profile.runRewardMultiplier, result);
+            ValidateNonNegative(profileId, "evolution required rank reduction", profile.evolutionRequiredRankReduction, result);
             ValidatePositive(profileId, "enemy spawn interval", profile.enemySpawnIntervalSeconds, result);
             ValidatePositive(profileId, "enemy maximum alive", profile.enemyMaximumAlive, result);
             ValidatePositive(profileId, "enemy spawn pack base count", profile.enemySpawnPackBaseCount, result);
@@ -3051,6 +3074,11 @@ namespace Deucarian.TemplateGameSurvivors
         {
             public string id;
             public string displayName;
+            public string description;
+            public float targetDurationSeconds;
+            public float runRewardMultiplier;
+            public int evolutionRequiredRankReduction;
+            public bool endlessContinuationEnabled;
             public float enemySpawnIntervalSeconds;
             public int enemyMaximumAlive;
             public int enemySpawnPackBaseCount;

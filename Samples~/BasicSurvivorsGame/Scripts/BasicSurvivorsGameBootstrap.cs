@@ -8,6 +8,9 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
         [SerializeField]
         private SurvivorsTemplateController controller;
 
+        [SerializeField]
+        private bool showRunModeSelection = true;
+
         private void Awake()
         {
             if (controller == null)
@@ -19,6 +22,8 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
             {
                 controller = gameObject.AddComponent<SurvivorsTemplateController>();
             }
+
+            controller.ConfigureRunModeSelection(showRunModeSelection);
         }
     }
 }

@@ -566,6 +566,39 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void SprintRunProfileIsSeparateFiveMinuteMode()
+        {
+            SurvivorsTemplateTuning standard = BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.HumanPlaytest);
+            SurvivorsTemplateTuning sprint = BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.SprintRun);
+
+            Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, standard.PacingProfile);
+            Assert.AreEqual(SurvivorsPacingProfile.SprintRun, sprint.PacingProfile);
+            Assert.AreEqual("Standard Run", standard.RunModeDisplayName);
+            Assert.AreEqual("Sprint Run", sprint.RunModeDisplayName);
+            Assert.AreEqual(1800f, standard.SurvivalVictoryTimeSeconds);
+            Assert.AreEqual(1800f, standard.TargetDurationSeconds);
+            Assert.IsTrue(standard.EndlessContinuationEnabled);
+            Assert.AreEqual(1f, standard.RunRewardMultiplier);
+            Assert.AreEqual(0, standard.EvolutionRequiredRankReduction);
+            Assert.AreEqual(300f, sprint.SurvivalVictoryTimeSeconds);
+            Assert.AreEqual(300f, sprint.TargetDurationSeconds);
+            Assert.IsFalse(sprint.EndlessContinuationEnabled);
+            Assert.That(sprint.RunRewardMultiplier, Is.InRange(0.5f, 0.8f));
+            Assert.AreEqual(2, sprint.EvolutionRequiredRankReduction);
+            Assert.That(sprint.FirstEliteSpawnTimeSeconds, Is.InRange(75f, 90f));
+            Assert.That(sprint.HordeRushFirstTimeSeconds, Is.EqualTo(120f).Within(0.01f));
+            Assert.That(sprint.MinibossSpawnTimeSeconds, Is.InRange(150f, 180f));
+            Assert.That(sprint.BossSpawnTimeSeconds, Is.InRange(255f, 285f));
+            Assert.That(sprint.BossSpawnTimeSeconds, Is.LessThan(standard.BossSpawnTimeSeconds));
+            Assert.That(sprint.ExperienceRequiredBase, Is.LessThan(standard.ExperienceRequiredBase));
+            Assert.That(sprint.ExperienceRequiredPerLevel, Is.LessThan(standard.ExperienceRequiredPerLevel));
+            Assert.That(sprint.DraftMidRarityLevel, Is.LessThan(standard.DraftMidRarityLevel));
+            Assert.That(sprint.NormalMidRareWeight, Is.GreaterThan(standard.NormalMidRareWeight));
+            Assert.That(sprint.DraftRerollCharges, Is.GreaterThan(standard.DraftRerollCharges));
+            Assert.That(sprint.DraftBanishCharges, Is.GreaterThan(standard.DraftBanishCharges));
+        }
+
+        [Test]
         public void SampleContentJsonLoadsAndValidates()
         {
             string sampleRoot = GetSampleRoot();
@@ -624,10 +657,16 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             RunFlowLibraryForTest library = JsonUtility.FromJson<RunFlowLibraryForTest>(runFlowJson);
 
             RunFlowProfileForTest human = FindRunFlowProfile(library, SurvivorsPacingProfile.HumanPlaytest.ToString());
+            RunFlowProfileForTest sprint = FindRunFlowProfile(library, SurvivorsPacingProfile.SprintRun.ToString());
             RunFlowProfileForTest normal = FindRunFlowProfile(library, SurvivorsPacingProfile.Normal.ToString());
             RunFlowProfileForTest debugFast = FindRunFlowProfile(library, SurvivorsPacingProfile.DebugFast.ToString());
             RunFlowProfileForTest showcase = FindRunFlowProfile(library, SurvivorsPacingProfile.Showcase.ToString());
 
+            Assert.AreEqual("Standard 30-minute human playtest arc with endless continuation.", human.description);
+            Assert.AreEqual(1800f, human.targetDurationSeconds);
+            Assert.AreEqual(1f, human.runRewardMultiplier);
+            Assert.AreEqual(0, human.evolutionRequiredRankReduction);
+            Assert.IsTrue(human.endlessContinuationEnabled);
             Assert.That(human.enemyRangedAttackDodgeExperienceReward, Is.GreaterThanOrEqualTo(1));
             Assert.That(human.hordeRushEnemyCountIncreasePerRush, Is.GreaterThanOrEqualTo(2));
             Assert.That(human.hordeRushExtraAliveAllowance, Is.GreaterThanOrEqualTo(12));
@@ -639,9 +678,24 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(human.hordeRushClearPulseDamage, Is.GreaterThan(0f));
             Assert.That(human.hordeRushClearPulseRadius, Is.InRange(4f, 6f));
             AssertRunFlowTrapChainMatchesTuning(human, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.HumanPlaytest));
+            AssertRunFlowTrapChainMatchesTuning(sprint, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.SprintRun));
             AssertRunFlowTrapChainMatchesTuning(normal, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Normal));
             AssertRunFlowTrapChainMatchesTuning(debugFast, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.DebugFast));
             AssertRunFlowTrapChainMatchesTuning(showcase, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Showcase));
+            Assert.AreEqual("Sprint Run", sprint.displayName);
+            Assert.AreEqual(300f, sprint.targetDurationSeconds);
+            Assert.AreEqual(0.65f, sprint.runRewardMultiplier);
+            Assert.AreEqual(2, sprint.evolutionRequiredRankReduction);
+            Assert.IsFalse(sprint.endlessContinuationEnabled);
+            Assert.That(sprint.survivalVictoryTimeSeconds, Is.EqualTo(300f).Within(0.01f));
+            Assert.That(sprint.firstEliteSpawnTimeSeconds, Is.InRange(75f, 90f));
+            Assert.That(sprint.hordeRushFirstTimeSeconds, Is.EqualTo(120f).Within(0.01f));
+            Assert.That(sprint.firstDreadEliteSpawnTimeSeconds, Is.InRange(150f, 180f));
+            Assert.That(sprint.minibossSpawnTimeSeconds, Is.InRange(150f, 180f));
+            Assert.That(sprint.bossSpawnTimeSeconds, Is.InRange(255f, 285f));
+            Assert.That(sprint.rewardSelectionTimeoutSeconds, Is.GreaterThan(human.rewardSelectionTimeoutSeconds));
+            Assert.That(sprint.draftRerollCharges, Is.GreaterThan(human.draftRerollCharges));
+            Assert.That(sprint.draftBanishCharges, Is.GreaterThan(human.draftBanishCharges));
             Assert.That(human.payloadHazardChainSnareThreshold, Is.GreaterThanOrEqualTo(4));
             Assert.That(human.payloadHazardChainExperienceGemCount, Is.GreaterThanOrEqualTo(2));
             Assert.That(human.payloadHazardChainPulseDamage, Is.GreaterThan(0f));
@@ -817,6 +871,11 @@ namespace Deucarian.TemplateGameSurvivors.Tests
 
             Assert.IsFalse(result.Succeeded);
             StringAssert.Contains("Run flow", errors);
+            StringAssert.Contains("display name", errors);
+            StringAssert.Contains("description", errors);
+            StringAssert.Contains("target duration", errors);
+            StringAssert.Contains("run reward multiplier", errors);
+            StringAssert.Contains("SprintRun", errors);
             StringAssert.Contains("enemy spawn interval", errors);
             StringAssert.Contains("enemy ranged dodge XP reward", errors);
             StringAssert.Contains("horde rush", errors);
@@ -1620,6 +1679,18 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         private sealed class RunFlowProfileForTest
         {
             public string id;
+            public string displayName;
+            public string description;
+            public float targetDurationSeconds;
+            public float runRewardMultiplier;
+            public int evolutionRequiredRankReduction;
+            public bool endlessContinuationEnabled;
+            public float firstEliteSpawnTimeSeconds;
+            public float firstDreadEliteSpawnTimeSeconds;
+            public float minibossSpawnTimeSeconds;
+            public float bossSpawnTimeSeconds;
+            public float survivalVictoryTimeSeconds;
+            public float hordeRushFirstTimeSeconds;
             public int enemyRangedAttackDodgeExperienceReward;
             public int hordeRushEnemyCountIncreasePerRush;
             public int hordeRushExtraAliveAllowance;

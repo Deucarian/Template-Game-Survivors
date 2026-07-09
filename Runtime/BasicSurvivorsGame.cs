@@ -34,13 +34,21 @@ namespace Deucarian.TemplateGameSurvivors
         HumanPlaytest = 0,
         Normal = 1,
         DebugFast = 2,
-        Showcase = 3
+        Showcase = 3,
+        SprintRun = 4
     }
 
     [Serializable]
     public sealed class SurvivorsTemplateTuning
     {
         public SurvivorsPacingProfile PacingProfile = SurvivorsPacingProfile.HumanPlaytest;
+        public string RunModeDisplayName = "Standard Run";
+        public string RunModeDurationLabel = "30 min";
+        public string RunModeDescription = "Full progression run with bosses, evolutions, rewards, and endless continuation.";
+        public float TargetDurationSeconds = 1800f;
+        public bool EndlessContinuationEnabled = true;
+        public float RunRewardMultiplier = 1f;
+        public int EvolutionRequiredRankReduction = 0;
         public float PlayerMoveSpeed = 5.55f;
         public float PlayerRadius = 0.55f;
         public float PlayerMaxHealth = 44f;
@@ -544,6 +552,8 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 case SurvivorsPacingProfile.HumanPlaytest:
                     return "Human Playtest";
+                case SurvivorsPacingProfile.SprintRun:
+                    return "Sprint Run";
                 case SurvivorsPacingProfile.DebugFast:
                     return "Debug Fast";
                 case SurvivorsPacingProfile.Showcase:
@@ -552,6 +562,20 @@ namespace Deucarian.TemplateGameSurvivors
                     return "Normal";
                 default:
                     return profile.ToString();
+            }
+        }
+
+        public static string GetRunModeDisplayName(SurvivorsPacingProfile profile)
+        {
+            switch (profile)
+            {
+                case SurvivorsPacingProfile.HumanPlaytest:
+                case SurvivorsPacingProfile.Normal:
+                    return "Standard Run";
+                case SurvivorsPacingProfile.SprintRun:
+                    return "Sprint Run";
+                default:
+                    return GetPacingProfileDisplayName(profile);
             }
         }
 
@@ -572,6 +596,9 @@ namespace Deucarian.TemplateGameSurvivors
                     break;
                 case SurvivorsPacingProfile.Showcase:
                     ApplyShowcaseTuning(tuning);
+                    break;
+                case SurvivorsPacingProfile.SprintRun:
+                    ApplySprintRunTuning(tuning);
                     break;
                 default:
                     tuning.PacingProfile = SurvivorsPacingProfile.HumanPlaytest;
@@ -760,6 +787,10 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static void ApplyDebugFastTuning(SurvivorsTemplateTuning tuning)
         {
+            tuning.RunModeDisplayName = "Debug Fast";
+            tuning.RunModeDurationLabel = "6 min";
+            tuning.RunModeDescription = "Accelerated validation profile with early threats and timed reward choices.";
+            tuning.TargetDurationSeconds = 360f;
             tuning.PlayerMoveSpeed = 5.75f;
             tuning.DashDistance = 3.4f;
             tuning.DashCooldownSeconds = 1.6f;
@@ -1020,8 +1051,265 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.RewardSelectionTimeoutSeconds = 8f;
         }
 
+        private static void ApplySprintRunTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.PacingProfile = SurvivorsPacingProfile.SprintRun;
+            tuning.RunModeDisplayName = "Sprint Run";
+            tuning.RunModeDurationLabel = "5 min";
+            tuning.RunModeDescription = "Compact run with fast XP, early elites, reachable evolutions, and a quick final boss.";
+            tuning.TargetDurationSeconds = 300f;
+            tuning.EndlessContinuationEnabled = false;
+            tuning.RunRewardMultiplier = 0.65f;
+            tuning.EvolutionRequiredRankReduction = 2;
+            tuning.PlayerMoveSpeed = 5.75f;
+            tuning.DashDistance = 3.35f;
+            tuning.DashCooldownSeconds = 1.85f;
+            tuning.DashKnockbackDistance = 1.45f;
+            tuning.DashDamage = 3f;
+            tuning.EnemySpawnRadius = 12f;
+            tuning.EnemySpawnIntervalSeconds = 0.55f;
+            tuning.EnemyMaximumAlive = 52;
+            tuning.EnemySpawnPackBaseCount = 2;
+            tuning.EnemySpawnPackMaxCount = 7;
+            tuning.EnemySpawnPackIncreaseEveryEscalations = 1;
+            tuning.EnemyMaxHealth = 9.5f;
+            tuning.EnemyMoveSpeed = 1.75f;
+            tuning.EnemySeparationStrength = 0.9f;
+            tuning.EnemyContactDamage = 4.5f;
+            tuning.EnemyRangedAttackWindupSeconds = 0.2f;
+            tuning.EnemyRangedAttackDodgeExperienceReward = 3;
+            tuning.EnemyExperienceReward = 3;
+            tuning.RunEscalationIntervalSeconds = 30f;
+            tuning.MinimumEnemySpawnIntervalSeconds = 0.18f;
+            tuning.EnemySpawnIntervalReductionPerEscalation = 0.045f;
+            tuning.EnemyMaximumAliveIncreasePerEscalation = 10;
+            tuning.EnemyHealthMultiplierPerEscalation = 0.16f;
+            tuning.EnemyMoveSpeedMultiplierPerEscalation = 0.032f;
+            tuning.EnemyExperienceMultiplierPerEscalation = 0.18f;
+            tuning.MajorThreatWarningLeadSeconds = 6f;
+            tuning.HordeRushFirstTimeSeconds = 120f;
+            tuning.HordeRushIntervalSeconds = 80f;
+            tuning.HordeRushWarningLeadSeconds = 3f;
+            tuning.HordeRushBaseEnemyCount = 14;
+            tuning.HordeRushEnemyCountIncreasePerRush = 4;
+            tuning.HordeRushMaxEnemyCount = 34;
+            tuning.HordeRushExtraAliveAllowance = 24;
+            tuning.HordeRushSpawnRadius = 8f;
+            tuning.HordeRushClearExperienceGemCount = 5;
+            tuning.HordeRushClearExperienceMultiplier = 2.7f;
+            tuning.HordeRushClearMagnetEveryRush = 1;
+            tuning.HordeRushClearBloodShardEveryRush = 2;
+            tuning.HordeRushClearPulseDamage = 18f;
+            tuning.HordeRushClearPulseRadius = 5.4f;
+            tuning.HordeRushClearSurgeDurationSeconds = 5f;
+            tuning.HordeRushClearSurgeDamageBonus = 1.9f;
+            tuning.HordeRushClearSurgeMoveSpeedBonus = 0.28f;
+            tuning.HordeRushClearSurgeCooldownMultiplierBonus = -0.055f;
+            tuning.HordeRushClearSurgePickupRangeBonus = 0.7f;
+            tuning.MajorThreatEnrageHealthThreshold = 0.56f;
+            tuning.MajorThreatEnrageEliteSupportCount = 5;
+            tuning.MajorThreatEnrageMinibossSupportCount = 8;
+            tuning.MajorThreatEnrageBossSupportCount = 12;
+            tuning.MajorThreatEnrageExtraAliveAllowance = 20;
+            tuning.SummonerSupportInitialDelaySeconds = 0.85f;
+            tuning.SummonerSupportIntervalSeconds = 3f;
+            tuning.SummonerSupportExtraAliveAllowance = 12;
+            tuning.MajorThreatSlamIntervalSeconds = 4.2f;
+            tuning.MajorThreatSlamTelegraphSeconds = 0.55f;
+            tuning.MajorThreatSlamRadius = 3.25f;
+            tuning.FirstEliteSpawnTimeSeconds = 82f;
+            tuning.EliteSpawnIntervalSeconds = 75f;
+            tuning.FirstDreadEliteSpawnTimeSeconds = 165f;
+            tuning.DreadEliteSpawnIntervalSeconds = 120f;
+            tuning.MinibossSpawnTimeSeconds = 175f;
+            tuning.MinibossMaxHealth = 155f;
+            tuning.MinibossMoveSpeed = 1.9f;
+            tuning.MinibossContactDamage = 9f;
+            tuning.MinibossExperienceReward = 48;
+            tuning.BossSpawnTimeSeconds = 270f;
+            tuning.BossMaxHealth = 680f;
+            tuning.BossMoveSpeed = 1.65f;
+            tuning.BossExperienceReward = 120;
+            tuning.SurvivalVictoryTimeSeconds = 300f;
+            tuning.EndlessEliteSpawnIntervalSeconds = 45f;
+            tuning.EndlessMinibossSpawnIntervalSeconds = 90f;
+            tuning.EndlessBossSpawnIntervalSeconds = 150f;
+            tuning.WeaponCooldownSeconds = 0.56f;
+            tuning.WeaponRange = 13f;
+            tuning.ProjectileDamage = 7.2f;
+            tuning.ProjectileSpeed = 10.75f;
+            tuning.ProjectileLifetimeSeconds = 2.35f;
+            tuning.OrbitDamage = 2.2f;
+            tuning.OrbitDegreesPerSecond = 165f;
+            tuning.OrbitContactTickIntervalSeconds = 0.32f;
+            tuning.MeleeDamage = 5f;
+            tuning.MeleeCooldownSeconds = 1.25f;
+            tuning.BurstDamage = 4f;
+            tuning.BurstCooldownSeconds = 2.9f;
+            tuning.HitscanDamage = 5.8f;
+            tuning.HitscanCooldownSeconds = 1.45f;
+            tuning.GrenadeDamage = 7.4f;
+            tuning.GrenadeCooldownSeconds = 2.7f;
+            tuning.GrenadePayloadTravelSpeed = 8.4f;
+            tuning.GrenadePayloadArmingSeconds = 0.72f;
+            tuning.PlacedPayloadDamage = 6.4f;
+            tuning.TrapCooldownSeconds = 2.9f;
+            tuning.MineCooldownSeconds = 3.2f;
+            tuning.PlacedPayloadArmingSeconds = 0.72f;
+            tuning.PayloadHazardChainSnareThreshold = 4;
+            tuning.PayloadHazardChainWindowSeconds = 1.05f;
+            tuning.PayloadHazardChainCooldownSeconds = 2f;
+            tuning.PayloadHazardChainExperienceGemCount = 3;
+            tuning.PayloadHazardChainExperienceMultiplier = 2.2f;
+            tuning.PayloadHazardChainPulseDamage = 16f;
+            tuning.PayloadHazardChainPulseRadius = 4.8f;
+            tuning.PickupAttractRange = 3.35f;
+            tuning.PickupAttractionSpeed = 8f;
+            tuning.PickupCollectRadius = 0.82f;
+            tuning.MagnetRecallSpeedMultiplier = 2.55f;
+            tuning.GemRushDurationSeconds = 3.8f;
+            tuning.GemRushDamageBonus = 1.05f;
+            tuning.GemRushMoveSpeedBonus = 0.24f;
+            tuning.GemRushCooldownMultiplierBonus = -0.04f;
+            tuning.GemRushPickupRangeBonus = 0.76f;
+            tuning.MajorRewardCacheAttractionSpeedMultiplier = 2.8f;
+            tuning.RoamingCacheTravelInterval = 12f;
+            tuning.RoamingCacheMagnetInterval = 2;
+            tuning.RoamingCacheBloodShardInterval = 4;
+            tuning.RoamingCacheAmbushStartCache = 2;
+            tuning.RoamingCacheAmbushInterval = 2;
+            tuning.RoamingCacheAmbushBaseEnemyCount = 3;
+            tuning.RoamingCacheAmbushMaxEnemyCount = 8;
+            tuning.RoamingCacheAmbushExtraAliveAllowance = 14;
+            tuning.RoamingCacheAmbushClearMagnetInterval = 1;
+            tuning.RoamingCacheAmbushClearBloodShardInterval = 2;
+            tuning.RoamingCacheSurgeInterval = 3;
+            tuning.RoamingCacheSurgeBonusGemCount = 3;
+            tuning.RoamingCacheSurgeDurationSeconds = 5f;
+            tuning.RoamingCacheSurgeDamageBonus = 1.7f;
+            tuning.RoamingCacheSurgeMoveSpeedBonus = 0.34f;
+            tuning.RoamingCacheSurgeCooldownMultiplierBonus = -0.055f;
+            tuning.RoamingCacheSurgePickupRangeBonus = 0.75f;
+            tuning.RoamingCacheSurgePulseDamage = 18f;
+            tuning.RoamingCacheSurgePulseRadius = 4.8f;
+            tuning.ArenaShrineTravelInterval = 42f;
+            tuning.ArenaShrineBaseEnemyCount = 7;
+            tuning.ArenaShrineEnemyCountIncreasePerTrial = 3;
+            tuning.ArenaShrineMaxEnemyCount = 20;
+            tuning.ArenaShrineExtraAliveAllowance = 24;
+            tuning.ArenaShrineSpawnRadius = 5f;
+            tuning.ArenaShrineClearExperienceGemCount = 7;
+            tuning.ArenaShrineClearExperienceMultiplier = 3.5f;
+            tuning.ArenaShrineClearBloodShardAmount = 2;
+            tuning.ArenaShrineSurgeDurationSeconds = 5.5f;
+            tuning.ArenaShrineSurgeDamageBonus = 2f;
+            tuning.ArenaShrineSurgeMoveSpeedBonus = 0.34f;
+            tuning.ArenaShrineSurgeCooldownMultiplierBonus = -0.06f;
+            tuning.ArenaShrineSurgePickupRangeBonus = 0.8f;
+            tuning.ArenaShrineSurgePulseDamage = 28f;
+            tuning.ArenaShrineSurgePulseRadius = 6f;
+            tuning.WaystoneDiscoveryRadius = 1.65f;
+            tuning.WaystoneExperienceGemCount = 6;
+            tuning.WaystoneAmbushBaseEnemyCount = 3;
+            tuning.WaystoneAmbushExtraAliveAllowance = 12;
+            tuning.WaystoneFocusDurationSeconds = 5f;
+            tuning.WaystoneFocusDamageBonus = 1.7f;
+            tuning.WaystoneFocusMoveSpeedBonus = 0.32f;
+            tuning.WaystoneFocusCooldownMultiplierBonus = -0.055f;
+            tuning.WaystoneFocusPickupRangeBonus = 0.72f;
+            tuning.WaystoneChainInterval = 2;
+            tuning.WaystoneChainBonusGemCount = 4;
+            tuning.WaystoneChainDurationSeconds = 5f;
+            tuning.WaystoneChainDamageBonus = 1.9f;
+            tuning.WaystoneChainMoveSpeedBonus = 0.34f;
+            tuning.WaystoneChainCooldownMultiplierBonus = -0.06f;
+            tuning.WaystoneChainPickupRangeBonus = 0.85f;
+            tuning.WaystoneChainPulseDamage = 22f;
+            tuning.WaystoneChainPulseRadius = 5.4f;
+            tuning.WeaponLoadoutSurgeDurationSeconds = 5f;
+            tuning.WeaponLoadoutSurgeDamageBonus = 1.8f;
+            tuning.WeaponLoadoutSurgeMoveSpeedBonus = 0.26f;
+            tuning.WeaponLoadoutSurgeCooldownMultiplierBonus = -0.055f;
+            tuning.WeaponLoadoutSurgePickupRangeBonus = 0.65f;
+            tuning.WeaponLoadoutSurgePulseDamage = 24f;
+            tuning.WeaponLoadoutSurgePulseRadius = 5.6f;
+            tuning.PassiveLoadoutSurgeDurationSeconds = 5f;
+            tuning.PassiveLoadoutSurgeDamageBonus = 1.5f;
+            tuning.PassiveLoadoutSurgeMoveSpeedBonus = 0.24f;
+            tuning.PassiveLoadoutSurgeCooldownMultiplierBonus = -0.05f;
+            tuning.PassiveLoadoutSurgePickupRangeBonus = 1f;
+            tuning.PassiveLoadoutSurgeExperienceGainMultiplierBonus = 0.5f;
+            tuning.PassiveLoadoutSurgePulseDamage = 22f;
+            tuning.PassiveLoadoutSurgePulseRadius = 5.4f;
+            tuning.EvolutionSurgeDamage = 40f;
+            tuning.EvolutionSurgeRadius = 7f;
+            tuning.EvolutionChainSurgeDurationSeconds = 6f;
+            tuning.EvolutionChainSurgeDamageBonus = 2.1f;
+            tuning.EvolutionChainSurgeMoveSpeedBonus = 0.3f;
+            tuning.EvolutionChainSurgeCooldownMultiplierBonus = -0.06f;
+            tuning.EvolutionChainSurgePickupRangeBonus = 0.8f;
+            tuning.EvolutionChainSurgePulseDamage = 30f;
+            tuning.EvolutionChainSurgePulseRadius = 6.2f;
+            tuning.LevelUpPulseDamage = 11f;
+            tuning.LevelUpPulseRadius = 4.4f;
+            tuning.RewardUpgradeSurgeDamage = 24f;
+            tuning.RewardUpgradeSurgeRadius = 5.8f;
+            tuning.RewardJackpotExperienceGemBaseCount = 4;
+            tuning.RewardJackpotExperienceGemPerRarityTier = 2;
+            tuning.RewardJackpotBloodShardBaseAmount = 1;
+            tuning.RewardJackpotLegendaryExtraBloodShardAmount = 2;
+            tuning.BossRelicSurgeDamage = 22f;
+            tuning.BossRelicSurgeRadius = 5.8f;
+            tuning.BossRelicSurgeDurationSeconds = 5f;
+            tuning.BossRelicSurgeDamageBonus = 1.75f;
+            tuning.BossRelicSurgeMoveSpeedBonus = 0.26f;
+            tuning.BossRelicSurgeCooldownMultiplierBonus = -0.055f;
+            tuning.BossRelicSurgePickupRangeBonus = 0.68f;
+            tuning.EndlessSurgeExperienceGemCount = 5;
+            tuning.EndlessSurgeExperienceMultiplier = 3f;
+            tuning.EndlessSurgeBloodShardAmount = 1;
+            tuning.EndlessSurgeDurationSeconds = 6f;
+            tuning.EndlessSurgeDamageBonus = 2f;
+            tuning.EndlessSurgeMoveSpeedBonus = 0.28f;
+            tuning.EndlessSurgeCooldownMultiplierBonus = -0.06f;
+            tuning.EndlessSurgePickupRangeBonus = 0.76f;
+            tuning.EndlessSurgePulseDamage = 32f;
+            tuning.EndlessSurgePulseRadius = 6.2f;
+            tuning.HealthPickupHealAmount = 12;
+            tuning.BloodShardPickupAmount = 1;
+            tuning.ExperienceRequiredBase = 3;
+            tuning.ExperienceRequiredPerLevel = 2;
+            tuning.DraftRerollCharges = 5;
+            tuning.DraftBanishCharges = 5;
+            tuning.DraftMidRarityLevel = 3;
+            tuning.DraftLateRarityLevel = 6;
+            tuning.NormalEarlyCommonWeight = 75;
+            tuning.NormalEarlyUncommonWeight = 90;
+            tuning.NormalEarlyRareWeight = 35;
+            tuning.NormalEarlyEpicWeight = 6;
+            tuning.NormalMidCommonWeight = 45;
+            tuning.NormalMidUncommonWeight = 90;
+            tuning.NormalMidRareWeight = 70;
+            tuning.NormalMidEpicWeight = 20;
+            tuning.NormalLateCommonWeight = 20;
+            tuning.NormalLateUncommonWeight = 60;
+            tuning.NormalLateRareWeight = 85;
+            tuning.NormalLateEpicWeight = 45;
+            tuning.NormalLateLegendaryWeight = 8;
+            tuning.EliteEpicWeight = 48;
+            tuning.EliteLegendaryWeight = 12;
+            tuning.BossRareWeight = 75;
+            tuning.BossEpicWeight = 100;
+            tuning.BossLegendaryWeight = 120;
+            tuning.RewardSelectionTimeoutSeconds = 12f;
+        }
+
         private static void ApplyShowcaseTuning(SurvivorsTemplateTuning tuning)
         {
+            tuning.RunModeDisplayName = "Showcase";
+            tuning.RunModeDurationLabel = "15 min";
+            tuning.RunModeDescription = "Medium-length demo profile for showing more of the arc quickly.";
+            tuning.TargetDurationSeconds = 900f;
             tuning.PlayerMoveSpeed = 5.6f;
             tuning.DashDistance = 3.35f;
             tuning.DashCooldownSeconds = 2.25f;

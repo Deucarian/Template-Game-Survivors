@@ -79,6 +79,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
             Assert.IsNotNull(controller);
+            if (controller.IsRunModeSelectionOpen)
+            {
+                Assert.IsTrue(controller.SelectStandardRun());
+            }
 
             float startingRunTime = controller.RunTimeSeconds;
             for (int i = 0; i < 120 && (!controller.IsPlaying || controller.RunTimeSeconds <= startingRunTime); i++)
@@ -123,6 +127,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
             Assert.IsNotNull(controller);
+            if (controller.IsRunModeSelectionOpen)
+            {
+                Assert.IsTrue(controller.SelectStandardRun());
+            }
 
             float startingRunTime = controller.RunTimeSeconds;
             for (int i = 0; i < 180 && (!controller.IsPlaying || controller.RunTimeSeconds <= startingRunTime); i++)
@@ -732,7 +740,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             while (Time.realtimeSinceStartup < deadline)
             {
                 controller = Object.FindFirstObjectByType<SurvivorsTemplateController>();
-                if (controller != null && controller.State == SurvivorsRunState.Playing)
+                if (controller != null)
                 {
                     break;
                 }
@@ -741,6 +749,16 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             Assert.NotNull(controller, "Imported playtest scene did not create a SurvivorsTemplateController.");
+            if (controller.IsRunModeSelectionOpen)
+            {
+                Assert.IsTrue(controller.SelectStandardRun());
+            }
+
+            while (Time.realtimeSinceStartup < deadline && controller.State != SurvivorsRunState.Playing)
+            {
+                yield return null;
+            }
+
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
             Assert.AreEqual(1f, Time.timeScale);
@@ -787,6 +805,45 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.IsDebugFastPacing);
             Assert.That(controller.CurrentTuning.EnemySpawnIntervalSeconds, Is.LessThan(human.EnemySpawnIntervalSeconds));
             Assert.That(controller.CurrentTuning.RewardSelectionTimeoutSeconds, Is.GreaterThan(human.RewardSelectionTimeoutSeconds));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator RunModeSelectionCanStartStandardAndSprintRuns()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ConfigureRunModeSelection(true);
+            yield return null;
+
+            Assert.IsTrue(controller.IsRunModeSelectionOpen);
+            Assert.IsFalse(controller.IsRunStarted);
+
+            Assert.IsTrue(controller.SelectStandardRun());
+            yield return null;
+
+            Assert.IsTrue(controller.IsRunStarted);
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
+            Assert.AreEqual("Standard Run", controller.CurrentRunModeDisplayName);
+            Assert.AreEqual(1800f, controller.CurrentTuning.SurvivalVictoryTimeSeconds);
+            Assert.IsTrue(controller.CurrentTuning.EndlessContinuationEnabled);
+
+            controller.OpenRunModeSelection();
+            yield return null;
+
+            Assert.IsTrue(controller.IsRunModeSelectionOpen);
+            Assert.IsFalse(controller.IsRunStarted);
+
+            Assert.IsTrue(controller.SelectSprintRun());
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(SurvivorsPacingProfile.SprintRun, controller.CurrentPacingProfile);
+            Assert.IsTrue(controller.IsSprintRunMode);
+            Assert.AreEqual("Sprint Run", controller.CurrentRunModeDisplayName);
+            Assert.AreEqual(300f, controller.CurrentTuning.SurvivalVictoryTimeSeconds);
+            Assert.IsFalse(controller.CurrentTuning.EndlessContinuationEnabled);
 
             Object.Destroy(controller.gameObject);
         }
@@ -854,6 +911,40 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.IsTrue(hasBuildDefiningChoice, openingState);
             Assert.IsTrue(hasWeaponPathChoice, openingState);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator OpeningSprintRunCanOpenFirstDraftWithinThirtyFiveSeconds()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            controller.StartRun();
+            yield return null;
+
+            const float deltaTime = 0.1f;
+            float elapsed = 0f;
+            int steps = 0;
+            while (elapsed < 35f && !controller.IsRunUpgradeDraftOpen)
+            {
+                Vector2 movement = new Vector2(Mathf.Sin(elapsed * 0.9f), Mathf.Cos(elapsed * 0.7f));
+                controller.Simulate(deltaTime, movement);
+                elapsed += deltaTime;
+                steps++;
+                if (steps % 10 == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            string openingState = $"elapsed={elapsed:0.0}s, kills={controller.KilledCount}, xpCollected={controller.ExperienceCollected}, draftTime={controller.FirstLevelUpDraftTimeSeconds:0.0}, state={controller.State}";
+            Assert.IsTrue(controller.IsRunUpgradeDraftOpen, openingState);
+            Assert.That(elapsed, Is.LessThanOrEqualTo(35f), openingState);
+            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.InRange(0f, 35f), openingState);
+            Assert.That(controller.FirstExperiencePickupTimeSeconds, Is.InRange(0f, 25f), openingState);
+            Assert.AreEqual(3, controller.CurrentDraftChoices.Count, openingState);
+            Assert.That(controller.DraftOpenCount, Is.GreaterThanOrEqualTo(1), openingState);
 
             Object.Destroy(controller.gameObject);
         }
@@ -1259,6 +1350,43 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LastEvolutionReadyFeedbackLabel, Does.Contain("Arcane Storm"));
 
             Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SprintEvolutionAssistDoesNotChangeStandardEvolutionRules()
+        {
+            SurvivorsTemplateController standard = CreateController();
+            yield return null;
+
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.IsTrue(standard.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsTrue(standard.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.IsFalse(standard.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.AreEqual(0, standard.CurrentTuning.EvolutionRequiredRankReduction);
+
+            Object.Destroy(standard.gameObject);
+            yield return null;
+
+            SurvivorsTemplateController sprint = CreateController(startRun: false);
+            sprint.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            sprint.StartRun();
+            yield return null;
+
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.IsTrue(sprint.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsTrue(sprint.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            Assert.AreEqual(2, sprint.CurrentTuning.EvolutionRequiredRankReduction);
+            Assert.IsTrue(sprint.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId));
+            Assert.That(sprint.CurrentEvolutionReadyHudLabel, Does.Contain("Arcane Storm"));
+            Assert.That(sprint.FirstEvolutionEligibilityTimeSeconds, Is.GreaterThanOrEqualTo(0f));
+
+            Object.Destroy(sprint.gameObject);
         }
 
         [UnityTest]
@@ -4362,6 +4490,32 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
             Assert.IsTrue(controller.IsVictory);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SprintRunSummaryIncludesModeAndStopsAtRewardRestartFlow()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 0.25f;
+            controller.CurrentTuning.BossSpawnTimeSeconds = 999f;
+            controller.StartRun();
+            yield return null;
+
+            controller.Simulate(0.35f);
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Victory, controller.State);
+            Assert.IsTrue(controller.IsVictory);
+            Assert.AreEqual(SurvivorsPacingProfile.SprintRun, controller.CurrentPacingProfile);
+            Assert.IsFalse(controller.CurrentTuning.EndlessContinuationEnabled);
+            string summary = string.Join("\n", controller.LastRunSummaryLines);
+            Assert.That(summary, Does.Contain("Sprint Run Victory"));
+            Assert.That(summary, Does.Contain("Mode Sprint Run"));
+            Assert.That(summary, Does.Contain("reward x0.65"));
+            Assert.IsFalse(controller.ContinueAfterVictory());
 
             Object.Destroy(controller.gameObject);
         }
