@@ -979,6 +979,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             ValidateSampleEvolutionUpgradeCoverage(upgradeIds, result);
+            ValidateSamplePickupBuildUpgradeCoverage(upgradeIds, result);
         }
 
         private static void ValidateUpgradeRecordMetadata(
@@ -1089,6 +1090,21 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError($"Sample upgrade library missing evolution upgrade: {entry.UpgradeId}");
                 }
+            }
+        }
+
+        private static void ValidateSamplePickupBuildUpgradeCoverage(HashSet<string> sampleUpgradeIds, SurvivorsContentValidationResult result)
+        {
+            RequireSampleUpgradeId(sampleUpgradeIds, BasicSurvivorsGame.GemMagnetUpgradeId, result);
+            RequireSampleUpgradeId(sampleUpgradeIds, BasicSurvivorsGame.LodestoneSigilUpgradeId, result);
+            RequireSampleUpgradeId(sampleUpgradeIds, BasicSurvivorsGame.VacuumPulseUpgradeId, result);
+        }
+
+        private static void RequireSampleUpgradeId(HashSet<string> sampleUpgradeIds, string upgradeId, SurvivorsContentValidationResult result)
+        {
+            if (sampleUpgradeIds == null || string.IsNullOrWhiteSpace(upgradeId) || !sampleUpgradeIds.Contains(upgradeId))
+            {
+                result.AddError($"Sample upgrade library missing pickup build upgrade: {upgradeId}");
             }
         }
 
@@ -1601,6 +1617,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 ValidateEnemyStats(enemy.id, enemy.health, enemy.moveSpeed, enemy.radius, enemy.contactDamage, enemy.contactIntervalSeconds, enemy.experienceDrop, result);
+                ValidateEnemyLifecycle(enemy, role, result);
                 if (role != SurvivorsEnemyRole.Swarm && enemy.spawnTimeSeconds <= 0f)
                 {
                     result.AddError($"Enemy {enemy.id} requires spawn time above zero.");
@@ -1650,6 +1667,90 @@ namespace Deucarian.TemplateGameSurvivors
             if (bossCount == 0)
             {
                 result.AddError("Sample enemy library must contain a boss definition.");
+            }
+        }
+
+        private static void ValidateEnemyLifecycle(EnemyRecordJson enemy, SurvivorsEnemyRole role, SurvivorsContentValidationResult result)
+        {
+            if (enemy == null)
+            {
+                return;
+            }
+
+            bool majorThreat = role == SurvivorsEnemyRole.Elite ||
+                role == SurvivorsEnemyRole.DreadElite ||
+                role == SurvivorsEnemyRole.Miniboss ||
+                role == SurvivorsEnemyRole.Boss;
+            if (enemy.softLeashRadius <= 0f)
+            {
+                result.AddError($"Enemy {enemy.id} requires soft leash radius above zero.");
+            }
+
+            if (enemy.hardRecycleRadius <= enemy.softLeashRadius)
+            {
+                result.AddError($"Enemy {enemy.id} requires hard recycle radius above soft leash radius.");
+            }
+
+            if (enemy.catchUpSpeedMultiplier < 1f)
+            {
+                result.AddError($"Enemy {enemy.id} requires catch-up speed multiplier at least 1.");
+            }
+
+            if (enemy.repositionTimeoutSeconds <= 0f)
+            {
+                result.AddError($"Enemy {enemy.id} requires reposition timeout above zero.");
+            }
+
+            if (!enemy.canLeash)
+            {
+                result.AddError($"Enemy {enemy.id} must declare leash behavior.");
+            }
+
+            if (!enemy.canReposition)
+            {
+                result.AddError($"Enemy {enemy.id} must declare reposition behavior.");
+            }
+
+            if (majorThreat)
+            {
+                if (enemy.canRecycle)
+                {
+                    result.AddError($"Major threat enemy {enemy.id} must not recycle as a normal enemy.");
+                }
+
+                if (!enemy.showOffscreenMarker)
+                {
+                    result.AddError($"Major threat enemy {enemy.id} must show an offscreen marker.");
+                }
+
+                if (string.IsNullOrWhiteSpace(enemy.markerStyle))
+                {
+                    result.AddError($"Major threat enemy {enemy.id} must define a marker style.");
+                }
+
+                if (role == SurvivorsEnemyRole.Boss)
+                {
+                    if (!enemy.showBossLifeBar)
+                    {
+                        result.AddError($"Boss enemy {enemy.id} must use the boss life bar.");
+                    }
+                }
+                else if (!enemy.showOverheadLifeBar)
+                {
+                    result.AddError($"Enemy {enemy.id} must use an overhead life bar.");
+                }
+            }
+            else
+            {
+                if (!enemy.canRecycle)
+                {
+                    result.AddError($"Normal enemy {enemy.id} must be recyclable.");
+                }
+
+                if (enemy.showOffscreenMarker || enemy.showOverheadLifeBar || enemy.showBossLifeBar)
+                {
+                    result.AddError($"Normal enemy {enemy.id} must not use persistent threat markers or life bars.");
+                }
             }
         }
 
@@ -1872,9 +1973,34 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "enemy spawn pack base count", profile.enemySpawnPackBaseCount, result);
             ValidatePositive(profileId, "enemy spawn pack max count", profile.enemySpawnPackMaxCount, result);
             ValidatePositive(profileId, "enemy ranged dodge XP reward", profile.enemyRangedAttackDodgeExperienceReward, result);
+            ValidatePositive(profileId, "enemy soft leash radius", profile.enemySoftLeashRadius, result);
+            ValidatePositive(profileId, "enemy hard recycle radius", profile.enemyHardRecycleRadius, result);
+            ValidateNonNegative(profileId, "enemy recycle delay", profile.enemyRecycleDelaySeconds, result);
+            ValidatePositive(profileId, "enemy recycle minimum respawn distance", profile.enemyRecycleMinimumRespawnDistance, result);
+            ValidatePositive(profileId, "enemy recycle maximum respawn distance", profile.enemyRecycleMaximumRespawnDistance, result);
+            ValidatePositive(profileId, "major threat catch-up radius", profile.majorThreatCatchUpRadius, result);
+            ValidatePositive(profileId, "major threat catch-up speed multiplier", profile.majorThreatCatchUpSpeedMultiplier, result);
+            ValidatePositive(profileId, "major threat reposition radius", profile.majorThreatRepositionRadius, result);
+            ValidateNonNegative(profileId, "major threat reposition delay", profile.majorThreatRepositionDelaySeconds, result);
+            ValidatePositive(profileId, "offscreen threat marker distance", profile.offscreenThreatMarkerDistance, result);
             if (profile.enemySpawnPackMaxCount < profile.enemySpawnPackBaseCount)
             {
                 result.AddError($"Run flow profile {profileId} max spawn pack count must be at least the base spawn pack count.");
+            }
+
+            if (profile.enemyHardRecycleRadius <= profile.enemySoftLeashRadius)
+            {
+                result.AddError($"Run flow profile {profileId} hard recycle radius must be larger than soft leash radius.");
+            }
+
+            if (profile.enemyRecycleMaximumRespawnDistance <= profile.enemyRecycleMinimumRespawnDistance)
+            {
+                result.AddError($"Run flow profile {profileId} recycle maximum respawn distance must be larger than minimum respawn distance.");
+            }
+
+            if (profile.majorThreatCatchUpSpeedMultiplier < 1f)
+            {
+                result.AddError($"Run flow profile {profileId} major threat catch-up multiplier must be at least 1.");
             }
 
             ValidatePositive(profileId, "horde rush first time", profile.hordeRushFirstTimeSeconds, result);
@@ -1973,6 +2099,12 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "draft banish charges", profile.draftBanishCharges, result);
             ValidatePositive(profileId, "draft skip shard reward", profile.draftSkipBloodShards, result);
             ValidateNonNegative(profileId, "reward selection timeout", profile.rewardSelectionTimeoutSeconds, result);
+            ValidatePositive(profileId, "experience required base", profile.experienceRequiredBase, result);
+            ValidatePositive(profileId, "experience required per level", profile.experienceRequiredPerLevel, result);
+            ValidateNonNegative(profileId, "level-up draft cooldown", profile.levelUpDraftCooldownSeconds, result);
+            ValidatePositive(profileId, "maximum queued level-ups", profile.maximumQueuedLevelUps, result);
+            ValidatePositive(profileId, "pickup magnet pulse base interval", profile.pickupMagnetPulseBaseIntervalSeconds, result);
+            ValidatePositive(profileId, "pickup magnet pulse minimum interval", profile.pickupMagnetPulseMinimumIntervalSeconds, result);
             ValidatePositive(profileId, "max weapon slots", profile.maxWeaponSlots, result);
             ValidatePositive(profileId, "max passive slots", profile.maxPassiveSlots, result);
             ValidatePositive(profileId, "draft mid rarity level", profile.draftMidRarityLevel, result);
@@ -1980,6 +2112,29 @@ namespace Deucarian.TemplateGameSurvivors
             if (profile.draftLateRarityLevel <= profile.draftMidRarityLevel)
             {
                 result.AddError($"Run flow profile {profileId} late rarity level must be after mid rarity level.");
+            }
+
+            if (profile.pickupMagnetPulseBaseIntervalSeconds < profile.pickupMagnetPulseMinimumIntervalSeconds)
+            {
+                result.AddError($"Run flow profile {profileId} pickup magnet pulse base interval must be at least the minimum interval.");
+            }
+
+            if (string.Equals(profile.id, SurvivorsPacingProfile.SprintRun.ToString(), StringComparison.Ordinal))
+            {
+                if (profile.levelUpDraftCooldownSeconds < 4f)
+                {
+                    result.AddError("SprintRun profile must throttle normal level-up drafts with at least a 4 second cooldown.");
+                }
+
+                if (profile.maximumQueuedLevelUps > 3)
+                {
+                    result.AddError("SprintRun profile must cap queued level-ups to avoid draft floods.");
+                }
+
+                if (profile.experienceRequiredBase < 20 || profile.experienceRequiredPerLevel < 14)
+                {
+                    result.AddError("SprintRun profile XP requirements are too low for the 5-minute pacing target.");
+                }
             }
 
             ValidateRunFlowRarityTables(profile.rarityTables, profileId, result);
@@ -2948,6 +3103,17 @@ namespace Deucarian.TemplateGameSurvivors
             public int splitChildCount;
             public float splitChildRadius;
             public string behavior;
+            public bool canRecycle;
+            public bool canLeash;
+            public bool canReposition;
+            public bool showOffscreenMarker;
+            public bool showOverheadLifeBar;
+            public bool showBossLifeBar;
+            public string markerStyle;
+            public float softLeashRadius;
+            public float hardRecycleRadius;
+            public float catchUpSpeedMultiplier;
+            public float repositionTimeoutSeconds;
             public bool finalBoss;
         }
 
@@ -3084,6 +3250,16 @@ namespace Deucarian.TemplateGameSurvivors
             public int enemySpawnPackBaseCount;
             public int enemySpawnPackMaxCount;
             public int enemyRangedAttackDodgeExperienceReward;
+            public float enemySoftLeashRadius;
+            public float enemyHardRecycleRadius;
+            public float enemyRecycleDelaySeconds;
+            public float enemyRecycleMinimumRespawnDistance;
+            public float enemyRecycleMaximumRespawnDistance;
+            public float majorThreatCatchUpRadius;
+            public float majorThreatCatchUpSpeedMultiplier;
+            public float majorThreatRepositionRadius;
+            public float majorThreatRepositionDelaySeconds;
+            public float offscreenThreatMarkerDistance;
             public float escalationIntervalSeconds;
             public float minimumEnemySpawnIntervalSeconds;
             public float enemySpawnIntervalReductionPerEscalation;
@@ -3161,6 +3337,12 @@ namespace Deucarian.TemplateGameSurvivors
             public int draftBanishCharges;
             public int draftSkipBloodShards;
             public float rewardSelectionTimeoutSeconds;
+            public int experienceRequiredBase;
+            public int experienceRequiredPerLevel;
+            public float levelUpDraftCooldownSeconds;
+            public int maximumQueuedLevelUps;
+            public float pickupMagnetPulseBaseIntervalSeconds;
+            public float pickupMagnetPulseMinimumIntervalSeconds;
             public int maxWeaponSlots;
             public int maxPassiveSlots;
             public int draftMidRarityLevel;
