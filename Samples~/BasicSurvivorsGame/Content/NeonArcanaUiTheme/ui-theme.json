@@ -44,6 +44,62 @@
     { "id": "PickupMagnet", "displayName": "Collector", "iconId": "collector" },
     { "id": "MetaReward", "displayName": "Progress", "iconId": "progress" }
   ],
+  "tutorialSteps": [
+    {
+      "id": "combat",
+      "title": "Move And Survive",
+      "lines": [
+        "Move with WASD or the left stick. Your weapons fire automatically at nearby enemies.",
+        "Use Arc Step to dash through pressure, shove enemies back, and buy a short safety window.",
+        "The goal is not to stand still. Kite, collect, and keep the horde just barely under control."
+      ]
+    },
+    {
+      "id": "experience",
+      "title": "Collect XP Gems",
+      "lines": [
+        "Enemies drop blue XP gems. Move near them to pull them in and fill the level bar.",
+        "Magnet pickups and pickup-radius upgrades help recover loose gems without flooding drafts.",
+        "Streak rewards, horde clears, and waystones can add extra pickups when you play actively."
+      ]
+    },
+    {
+      "id": "drafts",
+      "title": "Choose A Build",
+      "lines": [
+        "Level-ups pause the run and offer draft cards. Pick weapons, passives, mutations, and evolutions.",
+        "Reroll changes the offered cards, Banish removes a card for the run, and Skip grants blood shards.",
+        "Open the Build panel to compare current weapons, passives, relics, run info, and controls."
+      ]
+    },
+    {
+      "id": "threats",
+      "title": "Elites, Bosses, Rewards",
+      "lines": [
+        "Elites, dread elites, minibosses, and bosses keep their health, show bars, and stay tracked offscreen.",
+        "Major threats drop recoverable reward caches, relic drafts, upgrade drafts, or class unlock rewards.",
+        "Warnings, slam markers, and support-call banners tell you when the arena is about to spike."
+      ]
+    },
+    {
+      "id": "evolutions",
+      "title": "Evolve Weapons",
+      "lines": [
+        "Evolutions need a ranked weapon path plus its matching passive. Ready banners call out missing pieces.",
+        "Evolution picks trigger big payoff surges, XP recall, and stronger weapon behavior.",
+        "Multiple evolutions can stack into a late-run Legend Surge."
+      ]
+    },
+    {
+      "id": "modes",
+      "title": "Pick A Run Mode",
+      "lines": [
+        "Standard / Human Playtest is the full 30-minute arc with victory, boss rewards, and endless continuation.",
+        "Sprint Run compresses the game into 5 minutes with quicker XP, early elites, a faster boss climax, and fast restart.",
+        "After victory or defeat you can restart the same mode or return to mode selection."
+      ]
+    }
+  ],
   "audioEvents": [
     { "id": "ui.hover", "category": "UI", "volume": 0.14, "throttleSeconds": 0.08 },
     { "id": "ui.select", "category": "UI", "volume": 0.24, "throttleSeconds": 0.04 },

@@ -1405,7 +1405,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private bool DrawRunModeCard(Rect rect, SurvivorsPacingProfile profile, string buttonLabel)
         {
-            SurvivorsTemplateTuning preview = BasicSurvivorsGame.CreateTuning(profile);
+            SurvivorsTemplateTuning preview = CreateConfiguredTuning(profile);
             GUI.Box(rect, string.Empty);
             GUI.Label(new Rect(rect.x + 16f, rect.y + 16f, rect.width - 32f, 24f), FormatRunModeSelectionTitle(profile, preview), _hudLabelStyle);
             GUI.Label(new Rect(rect.x + 16f, rect.y + 44f, rect.width - 32f, 20f), preview.RunModeDurationLabel, _hudSmallStyle);
@@ -1603,43 +1603,57 @@ namespace Deucarian.TemplateGameSurvivors
             return Mathf.Clamp(index, 0, Mathf.Max(0, max));
         }
 
-        private static string ResolveTutorialStepTitle(int step)
+        private string ResolveTutorialStepTitle(int step)
+        {
+            EnsureUiTheme();
+            int resolvedStep = ClampTutorialStepIndex(step);
+            return ActiveUiTheme.GetTutorialStepTitle(resolvedStep, ResolveDefaultTutorialStepTitle(resolvedStep));
+        }
+
+        private static string ResolveDefaultTutorialStepTitle(int step)
         {
             switch ((TutorialStep)ClampTutorialStepIndex(step))
             {
                 case TutorialStep.Combat:
-                    return "Weapons Auto-Attack";
+                    return "Move And Survive";
                 case TutorialStep.Experience:
                     return "Collect XP Gems";
                 case TutorialStep.Drafts:
-                    return "Choose Upgrades";
+                    return "Choose A Build";
                 case TutorialStep.ElitesBosses:
-                    return "Major Threats";
+                    return "Elites, Bosses, Rewards";
                 case TutorialStep.Evolutions:
-                    return "Evolutions";
+                    return "Evolve Weapons";
                 case TutorialStep.Modes:
-                    return "Run Modes";
+                    return "Pick A Run Mode";
                 default:
                     return "Move To Survive";
             }
         }
 
-        private static IReadOnlyList<string> ResolveTutorialStepLines(int step)
+        private IReadOnlyList<string> ResolveTutorialStepLines(int step)
+        {
+            EnsureUiTheme();
+            int resolvedStep = ClampTutorialStepIndex(step);
+            return ActiveUiTheme.GetTutorialStepLines(resolvedStep, ResolveDefaultTutorialStepLines(resolvedStep));
+        }
+
+        private static IReadOnlyList<string> ResolveDefaultTutorialStepLines(int step)
         {
             switch ((TutorialStep)ClampTutorialStepIndex(step))
             {
                 case TutorialStep.Combat:
-                    return new[] { "Weapons fire automatically. Your job is movement, positioning, and build choices.", "Choose weapons and passives that reinforce each other." };
+                    return new[] { "Move with WASD or the left stick. Your weapons fire automatically at nearby enemies.", "Use Arc Step to dash through pressure, shove enemies back, and buy a short safety window.", "The goal is not to stand still. Kite, collect, and keep the horde just barely under control." };
                 case TutorialStep.Experience:
-                    return new[] { "Collect gems to level up. Pickup and magnet upgrades can become a real build path.", "Vacuum and pickup effects help you collect without breaking draft pacing." };
+                    return new[] { "Enemies drop blue XP gems. Move near them to pull them in and fill the level bar.", "Magnet pickups and pickup-radius upgrades help recover loose gems without flooding drafts.", "Streak rewards, horde clears, and waystones can add extra pickups when you play actively." };
                 case TutorialStep.Drafts:
-                    return new[] { "Pick 1 of 3 upgrades. Read rarity, category, affected item, rank, and preview text.", "Use mouse or 1/2/3. Reroll, banish, and skip remain available when you have charges." };
+                    return new[] { "Level-ups pause the run and offer draft cards. Pick weapons, passives, mutations, and evolutions.", "Reroll changes the offered cards, Banish removes a card for the run, and Skip grants blood shards.", "Open the Build panel to compare current weapons, passives, relics, run info, and controls." };
                 case TutorialStep.ElitesBosses:
-                    return new[] { "Elites and bosses have life bars and markers. Defeat them for stronger rewards.", "Important threats stay persistent so running away does not lose the reward state." };
+                    return new[] { "Elites, dread elites, minibosses, and bosses keep their health, show bars, and stay tracked offscreen.", "Major threats drop recoverable reward caches, relic drafts, upgrade drafts, or class unlock rewards.", "Warnings, slam markers, and support-call banners tell you when the arena is about to spike." };
                 case TutorialStep.Evolutions:
-                    return new[] { "Upgrade weapons and pair the right passives to unlock evolved forms.", "Evolution cards are special reward moments and can swing a run hard." };
+                    return new[] { "Evolutions need a ranked weapon path plus its matching passive. Ready banners call out missing pieces.", "Evolution picks trigger big payoff surges, XP recall, and stronger weapon behavior.", "Multiple evolutions can stack into a late-run Legend Surge." };
                 case TutorialStep.Modes:
-                    return new[] { "Sprint is the quick 5-minute loop with faster XP and early elites.", "Standard / Human Playtest is the full 30-minute run with boss, victory, and endless continuation." };
+                    return new[] { "Standard / Human Playtest is the full 30-minute arc with victory, boss rewards, and endless continuation.", "Sprint Run compresses the game into 5 minutes with quicker XP, early elites, a faster boss climax, and fast restart.", "After victory or defeat you can restart the same mode or return to mode selection." };
                 default:
                     return new[] { "Move to survive. Standing still becomes dangerous unless your build is already overpowering the arena.", "Arc Step with Space can buy room when enemies get close." };
             }
@@ -1740,6 +1754,27 @@ namespace Deucarian.TemplateGameSurvivors
                 rewardLibrary == null ? null : rewardLibrary.text);
         }
 
+        public bool ConfigureAuthoredContent(
+            TextAsset weaponLibrary,
+            TextAsset upgradeLibrary,
+            TextAsset relicLibrary,
+            TextAsset classLibrary,
+            TextAsset progressionLibrary,
+            TextAsset enemyLibrary,
+            TextAsset runFlowLibrary,
+            TextAsset rewardLibrary)
+        {
+            return ConfigureAuthoredContentJson(
+                weaponLibrary == null ? null : weaponLibrary.text,
+                upgradeLibrary == null ? null : upgradeLibrary.text,
+                relicLibrary == null ? null : relicLibrary.text,
+                classLibrary == null ? null : classLibrary.text,
+                progressionLibrary == null ? null : progressionLibrary.text,
+                enemyLibrary == null ? null : enemyLibrary.text,
+                runFlowLibrary == null ? null : runFlowLibrary.text,
+                rewardLibrary == null ? null : rewardLibrary.text);
+        }
+
         public bool ConfigureAuthoredContentJson(string enemyJson, string runFlowJson, string rewardJson)
         {
             if (!SurvivorsAuthoredContentDefinition.TryCreate(
@@ -1764,6 +1799,52 @@ namespace Deucarian.TemplateGameSurvivors
 
             _authoredContent = definition;
             _authoredContentStatus = "Using authored Survivors content: " + definition.SourceSummary;
+            if (!_runStarted)
+            {
+                tuning = CreateConfiguredTuning(pacingProfile);
+            }
+
+            ReleaseMetaProgressionService();
+            return true;
+        }
+
+        public bool ConfigureAuthoredContentJson(
+            string weaponJson,
+            string upgradeJson,
+            string relicJson,
+            string classJson,
+            string progressionJson,
+            string enemyJson,
+            string runFlowJson,
+            string rewardJson)
+        {
+            if (!SurvivorsAuthoredContentDefinition.TryCreate(
+                weaponJson,
+                upgradeJson,
+                relicJson,
+                classJson,
+                progressionJson,
+                enemyJson,
+                runFlowJson,
+                rewardJson,
+                out SurvivorsAuthoredContentDefinition definition,
+                out string error))
+            {
+                _authoredContent = null;
+                _authoredContentStatus = string.IsNullOrWhiteSpace(error)
+                    ? "Authored Survivors content failed to bind."
+                    : "Authored Survivors content failed to bind: " + error;
+                if (!_runStarted)
+                {
+                    tuning = CreateConfiguredTuning(pacingProfile);
+                }
+
+                ReleaseMetaProgressionService();
+                return false;
+            }
+
+            _authoredContent = definition;
+            _authoredContentStatus = "Authored Survivors content bound: " + definition.SourceSummary;
             if (!_runStarted)
             {
                 tuning = CreateConfiguredTuning(pacingProfile);
@@ -1842,9 +1923,9 @@ namespace Deucarian.TemplateGameSurvivors
             _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
             _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
             _upgradeState = new RunUpgradeState();
-            _relicDefinitions = BasicSurvivorsGame.CreateRelicDefinitions();
-            _upgradeClassGates = BasicSurvivorsGame.CreateClassUpgradeGates();
-            _classLibrary = BasicSurvivorsGame.CreateClassLibraryDefinition();
+            _relicDefinitions = CreateRelicDefinitions();
+            _upgradeClassGates = CreateClassUpgradeGates();
+            _classLibrary = CreateClassLibraryDefinition();
             EnsureMetaProgressionLoaded();
             _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
             _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
@@ -2202,7 +2283,7 @@ namespace Deucarian.TemplateGameSurvivors
             BarrierValue = BarrierCapacity;
             BuildRuntimeWorld();
             _runFlow = new SurvivorsRunFlowRuntime(CreateRunFlowDefinition(resolved));
-            _weaponArchetypeDefinitions = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved);
+            _weaponArchetypeDefinitions = CreateWeaponArchetypeDefinitions(resolved);
             _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(_weaponArchetypeDefinitions));
             State = SurvivorsRunState.Playing;
             _runStarted = true;
@@ -6201,11 +6282,53 @@ namespace Deucarian.TemplateGameSurvivors
                 : BasicSurvivorsGame.CreateMetaProgressionDefinition();
         }
 
+        private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> CreateWeaponArchetypeDefinitions(SurvivorsTemplateTuning resolved)
+        {
+            return _authoredContent != null && _authoredContent.HasWeaponDefinitions
+                ? _authoredContent.WeaponDefinitions
+                : BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved);
+        }
+
+        private IReadOnlyList<SurvivorsRelicDefinition> CreateRelicDefinitions()
+        {
+            return _authoredContent != null && _authoredContent.HasRelicDefinitions
+                ? _authoredContent.RelicDefinitions
+                : BasicSurvivorsGame.CreateRelicDefinitions();
+        }
+
+        private SurvivorsClassLibraryDefinition CreateClassLibraryDefinition()
+        {
+            return _authoredContent != null && _authoredContent.HasClassLibrary
+                ? _authoredContent.ClassLibrary
+                : BasicSurvivorsGame.CreateClassLibraryDefinition();
+        }
+
+        private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> CreateClassUpgradeGates()
+        {
+            return _authoredContent != null && _authoredContent.HasClassUpgradeGates
+                ? _authoredContent.ClassUpgradeGates
+                : BasicSurvivorsGame.CreateClassUpgradeGates();
+        }
+
+        private RunUpgradeCatalog CreateBaseRunUpgradeCatalog()
+        {
+            return _authoredContent != null && _authoredContent.HasRunUpgradeCatalog
+                ? _authoredContent.RunUpgradeCatalog
+                : BasicSurvivorsGame.CreateRunUpgradeCatalog();
+        }
+
+        private IReadOnlyList<SurvivorsRunUpgradeMetadata> CreateRunUpgradeMetadata()
+        {
+            return _authoredContent != null && _authoredContent.HasRunUpgradeMetadata
+                ? _authoredContent.RunUpgradeMetadata
+                : BasicSurvivorsGame.CreateRunUpgradeMetadata();
+        }
+
         private void EnsureClassLibraryLoaded()
         {
-            _classLibrary ??= BasicSurvivorsGame.CreateClassLibraryDefinition();
-            _relicDefinitions ??= BasicSurvivorsGame.CreateRelicDefinitions();
-            _upgradeClassGates ??= BasicSurvivorsGame.CreateClassUpgradeGates();
+            _classLibrary ??= CreateClassLibraryDefinition();
+            _relicDefinitions ??= CreateRelicDefinitions();
+            _upgradeClassGates ??= CreateClassUpgradeGates();
             if (_metaProgression != null)
             {
                 _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
@@ -6214,7 +6337,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private RunUpgradeCatalog CreateRunUpgradeCatalogForSelectedClass()
         {
-            RunUpgradeCatalog fullCatalog = BasicSurvivorsGame.CreateRunUpgradeCatalog();
+            RunUpgradeCatalog fullCatalog = CreateBaseRunUpgradeCatalog();
             var definitions = new List<RunUpgradeDefinition>(fullCatalog.Definitions.Count);
             for (int i = 0; i < fullCatalog.Definitions.Count; i++)
             {
@@ -6231,7 +6354,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void BuildUpgradeMetadataIndex()
         {
             _upgradeMetadataById.Clear();
-            IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata = BasicSurvivorsGame.CreateRunUpgradeMetadata();
+            IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata = CreateRunUpgradeMetadata();
             for (int i = 0; i < metadata.Count; i++)
             {
                 SurvivorsRunUpgradeMetadata entry = metadata[i];
@@ -7594,7 +7717,7 @@ namespace Deucarian.TemplateGameSurvivors
             IReadOnlyList<SurvivorsWeaponArchetypeDefinition> definitions = _weaponArchetypeDefinitions;
             if (definitions == null || definitions.Count == 0)
             {
-                definitions = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(CurrentTuning);
+                definitions = CreateWeaponArchetypeDefinitions(CurrentTuning);
                 _weaponArchetypeDefinitions = definitions;
             }
 

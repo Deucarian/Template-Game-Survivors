@@ -52,13 +52,15 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string classJson = ReadRequiredText(sampleRoot, "Content/DefaultClasses/classes.json", report);
             string progressionJson = ReadRequiredText(sampleRoot, "Content/DefaultProgression/progression.json", report);
             string runFlowJson = ReadRequiredText(sampleRoot, "Content/DefaultRunFlow/run-flow.json", report);
+            string uiThemeJson = ReadRequiredText(sampleRoot, "Content/DefaultUiTheme/ui-theme.json", report);
+            string alternateUiThemeJson = ReadRequiredText(sampleRoot, "Content/NeonArcanaUiTheme/ui-theme.json", report);
 
             if (report.ErrorCount > 0)
             {
                 return report;
             }
 
-            Merge(report, ValidateJsonContent(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson, pickupJson, runFlowJson));
+            Merge(report, ValidateJsonContent(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson, pickupJson, runFlowJson, uiThemeJson, alternateUiThemeJson));
             return report;
         }
 
@@ -71,7 +73,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string classJson = null,
             string progressionJson = null,
             string pickupJson = null,
-            string runFlowJson = null)
+            string runFlowJson = null,
+            string uiThemeJson = null,
+            string alternateUiThemeJson = null)
         {
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(
                 weaponJson,
@@ -82,7 +86,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 classJson,
                 progressionJson,
                 pickupJson,
-                runFlowJson);
+                runFlowJson,
+                uiThemeJson,
+                alternateUiThemeJson);
 
             var report = new ContentValidationReport();
             for (int index = 0; index < result.Errors.Count; index++)

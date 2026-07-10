@@ -2,7 +2,7 @@
 
 ## Runtime Kit
 
-`Runtime/BasicSurvivorsGame.cs` contains sample-kit tuning, stable IDs, descriptors, and the small authored default catalog:
+`Runtime/BasicSurvivorsGame.cs` contains sample-kit tuning shape, stable IDs, descriptors, and safe fallback defaults used by tests and unbound hosts:
 
 - `SurvivorsTemplateTuning`
 - `SurvivorsPacingProfile`
@@ -18,7 +18,7 @@
 - `SurvivorsPickupActor`
 - `SurvivorsSpawnPoseResolver`
 - Human Playtest, Sprint Run, Normal, Debug Fast, and Showcase pacing profile selection
-- authored enemy, run-flow, and reward content binding for the playable sample with fallback defaults for explicitly missing content
+- authored weapon, upgrade, relic, class, progression, enemy, run-flow, reward, UI theme, audio palette, and tutorial-copy binding for the playable sample with fallback defaults for explicitly missing content
 - dedicated top-center elapsed/remaining timer HUD
 - clean player HUD, F1-gated debug overlay, pre-run mode/theme selector, first-time tutorial overlay, full-screen draft-card overlay, and pause/build menu tabs for Current Build, Stats, Run Info, and Controls
 - timed reward draft behavior for level-up choices, miniboss reward chains, and boss relic choices
@@ -63,12 +63,13 @@
 - boss-defeat and survival-duration victory triggers
 - post-victory endless intervals for recurring elite, miniboss, and boss pressure
 
-`Runtime/SurvivorsAuthoredContent.cs` binds the sample's editable enemy, run-flow, and reward JSON into runtime definitions used by the sample scene:
+`Runtime/SurvivorsAuthoredContent.cs` binds the sample's editable gameplay JSON into runtime definitions used by the sample scene:
 
-- authored enemy IDs, display names, roles, lifecycle flags, marker styles, and major-threat life-bar flags
-- authored Human Playtest and Sprint Run profile values for pacing, XP curves, draft throttles, rarity tables, horde pressure, roaming rewards, and endless surge rewards
-- authored elite, miniboss, boss, and class-unlock reward IDs for meta reward flow
-- explicit validation failures when required enemy roles, run-flow profiles, or major reward IDs are missing
+- authored weapons, projectiles, run-upgrade definitions, draft-card metadata, upgrade gates, evolutions, pickup/magnet passives, relics, classes, class loadouts, and progression tracks
+- authored enemy IDs, display names, roles, numeric combat stats, lifecycle flags, marker styles, and major-threat life-bar flags, scaled by the selected authored run-flow profile
+- authored Human Playtest, Sprint Run, Normal, Debug Fast, and Showcase profile values for run-mode copy, enemy stat baselines, pacing, XP curves, draft throttles, rarity tables, horde pressure, roaming rewards, and endless surge rewards
+- authored currencies, meta upgrades, elite/miniboss/boss/class-unlock rewards, reward amounts, and legacy-XP tracks
+- explicit validation failures when required enemy roles, run-flow profiles, theme/audio/tutorial entries, or major reward IDs are missing
 
 `Runtime/SurvivorsWeaponArchetypes.cs` contains the local Survivors weapon-kit runtimes:
 
@@ -94,27 +95,23 @@
 
 - run result summary data
 - reference-shaped blood shard and legacy XP reward calculation
-- boss/miniboss reward bonus definitions
+- reward lookup and fallback bonus definitions for unbound/debug hosts
 - persisted meta profile document and v1-to-v4 migration, including the first-time tutorial-seen flag
-- seven sample ranked persistent upgrades for later-run damage, max health, pickup range, XP gain, and reroll capacity
+- authored ranked persistent upgrades for later-run damage, max health, pickup range, XP gain, and reroll capacity when the sample reward library is bound
 - selected class and unlocked class persistence
 
-`Runtime/SurvivorsRelicsAndClasses.cs` contains local Survivors reward/class definitions:
+`Runtime/SurvivorsRelicsAndClasses.cs` contains local Survivors reward/class runtime helpers and fallback definitions:
 
-- boss relic definitions and deterministic relic draft selection
+- deterministic relic draft selection and fallback boss relic definitions for unbound hosts
 - current-run relic ownership is tracked by the controller so boss relic drafts stop repeating selected relics
-- simple class definitions
-- class-owned starting weapon loadouts
-- starting stat modifiers
-- class-gated run-upgrade availability rules
+- fallback class definitions, class-owned starting weapon loadouts, starting stat modifiers, and class-gated run-upgrade availability rules when no authored class library is bound
 - selected/unlocked class library helpers
 
-`Runtime/SurvivorsProgressionAtlas.cs` contains local Survivors progression grouping definitions:
+`Runtime/SurvivorsProgressionAtlas.cs` contains local Survivors progression grouping helpers and fallback definitions:
 
-- compact class passive atlas descriptors
-- compact weapon skill track descriptors
+- compact class passive atlas and weapon skill track descriptors when no authored progression library is bound
 - atlas/track nodes that point at real run-upgrade IDs
-- class-specific track metadata used by `BasicSurvivorsGame.CreateClassUpgradeGates`
+- class-specific fallback track metadata used by unbound hosts
 
 `Runtime/SurvivorsContentValidation.cs` contains package-local validation for authored sample libraries and runtime catalogs:
 
@@ -132,7 +129,7 @@
 - valid relic IDs, effect kinds, targets, weights, and amounts
 - valid class IDs, default class references, starting weapon/loadout references, class-gated upgrade references, unlock reward IDs, and starting stat modifiers
 - valid progression track IDs, passive atlas ownership, weapon-track targets, progression node references, point costs, and max-rank promises
-- valid run-flow pacing values, slot limits, rarity tables, Sprint XP/draft throttles, enemy leash/recycle bands, major-threat catch-up/reposition markers, pickup magnet pulse intervals, endless intervals, Endless Surge rewards, Arena Trial rewards, and ranged-shot dodge XP rewards
+- valid run-flow display copy, profile enemy stat baselines, pacing values, slot limits, rarity tables, Sprint XP/draft throttles, enemy leash/recycle bands, major-threat catch-up/reposition markers, pickup magnet pulse intervals, endless intervals, Endless Surge rewards, Arena Trial rewards, and ranged-shot dodge XP rewards
 
 This is reusable Survivors template-kit code, not concrete product content.
 
@@ -154,7 +151,7 @@ This is reusable Survivors template-kit code, not concrete product content.
 - `Content/DefaultUiTheme/ui-theme.json`
 - `Content/NeonArcanaUiTheme/ui-theme.json`
 
-The sample bootstrap binds `Content/DefaultEnemies/enemies.json`, `Content/DefaultRunFlow/run-flow.json`, `Content/DefaultRewards/rewards.json`, `Content/DefaultUiTheme/ui-theme.json`, and `Content/NeonArcanaUiTheme/ui-theme.json` into the runtime controller before opening the run-mode selector. Asset-flip authors can change boss/elite IDs, lifecycle flags, life-bar flags, run timing, draft pacing, rarity tables, major reward definitions, draft-card labels, rarity presentation tokens, placeholder icon IDs, basic UI copy, tutorial/result copy, HUD accent, and audio event palette values in those JSON files and then rerun content validation without editing controller code.
+The sample bootstrap binds `Content/DefaultWeapons/weapons.json`, `Content/DefaultUpgrades/upgrades.json`, `Content/DefaultRelics/relics.json`, `Content/DefaultClasses/classes.json`, `Content/DefaultProgression/progression.json`, `Content/DefaultEnemies/enemies.json`, `Content/DefaultRunFlow/run-flow.json`, `Content/DefaultRewards/rewards.json`, `Content/DefaultUiTheme/ui-theme.json`, and `Content/NeonArcanaUiTheme/ui-theme.json` into the runtime controller before opening the run-mode selector. Asset-flip authors can change weapon roster/stats, weapon upgrade paths, evolutions, passives, pickup/magnet upgrades, relics, classes, class-gated loadouts, progression tracks, boss/elite IDs, lifecycle flags, life-bar flags, run timing, draft pacing, rarity tables, major reward definitions, draft-card labels, rarity presentation tokens, placeholder icon IDs, basic UI copy, tutorial/result copy, HUD accent, and audio event palette values in those JSON files and then rerun content validation without editing controller code.
 
 The sample includes basic swarm, runner, bruiser, ranged spitter with dodgeable shot wind-up and authored dodge XP rewards, splitter and summoner pressure, elite, dread elite, scheduled miniboss, and final boss entries with lifecycle flags for recycle/leash/reposition/marker/life-bar behavior; XP, magnet, vital-shard, and blood-shard pickup entries with Arc Step dash tuning, Gem Rush pickup-cluster stat boosts, waystone discovery and Waystone Chain rewards, roaming arena caches, roaming cache special-drop/ambush tuning, Arena Trial risk/reward tuning, Standard and Sprint run-flow profiles, Sprint XP/draft throttle fields, normal enemy recycle bands, major-threat catch-up/reposition marker values, major-enemy support call-ins, major-enemy slam timing/ground telegraphs, major-enemy reward caches with cache-pull attraction, streak reward banners, Tempo Surge stat spikes, and Endless Surge post-victory major-threat rewards; blood shards; legacy XP; seven persistent upgrades; elite/miniboss/final-boss reward definitions plus a concrete first-clear class-unlock reward; six boss relics chained after miniboss upgrade rewards; a default class with five core weapons; one-rank weapon unlock definitions for every authored weapon; deeper Frost Fan, Blood Ring, Thorn Halo, Cinder Burst, and Star Beam rank/mutation/evolution paths including Serrated Orbit and Bramble Guard branches; public Star Beam and Gravity Grenade rank/mutation/evolution paths; one unlockable class with an advanced loadout/stat profile, class-gated Moon Slash rank/mutation/evolution path, and class-gated Rune Trap/Aether Mine rank/mutation/evolution path; Gemheart, Lodestone Sigil, and Vacuum Pulse pickup-build choices; draftable XP-gain and area-scaling passives; Epic upgrade spikes; normal/elite/boss rarity-weight tables; compact passive atlases; weapon skill tracks; and class-gated upgrade metadata. These files are examples for product-owned content flipping. They are not intended to become shared package code.
 
