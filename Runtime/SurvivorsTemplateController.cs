@@ -396,6 +396,7 @@ namespace Deucarian.TemplateGameSurvivors
         private string _lastGameplaySpawnSafetyFailure = string.Empty;
         private Vector3 _lastGameplaySpawnPosition = Vector3.zero;
         private float _lastGameplaySpawnPadding;
+        private bool _lastGameplaySpawnWasInsideCameraViewport;
 
         public SurvivorsRunState State { get; private set; } = SurvivorsRunState.Booting;
         public int Level { get; private set; } = 1;
@@ -797,6 +798,7 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastGameplaySpawnSafetyFailureForTest => _lastGameplaySpawnSafetyFailure;
         public Vector3 LastGameplaySpawnPositionForTest => _lastGameplaySpawnPosition;
         public float LastGameplaySpawnPaddingForTest => _lastGameplaySpawnPadding;
+        public bool LastGameplaySpawnWasInsideCameraViewportForTest => _lastGameplaySpawnWasInsideCameraViewport;
         public int ActiveOffscreenThreatMarkerCount => CountOffscreenMajorThreatMarkers();
         public string CurrentOffscreenThreatMarkerLabel => ResolveFirstOffscreenMajorThreatMarkerLabel();
         public string LastOffscreenThreatMarkerLabel => _lastOffscreenThreatMarkerLabel;
@@ -2229,6 +2231,7 @@ namespace Deucarian.TemplateGameSurvivors
             _lastGameplaySpawnSafetyFailure = string.Empty;
             _lastGameplaySpawnPosition = Vector3.zero;
             _lastGameplaySpawnPadding = 0f;
+            _lastGameplaySpawnWasInsideCameraViewport = false;
             _runRewardsGranted = false;
             _pendingVictoryAfterRewardDraft = false;
             _victoryClearedThisRun = false;
@@ -2989,7 +2992,9 @@ namespace Deucarian.TemplateGameSurvivors
                 return "0 weapons";
             }
 
-            return definition.StartingWeaponIds.Count.ToString() + " weapons";
+            return definition.StartingWeaponIds.Count == 1
+                ? "1 weapon"
+                : definition.StartingWeaponIds.Count.ToString() + " weapons";
         }
 
         private static string FormatPersistentUpgradeEffectLabel(SurvivorsPersistentUpgradeDefinition upgrade)
@@ -7584,7 +7589,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (_selectedClass == null || _selectedClass.StartingWeaponIds.Count == 0)
             {
-                return allDefinitions;
+                return new[] { allDefinitions[0] };
             }
 
             var selected = new List<SurvivorsWeaponArchetypeDefinition>(_selectedClass.StartingWeaponIds.Count);
@@ -10296,7 +10301,8 @@ namespace Deucarian.TemplateGameSurvivors
             GameplayEnemySpawnSafetyCheckCountForTest++;
             _lastGameplaySpawnPosition = position;
             _lastGameplaySpawnPadding = padding;
-            if (!IsWorldPositionInsideCameraViewportForTest(position, padding))
+            _lastGameplaySpawnWasInsideCameraViewport = IsWorldPositionInsideCameraViewportForTest(position, padding);
+            if (!_lastGameplaySpawnWasInsideCameraViewport)
             {
                 return;
             }
