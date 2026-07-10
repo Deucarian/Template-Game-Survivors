@@ -26,14 +26,15 @@ Human Playtest uses `Time.timeScale == 1`, an enemy spawn interval of `0.95` sec
 
 Escalation is readable but active: max alive rises by `8` about every `45` seconds, spawn interval drops by `0.08` seconds per escalation, runners can begin after about `35` seconds, bruisers after about `90` seconds, spitters after about `150` seconds, horde-rush rings begin around `75` seconds and pay out when cleared, the first elite arrives around `135` seconds, the dread elite arrives around `255` seconds, and the miniboss waits until `360` seconds.
 
-Sprint Run uses `SurvivorsPacingProfile.SprintRun`. It targets a 5-minute session with a `300` second victory time, a `270` second boss, a first elite around `82` seconds, horde pressure around `120` seconds, dread/miniboss pressure around `165`-`175` seconds, a Sprint-specific `260 + 54 per level` XP curve, an `18` second normal level-up draft cooldown, at most `1` queued level-up draft, `5` rerolls, `5` banishes, a `0.65` meta reward multiplier, a Sprint-only evolution rank assist, and no endless continuation after victory.
+Sprint Run uses `SurvivorsPacingProfile.SprintRun`. It targets a 5-minute session with a `300` second victory time, a `270` second boss, a first elite around `82` seconds, horde pressure around `120` seconds, dread/miniboss pressure around `165`-`175` seconds, a Sprint-specific `102 + 20 per level` XP curve, an `18` second normal level-up draft cooldown, at most `1` queued level-up draft, `5` rerolls, `5` banishes, a `0.65` meta reward multiplier, a Sprint-only evolution rank assist, and no endless continuation after victory.
 
 ## What To Check
 
 First 30 seconds:
 
 - The scene opens on the run-mode selector, and Standard Run starts Human Playtest rather than Debug Fast.
-- Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the starting weapon kit.
+- Basic swarm enemies enter slowly enough to read movement, dodge spacing, pickup gems, and the single authored starting attack.
+- Standard and Sprint should both begin with exactly one weapon in Current Build; the first additional attack should come from a draft, reward, or unlock pick.
 - Nearby enemies should keep slight readable spacing while pressing inward instead of collapsing into one stacked blob.
 - Arc Step moves the player out of a crowded pocket, briefly prevents damage, and shoves nearby enemies without becoming a permanent speed boost.
 - Fast projectile shots should still damage enemies they visibly cross, even during single-frame speed spikes.
@@ -93,7 +94,7 @@ After victory:
 - Press `C` or the Continue button to stay in the same build.
 - The victory panel should summarize time, level, kills, build size, run rewards, meta totals, any class unlock, next-run class choices, and affordable meta upgrades before you continue or restart.
 - Run Summary 2.0 should also include selected mode, result, XP collected, elite/miniboss/boss kills, damage taken, final health, final weapons/passives/evolutions/relics, pickup radius, magnet range, magnet speed, magnet pulse/recall stats, top-weapon placeholders if attribution is not tracked, best moment, Restart Same, Change Mode, and Continue only when Standard endless continuation is available.
-- If Ember Vanguard has just unlocked, select it from the result panel, restart, and confirm the next run starts with the broader Ember loadout and class-gated upgrade pool.
+- If Ember Vanguard has just unlocked, select it from the result panel, restart, and confirm the next run starts with Star Beam as its single authored starter plus the Ember class-gated upgrade pool.
 - Endless escalation should keep increasing horde pressure and should schedule recurring elite, miniboss, and boss threats with incoming warnings.
 - Defeating a recurring elite, miniboss, or boss should trigger Endless Surge with a tiered HUD timer, extra XP gems, a blood-shard drop, a nearby non-major enemy pulse, and temporary damage, cooldown, movement, and pickup-range momentum.
 - Killing recurring major threats should keep producing the same stronger reward drafts and arena pickup caches without ending the run again, and each new recurring major threat can still trigger its own one-shot support call-in.

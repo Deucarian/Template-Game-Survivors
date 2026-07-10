@@ -55,14 +55,11 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(2, classes.Classes.Count);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, classes.DefaultClassId);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, classes.Classes[0].Id);
-            Assert.That(classes.Classes[0].StartingWeaponIds.Count, Is.GreaterThanOrEqualTo(5));
+            Assert.AreEqual(1, classes.Classes[0].StartingWeaponIds.Count);
             Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponContentId, classes.Classes[0].StartingWeaponIds[0]);
-            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.FrostFanWeaponContentId));
-            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.OrbitWardWeaponContentId));
-            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.ThornHaloWeaponContentId));
-            Assert.That(classes.Classes[0].StartingWeaponIds, Does.Contain(BasicSurvivorsGame.StarNovaWeaponContentId));
             Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, classes.Classes[1].Id);
-            Assert.That(classes.Classes[1].StartingWeaponIds.Count, Is.GreaterThan(classes.Classes[0].StartingWeaponIds.Count));
+            Assert.AreEqual(1, classes.Classes[1].StartingWeaponIds.Count);
+            Assert.AreEqual(BasicSurvivorsGame.StarBeamWeaponContentId, classes.Classes[1].StartingWeaponIds[0]);
             Assert.That(progressionTracks.Count, Is.GreaterThanOrEqualTo(10));
             Assert.AreEqual(SurvivorsProgressionTrackKind.PassiveAtlas, progressionTracks[0].Kind);
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, progressionTracks[0].ClassId);
@@ -697,13 +694,17 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(authored.RunUpgradeMetadata.Count, Is.EqualTo(authored.RunUpgradeCatalog.Definitions.Count));
             Assert.That(authored.RelicDefinitions.Count, Is.GreaterThanOrEqualTo(6));
             Assert.That(authored.ClassLibrary.Classes.Count, Is.GreaterThanOrEqualTo(2));
+            Assert.AreEqual(1, authored.ClassLibrary.Classes[0].StartingWeaponIds.Count);
+            Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponContentId, authored.ClassLibrary.Classes[0].StartingWeaponIds[0]);
+            Assert.AreEqual(1, authored.ClassLibrary.Classes[1].StartingWeaponIds.Count);
+            Assert.AreEqual(BasicSurvivorsGame.StarBeamWeaponContentId, authored.ClassLibrary.Classes[1].StartingWeaponIds[0]);
             Assert.That(authored.ProgressionTracks.Count, Is.GreaterThanOrEqualTo(8));
             Assert.AreEqual("Sprint Run", sprint.RunModeDisplayName);
             Assert.AreEqual("5 min", sprint.RunModeDurationLabel);
             Assert.That(sprint.RunModeDescription, Does.Contain("quicker XP"));
             Assert.AreEqual(300f, sprint.SurvivalVictoryTimeSeconds);
-            Assert.AreEqual(260, sprint.ExperienceRequiredBase);
-            Assert.AreEqual(54, sprint.ExperienceRequiredPerLevel);
+            Assert.AreEqual(102, sprint.ExperienceRequiredBase);
+            Assert.AreEqual(20, sprint.ExperienceRequiredPerLevel);
             Assert.AreEqual(75, sprint.NormalEarlyCommonWeight);
             Assert.AreEqual(120, sprint.BossLegendaryWeight);
             Assert.AreEqual(BasicSurvivorsGame.MinibossEnemySpawnableId.Value, flow.Miniboss.Id);
@@ -765,6 +766,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Assert.IsTrue(controller.IsUsingAuthoredRunFlow);
                 Assert.That(controller.AuthoredContentStatus, Does.Contain("10 weapons"));
                 Assert.That(controller.AuthoredContentStatus, Does.Contain("10 enemies"));
+                Assert.AreEqual(1, controller.ActiveWeaponCount);
+                Assert.That(controller.ActiveWeaponIds, Does.Contain(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+                Assert.That(controller.CurrentBuildHudLinesForTest()[0], Does.Contain("Weapons 1/"));
                 Assert.AreEqual(BasicSurvivorsGame.BossEnemySpawnableId.Value, controller.CurrentRunFlowDefinition.Boss.Id);
                 Assert.IsTrue(controller.CurrentRunFlowDefinition.Boss.ShowBossLifeBar);
                 Assert.IsTrue(controller.CurrentRunFlowDefinition.Miniboss.ShowOverheadLifeBar);
@@ -867,6 +871,116 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             finally
             {
                 DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void ControllerUsesAuthoredUpgradeAmountsWhenSampleContentChanges()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = ReplaceFirst(
+                File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json")),
+                "\"amount\": 2.0,",
+                "\"amount\": 9.5,");
+            string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            try
+            {
+                Assert.IsTrue(
+                    controller.ConfigureAuthoredContentJson(
+                        weaponJson,
+                        upgradeJson,
+                        relicJson,
+                        classJson,
+                        progressionJson,
+                        enemyJson,
+                        runFlowJson,
+                        rewardJson),
+                    controller.AuthoredContentStatus);
+
+                controller.StartRun();
+                float previousDamage = controller.DamageBonus;
+
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+                Assert.AreEqual(previousDamage + 9.5f, controller.DamageBonus, 0.001f);
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void AuthoredProgressionTracksDriveClassSpecificUpgradeGates()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            upgradeJson = upgradeJson.Replace(
+                ",\n      \"allowedClasses\": [\n        \"class.survivors.ember-vanguard\"\n      ]",
+                string.Empty);
+            upgradeJson = upgradeJson.Replace(
+                ",\r\n      \"allowedClasses\": [\r\n        \"class.survivors.ember-vanguard\"\r\n      ]",
+                string.Empty);
+            string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+
+            SurvivorsTemplateController defaultController = CreateController(startRun: false);
+            try
+            {
+                Assert.IsTrue(
+                    defaultController.ConfigureAuthoredContentJson(
+                        weaponJson,
+                        upgradeJson,
+                        relicJson,
+                        classJson,
+                        progressionJson,
+                        enemyJson,
+                        runFlowJson,
+                        rewardJson),
+                    defaultController.AuthoredContentStatus);
+                defaultController.StartRun();
+
+                Assert.IsFalse(defaultController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId));
+            }
+            finally
+            {
+                DestroyController(defaultController);
+            }
+
+            SurvivorsTemplateController emberController = CreateController(startRun: false);
+            try
+            {
+                Assert.IsTrue(
+                    emberController.ConfigureAuthoredContentJson(
+                        weaponJson,
+                        upgradeJson,
+                        relicJson,
+                        classJson,
+                        progressionJson,
+                        enemyJson,
+                        runFlowJson,
+                        rewardJson),
+                    emberController.AuthoredContentStatus);
+                Assert.IsTrue(emberController.UnlockClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+                Assert.IsTrue(emberController.TrySelectClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
+                emberController.StartRun();
+
+                Assert.IsTrue(emberController.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId));
+            }
+            finally
+            {
+                DestroyController(emberController);
             }
         }
 
@@ -1054,8 +1168,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(sprint.draftBanishCharges, Is.GreaterThan(human.draftBanishCharges));
             Assert.That(sprint.hordeRushClearExperienceGemCount, Is.EqualTo(2));
             Assert.That(sprint.hordeRushClearExperienceMultiplier, Is.EqualTo(1.8f).Within(0.001f));
-            Assert.That(sprint.experienceRequiredBase, Is.EqualTo(260));
-            Assert.That(sprint.experienceRequiredPerLevel, Is.EqualTo(54));
+            Assert.That(sprint.experienceRequiredBase, Is.EqualTo(102));
+            Assert.That(sprint.experienceRequiredPerLevel, Is.EqualTo(20));
             Assert.That(sprint.levelUpDraftCooldownSeconds, Is.EqualTo(18f).Within(0.001f));
             Assert.That(sprint.maximumQueuedLevelUps, Is.EqualTo(1));
             Assert.That(human.payloadHazardChainSnareThreshold, Is.GreaterThanOrEqualTo(4));
@@ -1173,6 +1287,23 @@ namespace Deucarian.TemplateGameSurvivors.Tests
 
             Assert.IsFalse(result.Succeeded);
             StringAssert.Contains("missing evolution upgrade records", errors);
+        }
+
+        [Test]
+        public void SampleUpgradeContentRequiresExplicitEffectAmounts()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = ReplaceFirst(
+                File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json")),
+                "\"amount\": 2.0,",
+                string.Empty);
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("Upgrade upgrade.survivors.arcane-damage is missing a non-zero amount", errors);
         }
 
         [Test]
@@ -1835,9 +1966,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         [Test]
         public void OrbitUpgradeAddsBladeToLocalWeaponRuntime()
         {
-            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
+            SurvivorsTemplateController controller = CreateController();
             try
             {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
                 controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 20f);
                 Step(controller, 1, 1f / 60f);
                 int baseline = controller.ActiveOrbitBladeCount;
@@ -1877,17 +2009,18 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         [Test]
         public void PayloadUpgradeAppliesLocalBonus()
         {
-            SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
+            SurvivorsTemplateController controller = CreateController();
             try
             {
                 Assert.AreEqual(0f, controller.PayloadExplosionRadiusBonus);
 
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.BiggerBoomsUpgradeId));
 
                 Assert.That(controller.PayloadExplosionRadiusBonus, Is.GreaterThan(0f));
-                Assert.AreEqual(3, controller.SelectedUpgradeCount);
+                Assert.AreEqual(4, controller.SelectedUpgradeCount);
             }
             finally
             {
@@ -2112,6 +2245,13 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             {
                 UnityEngine.Object.DestroyImmediate(controller.gameObject);
             }
+        }
+
+        private static string ReplaceFirst(string text, string oldValue, string newValue)
+        {
+            int index = text.IndexOf(oldValue, StringComparison.Ordinal);
+            Assert.That(index, Is.GreaterThanOrEqualTo(0), "Text did not contain expected fragment: " + oldValue);
+            return text.Substring(0, index) + newValue + text.Substring(index + oldValue.Length);
         }
 
         private sealed class LegacyMetaProfileV1

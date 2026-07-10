@@ -141,12 +141,12 @@ namespace Deucarian.TemplateGameSurvivors
             RewardLibraryJson rewards = ParseJson<RewardLibraryJson>(rewardJson, "reward library", errors, required: true);
 
             SurvivorsWeaponArchetypeDefinition[] weaponDefinitions = CreateWeaponDefinitions(weapons, errors);
-            RunUpgradeCatalog runUpgradeCatalog = CreateRunUpgradeCatalog(upgrades, errors);
-            SurvivorsRunUpgradeMetadata[] runUpgradeMetadata = CreateRunUpgradeMetadata(upgrades, errors);
-            SurvivorsClassUpgradeGateDefinition[] classUpgradeGates = CreateClassUpgradeGates(upgrades);
+            RunUpgradeCatalog runUpgradeCatalog = CreateRunUpgradeCatalog(upgrades, errors, requireFullContent);
             SurvivorsRelicDefinition[] relicDefinitions = CreateRelicDefinitions(relics, errors);
             SurvivorsClassLibraryDefinition classLibrary = CreateClassLibraryDefinition(classes, errors);
             SurvivorsProgressionTrackDefinition[] progressionTracks = CreateProgressionTracks(progression, errors);
+            SurvivorsRunUpgradeMetadata[] runUpgradeMetadata = CreateRunUpgradeMetadata(upgrades, errors);
+            SurvivorsClassUpgradeGateDefinition[] classUpgradeGates = CreateClassUpgradeGates(upgrades, progressionTracks);
             SurvivorsEnemyProfile[] enemyProfiles = CreateEnemyProfiles(enemies, errors);
             Dictionary<SurvivorsEnemyRole, SurvivorsEnemyProfile> enemyProfilesByRole = IndexEnemyProfiles(enemyProfiles, errors);
             Dictionary<string, RunFlowProfileRecordJson> runFlowProfiles = IndexRunFlowProfiles(runFlow, errors);
@@ -427,7 +427,7 @@ namespace Deucarian.TemplateGameSurvivors
             return definitions.ToArray();
         }
 
-        private static RunUpgradeCatalog CreateRunUpgradeCatalog(UpgradeLibraryJson library, List<string> errors)
+        private static RunUpgradeCatalog CreateRunUpgradeCatalog(UpgradeLibraryJson library, List<string> errors, bool requireExplicitValues)
         {
             if (library == null || library.upgrades == null)
             {
@@ -452,7 +452,12 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 fallbackById.TryGetValue(record.id, out RunUpgradeDefinition fallback);
-                IReadOnlyList<RunUpgradeEffectDescriptor> effects = CreateUpgradeEffects(record, fallback, errors);
+                if (requireExplicitValues)
+                {
+                    ValidateExplicitUpgradeValues(record, errors);
+                }
+
+                IReadOnlyList<RunUpgradeEffectDescriptor> effects = CreateUpgradeEffects(record, errors);
                 if (effects.Count == 0)
                 {
                     continue;
@@ -496,7 +501,6 @@ namespace Deucarian.TemplateGameSurvivors
                 return Array.Empty<SurvivorsRunUpgradeMetadata>();
             }
 
-            Dictionary<string, SurvivorsRunUpgradeMetadata> fallbackById = IndexRunUpgradeMetadata(BasicSurvivorsGame.CreateRunUpgradeMetadata());
             var metadata = new List<SurvivorsRunUpgradeMetadata>(library.upgrades.Length);
             for (int i = 0; i < library.upgrades.Length; i++)
             {
@@ -512,22 +516,15 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
-                fallbackById.TryGetValue(record.id, out SurvivorsRunUpgradeMetadata fallback);
                 string affectedContentId = !string.IsNullOrWhiteSpace(record.affectedContentId)
                     ? record.affectedContentId
-                    : (fallback == null ? ResolveAffectedContentId(record.target) : fallback.AffectedContentId);
+                    : ResolveAffectedContentId(record.target);
                 string requiredOwnedWeaponId = !string.IsNullOrWhiteSpace(record.requiredOwnedWeaponId)
                     ? record.requiredOwnedWeaponId
-                    : (fallback == null ? ResolveRequiredOwnedWeaponId(category, affectedContentId) : fallback.RequiredOwnedWeaponId);
-                string requiredUpgradeId = !string.IsNullOrWhiteSpace(record.requiredUpgradeId)
-                    ? record.requiredUpgradeId
-                    : (fallback == null ? string.Empty : fallback.RequiredUpgradeId);
-                int requiredUpgradeRank = record.requiredUpgradeRank > 0
-                    ? record.requiredUpgradeRank
-                    : (fallback == null ? 0 : fallback.RequiredUpgradeRank);
-                string requiredPassiveUpgradeId = !string.IsNullOrWhiteSpace(record.requiredPassiveUpgradeId)
-                    ? record.requiredPassiveUpgradeId
-                    : (fallback == null ? string.Empty : fallback.RequiredPassiveUpgradeId);
+                    : ResolveRequiredOwnedWeaponId(category, affectedContentId);
+                string requiredUpgradeId = record.requiredUpgradeId ?? string.Empty;
+                int requiredUpgradeRank = record.requiredUpgradeRank;
+                string requiredPassiveUpgradeId = record.requiredPassiveUpgradeId ?? string.Empty;
 
                 metadata.Add(new SurvivorsRunUpgradeMetadata(
                     record.id,
@@ -545,26 +542,83 @@ namespace Deucarian.TemplateGameSurvivors
             return metadata.ToArray();
         }
 
-        private static SurvivorsClassUpgradeGateDefinition[] CreateClassUpgradeGates(UpgradeLibraryJson library)
+        private static SurvivorsClassUpgradeGateDefinition[] CreateClassUpgradeGates(
+            UpgradeLibraryJson library,
+            IReadOnlyList<SurvivorsProgressionTrackDefinition> progressionTracks)
         {
-            if (library == null || library.upgrades == null)
+            var allowedClassIdsByUpgradeId = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            if (progressionTracks != null)
             {
-                return Array.Empty<SurvivorsClassUpgradeGateDefinition>();
+                for (int trackIndex = 0; trackIndex < progressionTracks.Count; trackIndex++)
+                {
+                    SurvivorsProgressionTrackDefinition track = progressionTracks[trackIndex];
+                    if (track == null || !track.IsClassSpecific)
+                    {
+                        continue;
+                    }
+
+                    for (int nodeIndex = 0; nodeIndex < track.Nodes.Count; nodeIndex++)
+                    {
+                        SurvivorsProgressionNodeDefinition node = track.Nodes[nodeIndex];
+                        if (node != null)
+                        {
+                            AddClassUpgradeGate(allowedClassIdsByUpgradeId, node.UpgradeId, track.ClassId);
+                        }
+                    }
+                }
             }
 
-            var gates = new List<SurvivorsClassUpgradeGateDefinition>();
-            for (int i = 0; i < library.upgrades.Length; i++)
+            if (library != null && library.upgrades != null)
             {
-                UpgradeRecordJson record = library.upgrades[i];
-                if (record == null || string.IsNullOrWhiteSpace(record.id) || record.allowedClasses == null || record.allowedClasses.Length == 0)
+                for (int i = 0; i < library.upgrades.Length; i++)
                 {
-                    continue;
-                }
+                    UpgradeRecordJson record = library.upgrades[i];
+                    if (record == null || string.IsNullOrWhiteSpace(record.id) || record.allowedClasses == null || record.allowedClasses.Length == 0)
+                    {
+                        continue;
+                    }
 
-                gates.Add(new SurvivorsClassUpgradeGateDefinition(record.id, record.allowedClasses));
+                    for (int classIndex = 0; classIndex < record.allowedClasses.Length; classIndex++)
+                    {
+                        AddClassUpgradeGate(allowedClassIdsByUpgradeId, record.id, record.allowedClasses[classIndex]);
+                    }
+                }
+            }
+
+            var gates = new List<SurvivorsClassUpgradeGateDefinition>(allowedClassIdsByUpgradeId.Count);
+            foreach (KeyValuePair<string, List<string>> pair in allowedClassIdsByUpgradeId)
+            {
+                if (!string.IsNullOrWhiteSpace(pair.Key) && pair.Value.Count > 0)
+                {
+                    gates.Add(new SurvivorsClassUpgradeGateDefinition(pair.Key, pair.Value));
+                }
             }
 
             return gates.ToArray();
+        }
+
+        private static void AddClassUpgradeGate(Dictionary<string, List<string>> allowedClassIdsByUpgradeId, string upgradeId, string classId)
+        {
+            if (allowedClassIdsByUpgradeId == null || string.IsNullOrWhiteSpace(upgradeId) || string.IsNullOrWhiteSpace(classId))
+            {
+                return;
+            }
+
+            if (!allowedClassIdsByUpgradeId.TryGetValue(upgradeId, out List<string> classIds))
+            {
+                classIds = new List<string>();
+                allowedClassIdsByUpgradeId.Add(upgradeId, classIds);
+            }
+
+            for (int i = 0; i < classIds.Count; i++)
+            {
+                if (string.Equals(classIds[i], classId, StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            classIds.Add(classId);
         }
 
         private static SurvivorsRelicDefinition[] CreateRelicDefinitions(RelicLibraryJson library, List<string> errors)
@@ -793,7 +847,44 @@ namespace Deucarian.TemplateGameSurvivors
             return index;
         }
 
-        private static IReadOnlyList<RunUpgradeEffectDescriptor> CreateUpgradeEffects(UpgradeRecordJson record, RunUpgradeDefinition fallback, List<string> errors)
+        private static void ValidateExplicitUpgradeValues(UpgradeRecordJson record, List<string> errors)
+        {
+            if (record == null || errors == null)
+            {
+                return;
+            }
+
+            if (record.weight <= 0d)
+            {
+                errors.Add($"Authored upgrade {record.id} must define weight above zero.");
+            }
+
+            if (record.maxRank <= 0)
+            {
+                errors.Add($"Authored upgrade {record.id} must define max rank above zero.");
+            }
+
+            if (record.effects != null && record.effects.Length > 0)
+            {
+                for (int i = 0; i < record.effects.Length; i++)
+                {
+                    UpgradeEffectRecordJson effect = record.effects[i];
+                    if (effect == null || Math.Abs(effect.amount) <= double.Epsilon)
+                    {
+                        errors.Add($"Authored upgrade {record.id} effect at index {i} must define a non-zero amount.");
+                    }
+                }
+
+                return;
+            }
+
+            if (Math.Abs(record.amount) <= double.Epsilon)
+            {
+                errors.Add($"Authored upgrade {record.id} must define a non-zero amount.");
+            }
+        }
+
+        private static IReadOnlyList<RunUpgradeEffectDescriptor> CreateUpgradeEffects(UpgradeRecordJson record, List<string> errors)
         {
             if (record.effects != null && record.effects.Length > 0)
             {
@@ -823,52 +914,12 @@ namespace Deucarian.TemplateGameSurvivors
                     new RunUpgradeEffectDescriptor(
                         new RunUpgradeEffectId(record.effect),
                         new RunUpgradeTargetId(record.target),
-                        ResolveUpgradeAmount(record, fallback))
+                        record.amount)
                 };
             }
 
-            return fallback == null ? Array.Empty<RunUpgradeEffectDescriptor>() : CopyEffects(fallback.Effects);
-        }
-
-        private static RunUpgradeEffectDescriptor[] CopyEffects(IReadOnlyList<RunUpgradeEffectDescriptor> source)
-        {
-            if (source == null || source.Count == 0)
-            {
-                return Array.Empty<RunUpgradeEffectDescriptor>();
-            }
-
-            var copy = new RunUpgradeEffectDescriptor[source.Count];
-            for (int i = 0; i < source.Count; i++)
-            {
-                copy[i] = source[i];
-            }
-
-            return copy;
-        }
-
-        private static double ResolveUpgradeAmount(UpgradeRecordJson record, RunUpgradeDefinition fallback)
-        {
-            if (record.amount != 0d)
-            {
-                return record.amount;
-            }
-
-            if (fallback != null)
-            {
-                for (int i = 0; i < fallback.Effects.Count; i++)
-                {
-                    RunUpgradeEffectDescriptor effect = fallback.Effects[i];
-                    if (string.Equals(effect.EffectId.Value, record.effect, StringComparison.Ordinal) &&
-                        string.Equals(effect.TargetId.Value, record.target, StringComparison.Ordinal))
-                    {
-                        return effect.Amount;
-                    }
-                }
-
-                return fallback.Effects[0].Amount;
-            }
-
-            return 1d;
+            errors.Add($"Authored upgrade {record.id} is missing an effect or target.");
+            return Array.Empty<RunUpgradeEffectDescriptor>();
         }
 
         private static SurvivorsClassStatModifierDefinition[] CreateClassStatModifiers(StatModifierRecordJson[] records, string classId, List<string> errors)

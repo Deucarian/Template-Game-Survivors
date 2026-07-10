@@ -1024,14 +1024,26 @@ namespace Deucarian.TemplateGameSurvivors
                     result.AddError($"Duplicate upgrade id: {upgrade.id}");
                 }
 
-                if (string.IsNullOrWhiteSpace(upgrade.effect))
+                bool hasInlineEffect = !string.IsNullOrWhiteSpace(upgrade.effect) && !string.IsNullOrWhiteSpace(upgrade.target);
+                bool hasEffectList = upgrade.effects != null && upgrade.effects.Length > 0;
+                if (!hasInlineEffect && !hasEffectList)
                 {
-                    result.AddError($"Upgrade {upgrade.id} is missing an effect id.");
+                    result.AddError($"Upgrade {upgrade.id} is missing an effect definition.");
                 }
 
-                if (!knownTargets.Contains(upgrade.target))
+                if (hasInlineEffect && !knownTargets.Contains(upgrade.target))
                 {
                     result.AddError($"Upgrade {upgrade.id} references unknown target: {upgrade.target}");
+                }
+
+                if (hasInlineEffect && Math.Abs(upgrade.amount) <= double.Epsilon)
+                {
+                    result.AddError($"Upgrade {upgrade.id} is missing a non-zero amount.");
+                }
+
+                if (hasEffectList)
+                {
+                    ValidateUpgradeEffectList(upgrade, knownTargets, result);
                 }
 
                 ValidateAllowedClassIds("Upgrade " + upgrade.id, upgrade.allowedClasses, knownClassIds, result);
@@ -1072,6 +1084,16 @@ namespace Deucarian.TemplateGameSurvivors
             if (string.IsNullOrWhiteSpace(upgrade.description))
             {
                 result.AddError($"Upgrade {upgrade.id} is missing draft description text.");
+            }
+
+            if (upgrade.weight <= 0d)
+            {
+                result.AddError($"Upgrade {upgrade.id} requires weight above zero.");
+            }
+
+            if (upgrade.maxRank <= 0)
+            {
+                result.AddError($"Upgrade {upgrade.id} requires max rank above zero.");
             }
 
             bool isEvolution = false;
@@ -1122,6 +1144,42 @@ namespace Deucarian.TemplateGameSurvivors
             if (string.IsNullOrWhiteSpace(upgrade.requiredPassiveUpgradeId))
             {
                 result.AddError($"Evolution upgrade {upgrade.id} requires a passive prerequisite.");
+            }
+        }
+
+        private static void ValidateUpgradeEffectList(
+            UpgradeRecordJson upgrade,
+            HashSet<string> knownTargets,
+            SurvivorsContentValidationResult result)
+        {
+            if (upgrade == null || upgrade.effects == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < upgrade.effects.Length; i++)
+            {
+                UpgradeEffectRecordJson effect = upgrade.effects[i];
+                if (effect == null)
+                {
+                    result.AddError($"Upgrade {upgrade.id} effect at index {i} is null.");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(effect.effect))
+                {
+                    result.AddError($"Upgrade {upgrade.id} effect at index {i} is missing an effect id.");
+                }
+
+                if (string.IsNullOrWhiteSpace(effect.target) || knownTargets == null || !knownTargets.Contains(effect.target))
+                {
+                    result.AddError($"Upgrade {upgrade.id} effect at index {i} references unknown target: {effect.target}");
+                }
+
+                if (Math.Abs(effect.amount) <= double.Epsilon)
+                {
+                    result.AddError($"Upgrade {upgrade.id} effect at index {i} is missing a non-zero amount.");
+                }
             }
         }
 
@@ -2633,7 +2691,7 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError($"Class {resolvedId} references unknown starting weapon: {startingWeaponId}");
             }
 
-            ValidateClassStartingWeaponIds(resolvedId, startingWeaponIds, knownWeaponIds, result);
+            ValidateClassStartingWeaponIds(resolvedId, startingWeaponId, startingWeaponIds, knownWeaponIds, result);
 
             if (!unlockedByDefault && string.IsNullOrWhiteSpace(unlockRewardId))
             {
@@ -2684,7 +2742,7 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError($"Class {resolvedId} references unknown starting weapon: {startingWeaponId}");
             }
 
-            ValidateClassStartingWeaponIds(resolvedId, startingWeaponIds, knownWeaponIds, result);
+            ValidateClassStartingWeaponIds(resolvedId, startingWeaponId, startingWeaponIds, knownWeaponIds, result);
 
             if (!unlockedByDefault && string.IsNullOrWhiteSpace(unlockRewardId))
             {
@@ -2715,6 +2773,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static void ValidateClassStartingWeaponIds(
             string classId,
+            string startingWeaponId,
             IReadOnlyList<string> startingWeaponIds,
             HashSet<string> knownWeaponIds,
             SurvivorsContentValidationResult result)
@@ -2723,6 +2782,11 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 result.AddError($"Class {classId} requires at least one starting weapon in its loadout.");
                 return;
+            }
+
+            if (startingWeaponIds.Count != 1)
+            {
+                result.AddError($"Class {classId} must define exactly one starting weapon in its playable loadout.");
             }
 
             var seen = new HashSet<string>(StringComparer.Ordinal);
@@ -2744,6 +2808,11 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError($"Class {classId} references unknown loadout weapon: {weaponId}");
                 }
+            }
+
+            if (startingWeaponIds.Count == 1 && !string.Equals(startingWeaponIds[0], startingWeaponId, StringComparison.Ordinal))
+            {
+                result.AddError($"Class {classId} startingWeaponId must match its single startingWeaponIds entry.");
             }
         }
 
@@ -3339,13 +3408,25 @@ namespace Deucarian.TemplateGameSurvivors
             public string displayName;
             public string category;
             public string rarity;
+            public double weight;
+            public int maxRank;
             public string effect;
             public string target;
+            public double amount;
+            public UpgradeEffectRecordJson[] effects;
             public string description;
             public string requiredUpgradeId;
             public int requiredUpgradeRank;
             public string requiredPassiveUpgradeId;
             public string[] allowedClasses;
+        }
+
+        [Serializable]
+        private sealed class UpgradeEffectRecordJson
+        {
+            public string effect;
+            public string target;
+            public double amount;
         }
 
         [Serializable]

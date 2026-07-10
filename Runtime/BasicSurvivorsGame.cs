@@ -1099,7 +1099,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemyMaxHealth = 15.5f;
             tuning.EnemyMoveSpeed = 2.25f;
             tuning.EnemySeparationStrength = 0.9f;
-            tuning.EnemyContactDamage = 6.5f;
+            tuning.EnemyContactDamage = 2.75f;
             tuning.EnemyRangedAttackWindupSeconds = 0.2f;
             tuning.EnemySoftLeashRadius = 16f;
             tuning.EnemyHardRecycleRadius = 26f;
@@ -1317,10 +1317,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EndlessSurgePulseRadius = 6.2f;
             tuning.HealthPickupHealAmount = 12;
             tuning.BloodShardPickupAmount = 1;
-            tuning.StartingBarrierCapacity = 2f;
+            tuning.StartingBarrierCapacity = 18f;
             tuning.BaseBarrierRegenPerSecond = 0.04f;
-            tuning.ExperienceRequiredBase = 260;
-            tuning.ExperienceRequiredPerLevel = 54;
+            tuning.ExperienceRequiredBase = 102;
+            tuning.ExperienceRequiredPerLevel = 20;
             tuning.LevelUpDraftCooldownSeconds = 18f;
             tuning.MaximumQueuedLevelUps = 1;
             tuning.DraftRerollCharges = 5;
@@ -2273,11 +2273,7 @@ namespace Deucarian.TemplateGameSurvivors
                     startingStatModifiers: Array.Empty<SurvivorsClassStatModifierDefinition>(),
                     startingWeaponIds: new[]
                     {
-                        ArcaneWandWeaponContentId,
-                        FrostFanWeaponContentId,
-                        OrbitWardWeaponContentId,
-                        ThornHaloWeaponContentId,
-                        StarNovaWeaponContentId
+                        ArcaneWandWeaponContentId
                     }),
                 new SurvivorsClassDefinition(
                     EmberVanguardClassId,
@@ -2293,16 +2289,7 @@ namespace Deucarian.TemplateGameSurvivors
                     },
                     startingWeaponIds: new[]
                     {
-                        ArcaneWandWeaponContentId,
-                        FrostFanWeaponContentId,
-                        OrbitWardWeaponContentId,
-                        ThornHaloWeaponContentId,
-                        MoonSlashWeaponContentId,
-                        StarNovaWeaponContentId,
-                        StarBeamWeaponContentId,
-                        GravityGrenadeWeaponContentId,
-                        RuneTrapWeaponContentId,
-                        AetherMineWeaponContentId
+                        StarBeamWeaponContentId
                     })
             }, DefaultClassId);
         }

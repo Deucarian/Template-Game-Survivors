@@ -107,7 +107,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.RunTimeSeconds, Is.GreaterThan(startingRunTime));
             Assert.That(controller.InfiniteArenaTileCountForTest, Is.GreaterThan(0));
             Assert.That(controller.InfiniteArenaLandmarkCountForTest, Is.GreaterThan(0));
-            Assert.That(controller.ActiveWeaponCount, Is.GreaterThanOrEqualTo(1));
+            Assert.AreEqual(1, controller.ActiveWeaponCount);
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+            Assert.That(controller.CurrentBuildHudLinesForTest()[0], Does.Contain("Weapons 1/"));
 
             AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
             if (unload != null)
@@ -912,6 +914,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual("Standard Run", controller.CurrentRunModeDisplayName);
             Assert.AreEqual(1800f, controller.CurrentTuning.SurvivalVictoryTimeSeconds);
             Assert.IsTrue(controller.CurrentTuning.EndlessContinuationEnabled);
+            Assert.AreEqual(1, controller.ActiveWeaponCount);
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+            Assert.That(controller.CurrentBuildHudLinesForTest()[0], Does.Contain("Weapons 1/"));
             controller.Simulate(1.2f, Vector2.zero);
             Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("Standard Run"));
             Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("LEFT 29:58"));
@@ -931,6 +936,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual("Sprint Run", controller.CurrentRunModeDisplayName);
             Assert.AreEqual(300f, controller.CurrentTuning.SurvivalVictoryTimeSeconds);
             Assert.IsFalse(controller.CurrentTuning.EndlessContinuationEnabled);
+            Assert.AreEqual(1, controller.ActiveWeaponCount);
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+            Assert.That(controller.CurrentBuildHudLinesForTest()[0], Does.Contain("Weapons 1/"));
             controller.Simulate(1.2f, Vector2.zero);
             Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("Sprint Run"));
             Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("LEFT 04:58"));
@@ -3042,20 +3050,20 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.AreEqual(BasicSurvivorsGame.DefaultClassId, controller.SelectedClassId);
-            Assert.That(controller.ActiveWeaponCount, Is.GreaterThanOrEqualTo(5));
+            Assert.AreEqual(1, controller.ActiveWeaponCount);
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ArcaneWandWeaponContentId));
-            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.FrostFanWeaponContentId));
-            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.OrbitWardWeaponContentId));
-            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ThornHaloWeaponContentId));
-            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarNovaWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.FrostFanWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.OrbitWardWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ThornHaloWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarNovaWeaponContentId));
             Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
-            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
             Assert.AreEqual(SurvivorsRunUpgradeCategory.Weapon, controller.GetUpgradeCategoryForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
-            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
-            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
             Assert.IsFalse(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
@@ -3077,9 +3085,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
-            Assert.AreEqual(controller.MaxWeaponSlots, controller.ActiveWeaponCount);
-            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
-            Assert.IsFalse(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            Assert.AreEqual(2, controller.ActiveWeaponCount);
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), 1f);
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Hitscan));
@@ -3129,8 +3137,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
-            Assert.AreEqual(5, controller.ActiveWeaponCount);
+            Assert.AreEqual(1, controller.ActiveWeaponCount);
             Assert.AreEqual(0, controller.WeaponLoadoutSurgeActivationCount);
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ThornHaloUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
+            Assert.AreEqual(controller.MaxWeaponSlots - 1, controller.ActiveWeaponCount);
 
             SurvivorsEnemyActor pulseTargetA = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.2f, 0f, 0f), SurvivorsEnemyRole.Swarm, 5f);
             SurvivorsEnemyActor pulseTargetB = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0f, 0f, 2.3f), SurvivorsEnemyRole.Runner, 5f);
@@ -3191,8 +3204,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
-            Assert.AreEqual(controller.MaxWeaponSlots, controller.ActiveWeaponCount);
-            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
+            Assert.AreEqual(2, controller.ActiveWeaponCount);
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId));
 
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ExtraPayloadUpgradeId));
@@ -3450,6 +3463,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(0, controller.EvolutionChainSurgeActivationCount);
             Assert.IsFalse(controller.IsEvolutionChainSurgeActive);
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
             for (int i = 0; i < 5; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
@@ -3544,6 +3558,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
             for (int i = 0; i < 5; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
@@ -3580,6 +3595,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
             SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(4f, 0f, 0f), 1000f);
             Assert.IsFalse(enemy.IsMovementSlowed);
 
@@ -3607,6 +3623,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
             SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.2f, 0f, 0f), 1000f);
             Assert.IsFalse(enemy.IsBurning);
 
@@ -3637,6 +3654,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
             for (int i = 0; i < 5; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.NovaEchoUpgradeId));
@@ -3737,6 +3755,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateController();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ThornHaloUnlockUpgradeId));
             for (int i = 0; i < 5; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
@@ -3772,6 +3792,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
             for (int i = 0; i < 5; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
@@ -3810,6 +3831,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostSplinterUpgradeId));
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.FrostRicochetUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUnlockUpgradeId));
             for (int i = 0; i < 2; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.FrostFanUpgradeId));
@@ -3838,6 +3860,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CinderEchoUpgradeId));
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.TargetedSigilUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
             for (int i = 0; i < 2; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.NovaEchoUpgradeId));
@@ -3859,6 +3882,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.HasEvolvedUpgradeForTest(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId));
 
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.SerratedOrbitUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ThornHaloUnlockUpgradeId));
             for (int i = 0; i < 2; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitingFocusUpgradeId));
@@ -3907,6 +3932,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 1f);
             for (int i = 0; i < 20; i++)
             {
@@ -3930,6 +3956,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.CurrentTuning.CrimsonAegisOrbitKnockbackDistance = 0.72f;
             controller.StartRun();
             yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
 
             Vector3 basePosition = controller.PlayerPosition + new Vector3(controller.CurrentTuning.OrbitRadius + 0.08f, 0f, 0f);
             SurvivorsEnemyActor baseEnemy = controller.SpawnEnemyForTest(basePosition, 1000f);
@@ -3974,6 +4002,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
+
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(1.4f, 0f, 0f), 1f);
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Melee));
             yield return null;
@@ -3996,6 +4027,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         {
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.OrbitWardUnlockUpgradeId));
 
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(2.1f, 0f, 0f), 20f);
             controller.Simulate(1f / 60f);
@@ -4140,6 +4173,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GravityGrenadeUnlockUpgradeId));
+
             controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(0.8f, 0f, 0f), 100f);
 
             Assert.IsTrue(controller.FireWeaponForTest(SurvivorsWeaponArchetype.Grenade));
@@ -4161,6 +4196,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.TrySelectClassForTest(BasicSurvivorsGame.EmberVanguardClassId));
             controller.StartRun();
             yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneTrapUnlockUpgradeId));
 
             SurvivorsEnemyActor enemy = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(6f, 0f, 0f), SurvivorsEnemyRole.Bruiser, 6.5f);
 
@@ -4297,6 +4334,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.RuneTrapWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.AetherMineWeaponContentId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneTrapUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.AetherMineUnlockUpgradeId));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.RuneTrapWeaponContentId));
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.AetherMineWeaponContentId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
@@ -4352,6 +4393,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneTrapUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.AetherMineUnlockUpgradeId));
             for (int i = 0; i < 5; i++)
             {
                 Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.RuneLatticeUpgradeId));
@@ -4383,6 +4426,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateController();
             yield return null;
 
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.StarNovaUnlockUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GiantRuneUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GiantRuneUpgradeId));
             Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GiantRuneUpgradeId));
@@ -5796,9 +5840,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(controller.CurrentTuning.PlayerMoveSpeed));
             Assert.That(controller.ProjectileDamage, Is.GreaterThan(controller.CurrentTuning.ProjectileDamage));
             Assert.That(controller.MaxHealth, Is.GreaterThan(controller.CurrentTuning.PlayerMaxHealth));
-            Assert.That(controller.ActiveWeaponCount, Is.GreaterThan(1));
+            Assert.AreEqual(1, controller.ActiveWeaponCount);
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
-            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.PrismaticBeamUpgradeId));
 
             Object.Destroy(controller.gameObject);
@@ -5819,9 +5863,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             SurvivorsTemplateController controller = CreateControllerWithClass(BasicSurvivorsGame.EmberVanguardClassId);
             yield return null;
 
-            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.MoonSlashWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.MoonSlashWeaponContentId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
-            Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
+            Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.MoonSlashUnlockUpgradeId));
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.MoonSlashWeaponContentId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
             Assert.IsTrue(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.MoonlitEdgeUpgradeId));
             Assert.IsFalse(controller.IsUpgradeEligibleInCurrentBuildForTest(BasicSurvivorsGame.CrescentChainUpgradeId));
@@ -5954,7 +6000,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, controller.SelectedClassId);
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));
-            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
+            Assert.IsFalse(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.GravityGrenadeWeaponContentId));
             Assert.IsTrue(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.EmberForgeHeartUpgradeId));
 
             Object.Destroy(controller.gameObject);
@@ -6211,9 +6257,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         private static void AssertLastGameplaySpawnOutsideViewport(SurvivorsTemplateController controller)
         {
             Assert.IsFalse(
-                controller.IsWorldPositionInsideCameraViewportForTest(
-                    controller.LastGameplaySpawnPositionForTest,
-                    controller.LastGameplaySpawnPaddingForTest),
+                controller.LastGameplaySpawnWasInsideCameraViewportForTest,
                 $"Spawned at {controller.LastGameplaySpawnPositionForTest} with padding {controller.LastGameplaySpawnPaddingForTest:0.##}.");
         }
 

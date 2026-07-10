@@ -94,11 +94,11 @@ No package extraction, package publishing, Survivors template registration, Idle
 Phase 2S adds validation for:
 
 - runtime class loadout descriptor coverage
-- runtime and sample validation for default class IDs, starting weapon/loadout references, and class-gated upgrade references
+- runtime and sample validation for default class IDs, exactly-one playable starting weapon/loadout references, and class-gated upgrade references
 - clear validation failures for invalid class loadouts, missing/duplicate/empty class loadout entries, unknown default classes, unknown allowed classes, unknown gated upgrades, and duplicate class gates
 - locked or missing selected class fallback to the default class
 - default class starting with only the basic arcane wand loadout
-- unlocked selected class starting with the expected advanced loadout and stat profile
+- unlocked selected class starting with one authored weapon plus the expected stat profile
 - class-specific upgrades appearing only when the selected class is valid
 - existing first-slice, weapon, payload, run-flow, reward, relic, class unlock, save/load, and persistent-upgrade tests still passing
 
@@ -119,11 +119,11 @@ No gameplay behavior changes, shared package extraction, package publishing, Idl
 
 Phase 3F adds reference-parity gameplay validation:
 
-- Default runtime content includes five starting weapons, ten local weapon archetypes, one-rank unlock definitions for every authored weapon, nine enemy roles, six relics, and seven persistent upgrades.
+- Default runtime content includes one authored starter weapon per fallback class, ten local weapon archetypes, one-rank unlock definitions for every authored weapon, nine enemy roles, six relics, and seven persistent upgrades.
 - Run flow validation covers timed swarm, runner, bruiser, spitter, elite, miniboss, and boss pressure over a 30-minute sample arc.
 - Sample JSON validation now enforces the vertical-slice minimums for weapon roles, complete weapon skill tracks, passive atlas count, enemy roles, elite variants, and boss/miniboss presence.
 - EditMode coverage checks expanded enemy profiles plus barrier absorption and poison damage-over-time behavior.
-- PlayMode coverage checks the expanded default loadout, draftable weapon unlocks, owned weapon unlock suppression, XP-gain and area-scaling passives, early/boss rarity weighting, weapon-owned mutation availability, and class-gated advanced weapon/passive availability.
+- PlayMode coverage checks the one-weapon default loadout, draftable weapon unlocks, owned weapon unlock suppression, XP-gain and area-scaling passives, early/boss rarity weighting, weapon-owned mutation availability, and class-gated advanced weapon/passive availability.
 - `Tools > Deucarian > Templates > Survivors > Runtime Debugger` provides Play Mode controls for forced XP, shard grants, level-ups, horde-rush trigger/clear checks, elite/miniboss/boss spawns, enemy bursts, arena fill, stress profiles, magnet recall, build/evolution/draft inspection, and meta reset.
 
 Full graph-editor passive skill trees, production class content packs, production UI, monetization, networking, and shared package extraction remain deferred.
@@ -136,6 +136,7 @@ Phase 3G adds compact progression-atlas validation:
 - clear validation failures for duplicate progression track/node IDs, unknown class IDs, unknown weapon targets, unknown upgrade IDs, invalid node kinds, bad point costs, negative tiers, missing passive atlases, and node max ranks above the underlying upgrade rank
 - class-specific upgrade gates derived from class-owned progression tracks instead of a separate hand-written list
 - default Arcane passive upgrades and unlockable Ember passive/weapon upgrades appearing only for the selected class
+- authored sample upgrade records defining explicit weights, max ranks, effect targets, numeric amounts, and rank/passive requirements so normal sample play does not borrow hidden fallback scalars
 
 The Phase 3G atlas is intentionally compact local template-kit data. It is not the reference clone's full passive graph UI, per-weapon graph editor, class resource economy, or twelve-class content-pack ecosystem.
 
