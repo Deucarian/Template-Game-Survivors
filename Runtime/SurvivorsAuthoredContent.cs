@@ -1324,6 +1324,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatCatchUpSpeedMultiplier = profile.majorThreatCatchUpSpeedMultiplier;
             tuning.MajorThreatRepositionRadius = profile.majorThreatRepositionRadius;
             tuning.MajorThreatRepositionDelaySeconds = profile.majorThreatRepositionDelaySeconds;
+            tuning.OffscreenSpawnPadding = profile.offscreenSpawnPadding;
+            tuning.SpawnBandDepth = profile.spawnBandDepth;
+            tuning.MajorThreatOffscreenSpawnPadding = profile.majorThreatOffscreenSpawnPadding;
+            tuning.RecycledEnemyOffscreenSpawnPadding = profile.recycledEnemyOffscreenSpawnPadding;
             tuning.OffscreenThreatMarkerDistance = profile.offscreenThreatMarkerDistance;
             tuning.RunEscalationIntervalSeconds = profile.escalationIntervalSeconds;
             tuning.MinimumEnemySpawnIntervalSeconds = profile.minimumEnemySpawnIntervalSeconds;
@@ -1798,6 +1802,10 @@ namespace Deucarian.TemplateGameSurvivors
             public float majorThreatCatchUpSpeedMultiplier;
             public float majorThreatRepositionRadius;
             public float majorThreatRepositionDelaySeconds;
+            public float offscreenSpawnPadding;
+            public float spawnBandDepth;
+            public float majorThreatOffscreenSpawnPadding;
+            public float recycledEnemyOffscreenSpawnPadding;
             public float offscreenThreatMarkerDistance;
             public float escalationIntervalSeconds;
             public float minimumEnemySpawnIntervalSeconds;

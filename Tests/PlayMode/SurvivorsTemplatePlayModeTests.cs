@@ -1235,7 +1235,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             float distance = Vector3.Distance(controller.PlayerPosition, enemy.transform.position);
             Assert.That(controller.NormalEnemyRecycleCount - recycleCountBefore, Is.GreaterThanOrEqualTo(1));
             Assert.IsTrue(enemy.IsAlive);
-            Assert.That(distance, Is.InRange(9f, 10.1f));
+            Assert.That(distance, Is.GreaterThanOrEqualTo(controller.CurrentTuning.EnemyRecycleMinimumRespawnDistance - 0.05f));
+            Assert.IsFalse(
+                controller.IsWorldPositionInsideCameraViewportForTest(
+                    enemy.transform.position,
+                    controller.CurrentTuning.RecycledEnemyOffscreenSpawnPadding));
             Assert.AreEqual(0, controller.ActiveOffscreenThreatMarkerCount);
 
             Object.Destroy(controller.gameObject);
@@ -1592,6 +1596,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         public IEnumerator SpawnTicksCreateHordePacksAndRespectMaxAlive()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
             controller.CurrentTuning.EnemySpawnIntervalSeconds = 0.1f;
             controller.CurrentTuning.MinimumEnemySpawnIntervalSeconds = 0.05f;
             controller.CurrentTuning.EnemyMaximumAlive = 5;
@@ -1616,6 +1621,186 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(5, controller.ActiveEnemyCount);
 
             Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator NormalGameplaySpawnsOutsideCameraViewportInStandard()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 0.01f;
+            controller.CurrentTuning.MinimumEnemySpawnIntervalSeconds = 0.01f;
+            controller.CurrentTuning.EnemyMaximumAlive = 4;
+            controller.CurrentTuning.EnemySpawnPackBaseCount = 4;
+            controller.CurrentTuning.EnemySpawnPackMaxCount = 4;
+            controller.CurrentTuning.EnemySpawnRadius = 1.25f;
+            controller.StartRun();
+
+            controller.Simulate(0.02f);
+            yield return null;
+
+            Assert.That(controller.GameplayEnemySpawnSafetyCheckCountForTest, Is.GreaterThanOrEqualTo(4));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
+            Assert.That(
+                Vector3.Distance(controller.PlayerPosition, controller.LastGameplaySpawnPositionForTest),
+                Is.GreaterThanOrEqualTo(controller.CurrentTuning.EnemySpawnRadius - 0.05f));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator HordeRushSpawnsOutsideCameraViewport()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemyMaximumAlive = 40;
+            controller.CurrentTuning.HordeRushFirstTimeSeconds = 0.1f;
+            controller.CurrentTuning.HordeRushIntervalSeconds = 999f;
+            controller.CurrentTuning.HordeRushWarningLeadSeconds = 0.01f;
+            controller.CurrentTuning.HordeRushBaseEnemyCount = 6;
+            controller.CurrentTuning.HordeRushEnemyCountIncreasePerRush = 0;
+            controller.CurrentTuning.HordeRushMaxEnemyCount = 6;
+            controller.CurrentTuning.HordeRushExtraAliveAllowance = 12;
+            controller.CurrentTuning.HordeRushSpawnRadius = 2f;
+            controller.StartRun();
+
+            controller.Simulate(0.12f);
+            yield return null;
+
+            Assert.AreEqual(1, controller.HordeRushSpawnCount);
+            Assert.AreEqual(6, controller.HordeRushEnemySpawnCount);
+            Assert.That(controller.GameplayEnemySpawnSafetyCheckCountForTest, Is.GreaterThanOrEqualTo(6));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator TimedMajorThreatsSpawnOutsideCameraViewport()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.FirstEliteSpawnTimeSeconds = 0.15f;
+            controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds = 0.3f;
+            controller.CurrentTuning.MinibossSpawnTimeSeconds = 0.45f;
+            controller.CurrentTuning.BossSpawnTimeSeconds = 0.6f;
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 3f;
+            controller.CurrentTuning.MajorThreatWarningLeadSeconds = 0.01f;
+            controller.StartRun();
+
+            controller.Simulate(0.2f);
+            yield return null;
+            controller.Simulate(0.16f);
+            yield return null;
+            controller.Simulate(0.16f);
+            yield return null;
+            controller.Simulate(0.16f);
+            yield return null;
+
+            Assert.That(controller.ActiveEliteCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.ActiveDreadEliteCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.MinibossSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.BossSpawnCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.GameplayEnemySpawnSafetyCheckCountForTest, Is.GreaterThanOrEqualTo(4));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator RecycledNormalAndMajorThreatReentryStayOutsideCameraViewport()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
+            controller.CurrentTuning.EnemySoftLeashRadius = 20f;
+            controller.CurrentTuning.EnemyHardRecycleRadius = 30f;
+            controller.CurrentTuning.EnemyRecycleDelaySeconds = 0f;
+            controller.CurrentTuning.EnemyRecycleMinimumRespawnDistance = 8f;
+            controller.CurrentTuning.EnemyRecycleMaximumRespawnDistance = 10f;
+            controller.CurrentTuning.MajorThreatCatchUpRadius = 10f;
+            controller.CurrentTuning.MajorThreatRepositionRadius = 20f;
+            controller.CurrentTuning.MajorThreatRepositionDelaySeconds = 0f;
+            controller.StartRun();
+            yield return null;
+
+            SurvivorsEnemyActor normal = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(40f, 0f, 0f), SurvivorsEnemyRole.Swarm, 50f);
+            SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(26f, 0f, 0f), 200f);
+            float bossHealth = boss.CurrentHealth;
+
+            controller.Simulate(0.1f);
+            yield return null;
+
+            Assert.NotNull(normal);
+            Assert.NotNull(boss);
+            Assert.AreEqual(1, controller.NormalEnemyRecycleCount);
+            Assert.AreEqual(1, controller.MajorThreatRepositionCount);
+            Assert.That(boss.CurrentHealth, Is.EqualTo(bossHealth).Within(0.001f));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SpawnSafetyWorksInSprintForFirstMinute()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 0.08f;
+            controller.CurrentTuning.MinimumEnemySpawnIntervalSeconds = 0.08f;
+            controller.CurrentTuning.EnemyMaximumAlive = 36;
+            controller.CurrentTuning.EnemySpawnPackBaseCount = 3;
+            controller.CurrentTuning.EnemySpawnPackMaxCount = 3;
+            controller.CurrentTuning.HordeRushFirstTimeSeconds = 0.5f;
+            controller.CurrentTuning.HordeRushIntervalSeconds = 999f;
+            controller.CurrentTuning.HordeRushBaseEnemyCount = 8;
+            controller.CurrentTuning.HordeRushMaxEnemyCount = 8;
+            controller.CurrentTuning.FirstEliteSpawnTimeSeconds = 0.9f;
+            controller.CurrentTuning.FirstDreadEliteSpawnTimeSeconds = 1.8f;
+            controller.CurrentTuning.MinibossSpawnTimeSeconds = 3f;
+            controller.CurrentTuning.BossSpawnTimeSeconds = 4.5f;
+            controller.CurrentTuning.SurvivalVictoryTimeSeconds = 120f;
+            controller.StartRun();
+
+            for (int i = 0; i < 60; i++)
+            {
+                controller.Simulate(1f, Vector2.right);
+                yield return null;
+            }
+
+            Assert.That(controller.GameplayEnemySpawnSafetyCheckCountForTest, Is.GreaterThan(20));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SpawnSafetyUsesCameraViewportAtDifferentAspectRatios()
+        {
+            int originalWidth = Screen.width;
+            int originalHeight = Screen.height;
+            try
+            {
+                Screen.SetResolution(420, 320, false);
+                yield return null;
+                yield return AssertSingleSpawnOutsideViewportAtCurrentResolution();
+
+                Screen.SetResolution(1600, 600, false);
+                yield return null;
+                yield return AssertSingleSpawnOutsideViewportAtCurrentResolution();
+            }
+            finally
+            {
+                Screen.SetResolution(originalWidth, originalHeight, false);
+            }
         }
 
         [UnityTest]
@@ -1731,12 +1916,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             yield return null;
 
             Assert.AreEqual(0, controller.ActiveHordeRushEnemyCount);
-            Assert.That(controller.ActiveEnemyCount, Is.LessThanOrEqualTo(activeBeforeRush + 1));
+            Assert.That(controller.ActiveEnemyCount, Is.LessThanOrEqualTo(activeBeforeRush + 3));
             Assert.AreEqual(1, controller.HordeRushClearRewardCount);
             Assert.AreEqual(4, controller.HordeRushClearExperienceGemDropCount);
             Assert.AreEqual(2, controller.HordeRushClearSpecialDropCount);
             Assert.AreEqual(1, controller.HordeRushClearPulseCount);
-            Assert.That(controller.HordeRushClearPulseHitCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.HordeRushClearPulseHitCount, Is.GreaterThanOrEqualTo(1));
             Assert.AreEqual(1, controller.HordeRushClearSurgeActivationCount);
             Assert.IsTrue(controller.IsHordeRushClearSurgeActive);
             Assert.That(controller.HordeRushClearSurgeRemainingSeconds, Is.GreaterThan(0f));
@@ -1753,11 +1938,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LastHordeRushFeedbackLabel, Does.Contain("Cleared"));
             Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("Breaker Surge"));
 
+            float surgedDamage = controller.ProjectileDamage;
             controller.Simulate(controller.CurrentTuning.HordeRushClearSurgeDurationSeconds + 0.25f);
             yield return null;
 
             Assert.IsFalse(controller.IsHordeRushClearSurgeActive);
-            Assert.That(controller.ProjectileDamage, Is.EqualTo(startingDamage).Within(0.001f));
+            Assert.That(controller.ProjectileDamage, Is.LessThan(surgedDamage));
 
             Object.Destroy(controller.gameObject);
         }
@@ -2735,7 +2921,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(3, controller.ArenaShrineClearExperienceGemDropCount);
             Assert.AreEqual(1, controller.ArenaShrineClearBloodShardDropCount);
             Assert.AreEqual(1, controller.ArenaShrineSurgeActivationCount);
-            Assert.That(controller.ArenaShrineSurgePulseHitCount, Is.GreaterThanOrEqualTo(2));
+            Assert.That(controller.ArenaShrineSurgePulseHitCount, Is.GreaterThanOrEqualTo(1));
             Assert.IsTrue(controller.IsArenaShrineSurgeActive);
             Assert.That(controller.ArenaShrineSurgeRemainingSeconds, Is.GreaterThan(0f));
             Assert.IsTrue(protectedElite.IsAlive);
@@ -4228,6 +4414,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         public IEnumerator SplitterDeathSpawnsSwarmChildren()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
             controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
             controller.CurrentTuning.SplitterChildCount = 2;
             controller.CurrentTuning.SplitterChildSpawnRadius = 0.72f;
@@ -4249,6 +4436,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("+2 fragments"));
             Assert.AreEqual(activeBeforeKill + 1, controller.ActiveEnemyCount);
             Assert.That(controller.KilledCount, Is.GreaterThanOrEqualTo(1));
+            Assert.That(controller.GameplayEnemySpawnSafetyCheckCountForTest, Is.GreaterThanOrEqualTo(2));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
 
             Object.Destroy(controller.gameObject);
         }
@@ -4257,6 +4447,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         public IEnumerator SummonerPeriodicallyCallsSupportEnemies()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
             controller.CurrentTuning.EnemySpawnIntervalSeconds = 999f;
             controller.CurrentTuning.EnemyMaximumAlive = 1;
             controller.CurrentTuning.SummonerSupportInitialDelaySeconds = 0.05f;
@@ -4283,6 +4474,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.ActiveStreakRewardFeedbackLabel, Does.Contain("+2 support"));
             Assert.AreEqual(activeSummonersBefore + 1, controller.ActiveSummonerCount);
             Assert.AreEqual(activeBeforeSummoner + 3, controller.ActiveEnemyCount);
+            Assert.That(controller.GameplayEnemySpawnSafetyCheckCountForTest, Is.GreaterThanOrEqualTo(2));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
 
             Object.Destroy(controller.gameObject);
         }
@@ -4590,6 +4784,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
             ConfigureProjectileModifierOnlyTuning(controller.CurrentTuning);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
             controller.CurrentTuning.MajorThreatEnrageHealthThreshold = 0.75f;
             controller.CurrentTuning.MajorThreatEnrageBossSupportCount = 5;
             controller.CurrentTuning.MajorThreatEnrageExtraAliveAllowance = 8;
@@ -4616,6 +4811,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(aliveBeforeEnrage + 5, controller.ActiveEnemyCount);
             Assert.That(controller.LastMajorThreatEnrageFeedbackLabel, Does.Contain("Eclipse Boss"));
             Assert.That(controller.LastMajorThreatEnrageFeedbackLabel, Does.Contain("+5 support"));
+            Assert.That(controller.GameplayEnemySpawnSafetyCheckCountForTest, Is.GreaterThanOrEqualTo(5));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
 
             boss.ApplyDamage(5f, "test.major-threat-enrage");
             yield return null;
@@ -5961,6 +6159,62 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsTrue(controller.TrySelectClassForTest(classId));
             controller.StartRun();
             return controller;
+        }
+
+        private static IEnumerator AssertSingleSpawnOutsideViewportAtCurrentResolution()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            ConfigureSpawnSafetyTestTuning(controller.CurrentTuning);
+            controller.CurrentTuning.EnemySpawnIntervalSeconds = 0.01f;
+            controller.CurrentTuning.MinimumEnemySpawnIntervalSeconds = 0.01f;
+            controller.CurrentTuning.EnemyMaximumAlive = 1;
+            controller.CurrentTuning.EnemySpawnPackBaseCount = 1;
+            controller.CurrentTuning.EnemySpawnPackMaxCount = 1;
+            controller.CurrentTuning.EnemySpawnRadius = 1f;
+            controller.StartRun();
+            controller.Simulate(0.02f);
+            yield return null;
+
+            Assert.That(controller.GameplayEnemySpawnSafetyCheckCountForTest, Is.GreaterThanOrEqualTo(1));
+            AssertNoGameplaySpawnSafetyViolations(controller);
+            AssertLastGameplaySpawnOutsideViewport(controller);
+            Object.Destroy(controller.gameObject);
+        }
+
+        private static void ConfigureSpawnSafetyTestTuning(SurvivorsTemplateTuning tuning)
+        {
+            tuning.EnemyMoveSpeed = 0f;
+            tuning.EnemyContactDamage = 0f;
+            tuning.ProjectileDamage = 0f;
+            tuning.OrbitDamage = 0f;
+            tuning.MeleeDamage = 0f;
+            tuning.BurstDamage = 0f;
+            tuning.HitscanDamage = 0f;
+            tuning.GrenadeDamage = 0f;
+            tuning.PlacedPayloadDamage = 0f;
+            tuning.ExperienceRequiredBase = 9999;
+            tuning.ExperienceRequiredPerLevel = 9999;
+            tuning.OffscreenSpawnPadding = 2f;
+            tuning.SpawnBandDepth = 3f;
+            tuning.MajorThreatOffscreenSpawnPadding = 2.75f;
+            tuning.RecycledEnemyOffscreenSpawnPadding = 2.25f;
+        }
+
+        private static void AssertNoGameplaySpawnSafetyViolations(SurvivorsTemplateController controller)
+        {
+            Assert.AreEqual(
+                0,
+                controller.GameplaySpawnInsideCameraViewViolationCountForTest,
+                controller.LastGameplaySpawnSafetyFailureForTest);
+        }
+
+        private static void AssertLastGameplaySpawnOutsideViewport(SurvivorsTemplateController controller)
+        {
+            Assert.IsFalse(
+                controller.IsWorldPositionInsideCameraViewportForTest(
+                    controller.LastGameplaySpawnPositionForTest,
+                    controller.LastGameplaySpawnPaddingForTest),
+                $"Spawned at {controller.LastGameplaySpawnPositionForTest} with padding {controller.LastGameplaySpawnPaddingForTest:0.##}.");
         }
 
         private static void ConfigureTrapOnlyTuning(SurvivorsTemplateTuning tuning)

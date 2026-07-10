@@ -2061,6 +2061,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(profile.majorThreatCatchUpSpeedMultiplier, Is.EqualTo(tuning.MajorThreatCatchUpSpeedMultiplier).Within(0.001f));
             Assert.That(profile.majorThreatRepositionRadius, Is.EqualTo(tuning.MajorThreatRepositionRadius).Within(0.001f));
             Assert.That(profile.majorThreatRepositionDelaySeconds, Is.EqualTo(tuning.MajorThreatRepositionDelaySeconds).Within(0.001f));
+            Assert.That(profile.offscreenSpawnPadding, Is.EqualTo(tuning.OffscreenSpawnPadding).Within(0.001f));
+            Assert.That(profile.spawnBandDepth, Is.EqualTo(tuning.SpawnBandDepth).Within(0.001f));
+            Assert.That(profile.majorThreatOffscreenSpawnPadding, Is.EqualTo(tuning.MajorThreatOffscreenSpawnPadding).Within(0.001f));
+            Assert.That(profile.recycledEnemyOffscreenSpawnPadding, Is.EqualTo(tuning.RecycledEnemyOffscreenSpawnPadding).Within(0.001f));
             Assert.That(profile.offscreenThreatMarkerDistance, Is.EqualTo(tuning.OffscreenThreatMarkerDistance).Within(0.001f));
             Assert.AreEqual(tuning.ExperienceRequiredBase, profile.experienceRequiredBase);
             Assert.AreEqual(tuning.ExperienceRequiredPerLevel, profile.experienceRequiredPerLevel);
@@ -2171,6 +2175,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             public float majorThreatCatchUpSpeedMultiplier;
             public float majorThreatRepositionRadius;
             public float majorThreatRepositionDelaySeconds;
+            public float offscreenSpawnPadding;
+            public float spawnBandDepth;
+            public float majorThreatOffscreenSpawnPadding;
+            public float recycledEnemyOffscreenSpawnPadding;
             public float offscreenThreatMarkerDistance;
             public int hordeRushEnemyCountIncreasePerRush;
             public int hordeRushExtraAliveAllowance;

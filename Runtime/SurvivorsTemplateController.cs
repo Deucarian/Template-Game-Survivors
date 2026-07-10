@@ -393,6 +393,9 @@ namespace Deucarian.TemplateGameSurvivors
         private float _pickupMagnetPulseTimer;
         private string _lastMagnetPulseFeedbackLabel = string.Empty;
         private string _lastOffscreenThreatMarkerLabel = string.Empty;
+        private string _lastGameplaySpawnSafetyFailure = string.Empty;
+        private Vector3 _lastGameplaySpawnPosition = Vector3.zero;
+        private float _lastGameplaySpawnPadding;
 
         public SurvivorsRunState State { get; private set; } = SurvivorsRunState.Booting;
         public int Level { get; private set; } = 1;
@@ -789,6 +792,11 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveIncomingThreatTelegraphEffectCount => _incomingThreatTelegraphEffects.Count;
         public int NormalEnemyRecycleCount { get; private set; }
         public int MajorThreatRepositionCount { get; private set; }
+        public int GameplayEnemySpawnSafetyCheckCountForTest { get; private set; }
+        public int GameplaySpawnInsideCameraViewViolationCountForTest { get; private set; }
+        public string LastGameplaySpawnSafetyFailureForTest => _lastGameplaySpawnSafetyFailure;
+        public Vector3 LastGameplaySpawnPositionForTest => _lastGameplaySpawnPosition;
+        public float LastGameplaySpawnPaddingForTest => _lastGameplaySpawnPadding;
         public int ActiveOffscreenThreatMarkerCount => CountOffscreenMajorThreatMarkers();
         public string CurrentOffscreenThreatMarkerLabel => ResolveFirstOffscreenMajorThreatMarkerLabel();
         public string LastOffscreenThreatMarkerLabel => _lastOffscreenThreatMarkerLabel;
@@ -2216,6 +2224,11 @@ namespace Deucarian.TemplateGameSurvivors
             MagnetPulseActivationCount = 0;
             _lastMagnetPulseFeedbackLabel = string.Empty;
             _lastOffscreenThreatMarkerLabel = string.Empty;
+            GameplayEnemySpawnSafetyCheckCountForTest = 0;
+            GameplaySpawnInsideCameraViewViolationCountForTest = 0;
+            _lastGameplaySpawnSafetyFailure = string.Empty;
+            _lastGameplaySpawnPosition = Vector3.zero;
+            _lastGameplaySpawnPadding = 0f;
             _runRewardsGranted = false;
             _pendingVictoryAfterRewardDraft = false;
             _victoryClearedThisRun = false;
@@ -4921,11 +4934,14 @@ namespace Deucarian.TemplateGameSurvivors
             int spawned = 0;
             for (int i = 0; i < targetCount; i++)
             {
-                float angle = ((i + 0.29f + MajorThreatEnrageCount * 0.17f) / targetCount) * Mathf.PI * 2f;
                 float laneRadius = radius + ((i & 1) == 0 ? 0f : 1.15f);
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * laneRadius;
                 SurvivorsEnemyRole supportRole = ResolveMajorThreatEnrageSupportRole(enemy.Role, i);
-                if (SpawnEnemy(center + offset, explicitPosition: true, supportRole) != null)
+                if (SpawnGameplayEnemyOffscreen(
+                    supportRole,
+                    _spawnSequence + i + MajorThreatEnrageCount * 31 + 701,
+                    radius,
+                    radius + CurrentTuning.SpawnBandDepth,
+                    "major-threat-enrage") != null)
                 {
                     spawned++;
                 }
@@ -8332,10 +8348,13 @@ namespace Deucarian.TemplateGameSurvivors
             Vector3 center = origin - forward * (radius * 0.35f);
             for (int i = 0; i < targetCount; i++)
             {
-                float angle = ((i + 0.5f) / targetCount) * Mathf.PI * 2f;
-                Vector3 offset = side * (Mathf.Cos(angle) * radius) + forward * (Mathf.Sin(angle) * radius);
                 SurvivorsEnemyRole role = ResolveRoamingCacheAmbushRole(i, cacheNumber);
-                SurvivorsEnemyActor enemy = SpawnEnemy(center + offset, explicitPosition: true, role);
+                SurvivorsEnemyActor enemy = SpawnGameplayEnemyOffscreen(
+                    role,
+                    _spawnSequence + i + cacheNumber * 37 + 809,
+                    radius,
+                    radius + CurrentTuning.SpawnBandDepth,
+                    "roaming-cache-ambush");
                 if (enemy != null)
                 {
                     _activeRoamingCacheAmbushEnemies.Add(enemy);
@@ -8492,10 +8511,13 @@ namespace Deucarian.TemplateGameSurvivors
             int spawned = 0;
             for (int i = 0; i < targetCount; i++)
             {
-                float angle = ((i + 0.5f) / targetCount) * Mathf.PI * 2f;
-                Vector3 offset = side * (Mathf.Cos(angle) * radius) + forward * (Mathf.Sin(angle) * radius);
                 SurvivorsEnemyRole role = ResolveArenaShrineRole(i, trialNumber);
-                SurvivorsEnemyActor enemy = SpawnEnemy(center + offset, explicitPosition: true, role);
+                SurvivorsEnemyActor enemy = SpawnGameplayEnemyOffscreen(
+                    role,
+                    _spawnSequence + i + trialNumber * 41 + 853,
+                    radius,
+                    radius + CurrentTuning.SpawnBandDepth,
+                    "arena-shrine");
                 if (enemy == null)
                 {
                     continue;
@@ -8938,10 +8960,13 @@ namespace Deucarian.TemplateGameSurvivors
             float radius = Mathf.Max(1f, CurrentTuning.WaystoneAmbushRadius);
             for (int i = 0; i < targetCount; i++)
             {
-                float angle = ((i + 0.5f) / targetCount) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
                 SurvivorsEnemyRole role = ResolveRoamingCacheAmbushRole(i, discoveryNumber + 2);
-                if (SpawnEnemy(position + offset, explicitPosition: true, role) != null)
+                if (SpawnGameplayEnemyOffscreen(
+                    role,
+                    _spawnSequence + i + discoveryNumber * 43 + 907,
+                    radius,
+                    radius + CurrentTuning.SpawnBandDepth,
+                    "waystone-ambush") != null)
                 {
                     spawned++;
                 }
@@ -9035,17 +9060,17 @@ namespace Deucarian.TemplateGameSurvivors
             _runFlow.Tick(RunTimeSeconds);
             while (_runFlow.TryConsumeTimedEliteSpawn(RunTimeSeconds, out SurvivorsEnemyRole timedEliteRole))
             {
-                SpawnEnemy(Vector3.zero, explicitPosition: false, timedEliteRole);
+                SpawnEnemy(Vector3.zero, explicitPosition: false, timedEliteRole, gameplaySpawn: true, spawnSource: "timed-elite");
             }
 
             if (_runFlow.TryConsumeMinibossSpawn(RunTimeSeconds))
             {
-                SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Miniboss);
+                SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Miniboss, gameplaySpawn: true, spawnSource: "timed-miniboss");
             }
 
             if (_runFlow.TryConsumeBossSpawn(RunTimeSeconds))
             {
-                SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Boss);
+                SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Boss, gameplaySpawn: true, spawnSource: "timed-boss");
             }
 
             if (_runFlow.TryConsumeSurvivalVictory(RunTimeSeconds))
@@ -9218,7 +9243,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
-            if (SpawnEnemy(Vector3.zero, explicitPosition: false, role) == null)
+            if (SpawnEnemy(Vector3.zero, explicitPosition: false, role, gameplaySpawn: true, spawnSource: "endless-threat") == null)
             {
                 return false;
             }
@@ -9480,11 +9505,14 @@ namespace Deucarian.TemplateGameSurvivors
             int spawned = 0;
             for (int i = 0; i < targetCount; i++)
             {
-                float angle = ((i + 0.37f + _hordeRushSequence * 0.19f) / targetCount) * Mathf.PI * 2f;
                 float laneRadius = radius + ((i & 1) == 0 ? 0f : 1.35f);
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * laneRadius;
                 SurvivorsEnemyRole role = ResolveHordeRushRole(i);
-                SurvivorsEnemyActor enemy = SpawnEnemy(PlayerPosition + offset, explicitPosition: true, role);
+                SurvivorsEnemyActor enemy = SpawnGameplayEnemyOffscreen(
+                    role,
+                    _spawnSequence + i + _hordeRushSequence * 47 + 947,
+                    laneRadius,
+                    laneRadius + CurrentTuning.SpawnBandDepth,
+                    "horde-rush");
                 if (enemy != null)
                 {
                     _activeHordeRushEnemies.Add(enemy);
@@ -9793,7 +9821,7 @@ namespace Deucarian.TemplateGameSurvivors
                 SurvivorsEnemyRole role = _runFlow == null
                     ? SurvivorsEnemyRole.Swarm
                     : _runFlow.ResolveNextSwarmRole(RunTimeSeconds, _spawnSequence + 1 + i);
-                if (SpawnEnemy(Vector3.zero, explicitPosition: false, role) == null)
+                if (SpawnEnemy(Vector3.zero, explicitPosition: false, role, gameplaySpawn: true, spawnSource: "normal-pack") == null)
                 {
                     break;
                 }
@@ -9802,9 +9830,39 @@ namespace Deucarian.TemplateGameSurvivors
             _enemySpawnTimer = ResolveEnemySpawnIntervalSeconds();
         }
 
-        private SurvivorsEnemyActor SpawnEnemy(Vector3 position, bool explicitPosition, SurvivorsEnemyRole role)
+        private SurvivorsEnemyActor SpawnGameplayEnemyOffscreen(
+            SurvivorsEnemyRole role,
+            long seed,
+            float minimumDistance,
+            float maximumDistance,
+            string spawnSource)
+        {
+            Vector3 position = ResolveSafeOffscreenPosition(
+                PlayerPosition,
+                ResolveGameplaySpawnMinimumDistance(role, minimumDistance),
+                ResolveGameplaySpawnMaximumDistance(role, minimumDistance, maximumDistance),
+                seed,
+                ResolveOffscreenSpawnPadding(role, spawnSource),
+                CurrentTuning.SpawnBandDepth);
+            return SpawnEnemy(position, explicitPosition: true, role, gameplaySpawn: true, spawnSource: spawnSource);
+        }
+
+        private SurvivorsEnemyActor SpawnEnemy(Vector3 position, bool explicitPosition, SurvivorsEnemyRole role, bool gameplaySpawn = false, string spawnSource = null)
         {
             long sequence = ++_spawnSequence;
+            bool trackSpawnSafety = gameplaySpawn || !explicitPosition;
+            if (!explicitPosition)
+            {
+                position = ResolveSafeOffscreenPosition(
+                    PlayerPosition,
+                    ResolveGameplaySpawnMinimumDistance(role, CurrentTuning.EnemySpawnRadius),
+                    ResolveGameplaySpawnMaximumDistance(role, CurrentTuning.EnemySpawnRadius, CurrentTuning.EnemySpawnRadius + CurrentTuning.SpawnBandDepth),
+                    sequence,
+                    ResolveOffscreenSpawnPadding(role, spawnSource),
+                    CurrentTuning.SpawnBandDepth);
+                explicitPosition = true;
+            }
+
             WorldSpawnChannelId channel = explicitPosition ? BasicSurvivorsGame.ExplicitSpawnChannelId : BasicSurvivorsGame.RadialSpawnChannelId;
             if (explicitPosition)
             {
@@ -9826,6 +9884,11 @@ namespace Deucarian.TemplateGameSurvivors
             enemy.Initialize(this, profile);
             _enemies.Add(enemy);
             SpawnedCount++;
+            if (trackSpawnSafety)
+            {
+                RecordGameplaySpawnSafety(role, enemy.transform.position, spawnSource);
+            }
+
             if (role == SurvivorsEnemyRole.Miniboss)
             {
                 RecordMetricTime(ref _firstMinibossSpawnTimeSeconds);
@@ -9865,9 +9928,12 @@ namespace Deucarian.TemplateGameSurvivors
             int spawned = 0;
             for (int index = 0; index < childCount; index++)
             {
-                float angle = ((index + 0.25f) / childCount) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-                if (SpawnEnemy(position + offset, explicitPosition: true, SurvivorsEnemyRole.Swarm) != null)
+                if (SpawnGameplayEnemyOffscreen(
+                    SurvivorsEnemyRole.Swarm,
+                    _spawnSequence + index + SplitterChildSpawnCount * 53 + 991,
+                    radius,
+                    radius + CurrentTuning.SpawnBandDepth,
+                    "splitter-children") != null)
                 {
                     SplitterChildSpawnCount++;
                     spawned++;
@@ -9912,10 +9978,13 @@ namespace Deucarian.TemplateGameSurvivors
             int sequenceOffset = SummonerSupportSpawnCount;
             for (int index = 0; index < count; index++)
             {
-                float angle = ((index + 0.5f) / count) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
                 SurvivorsEnemyRole role = ResolveSummonerSupportRole(sequenceOffset + index);
-                if (SpawnEnemy(center + offset, explicitPosition: true, role) != null)
+                if (SpawnGameplayEnemyOffscreen(
+                    role,
+                    _spawnSequence + index + sequenceOffset * 59 + 1031,
+                    radius,
+                    radius + CurrentTuning.SpawnBandDepth,
+                    "summoner-support") != null)
                 {
                     spawned++;
                 }
@@ -10054,7 +10123,10 @@ namespace Deucarian.TemplateGameSurvivors
                 playerPosition,
                 Mathf.Max(CurrentTuning.EnemyRecycleMinimumRespawnDistance, CurrentTuning.PlayerRadius + enemy.Radius + 1.8f),
                 Mathf.Max(CurrentTuning.EnemyRecycleMaximumRespawnDistance, CurrentTuning.EnemyRecycleMinimumRespawnDistance + 1f),
-                enemy.InstanceId.Value + NormalEnemyRecycleCount + 17);
+                enemy.InstanceId.Value + NormalEnemyRecycleCount + 17,
+                ResolveOffscreenSpawnPadding(enemy.Role, "normal-recycle"),
+                CurrentTuning.SpawnBandDepth);
+            RecordGameplaySpawnSafety(enemy.Role, enemy.transform.position, "normal-recycle");
             enemy.ResetLeashTimer();
             NormalEnemyRecycleCount++;
         }
@@ -10085,7 +10157,10 @@ namespace Deucarian.TemplateGameSurvivors
                 playerPosition,
                 minimum,
                 maximum,
-                enemy.InstanceId.Value + MajorThreatRepositionCount + 43);
+                enemy.InstanceId.Value + MajorThreatRepositionCount + 43,
+                ResolveOffscreenSpawnPadding(enemy.Role, "major-threat-reentry"),
+                CurrentTuning.SpawnBandDepth);
+            RecordGameplaySpawnSafety(enemy.Role, enemy.transform.position, "major-threat-reentry");
             enemy.ResetLeashTimer();
             MajorThreatRepositionCount++;
             string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
@@ -10110,15 +10185,200 @@ namespace Deucarian.TemplateGameSurvivors
             return Mathf.Max(1f, CurrentTuning.MajorThreatCatchUpSpeedMultiplier);
         }
 
+        internal Vector3 ResolveRuntimeEnemySpawnPositionForResolver(long seed)
+        {
+            return ResolveSafeOffscreenPosition(
+                PlayerPosition,
+                ResolveGameplaySpawnMinimumDistance(SurvivorsEnemyRole.Swarm, CurrentTuning.EnemySpawnRadius),
+                ResolveGameplaySpawnMaximumDistance(SurvivorsEnemyRole.Swarm, CurrentTuning.EnemySpawnRadius, CurrentTuning.EnemySpawnRadius + CurrentTuning.SpawnBandDepth),
+                seed,
+                ResolveOffscreenSpawnPadding(SurvivorsEnemyRole.Swarm, "radial-resolver"),
+                CurrentTuning.SpawnBandDepth);
+        }
+
+        public bool IsWorldPositionInsideCameraViewportForTest(Vector3 position, float padding)
+        {
+            return TryResolveCameraGroundRect(Mathf.Max(0f, padding), out Rect visibleRect) &&
+                ContainsGroundPoint(visibleRect, position);
+        }
+
         private Vector3 ResolveSafeOffscreenPosition(Vector3 center, float minimumDistance, float maximumDistance, long seed)
+        {
+            return ResolveSafeOffscreenPosition(
+                center,
+                minimumDistance,
+                maximumDistance,
+                seed,
+                CurrentTuning.OffscreenSpawnPadding,
+                CurrentTuning.SpawnBandDepth);
+        }
+
+        private Vector3 ResolveSafeOffscreenPosition(
+            Vector3 center,
+            float minimumDistance,
+            float maximumDistance,
+            long seed,
+            float padding,
+            float bandDepth)
         {
             float min = Mathf.Max(1f, minimumDistance);
             float max = Mathf.Max(min + 0.1f, maximumDistance);
             float resolvedSeed = Mathf.Abs((float)(seed % 100000L));
             float angle = Mathf.Repeat(resolvedSeed * 137.508f, 360f) * Mathf.Deg2Rad;
+            Vector3 direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+            if (direction.sqrMagnitude <= 0.0001f)
+            {
+                direction = Vector3.forward;
+            }
+
+            direction.Normalize();
             float span = Mathf.Max(0.1f, max - min);
-            float distance = min + Mathf.Repeat(resolvedSeed * 0.381966f, 1f) * span;
-            return center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+            float radialDistance = min + Mathf.Repeat(resolvedSeed * 0.381966f, 1f) * span;
+            float resolvedBandDepth = Mathf.Max(0.25f, bandDepth);
+            if (TryResolveCameraGroundRect(Mathf.Max(0f, padding), out Rect visibleRect))
+            {
+                float exitDistance = ResolveDistanceToExitRect(center, direction, visibleRect);
+                float bandOffset = 0.15f + Mathf.Repeat(resolvedSeed * 0.754877f, 1f) * resolvedBandDepth;
+                float distance = Mathf.Max(radialDistance, exitDistance + bandOffset);
+                Vector3 candidate = center + direction * distance;
+                if (ContainsGroundPoint(visibleRect, candidate))
+                {
+                    candidate = center + direction * (exitDistance + resolvedBandDepth + 0.5f);
+                }
+
+                candidate.y = center.y;
+                return candidate;
+            }
+
+            Vector3 fallback = center + direction * radialDistance;
+            fallback.y = center.y;
+            return fallback;
+        }
+
+        private float ResolveGameplaySpawnMinimumDistance(SurvivorsEnemyRole role, float requested)
+        {
+            float minimum = Mathf.Max(1f, requested);
+            if (IsMajorRewardRole(role))
+            {
+                minimum = Mathf.Max(minimum, CurrentTuning.MajorThreatCatchUpRadius);
+            }
+
+            return minimum;
+        }
+
+        private float ResolveGameplaySpawnMaximumDistance(SurvivorsEnemyRole role, float minimumDistance, float requestedMaximum)
+        {
+            float band = Mathf.Max(0.25f, CurrentTuning.SpawnBandDepth);
+            float maximum = Mathf.Max(minimumDistance + band, requestedMaximum);
+            if (IsMajorRewardRole(role))
+            {
+                maximum = Mathf.Max(maximum, CurrentTuning.MajorThreatCatchUpRadius + band);
+            }
+
+            return maximum;
+        }
+
+        private float ResolveOffscreenSpawnPadding(SurvivorsEnemyRole role, string spawnSource)
+        {
+            if (string.Equals(spawnSource, "normal-recycle", StringComparison.Ordinal))
+            {
+                return Mathf.Max(0.1f, CurrentTuning.RecycledEnemyOffscreenSpawnPadding);
+            }
+
+            return IsMajorRewardRole(role)
+                ? Mathf.Max(0.1f, CurrentTuning.MajorThreatOffscreenSpawnPadding)
+                : Mathf.Max(0.1f, CurrentTuning.OffscreenSpawnPadding);
+        }
+
+        private void RecordGameplaySpawnSafety(SurvivorsEnemyRole role, Vector3 position, string spawnSource)
+        {
+            float padding = ResolveOffscreenSpawnPadding(role, spawnSource);
+            GameplayEnemySpawnSafetyCheckCountForTest++;
+            _lastGameplaySpawnPosition = position;
+            _lastGameplaySpawnPadding = padding;
+            if (!IsWorldPositionInsideCameraViewportForTest(position, padding))
+            {
+                return;
+            }
+
+            GameplaySpawnInsideCameraViewViolationCountForTest++;
+            string source = string.IsNullOrWhiteSpace(spawnSource) ? "runtime" : spawnSource;
+            _lastGameplaySpawnSafetyFailure = $"{source} spawned {role} inside camera viewport at {position}";
+        }
+
+        private bool TryResolveCameraGroundRect(float padding, out Rect rect)
+        {
+            rect = default;
+            Camera camera = _camera != null ? _camera : Camera.main;
+            if (camera == null)
+            {
+                return false;
+            }
+
+            var ground = new Plane(Vector3.up, new Vector3(0f, PlayerPosition.y, 0f));
+            Vector3[] corners =
+            {
+                ResolveViewportGroundPoint(camera, ground, new Vector3(0f, 0f, 0f)),
+                ResolveViewportGroundPoint(camera, ground, new Vector3(0f, 1f, 0f)),
+                ResolveViewportGroundPoint(camera, ground, new Vector3(1f, 0f, 0f)),
+                ResolveViewportGroundPoint(camera, ground, new Vector3(1f, 1f, 0f))
+            };
+
+            float minX = corners[0].x;
+            float maxX = corners[0].x;
+            float minZ = corners[0].z;
+            float maxZ = corners[0].z;
+            for (int i = 1; i < corners.Length; i++)
+            {
+                minX = Mathf.Min(minX, corners[i].x);
+                maxX = Mathf.Max(maxX, corners[i].x);
+                minZ = Mathf.Min(minZ, corners[i].z);
+                maxZ = Mathf.Max(maxZ, corners[i].z);
+            }
+
+            float resolvedPadding = Mathf.Max(0f, padding);
+            rect = Rect.MinMaxRect(minX - resolvedPadding, minZ - resolvedPadding, maxX + resolvedPadding, maxZ + resolvedPadding);
+            return rect.width > 0.01f && rect.height > 0.01f;
+        }
+
+        private static Vector3 ResolveViewportGroundPoint(Camera camera, Plane ground, Vector3 viewportPoint)
+        {
+            Ray ray = camera.ViewportPointToRay(viewportPoint);
+            if (ground.Raycast(ray, out float distance))
+            {
+                return ray.GetPoint(distance);
+            }
+
+            Vector3 fallback = camera.ViewportToWorldPoint(new Vector3(viewportPoint.x, viewportPoint.y, Mathf.Max(1f, camera.nearClipPlane)));
+            fallback.y = 0f;
+            return fallback;
+        }
+
+        private static float ResolveDistanceToExitRect(Vector3 center, Vector3 direction, Rect rect)
+        {
+            const float Epsilon = 0.0001f;
+            float exit = float.PositiveInfinity;
+            if (Mathf.Abs(direction.x) > Epsilon)
+            {
+                float boundary = direction.x > 0f ? rect.xMax : rect.xMin;
+                exit = Mathf.Min(exit, (boundary - center.x) / direction.x);
+            }
+
+            if (Mathf.Abs(direction.z) > Epsilon)
+            {
+                float boundary = direction.z > 0f ? rect.yMax : rect.yMin;
+                exit = Mathf.Min(exit, (boundary - center.z) / direction.z);
+            }
+
+            return float.IsInfinity(exit) ? 0f : Mathf.Max(0f, exit);
+        }
+
+        private static bool ContainsGroundPoint(Rect rect, Vector3 position)
+        {
+            return position.x >= rect.xMin &&
+                position.x <= rect.xMax &&
+                position.z >= rect.yMin &&
+                position.z <= rect.yMax;
         }
 
         private int CountOffscreenMajorThreatMarkers()
@@ -15105,11 +15365,15 @@ namespace Deucarian.TemplateGameSurvivors
                 return SpawnPoseResult.Failure("Unknown Survivors spawn channel: " + request.ChannelId);
             }
 
-            float angle = (request.Sequence * 137.50777f) * Mathf.Deg2Rad;
-            float radius = _controller == null ? 12f : _controller.CurrentTuning.EnemySpawnRadius;
-            Vector3 center = _controller == null ? Vector3.zero : _controller.PlayerPosition;
-            Vector3 position = center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-            return SpawnPoseResult.Success(new SpawnPose(position, Quaternion.identity));
+            if (_controller == null)
+            {
+                float angle = (request.Sequence * 137.50777f) * Mathf.Deg2Rad;
+                Vector3 fallbackPosition = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 12f;
+                return SpawnPoseResult.Success(new SpawnPose(fallbackPosition, Quaternion.identity));
+            }
+
+            Vector3 resolvedPosition = _controller.ResolveRuntimeEnemySpawnPositionForResolver(request.Sequence);
+            return SpawnPoseResult.Success(new SpawnPose(resolvedPosition, Quaternion.identity));
         }
     }
 }
