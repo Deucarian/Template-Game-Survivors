@@ -2064,6 +2064,10 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "major threat catch-up speed multiplier", profile.majorThreatCatchUpSpeedMultiplier, result);
             ValidatePositive(profileId, "major threat reposition radius", profile.majorThreatRepositionRadius, result);
             ValidateNonNegative(profileId, "major threat reposition delay", profile.majorThreatRepositionDelaySeconds, result);
+            ValidatePositive(profileId, "offscreen spawn padding", profile.offscreenSpawnPadding, result);
+            ValidatePositive(profileId, "spawn band depth", profile.spawnBandDepth, result);
+            ValidatePositive(profileId, "major threat offscreen spawn padding", profile.majorThreatOffscreenSpawnPadding, result);
+            ValidatePositive(profileId, "recycled enemy offscreen spawn padding", profile.recycledEnemyOffscreenSpawnPadding, result);
             ValidatePositive(profileId, "offscreen threat marker distance", profile.offscreenThreatMarkerDistance, result);
             if (profile.enemySpawnPackMaxCount < profile.enemySpawnPackBaseCount)
             {
@@ -3556,6 +3560,10 @@ namespace Deucarian.TemplateGameSurvivors
             public float majorThreatCatchUpSpeedMultiplier;
             public float majorThreatRepositionRadius;
             public float majorThreatRepositionDelaySeconds;
+            public float offscreenSpawnPadding;
+            public float spawnBandDepth;
+            public float majorThreatOffscreenSpawnPadding;
+            public float recycledEnemyOffscreenSpawnPadding;
             public float offscreenThreatMarkerDistance;
             public float escalationIntervalSeconds;
             public float minimumEnemySpawnIntervalSeconds;

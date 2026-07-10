@@ -83,6 +83,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float MajorThreatCatchUpSpeedMultiplier = 1.65f;
         public float MajorThreatRepositionRadius = 44f;
         public float MajorThreatRepositionDelaySeconds = 4.5f;
+        public float OffscreenSpawnPadding = 2.25f;
+        public float SpawnBandDepth = 4.5f;
+        public float MajorThreatOffscreenSpawnPadding = 3f;
+        public float RecycledEnemyOffscreenSpawnPadding = 2.5f;
         public float OffscreenThreatMarkerDistance = 11f;
         public int EnemyRangedAttackDodgeExperienceReward = 2;
         public int EnemyExperienceReward = 2;
@@ -1106,6 +1110,10 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MajorThreatCatchUpSpeedMultiplier = 1.9f;
             tuning.MajorThreatRepositionRadius = 32f;
             tuning.MajorThreatRepositionDelaySeconds = 3f;
+            tuning.OffscreenSpawnPadding = 2f;
+            tuning.SpawnBandDepth = 3.75f;
+            tuning.MajorThreatOffscreenSpawnPadding = 2.75f;
+            tuning.RecycledEnemyOffscreenSpawnPadding = 2.25f;
             tuning.OffscreenThreatMarkerDistance = 8.5f;
             tuning.EnemyRangedAttackDodgeExperienceReward = 1;
             tuning.EnemyExperienceReward = 1;
