@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Deucarian.RunUpgrades;
 using UnityEngine;
 
@@ -34,6 +35,7 @@ namespace Deucarian.TemplateGameSurvivors
         public string buttonStyleToken = "solid";
         public RarityStyleToken[] rarityStyles;
         public CategoryStyleToken[] categoryStyles;
+        public TutorialStepStyleToken[] tutorialSteps;
         public AudioEventStyleToken[] audioEvents;
 
         public static SurvivorsUiTheme CreateDefault()
@@ -178,6 +180,18 @@ namespace Deucarian.TemplateGameSurvivors
             return Mathf.Max(0f, token.throttleSeconds);
         }
 
+        public string GetTutorialStepTitle(int stepIndex, string fallback)
+        {
+            TutorialStepStyleToken token = GetTutorialStep(stepIndex);
+            return token == null || string.IsNullOrWhiteSpace(token.title) ? fallback : token.title;
+        }
+
+        public IReadOnlyList<string> GetTutorialStepLines(int stepIndex, IReadOnlyList<string> fallback)
+        {
+            TutorialStepStyleToken token = GetTutorialStep(stepIndex);
+            return token == null || token.lines == null || token.lines.Length == 0 ? fallback : token.lines;
+        }
+
         public Color GetHudAccentColor(Color fallback)
         {
             return ColorUtility.TryParseHtmlString(hudAccentColor, out Color color) ? color : fallback;
@@ -212,6 +226,7 @@ namespace Deucarian.TemplateGameSurvivors
             buttonStyleToken = string.IsNullOrWhiteSpace(buttonStyleToken) ? "solid" : buttonStyleToken;
             rarityStyles = MergeRarityFallbacks(rarityStyles);
             categoryStyles = MergeCategoryFallbacks(categoryStyles);
+            tutorialSteps = MergeTutorialFallbacks(tutorialSteps);
             audioEvents = MergeAudioFallbacks(audioEvents);
         }
 
@@ -323,6 +338,57 @@ namespace Deucarian.TemplateGameSurvivors
             return merged;
         }
 
+        private static TutorialStepStyleToken[] MergeTutorialFallbacks(TutorialStepStyleToken[] configured)
+        {
+            TutorialStepStyleToken[] fallback =
+            {
+                new TutorialStepStyleToken("combat", "Move And Survive", new[]
+                {
+                    "Move with WASD or the left stick. Your weapons fire automatically at nearby enemies.",
+                    "Use Arc Step to dash through pressure, shove enemies back, and buy a short safety window.",
+                    "The goal is not to stand still. Kite, collect, and keep the horde just barely under control."
+                }),
+                new TutorialStepStyleToken("experience", "Collect XP Gems", new[]
+                {
+                    "Enemies drop blue XP gems. Move near them to pull them in and fill the level bar.",
+                    "Magnet pickups and pickup-radius upgrades help recover loose gems without flooding drafts.",
+                    "Streak rewards, horde clears, and waystones can add extra pickups when you play actively."
+                }),
+                new TutorialStepStyleToken("drafts", "Choose A Build", new[]
+                {
+                    "Level-ups pause the run and offer draft cards. Pick weapons, passives, mutations, and evolutions.",
+                    "Reroll changes the offered cards, Banish removes a card for the run, and Skip grants blood shards.",
+                    "Open the Build panel to compare current weapons, passives, relics, run info, and controls."
+                }),
+                new TutorialStepStyleToken("threats", "Elites, Bosses, Rewards", new[]
+                {
+                    "Elites, dread elites, minibosses, and bosses keep their health, show bars, and stay tracked offscreen.",
+                    "Major threats drop recoverable reward caches, relic drafts, upgrade drafts, or class unlock rewards.",
+                    "Warnings, slam markers, and support-call banners tell you when the arena is about to spike."
+                }),
+                new TutorialStepStyleToken("evolutions", "Evolve Weapons", new[]
+                {
+                    "Evolutions need a ranked weapon path plus its matching passive. Ready banners call out missing pieces.",
+                    "Evolution picks trigger big payoff surges, XP recall, and stronger weapon behavior.",
+                    "Multiple evolutions can stack into a late-run Legend Surge."
+                }),
+                new TutorialStepStyleToken("modes", "Pick A Run Mode", new[]
+                {
+                    "Standard / Human Playtest is the full 30-minute arc with victory, boss rewards, and endless continuation.",
+                    "Sprint Run compresses the game into 5 minutes with quicker XP, early elites, a faster boss climax, and fast restart.",
+                    "After victory or defeat you can restart the same mode or return to mode selection."
+                })
+            };
+
+            var merged = new TutorialStepStyleToken[fallback.Length];
+            for (int i = 0; i < fallback.Length; i++)
+            {
+                merged[i] = CopyTutorialToken(FindConfiguredTutorial(configured, fallback[i].id) ?? fallback[i], fallback[i]);
+            }
+
+            return merged;
+        }
+
         private static RarityStyleToken[] MergeRarityTokens(RarityStyleToken[] configured, RarityStyleToken[] fallback)
         {
             var merged = new RarityStyleToken[fallback.Length];
@@ -399,6 +465,34 @@ namespace Deucarian.TemplateGameSurvivors
             return null;
         }
 
+        private TutorialStepStyleToken GetTutorialStep(int stepIndex)
+        {
+            if (tutorialSteps == null || stepIndex < 0 || stepIndex >= tutorialSteps.Length)
+            {
+                return null;
+            }
+
+            return tutorialSteps[stepIndex];
+        }
+
+        private static TutorialStepStyleToken FindConfiguredTutorial(TutorialStepStyleToken[] configured, string id)
+        {
+            if (configured == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < configured.Length; i++)
+            {
+                if (configured[i] != null && string.Equals(configured[i].id, id, StringComparison.OrdinalIgnoreCase))
+                {
+                    return configured[i];
+                }
+            }
+
+            return null;
+        }
+
         private static RarityStyleToken CopyRarityToken(RarityStyleToken source, RarityStyleToken fallback)
         {
             return new RarityStyleToken(
@@ -424,6 +518,14 @@ namespace Deucarian.TemplateGameSurvivors
                 string.IsNullOrWhiteSpace(source.category) ? fallback.category : source.category,
                 source.volume < 0f ? fallback.volume : source.volume,
                 source.throttleSeconds < 0f ? fallback.throttleSeconds : source.throttleSeconds);
+        }
+
+        private static TutorialStepStyleToken CopyTutorialToken(TutorialStepStyleToken source, TutorialStepStyleToken fallback)
+        {
+            return new TutorialStepStyleToken(
+                string.IsNullOrWhiteSpace(source.id) ? fallback.id : source.id,
+                string.IsNullOrWhiteSpace(source.title) ? fallback.title : source.title,
+                source.lines == null || source.lines.Length == 0 ? fallback.lines : source.lines);
         }
     }
 
@@ -489,6 +591,25 @@ namespace Deucarian.TemplateGameSurvivors
             this.category = category;
             this.volume = volume;
             this.throttleSeconds = throttleSeconds;
+        }
+    }
+
+    [Serializable]
+    public sealed class TutorialStepStyleToken
+    {
+        public string id;
+        public string title;
+        public string[] lines;
+
+        public TutorialStepStyleToken()
+        {
+        }
+
+        public TutorialStepStyleToken(string id, string title, string[] lines)
+        {
+            this.id = id;
+            this.title = title;
+            this.lines = lines ?? Array.Empty<string>();
         }
     }
 }

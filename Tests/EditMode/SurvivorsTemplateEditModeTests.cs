@@ -146,6 +146,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual("Restart Same", theme.restartSameButtonLabel);
             Assert.AreEqual("Change Mode", theme.changeModeButtonLabel);
             Assert.AreEqual("Continue", theme.continueButtonLabel);
+            Assert.AreEqual("Move And Survive", theme.GetTutorialStepTitle(0, string.Empty));
+            Assert.That(theme.GetTutorialStepLines(0, Array.Empty<string>()).Count, Is.GreaterThanOrEqualTo(3));
+            Assert.That(theme.GetTutorialStepLines(5, Array.Empty<string>())[0], Does.Contain("Standard / Human Playtest"));
             Assert.IsNotNull(theme.GetAudioEvent("run.victory"));
             Assert.IsNotNull(theme.GetAudioEvent("pickup.xp"));
 
@@ -157,6 +160,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual("Collector", neon.GetCategoryDisplayName("PickupMagnet", string.Empty));
             Assert.AreEqual("Ascended", neon.GetRarityDisplayName("Evolution"));
             Assert.AreEqual("Run Chronicle", neon.runSummaryTitle);
+            Assert.AreEqual("Pick A Run Mode", neon.GetTutorialStepTitle(5, string.Empty));
             Assert.IsNotNull(neon.GetAudioEvent("reward.evolution"));
         }
 
@@ -650,8 +654,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
             string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
             string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            string uiThemeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUiTheme", "ui-theme.json"));
+            string alternateUiThemeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "NeonArcanaUiTheme", "ui-theme.json"));
 
-            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson, pickupJson, runFlowJson);
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson, pickupJson, runFlowJson, uiThemeJson, alternateUiThemeJson);
 
             Assert.IsTrue(result.Succeeded, string.Join(Environment.NewLine, result.Errors));
         }
@@ -660,17 +666,41 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         public void SampleAuthoredContentBuildsRuntimeRunFlowAndRewards()
         {
             string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
             string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
             string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
             string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
 
             Assert.IsTrue(
-                SurvivorsAuthoredContentDefinition.TryCreate(enemyJson, runFlowJson, rewardJson, out SurvivorsAuthoredContentDefinition authored, out string error),
+                SurvivorsAuthoredContentDefinition.TryCreate(
+                    weaponJson,
+                    upgradeJson,
+                    relicJson,
+                    classJson,
+                    progressionJson,
+                    enemyJson,
+                    runFlowJson,
+                    rewardJson,
+                    out SurvivorsAuthoredContentDefinition authored,
+                    out string error),
                 error);
 
             SurvivorsTemplateTuning sprint = authored.CreateTuning(SurvivorsPacingProfile.SprintRun);
             SurvivorsRunFlowDefinition flow = authored.CreateRunFlowDefinition(sprint);
 
+            Assert.That(authored.WeaponDefinitions.Count, Is.GreaterThanOrEqualTo(10));
+            Assert.That(authored.RunUpgradeCatalog.Definitions.Count, Is.GreaterThanOrEqualTo(60));
+            Assert.That(authored.RunUpgradeMetadata.Count, Is.EqualTo(authored.RunUpgradeCatalog.Definitions.Count));
+            Assert.That(authored.RelicDefinitions.Count, Is.GreaterThanOrEqualTo(6));
+            Assert.That(authored.ClassLibrary.Classes.Count, Is.GreaterThanOrEqualTo(2));
+            Assert.That(authored.ProgressionTracks.Count, Is.GreaterThanOrEqualTo(8));
+            Assert.AreEqual("Sprint Run", sprint.RunModeDisplayName);
+            Assert.AreEqual("5 min", sprint.RunModeDurationLabel);
+            Assert.That(sprint.RunModeDescription, Does.Contain("quicker XP"));
             Assert.AreEqual(300f, sprint.SurvivalVictoryTimeSeconds);
             Assert.AreEqual(260, sprint.ExperienceRequiredBase);
             Assert.AreEqual(54, sprint.ExperienceRequiredPerLevel);
@@ -706,18 +736,34 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         public void ControllerUsesAuthoredContentForRunFlowRewardsAndThreatLifeBars()
         {
             string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
             string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
             string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
             string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
             SurvivorsTemplateController controller = CreateController(startRun: false);
             try
             {
-                Assert.IsTrue(controller.ConfigureAuthoredContentJson(enemyJson, runFlowJson, rewardJson), controller.AuthoredContentStatus);
+                Assert.IsTrue(
+                    controller.ConfigureAuthoredContentJson(
+                        weaponJson,
+                        upgradeJson,
+                        relicJson,
+                        classJson,
+                        progressionJson,
+                        enemyJson,
+                        runFlowJson,
+                        rewardJson),
+                    controller.AuthoredContentStatus);
                 controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
                 controller.StartRun();
 
                 Assert.IsTrue(controller.IsAuthoredContentBound);
                 Assert.IsTrue(controller.IsUsingAuthoredRunFlow);
+                Assert.That(controller.AuthoredContentStatus, Does.Contain("10 weapons"));
                 Assert.That(controller.AuthoredContentStatus, Does.Contain("10 enemies"));
                 Assert.AreEqual(BasicSurvivorsGame.BossEnemySpawnableId.Value, controller.CurrentRunFlowDefinition.Boss.Id);
                 Assert.IsTrue(controller.CurrentRunFlowDefinition.Boss.ShowBossLifeBar);
@@ -736,6 +782,131 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Assert.That(controller.ActiveMajorThreatLifeBarSummary, Does.Contain("Blood Warden Elite"));
                 Assert.That(controller.ActiveMajorThreatLifeBarSummary, Does.Contain("Bloodbound Miniboss"));
                 Assert.That(controller.ActiveMajorThreatLifeBarSummary, Does.Contain("Eclipse Boss"));
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void ControllerUsesAuthoredEnemyStatsWhenSampleContentChanges()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"))
+                .Replace("\"displayName\": \"Eclipse Boss\"", "\"displayName\": \"Authored Eclipse Boss\"")
+                .Replace("\"health\": 1400", "\"health\": 2100");
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            try
+            {
+                Assert.IsTrue(
+                    controller.ConfigureAuthoredContentJson(
+                        weaponJson,
+                        upgradeJson,
+                        relicJson,
+                        classJson,
+                        progressionJson,
+                        enemyJson,
+                        runFlowJson,
+                        rewardJson),
+                    controller.AuthoredContentStatus);
+                controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+                controller.StartRun();
+
+                SurvivorsEnemyProfile boss = controller.CurrentRunFlowDefinition.Boss;
+                float defaultSprintBossHealth = BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Boss, controller.CurrentTuning).MaxHealth;
+                Assert.AreEqual("Authored Eclipse Boss", boss.DisplayName);
+                Assert.AreEqual(defaultSprintBossHealth * 1.5f, boss.MaxHealth, 0.001f);
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void ControllerUsesAuthoredClassWeaponLoadoutWhenSampleContentChanges()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
+            string classJson = "{\"defaultClassId\":\"class.survivors.arcane-initiate\",\"classes\":[{\"id\":\"class.survivors.arcane-initiate\",\"displayName\":\"Arcane Initiate\",\"startingWeaponId\":\"weapon.survivors.star-beam\",\"startingWeaponIds\":[\"weapon.survivors.star-beam\"],\"unlockedByDefault\":true,\"unlockRewardId\":\"\",\"statModifiers\":[]}]}";
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            try
+            {
+                Assert.IsTrue(
+                    controller.ConfigureAuthoredContentJson(
+                        weaponJson,
+                        upgradeJson,
+                        relicJson,
+                        classJson,
+                        progressionJson,
+                        enemyJson,
+                        runFlowJson,
+                        rewardJson),
+                    controller.AuthoredContentStatus);
+
+                controller.StartRun();
+
+                Assert.AreEqual(1, controller.ActiveWeaponCount);
+                Assert.That(controller.ActiveWeaponIds, Does.Contain(BasicSurvivorsGame.StarBeamWeaponContentId));
+                Assert.That(controller.ActiveWeaponIds, Does.Not.Contain(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void ControllerUsesAuthoredMetaUpgradeOptionsWhenRewardContentChanges()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"));
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"))
+                .Replace("\"displayName\": \"Arcane Legacy\"", "\"displayName\": \"Authored Arcane Legacy\"")
+                .Replace("\"rankCosts\": [5, 8, 13]", "\"rankCosts\": [3, 8, 13]")
+                .Replace("\"amountPerRank\": 1.5", "\"amountPerRank\": 2.5");
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            try
+            {
+                Assert.IsTrue(
+                    controller.ConfigureAuthoredContentJson(
+                        weaponJson,
+                        upgradeJson,
+                        relicJson,
+                        classJson,
+                        progressionJson,
+                        enemyJson,
+                        runFlowJson,
+                        rewardJson),
+                    controller.AuthoredContentStatus);
+
+                Assert.IsTrue(controller.DebugGrantBloodShards(3));
+                IReadOnlyList<string> options = controller.GetResultMetaUpgradeOptionLabelsForTest();
+
+                Assert.That(options.Count, Is.GreaterThanOrEqualTo(1));
+                Assert.That(options[0], Does.Contain("Authored Arcane Legacy"));
+                Assert.That(options[0], Does.Contain("3 shards"));
+                Assert.That(options[0], Does.Contain("+2.5 starting damage"));
             }
             finally
             {
@@ -837,7 +1008,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             RunFlowProfileForTest debugFast = FindRunFlowProfile(library, SurvivorsPacingProfile.DebugFast.ToString());
             RunFlowProfileForTest showcase = FindRunFlowProfile(library, SurvivorsPacingProfile.Showcase.ToString());
 
-            Assert.AreEqual("Standard 30-minute human playtest arc with endless continuation.", human.description);
+            Assert.AreEqual("Full 30-minute run with boss, victory, rewards, and endless continuation.", human.description);
             Assert.AreEqual(1800f, human.targetDurationSeconds);
             Assert.AreEqual(1f, human.runRewardMultiplier);
             Assert.AreEqual(0, human.evolutionRequiredRankReduction);
@@ -862,6 +1033,11 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             AssertRunFlowLeashAndDraftThrottleMatchesTuning(normal, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Normal));
             AssertRunFlowLeashAndDraftThrottleMatchesTuning(debugFast, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.DebugFast));
             AssertRunFlowLeashAndDraftThrottleMatchesTuning(showcase, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Showcase));
+            AssertRunFlowEnemyStatsMatchesTuning(human, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.HumanPlaytest));
+            AssertRunFlowEnemyStatsMatchesTuning(sprint, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.SprintRun));
+            AssertRunFlowEnemyStatsMatchesTuning(normal, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Normal));
+            AssertRunFlowEnemyStatsMatchesTuning(debugFast, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.DebugFast));
+            AssertRunFlowEnemyStatsMatchesTuning(showcase, BasicSurvivorsGame.CreateTuning(SurvivorsPacingProfile.Showcase));
             Assert.AreEqual("Sprint Run", sprint.displayName);
             Assert.AreEqual(300f, sprint.targetDurationSeconds);
             Assert.AreEqual(0.65f, sprint.runRewardMultiplier);
@@ -971,6 +1147,22 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void InvalidThemeSampleContentReportsMissingAudioAndTutorialAuthoring()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string uiThemeJson = "{\"themeName\":\"Broken Theme\",\"standardModeDisplayName\":\"Standard / Human Playtest\",\"sprintModeDisplayName\":\"Sprint Run\",\"tutorialTitle\":\"Primer\",\"audioEvents\":[],\"tutorialSteps\":[]}";
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, uiThemeJson: uiThemeJson);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.IsFalse(result.Succeeded);
+            StringAssert.Contains("audio event palette", errors);
+            StringAssert.Contains("tutorial step copy", errors);
+        }
+
+        [Test]
         public void SampleUpgradeContentRequiresEvolutionRecords()
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";
@@ -980,8 +1172,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string errors = string.Join(Environment.NewLine, result.Errors);
 
             Assert.IsFalse(result.Succeeded);
-            StringAssert.Contains("missing evolution upgrade", errors);
-            StringAssert.Contains(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId, errors);
+            StringAssert.Contains("missing evolution upgrade records", errors);
         }
 
         [Test]
@@ -1879,6 +2070,30 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(profile.pickupMagnetPulseMinimumIntervalSeconds, Is.EqualTo(tuning.PickupMagnetPulseMinimumIntervalSeconds).Within(0.001f));
         }
 
+        private static void AssertRunFlowEnemyStatsMatchesTuning(RunFlowProfileForTest profile, SurvivorsTemplateTuning tuning)
+        {
+            Assert.NotNull(profile);
+            Assert.NotNull(tuning);
+            Assert.That(profile.enemyMaxHealth, Is.EqualTo(tuning.EnemyMaxHealth).Within(0.001f));
+            Assert.That(profile.enemyMoveSpeed, Is.EqualTo(tuning.EnemyMoveSpeed).Within(0.001f));
+            Assert.That(profile.enemyRadius, Is.EqualTo(tuning.EnemyRadius).Within(0.001f));
+            Assert.That(profile.enemyContactDamage, Is.EqualTo(tuning.EnemyContactDamage).Within(0.001f));
+            Assert.That(profile.enemyContactIntervalSeconds, Is.EqualTo(tuning.EnemyContactIntervalSeconds).Within(0.001f));
+            Assert.AreEqual(tuning.EnemyExperienceReward, profile.enemyExperienceReward);
+            Assert.That(profile.minibossMaxHealth, Is.EqualTo(tuning.MinibossMaxHealth).Within(0.001f));
+            Assert.That(profile.minibossMoveSpeed, Is.EqualTo(tuning.MinibossMoveSpeed).Within(0.001f));
+            Assert.That(profile.minibossRadius, Is.EqualTo(tuning.MinibossRadius).Within(0.001f));
+            Assert.That(profile.minibossContactDamage, Is.EqualTo(tuning.MinibossContactDamage).Within(0.001f));
+            Assert.That(profile.minibossContactIntervalSeconds, Is.EqualTo(tuning.MinibossContactIntervalSeconds).Within(0.001f));
+            Assert.AreEqual(tuning.MinibossExperienceReward, profile.minibossExperienceReward);
+            Assert.That(profile.bossMaxHealth, Is.EqualTo(tuning.BossMaxHealth).Within(0.001f));
+            Assert.That(profile.bossMoveSpeed, Is.EqualTo(tuning.BossMoveSpeed).Within(0.001f));
+            Assert.That(profile.bossRadius, Is.EqualTo(tuning.BossRadius).Within(0.001f));
+            Assert.That(profile.bossContactDamage, Is.EqualTo(tuning.BossContactDamage).Within(0.001f));
+            Assert.That(profile.bossContactIntervalSeconds, Is.EqualTo(tuning.BossContactIntervalSeconds).Within(0.001f));
+            Assert.AreEqual(tuning.BossExperienceReward, profile.bossExperienceReward);
+        }
+
         private static void Step(SurvivorsTemplateController controller, int frames, float deltaTime)
         {
             for (int i = 0; i < frames; i++)
@@ -1925,10 +2140,28 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             public float firstEliteSpawnTimeSeconds;
             public float firstDreadEliteSpawnTimeSeconds;
             public float minibossSpawnTimeSeconds;
+            public float minibossMaxHealth;
+            public float minibossMoveSpeed;
+            public float minibossRadius;
+            public float minibossContactDamage;
+            public float minibossContactIntervalSeconds;
+            public int minibossExperienceReward;
             public float bossSpawnTimeSeconds;
+            public float bossMaxHealth;
+            public float bossMoveSpeed;
+            public float bossRadius;
+            public float bossContactDamage;
+            public float bossContactIntervalSeconds;
+            public int bossExperienceReward;
             public float survivalVictoryTimeSeconds;
             public float hordeRushFirstTimeSeconds;
             public int enemyRangedAttackDodgeExperienceReward;
+            public float enemyMaxHealth;
+            public float enemyMoveSpeed;
+            public float enemyRadius;
+            public float enemyContactDamage;
+            public float enemyContactIntervalSeconds;
+            public int enemyExperienceReward;
             public float enemySoftLeashRadius;
             public float enemyHardRecycleRadius;
             public float enemyRecycleDelaySeconds;

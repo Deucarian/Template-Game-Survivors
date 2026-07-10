@@ -40,6 +40,38 @@ namespace Deucarian.TemplateGameSurvivors
             "Boss"
         };
 
+        private static readonly string[] RequiredThemeAudioEventIds =
+        {
+            "ui.hover",
+            "ui.select",
+            "mode.selected",
+            "draft.opened",
+            "draft.choice.selected",
+            "level.up",
+            "pickup.xp",
+            "pickup.magnet_pulse",
+            "combat.hit",
+            "combat.enemy_death",
+            "warning.elite",
+            "warning.boss",
+            "warning.low_health",
+            "reward.evolution",
+            "reward.relic",
+            "run.victory",
+            "run.defeat",
+            "run.summary.opened"
+        };
+
+        private static readonly string[] RequiredThemeTutorialStepIds =
+        {
+            "combat",
+            "experience",
+            "drafts",
+            "threats",
+            "evolutions",
+            "modes"
+        };
+
         public static SurvivorsContentValidationResult ValidateRuntimeContent(
             IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons,
             RunUpgradeCatalog upgrades,
@@ -103,7 +135,9 @@ namespace Deucarian.TemplateGameSurvivors
             string classJson = null,
             string progressionJson = null,
             string pickupJson = null,
-            string runFlowJson = null)
+            string runFlowJson = null,
+            string uiThemeJson = null,
+            string alternateUiThemeJson = null)
         {
             var result = new SurvivorsContentValidationResult();
             WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
@@ -129,15 +163,24 @@ namespace Deucarian.TemplateGameSurvivors
             RunFlowLibraryJson runFlowLibrary = string.IsNullOrWhiteSpace(runFlowJson)
                 ? null
                 : ParseJson<RunFlowLibraryJson>(runFlowJson, "run flow library", result);
+            UiThemeRecordJson uiTheme = string.IsNullOrWhiteSpace(uiThemeJson)
+                ? null
+                : ParseJson<UiThemeRecordJson>(uiThemeJson, "UI theme library", result);
+            UiThemeRecordJson alternateUiTheme = string.IsNullOrWhiteSpace(alternateUiThemeJson)
+                ? null
+                : ParseJson<UiThemeRecordJson>(alternateUiThemeJson, "alternate UI theme library", result);
             ValidateWeaponLibrary(weaponLibrary, result);
             ValidateUpgradeLibrary(upgradeLibrary, classLibrary, result);
             ValidateEnemyLibrary(enemyLibrary, result);
             ValidatePickupLibrary(pickupLibrary, result);
             ValidateRewardLibrary(rewardLibrary, result);
             ValidateRelicLibrary(relicLibrary, result);
-            ValidateClassLibraryJson(classLibrary, BuildKnownRewardIds(rewardLibrary), result);
-            ValidateProgressionLibrary(progressionLibrary, upgradeLibrary, classLibrary, result);
+            HashSet<string> knownWeaponIds = BuildKnownWeaponIds(weaponLibrary);
+            ValidateClassLibraryJson(classLibrary, knownWeaponIds, BuildKnownRewardIds(rewardLibrary), result);
+            ValidateProgressionLibrary(progressionLibrary, upgradeLibrary, classLibrary, knownWeaponIds, result);
             ValidateRunFlowLibrary(runFlowLibrary, result);
+            ValidateUiTheme(uiTheme, "Default UI theme", result);
+            ValidateUiTheme(alternateUiTheme, "Alternate UI theme", result);
             ValidateAuthoredRuntimeBinding(enemyJson, rewardJson, runFlowJson, result);
             return result;
         }
@@ -1003,7 +1046,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            ValidateSampleEvolutionUpgradeCoverage(upgradeIds, result);
+            ValidateSampleEvolutionUpgradeCoverage(BuildEvolutionUpgradeIds(library), result);
             ValidateSamplePickupBuildUpgradeCoverage(upgradeIds, result);
         }
 
@@ -1100,21 +1143,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private static void ValidateSampleEvolutionUpgradeCoverage(HashSet<string> sampleUpgradeIds, SurvivorsContentValidationResult result)
+        private static void ValidateSampleEvolutionUpgradeCoverage(HashSet<string> authoredEvolutionUpgradeIds, SurvivorsContentValidationResult result)
         {
-            IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata = BasicSurvivorsGame.CreateRunUpgradeMetadata();
-            for (int i = 0; i < metadata.Count; i++)
+            if (authoredEvolutionUpgradeIds == null || authoredEvolutionUpgradeIds.Count == 0)
             {
-                SurvivorsRunUpgradeMetadata entry = metadata[i];
-                if (entry == null || !entry.IsEvolution)
-                {
-                    continue;
-                }
-
-                if (sampleUpgradeIds == null || !sampleUpgradeIds.Contains(entry.UpgradeId))
-                {
-                    result.AddError($"Sample upgrade library missing evolution upgrade: {entry.UpgradeId}");
-                }
+                result.AddError("Sample upgrade library missing evolution upgrade records.");
             }
         }
 
@@ -1133,20 +1166,26 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private static void ValidateSampleEvolutionProgressionCoverage(HashSet<string> sampleEvolutionNodeUpgradeIds, SurvivorsContentValidationResult result)
+        private static void ValidateSampleEvolutionProgressionCoverage(
+            HashSet<string> authoredEvolutionUpgradeIds,
+            HashSet<string> sampleEvolutionNodeUpgradeIds,
+            SurvivorsContentValidationResult result)
         {
-            IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata = BasicSurvivorsGame.CreateRunUpgradeMetadata();
-            for (int i = 0; i < metadata.Count; i++)
+            if (authoredEvolutionUpgradeIds == null)
             {
-                SurvivorsRunUpgradeMetadata entry = metadata[i];
-                if (entry == null || !entry.IsEvolution)
+                return;
+            }
+
+            foreach (string upgradeId in authoredEvolutionUpgradeIds)
+            {
+                if (string.IsNullOrWhiteSpace(upgradeId))
                 {
                     continue;
                 }
 
-                if (sampleEvolutionNodeUpgradeIds == null || !sampleEvolutionNodeUpgradeIds.Contains(entry.UpgradeId))
+                if (sampleEvolutionNodeUpgradeIds == null || !sampleEvolutionNodeUpgradeIds.Contains(upgradeId))
                 {
-                    result.AddError($"Sample progression library missing evolution node: {entry.UpgradeId}");
+                    result.AddError($"Sample progression library missing evolution node: {upgradeId}");
                 }
             }
         }
@@ -1373,6 +1412,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static void ValidateClassLibraryJson(
             ClassLibraryJson library,
+            HashSet<string> knownWeaponIds,
             HashSet<string> knownRewardIds,
             SurvivorsContentValidationResult result)
         {
@@ -1387,7 +1427,6 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            HashSet<string> knownWeaponIds = BuildKnownWeaponIds(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions());
             var classIds = new HashSet<string>(StringComparer.Ordinal);
             int defaultUnlockedCount = 0;
             for (int i = 0; i < library.classes.Length; i++)
@@ -1458,6 +1497,7 @@ namespace Deucarian.TemplateGameSurvivors
             ProgressionLibraryJson library,
             UpgradeLibraryJson upgradeLibrary,
             ClassLibraryJson classLibrary,
+            HashSet<string> knownWeaponIds,
             SurvivorsContentValidationResult result)
         {
             if (library == null)
@@ -1473,7 +1513,6 @@ namespace Deucarian.TemplateGameSurvivors
 
             HashSet<string> knownUpgradeIds = BuildKnownUpgradeIds(upgradeLibrary);
             HashSet<string> knownClassIds = BuildKnownClassIds(classLibrary);
-            HashSet<string> knownWeaponIds = BuildKnownWeaponIds(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions());
             var trackIds = new HashSet<string>(StringComparer.Ordinal);
             var nodeIds = new HashSet<string>(StringComparer.Ordinal);
             var passiveAtlasClassIds = new HashSet<string>(StringComparer.Ordinal);
@@ -1585,7 +1624,7 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError($"Sample vertical slice requires at least {MinimumVerticalSliceCompleteWeaponTrackCount} complete weapon skill tracks.");
             }
 
-            ValidateSampleEvolutionProgressionCoverage(evolutionNodeUpgradeIds, result);
+            ValidateSampleEvolutionProgressionCoverage(BuildEvolutionUpgradeIds(upgradeLibrary), evolutionNodeUpgradeIds, result);
         }
 
         private static void ValidateEnemyLibrary(EnemyLibraryJson library, SurvivorsContentValidationResult result)
@@ -1998,6 +2037,24 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "enemy spawn pack base count", profile.enemySpawnPackBaseCount, result);
             ValidatePositive(profileId, "enemy spawn pack max count", profile.enemySpawnPackMaxCount, result);
             ValidatePositive(profileId, "enemy ranged dodge XP reward", profile.enemyRangedAttackDodgeExperienceReward, result);
+            ValidatePositive(profileId, "enemy max health", profile.enemyMaxHealth, result);
+            ValidatePositive(profileId, "enemy move speed", profile.enemyMoveSpeed, result);
+            ValidatePositive(profileId, "enemy radius", profile.enemyRadius, result);
+            ValidateNonNegative(profileId, "enemy contact damage", profile.enemyContactDamage, result);
+            ValidatePositive(profileId, "enemy contact interval", profile.enemyContactIntervalSeconds, result);
+            ValidatePositive(profileId, "enemy XP reward", profile.enemyExperienceReward, result);
+            ValidatePositive(profileId, "miniboss max health", profile.minibossMaxHealth, result);
+            ValidatePositive(profileId, "miniboss move speed", profile.minibossMoveSpeed, result);
+            ValidatePositive(profileId, "miniboss radius", profile.minibossRadius, result);
+            ValidateNonNegative(profileId, "miniboss contact damage", profile.minibossContactDamage, result);
+            ValidatePositive(profileId, "miniboss contact interval", profile.minibossContactIntervalSeconds, result);
+            ValidatePositive(profileId, "miniboss XP reward", profile.minibossExperienceReward, result);
+            ValidatePositive(profileId, "boss max health", profile.bossMaxHealth, result);
+            ValidatePositive(profileId, "boss move speed", profile.bossMoveSpeed, result);
+            ValidatePositive(profileId, "boss radius", profile.bossRadius, result);
+            ValidateNonNegative(profileId, "boss contact damage", profile.bossContactDamage, result);
+            ValidatePositive(profileId, "boss contact interval", profile.bossContactIntervalSeconds, result);
+            ValidatePositive(profileId, "boss XP reward", profile.bossExperienceReward, result);
             ValidatePositive(profileId, "enemy soft leash radius", profile.enemySoftLeashRadius, result);
             ValidatePositive(profileId, "enemy hard recycle radius", profile.enemyHardRecycleRadius, result);
             ValidateNonNegative(profileId, "enemy recycle delay", profile.enemyRecycleDelaySeconds, result);
@@ -2249,6 +2306,139 @@ namespace Deucarian.TemplateGameSurvivors
                 if (!tableIds.Contains(requiredId))
                 {
                     result.AddError($"Run flow profile {profileId} is missing rarity table {requiredId}.");
+                }
+            }
+        }
+
+        private static void ValidateUiTheme(UiThemeRecordJson theme, string label, SurvivorsContentValidationResult result)
+        {
+            if (theme == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(theme.themeName))
+            {
+                result.AddError($"{label} is missing a theme name.");
+            }
+
+            if (string.IsNullOrWhiteSpace(theme.standardModeDisplayName))
+            {
+                result.AddError($"{label} is missing the Standard / Human Playtest mode label.");
+            }
+
+            if (string.IsNullOrWhiteSpace(theme.sprintModeDisplayName))
+            {
+                result.AddError($"{label} is missing the Sprint Run mode label.");
+            }
+
+            if (string.IsNullOrWhiteSpace(theme.tutorialTitle))
+            {
+                result.AddError($"{label} is missing tutorial title copy.");
+            }
+
+            ValidateRequiredAudioEvents(theme.audioEvents, label, result);
+            ValidateRequiredTutorialSteps(theme.tutorialSteps, label, result);
+        }
+
+        private static void ValidateRequiredAudioEvents(AudioEventRecordJson[] audioEvents, string label, SurvivorsContentValidationResult result)
+        {
+            if (audioEvents == null || audioEvents.Length == 0)
+            {
+                result.AddError($"{label} must define an audio event palette.");
+                return;
+            }
+
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < audioEvents.Length; i++)
+            {
+                AudioEventRecordJson audioEvent = audioEvents[i];
+                if (audioEvent == null || string.IsNullOrWhiteSpace(audioEvent.id))
+                {
+                    result.AddError($"{label} audio event at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!ids.Add(audioEvent.id))
+                {
+                    result.AddError($"{label} has duplicate audio event id: {audioEvent.id}");
+                }
+
+                if (string.IsNullOrWhiteSpace(audioEvent.category))
+                {
+                    result.AddError($"{label} audio event {audioEvent.id} is missing a category.");
+                }
+
+                if (audioEvent.volume < 0f || audioEvent.volume > 1f)
+                {
+                    result.AddError($"{label} audio event {audioEvent.id} volume must be between 0 and 1.");
+                }
+
+                if (audioEvent.throttleSeconds < 0f)
+                {
+                    result.AddError($"{label} audio event {audioEvent.id} throttle cannot be negative.");
+                }
+            }
+
+            for (int i = 0; i < RequiredThemeAudioEventIds.Length; i++)
+            {
+                string requiredId = RequiredThemeAudioEventIds[i];
+                if (!ids.Contains(requiredId))
+                {
+                    result.AddError($"{label} is missing required audio event {requiredId}.");
+                }
+            }
+        }
+
+        private static void ValidateRequiredTutorialSteps(TutorialStepRecordJson[] tutorialSteps, string label, SurvivorsContentValidationResult result)
+        {
+            if (tutorialSteps == null || tutorialSteps.Length == 0)
+            {
+                result.AddError($"{label} must define tutorial step copy.");
+                return;
+            }
+
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < tutorialSteps.Length; i++)
+            {
+                TutorialStepRecordJson step = tutorialSteps[i];
+                if (step == null || string.IsNullOrWhiteSpace(step.id))
+                {
+                    result.AddError($"{label} tutorial step at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!ids.Add(step.id))
+                {
+                    result.AddError($"{label} has duplicate tutorial step id: {step.id}");
+                }
+
+                if (string.IsNullOrWhiteSpace(step.title))
+                {
+                    result.AddError($"{label} tutorial step {step.id} is missing a title.");
+                }
+
+                if (step.lines == null || step.lines.Length == 0)
+                {
+                    result.AddError($"{label} tutorial step {step.id} must include at least one line.");
+                    continue;
+                }
+
+                for (int lineIndex = 0; lineIndex < step.lines.Length; lineIndex++)
+                {
+                    if (string.IsNullOrWhiteSpace(step.lines[lineIndex]))
+                    {
+                        result.AddError($"{label} tutorial step {step.id} line {lineIndex} is blank.");
+                    }
+                }
+            }
+
+            for (int i = 0; i < RequiredThemeTutorialStepIds.Length; i++)
+            {
+                string requiredId = RequiredThemeTutorialStepIds[i];
+                if (!ids.Contains(requiredId))
+                {
+                    result.AddError($"{label} is missing required tutorial step {requiredId}.");
                 }
             }
         }
@@ -2640,6 +2830,26 @@ namespace Deucarian.TemplateGameSurvivors
             return ids;
         }
 
+        private static HashSet<string> BuildKnownWeaponIds(WeaponLibraryJson library)
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (library == null || library.weapons == null)
+            {
+                return ids;
+            }
+
+            for (int i = 0; i < library.weapons.Length; i++)
+            {
+                WeaponRecordJson weapon = library.weapons[i];
+                if (weapon != null && !string.IsNullOrWhiteSpace(weapon.id))
+                {
+                    ids.Add(weapon.id);
+                }
+            }
+
+            return ids;
+        }
+
         private static Dictionary<string, int> BuildKnownUpgradeMaxRanks(RunUpgradeCatalog upgrades)
         {
             var ranks = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -2672,6 +2882,34 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 UpgradeRecordJson upgrade = library.upgrades[i];
                 if (upgrade != null && !string.IsNullOrWhiteSpace(upgrade.id))
+                {
+                    ids.Add(upgrade.id);
+                }
+            }
+
+            return ids;
+        }
+
+        private static HashSet<string> BuildEvolutionUpgradeIds(UpgradeLibraryJson library)
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (library == null || library.upgrades == null)
+            {
+                return ids;
+            }
+
+            for (int i = 0; i < library.upgrades.Length; i++)
+            {
+                UpgradeRecordJson upgrade = library.upgrades[i];
+                if (upgrade == null ||
+                    string.IsNullOrWhiteSpace(upgrade.id) ||
+                    string.IsNullOrWhiteSpace(upgrade.category))
+                {
+                    continue;
+                }
+
+                if (Enum.TryParse(upgrade.category, ignoreCase: true, out SurvivorsRunUpgradeCategory parsedCategory) &&
+                    parsedCategory == SurvivorsRunUpgradeCategory.Evolution)
                 {
                     ids.Add(upgrade.id);
                 }
@@ -3255,6 +3493,34 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
         [Serializable]
+        private sealed class UiThemeRecordJson
+        {
+            public string themeName;
+            public string standardModeDisplayName;
+            public string sprintModeDisplayName;
+            public string tutorialTitle;
+            public AudioEventRecordJson[] audioEvents;
+            public TutorialStepRecordJson[] tutorialSteps;
+        }
+
+        [Serializable]
+        private sealed class AudioEventRecordJson
+        {
+            public string id;
+            public string category;
+            public float volume;
+            public float throttleSeconds;
+        }
+
+        [Serializable]
+        private sealed class TutorialStepRecordJson
+        {
+            public string id;
+            public string title;
+            public string[] lines;
+        }
+
+        [Serializable]
         private sealed class RunFlowLibraryJson
         {
             public RunFlowProfileRecordJson[] profiles;
@@ -3275,6 +3541,12 @@ namespace Deucarian.TemplateGameSurvivors
             public int enemySpawnPackBaseCount;
             public int enemySpawnPackMaxCount;
             public int enemyRangedAttackDodgeExperienceReward;
+            public float enemyMaxHealth;
+            public float enemyMoveSpeed;
+            public float enemyRadius;
+            public float enemyContactDamage;
+            public float enemyContactIntervalSeconds;
+            public int enemyExperienceReward;
             public float enemySoftLeashRadius;
             public float enemyHardRecycleRadius;
             public float enemyRecycleDelaySeconds;
@@ -3297,7 +3569,19 @@ namespace Deucarian.TemplateGameSurvivors
             public float firstDreadEliteSpawnTimeSeconds;
             public float dreadEliteSpawnIntervalSeconds;
             public float minibossSpawnTimeSeconds;
+            public float minibossMaxHealth;
+            public float minibossMoveSpeed;
+            public float minibossRadius;
+            public float minibossContactDamage;
+            public float minibossContactIntervalSeconds;
+            public int minibossExperienceReward;
             public float bossSpawnTimeSeconds;
+            public float bossMaxHealth;
+            public float bossMoveSpeed;
+            public float bossRadius;
+            public float bossContactDamage;
+            public float bossContactIntervalSeconds;
+            public int bossExperienceReward;
             public float survivalVictoryTimeSeconds;
             public float hordeRushFirstTimeSeconds;
             public float hordeRushIntervalSeconds;

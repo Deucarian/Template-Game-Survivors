@@ -12,6 +12,21 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
         private bool showRunModeSelection = true;
 
         [SerializeField]
+        private TextAsset weaponLibrary;
+
+        [SerializeField]
+        private TextAsset upgradeLibrary;
+
+        [SerializeField]
+        private TextAsset relicLibrary;
+
+        [SerializeField]
+        private TextAsset classLibrary;
+
+        [SerializeField]
+        private TextAsset progressionLibrary;
+
+        [SerializeField]
         private TextAsset enemyLibrary;
 
         [SerializeField]
@@ -38,7 +53,15 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
                 controller = gameObject.AddComponent<SurvivorsTemplateController>();
             }
 
-            controller.ConfigureAuthoredContent(enemyLibrary, runFlowLibrary, rewardLibrary);
+            controller.ConfigureAuthoredContent(
+                weaponLibrary,
+                upgradeLibrary,
+                relicLibrary,
+                classLibrary,
+                progressionLibrary,
+                enemyLibrary,
+                runFlowLibrary,
+                rewardLibrary);
             controller.ConfigureUiThemes(uiThemeLibrary, neonArcanaThemeLibrary);
             controller.ConfigureRunModeSelection(showRunModeSelection);
         }
