@@ -719,6 +719,372 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void StrictAuthoredWeaponMutationsDriveRuntimeValuesWithoutFallbacks()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"))
+                .Replace("\"cooldownSeconds\": 0.52", "\"cooldownSeconds\": 0.91")
+                .Replace("\"damage\": 7", "\"damage\": 9.25")
+                .Replace("\"speed\": 11.5", "\"speed\": 13.75")
+                .Replace("\"lifetimeSeconds\": 2.4", "\"lifetimeSeconds\": 3.1");
+
+            Assert.IsTrue(
+                TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error, weaponJson: weaponJson),
+                error);
+            SurvivorsWeaponArchetypeDefinition arcane = FindWeapon(authored.WeaponDefinitions, BasicSurvivorsGame.ArcaneWandWeaponContentId);
+
+            Assert.IsTrue(authored.IsStrictSample);
+            Assert.IsFalse(authored.UsesBuiltInFallbacks);
+            Assert.AreEqual(0.91f, arcane.CooldownSeconds, 0.001f);
+            Assert.AreEqual(9.25f, arcane.Damage, 0.001f);
+            Assert.AreEqual(13.75f, arcane.ProjectileSpeed, 0.001f);
+            Assert.AreEqual(3.1f, arcane.ProjectileLifetimeSeconds, 0.001f);
+            Assert.AreEqual(0.22f, arcane.ProjectileRadius, 0.001f);
+        }
+
+        [Test]
+        public void StrictAuthoredBindingRejectsMissingRequiredWeaponFields()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            weaponJson = ReplaceFirst(weaponJson, "\"damage\": 7", "\"omittedDamage\": 7");
+            weaponJson = ReplaceFirst(weaponJson, "\"projectileRadius\": 0.22", "\"omittedProjectileRadius\": 0.22");
+
+            bool created = TryCreateStrictSampleContent(out _, out string error, weaponJson: weaponJson);
+
+            Assert.IsFalse(created);
+            StringAssert.Contains("requires damage above zero", error);
+            StringAssert.Contains("requires projectile radius above zero", error);
+        }
+
+        [Test]
+        public void StrictAuthoredUpgradeWeightRankAndAmountDriveRuntimeCatalog()
+        {
+            string sampleRoot = GetSampleRoot();
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            upgradeJson = ReplaceFirst(upgradeJson, "\"weight\": 70", "\"weight\": 91");
+            upgradeJson = ReplaceFirst(upgradeJson, "\"maxRank\": 8", "\"maxRank\": 9");
+            upgradeJson = ReplaceFirst(upgradeJson, "\"amount\": 2.0", "\"amount\": 3.25");
+
+            Assert.IsTrue(
+                TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error, upgradeJson: upgradeJson),
+                error);
+            Assert.IsTrue(authored.RunUpgradeCatalog.TryGet(new RunUpgradeId("upgrade.survivors.arcane-damage"), out RunUpgradeDefinition upgrade));
+
+            Assert.AreEqual(91, upgrade.Weight);
+            Assert.AreEqual(9, upgrade.MaxRank);
+            Assert.AreEqual(3.25d, upgrade.Effects[0].Amount, 0.001d);
+        }
+
+        [Test]
+        public void StrictAuthoredBindingRejectsMissingRequiredUpgradeFields()
+        {
+            string sampleRoot = GetSampleRoot();
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            upgradeJson = ReplaceFirst(upgradeJson, "\"maxRank\": 8", "\"omittedMaxRank\": 8");
+            upgradeJson = ReplaceFirst(upgradeJson, "\"amount\": 2.0", "\"omittedAmount\": 2.0");
+
+            bool created = TryCreateStrictSampleContent(out _, out string error, upgradeJson: upgradeJson);
+
+            Assert.IsFalse(created);
+            StringAssert.Contains("requires max rank above zero", error);
+            StringAssert.Contains("missing a non-zero amount", error);
+        }
+
+        [Test]
+        public void StrictAuthoredEnemyMutationsDriveStatsLifecycleAndSpawnGate()
+        {
+            string sampleRoot = GetSampleRoot();
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"))
+                .Replace("\"health\": 12.5", "\"health\": 23.5")
+                .Replace("\"moveSpeed\": 1.35", "\"moveSpeed\": 1.85")
+                .Replace("\"contactDamage\": 3.5", "\"contactDamage\": 5.25")
+                .Replace("\"spawnTimeSeconds\": 20", "\"spawnTimeSeconds\": 42");
+
+            Assert.IsTrue(
+                TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error, enemyJson: enemyJson),
+                error);
+            Assert.IsTrue(authored.TryGetEnemyProfile(SurvivorsEnemyRole.Swarm, out SurvivorsEnemyProfile swarm));
+            Assert.IsTrue(authored.TryGetEnemyProfile(SurvivorsEnemyRole.Runner, out SurvivorsEnemyProfile runner));
+
+            Assert.AreEqual(23.5f, swarm.MaxHealth, 0.001f);
+            Assert.AreEqual(1.85f, swarm.MoveSpeed, 0.001f);
+            Assert.AreEqual(5.25f, swarm.ContactDamage, 0.001f);
+            Assert.IsTrue(swarm.CanRecycle);
+            Assert.IsTrue(swarm.CanLeash);
+            Assert.IsTrue(swarm.CanReposition);
+            Assert.IsFalse(swarm.ShowOffscreenMarker);
+            Assert.AreEqual(42f, runner.SpawnTimeSeconds, 0.001f);
+        }
+
+        [Test]
+        public void StrictAuthoredBindingRejectsMissingRequiredEnemyFields()
+        {
+            string sampleRoot = GetSampleRoot();
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            enemyJson = ReplaceFirst(enemyJson, "\"health\": 12.5", "\"omittedHealth\": 12.5");
+            enemyJson = ReplaceFirst(enemyJson, "\"tint\": \"#E03852\"", "\"omittedTint\": \"#E03852\"");
+
+            bool created = TryCreateStrictSampleContent(out _, out string error, enemyJson: enemyJson);
+
+            Assert.IsFalse(created);
+            StringAssert.Contains("requires health above zero", error);
+            StringAssert.Contains("requires an authored HTML color value", error);
+        }
+
+        [Test]
+        public void StrictAuthoredRunFlowMutationsRemainSeparateForStandardAndSprint()
+        {
+            string sampleRoot = GetSampleRoot();
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            runFlowJson = ReplaceFirst(runFlowJson, "\"survivalVictoryTimeSeconds\": 1800", "\"survivalVictoryTimeSeconds\": 1777");
+            runFlowJson = ReplaceFirst(runFlowJson, "\"survivalVictoryTimeSeconds\": 300", "\"survivalVictoryTimeSeconds\": 333");
+
+            Assert.IsTrue(
+                TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error, runFlowJson: runFlowJson),
+                error);
+
+            Assert.AreEqual(1777f, authored.CreateTuning(SurvivorsPacingProfile.HumanPlaytest).SurvivalVictoryTimeSeconds, 0.001f);
+            Assert.AreEqual(333f, authored.CreateTuning(SurvivorsPacingProfile.SprintRun).SurvivalVictoryTimeSeconds, 0.001f);
+        }
+
+        [Test]
+        public void StrictAuthoredSharedGameplayAndProfileOverridesDriveRuntimeTuning()
+        {
+            string sampleRoot = GetSampleRoot();
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            runFlowJson = ReplaceFirst(runFlowJson, "\"playerMoveSpeed\": 5.55", "\"playerMoveSpeed\": 6.15");
+            runFlowJson = ReplaceFirst(runFlowJson, "\"dashDistance\": 3.35", "\"dashDistance\": 4.1");
+
+            Assert.IsTrue(
+                TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error, runFlowJson: runFlowJson),
+                error);
+
+            Assert.AreEqual(6.15f, authored.CreateTuning(SurvivorsPacingProfile.HumanPlaytest).PlayerMoveSpeed, 0.001f);
+            Assert.AreEqual(4.1f, authored.CreateTuning(SurvivorsPacingProfile.SprintRun).DashDistance, 0.001f);
+            Assert.AreEqual(3.15f, authored.CreateTuning(SurvivorsPacingProfile.HumanPlaytest).DashDistance, 0.001f);
+        }
+
+        [Test]
+        public void StrictAuthoredGameplayTuningPreservesEveryPreviousEffectiveProfileValue()
+        {
+            Assert.IsTrue(TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error), error);
+            var profiles = new[]
+            {
+                SurvivorsPacingProfile.HumanPlaytest,
+                SurvivorsPacingProfile.SprintRun,
+                SurvivorsPacingProfile.Normal,
+                SurvivorsPacingProfile.DebugFast,
+                SurvivorsPacingProfile.Showcase
+            };
+            IReadOnlyList<string> authoredFieldNames = SurvivorsAuthoredContentDefinition.AuthoredGameplayTuningFieldNames;
+
+            for (int profileIndex = 0; profileIndex < profiles.Length; profileIndex++)
+            {
+                SurvivorsPacingProfile profile = profiles[profileIndex];
+                SurvivorsTemplateTuning previousEffective = BasicSurvivorsGame.CreateTuning(profile);
+                SurvivorsTemplateTuning strictAuthored = authored.CreateTuning(profile);
+                for (int fieldIndex = 0; fieldIndex < authoredFieldNames.Count; fieldIndex++)
+                {
+                    string authoredFieldName = authoredFieldNames[fieldIndex];
+                    string tuningFieldName = char.ToUpperInvariant(authoredFieldName[0]) + authoredFieldName.Substring(1);
+                    System.Reflection.FieldInfo tuningField = typeof(SurvivorsTemplateTuning).GetField(tuningFieldName);
+                    Assert.IsNotNull(tuningField, $"Missing runtime tuning field for authored value {authoredFieldName}.");
+
+                    if (tuningField.FieldType == typeof(float))
+                    {
+                        Assert.AreEqual(
+                            (float)tuningField.GetValue(previousEffective),
+                            (float)tuningField.GetValue(strictAuthored),
+                            0.0001f,
+                            $"{profile}.{tuningFieldName}");
+                    }
+                    else
+                    {
+                        Assert.AreEqual(
+                            tuningField.GetValue(previousEffective),
+                            tuningField.GetValue(strictAuthored),
+                            $"{profile}.{tuningFieldName}");
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void StrictAuthoredBindingRejectsMissingRunFlowFields()
+        {
+            string sampleRoot = GetSampleRoot();
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            runFlowJson = ReplaceFirst(
+                runFlowJson,
+                "\"playerMoveSpeed\": 5.55",
+                "\"omittedPlayerMoveSpeed\": 5.55");
+            runFlowJson = ReplaceFirst(
+                runFlowJson,
+                "\"enemySpawnIntervalSeconds\": 0.95",
+                "\"omittedEnemySpawnIntervalSeconds\": 0.95");
+
+            bool created = TryCreateStrictSampleContent(out _, out string error, runFlowJson: runFlowJson);
+
+            Assert.IsFalse(created);
+            StringAssert.Contains("requires playerMoveSpeed above zero", error);
+            StringAssert.Contains("enemy spawn interval above zero", error);
+        }
+
+        [Test]
+        public void StrictAuthoredRewardMutationDrivesRuntimeGrant()
+        {
+            string sampleRoot = GetSampleRoot();
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            rewardJson = ReplaceFirst(rewardJson, "\"currencyAmount\": 2", "\"currencyAmount\": 7");
+
+            Assert.IsTrue(
+                TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error, rewardJson: rewardJson),
+                error);
+            Assert.IsTrue(authored.MetaProgressionDefinition.TryGetReward(BasicSurvivorsGame.EliteRewardId, out SurvivorsRewardDefinition reward));
+            Assert.AreEqual(7, reward.CurrencyAmount);
+        }
+
+        [Test]
+        public void StrictAuthoredBindingRejectsBrokenRewardReferences()
+        {
+            string sampleRoot = GetSampleRoot();
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            rewardJson = ReplaceFirst(
+                rewardJson,
+                "\"currencyId\": \"currency.survivors.blood-shards\"",
+                "\"currencyId\": \"currency.survivors.missing\"");
+
+            bool created = TryCreateStrictSampleContent(out _, out string error, rewardJson: rewardJson);
+
+            Assert.IsFalse(created);
+            StringAssert.Contains("references unknown currency", error);
+        }
+
+        [Test]
+        public void ProgressionMutationChangesLiveClassGateOwnership()
+        {
+            string sampleRoot = GetSampleRoot();
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"))
+                .Replace("upgrade.survivors.arcane-thesis", "upgrade.survivors.swap-placeholder")
+                .Replace("upgrade.survivors.ember-forge-heart", "upgrade.survivors.arcane-thesis")
+                .Replace("upgrade.survivors.swap-placeholder", "upgrade.survivors.ember-forge-heart");
+
+            Assert.IsTrue(
+                TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error, progressionJson: progressionJson),
+                error);
+            SurvivorsClassUpgradeGateDefinition gate = FindClassGate(authored.ClassUpgradeGates, BasicSurvivorsGame.ArcaneThesisUpgradeId);
+
+            Assert.That(gate.AllowedClassIds, Does.Contain(BasicSurvivorsGame.EmberVanguardClassId));
+            Assert.That(gate.AllowedClassIds, Does.Not.Contain(BasicSurvivorsGame.DefaultClassId));
+
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            try
+            {
+                Assert.IsTrue(
+                    controller.ConfigureAuthoredContentJson(
+                        File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json")),
+                        File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json")),
+                        File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json")),
+                        File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json")),
+                        progressionJson,
+                        File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json")),
+                        File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json")),
+                        File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"))),
+                    controller.AuthoredContentStatus);
+                controller.StartRun();
+
+                Assert.IsFalse(controller.IsUpgradeAvailableInRunForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void ProgressionMutationChangesBoundWeaponEvolutionTrackMetadata()
+        {
+            string sampleRoot = GetSampleRoot();
+            string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
+            progressionJson = ReplaceFirst(
+                progressionJson,
+                "\"id\": \"node.survivors.arc-bolt.evolution\", \"displayName\": \"Arcane Storm\", \"upgradeId\": \"upgrade.survivors.evolution.arcane-storm\", \"kind\": \"Evolution\", \"tier\": 5, \"pointCost\": 3, \"maxRank\": 1",
+                "\"id\": \"node.survivors.arc-bolt.evolution\", \"displayName\": \"Arcane Storm\", \"upgradeId\": \"upgrade.survivors.evolution.arcane-storm\", \"kind\": \"Evolution\", \"tier\": 5, \"pointCost\": 7, \"maxRank\": 1");
+
+            Assert.IsTrue(
+                TryCreateStrictSampleContent(out SurvivorsAuthoredContentDefinition authored, out string error, progressionJson: progressionJson),
+                error);
+            SurvivorsProgressionTrackDefinition track = FindProgressionTrack(
+                authored.ProgressionTracks,
+                "progression.survivors.arc-bolt.weapon");
+            SurvivorsProgressionNodeDefinition node = FindProgressionNode(
+                track,
+                "node.survivors.arc-bolt.evolution");
+
+            Assert.AreEqual(SurvivorsProgressionTrackKind.WeaponSkillTrack, track.Kind);
+            Assert.AreEqual(BasicSurvivorsGame.ArcaneWandWeaponContentId, track.TargetWeaponId);
+            Assert.AreEqual(SurvivorsProgressionNodeKind.Evolution, node.Kind);
+            Assert.AreEqual(7, node.PointCost);
+        }
+
+        [Test]
+        public void StrictBindingFailureCannotStartFallbackBalancedRun()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            weaponJson = ReplaceFirst(weaponJson, "\"damage\": 7", "\"omittedDamage\": 7");
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            try
+            {
+                bool configured = controller.ConfigureAuthoredContentJson(
+                    weaponJson,
+                    File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json")),
+                    File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json")),
+                    File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json")),
+                    File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json")),
+                    File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json")),
+                    File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json")),
+                    File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json")),
+                    SurvivorsAuthoredContentBindingPolicy.StrictSample);
+
+                Assert.IsFalse(configured);
+                Assert.IsTrue(controller.IsStrictAuthoredSample);
+                Assert.IsFalse(controller.IsAuthoredContentBound);
+                Assert.IsFalse(controller.IsFallbackContentActive);
+                Assert.IsFalse(controller.CanStartConfiguredRun);
+                Assert.IsFalse(controller.SelectSprintRun());
+                Assert.IsFalse(controller.IsRunStarted);
+                Assert.AreEqual(SurvivorsRunState.Booting, controller.State);
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
+        public void UnboundHostUsesIdentifiableFallbackPolicy()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            try
+            {
+                Assert.IsFalse(controller.IsStrictAuthoredSample);
+                Assert.IsTrue(controller.IsFallbackContentActive);
+                Assert.IsTrue(controller.CanStartConfiguredRun);
+                StringAssert.Contains("Fallback content active", controller.AuthoredContentStatus);
+
+                controller.StartRun();
+
+                Assert.IsTrue(controller.IsRunStarted);
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
         public void InvalidAuthoredRuntimeBindingReportsMissingRewardReferences()
         {
             string sampleRoot = GetSampleRoot();
@@ -842,7 +1208,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
             string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
             string relicJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json"));
-            string classJson = "{\"defaultClassId\":\"class.survivors.arcane-initiate\",\"classes\":[{\"id\":\"class.survivors.arcane-initiate\",\"displayName\":\"Arcane Initiate\",\"startingWeaponId\":\"weapon.survivors.star-beam\",\"startingWeaponIds\":[\"weapon.survivors.star-beam\"],\"unlockedByDefault\":true,\"unlockRewardId\":\"\",\"statModifiers\":[]}]}";
+            string classJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json"))
+                .Replace("\"weapon.survivors.arcane-wand\"", "\"weapon.survivors.star-beam\"");
             string progressionJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json"));
             string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
             string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
@@ -1135,9 +1502,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             StringAssert.Contains("Enemies/elites/bosses come from authored content.", contract);
             StringAssert.Contains("No manual reconstruction is required after import.", contract);
             StringAssert.Contains("Known Contract Risks / Future Hardening", contract);
-            StringAssert.Contains("Some authored binders may use built-in per-field fallback values", contract);
-            StringAssert.Contains("`DefaultProgression/progression.json` is parsed and validated", contract);
-            StringAssert.Contains("Make `DefaultProgression/progression.json`'s exact runtime role explicit", contract);
+            StringAssert.Contains("SurvivorsAuthoredContentBindingPolicy.StrictSample", contract);
+            StringAssert.Contains("gameplayTuningOverrides", contract);
+            StringAssert.Contains("`DefaultProgression/progression.json` owns class passive atlases", contract);
             StringAssert.Contains("Prove extraction with Idle Auto Defense", contract);
 
             StringAssert.Contains("Specific Survivors weapons/enemies/bosses/evolutions remain local content.", candidates);
@@ -1406,7 +1773,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";
             string upgradeJson = "{\"upgrades\":[{\"id\":\"upgrade.valid\",\"rarity\":\"Common\",\"effect\":\"effect.test\",\"target\":\"survivors.weapon.arcane-wand\"}]}";
-            string pickupJson = "{\"pickups\":[{\"id\":\"pickup.dup\",\"displayName\":\"\",\"attractRange\":-1,\"attractionSpeed\":-2},{\"id\":\"pickup.dup\",\"displayName\":\"Duplicate\"}]}";
+            string pickupJson = "{\"pickups\":[{\"id\":\"pickup.dup\",\"displayName\":\"\"},{\"id\":\"pickup.dup\",\"displayName\":\"Duplicate\"}]}";
 
             SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(weaponJson, upgradeJson, pickupJson: pickupJson);
             string errors = string.Join(Environment.NewLine, result.Errors);
@@ -1414,8 +1781,6 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsFalse(result.Succeeded);
             StringAssert.Contains("Duplicate pickup id", errors);
             StringAssert.Contains("missing a display name", errors);
-            StringAssert.Contains("negative attract range", errors);
-            StringAssert.Contains("negative attraction speed", errors);
             StringAssert.Contains("requires behavior text", errors);
             StringAssert.Contains("missing required pickup id", errors);
         }
@@ -2193,6 +2558,109 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsTrue(controller.TrySelectClassForTest(classId));
             controller.StartRun();
             return controller;
+        }
+
+        private static bool TryCreateStrictSampleContent(
+            out SurvivorsAuthoredContentDefinition definition,
+            out string error,
+            string weaponJson = null,
+            string upgradeJson = null,
+            string relicJson = null,
+            string classJson = null,
+            string progressionJson = null,
+            string enemyJson = null,
+            string runFlowJson = null,
+            string rewardJson = null)
+        {
+            string sampleRoot = GetSampleRoot();
+            return SurvivorsAuthoredContentDefinition.TryCreate(
+                weaponJson ?? File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json")),
+                upgradeJson ?? File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json")),
+                relicJson ?? File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRelics", "relics.json")),
+                classJson ?? File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultClasses", "classes.json")),
+                progressionJson ?? File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultProgression", "progression.json")),
+                enemyJson ?? File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json")),
+                runFlowJson ?? File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json")),
+                rewardJson ?? File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json")),
+                SurvivorsAuthoredContentBindingPolicy.StrictSample,
+                out definition,
+                out error);
+        }
+
+        private static SurvivorsWeaponArchetypeDefinition FindWeapon(
+            IReadOnlyList<SurvivorsWeaponArchetypeDefinition> weapons,
+            string weaponId)
+        {
+            if (weapons != null)
+            {
+                for (int i = 0; i < weapons.Count; i++)
+                {
+                    if (weapons[i] != null && string.Equals(weapons[i].Id, weaponId, StringComparison.Ordinal))
+                    {
+                        return weapons[i];
+                    }
+                }
+            }
+
+            Assert.Fail("Missing authored weapon " + weaponId);
+            return null;
+        }
+
+        private static SurvivorsClassUpgradeGateDefinition FindClassGate(
+            IReadOnlyList<SurvivorsClassUpgradeGateDefinition> gates,
+            string upgradeId)
+        {
+            if (gates != null)
+            {
+                for (int i = 0; i < gates.Count; i++)
+                {
+                    if (gates[i] != null && string.Equals(gates[i].UpgradeId, upgradeId, StringComparison.Ordinal))
+                    {
+                        return gates[i];
+                    }
+                }
+            }
+
+            Assert.Fail("Missing authored class gate " + upgradeId);
+            return null;
+        }
+
+        private static SurvivorsProgressionTrackDefinition FindProgressionTrack(
+            IReadOnlyList<SurvivorsProgressionTrackDefinition> tracks,
+            string trackId)
+        {
+            if (tracks != null)
+            {
+                for (int i = 0; i < tracks.Count; i++)
+                {
+                    if (tracks[i] != null && string.Equals(tracks[i].Id, trackId, StringComparison.Ordinal))
+                    {
+                        return tracks[i];
+                    }
+                }
+            }
+
+            Assert.Fail("Missing authored progression track " + trackId);
+            return null;
+        }
+
+        private static SurvivorsProgressionNodeDefinition FindProgressionNode(
+            SurvivorsProgressionTrackDefinition track,
+            string nodeId)
+        {
+            if (track != null && track.Nodes != null)
+            {
+                for (int i = 0; i < track.Nodes.Count; i++)
+                {
+                    if (track.Nodes[i] != null && string.Equals(track.Nodes[i].Id, nodeId, StringComparison.Ordinal))
+                    {
+                        return track.Nodes[i];
+                    }
+                }
+            }
+
+            Assert.Fail("Missing authored progression node " + nodeId);
+            return null;
         }
 
         private static string GetSampleRoot()

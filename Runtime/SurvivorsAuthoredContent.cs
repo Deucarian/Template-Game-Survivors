@@ -6,11 +6,18 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
+    public enum SurvivorsAuthoredContentBindingPolicy
+    {
+        AllowFallbacks = 0,
+        StrictSample = 1
+    }
+
     public sealed class SurvivorsAuthoredContentDefinition
     {
         private readonly SurvivorsEnemyProfile[] _enemyProfiles;
         private readonly Dictionary<SurvivorsEnemyRole, SurvivorsEnemyProfile> _enemyProfilesByRole;
         private readonly Dictionary<string, RunFlowProfileRecordJson> _runFlowProfiles;
+        private readonly SurvivorsGameplayTuningRecordJson _sharedGameplayTuning;
         private readonly SurvivorsMetaProgressionDefinition _metaProgressionDefinition;
         private readonly SurvivorsWeaponArchetypeDefinition[] _weaponDefinitions;
         private readonly RunUpgradeCatalog _runUpgradeCatalog;
@@ -24,6 +31,7 @@ namespace Deucarian.TemplateGameSurvivors
             SurvivorsEnemyProfile[] enemyProfiles,
             Dictionary<SurvivorsEnemyRole, SurvivorsEnemyProfile> enemyProfilesByRole,
             Dictionary<string, RunFlowProfileRecordJson> runFlowProfiles,
+            SurvivorsGameplayTuningRecordJson sharedGameplayTuning,
             SurvivorsMetaProgressionDefinition metaProgressionDefinition,
             SurvivorsWeaponArchetypeDefinition[] weaponDefinitions,
             RunUpgradeCatalog runUpgradeCatalog,
@@ -32,11 +40,13 @@ namespace Deucarian.TemplateGameSurvivors
             SurvivorsRelicDefinition[] relicDefinitions,
             SurvivorsClassLibraryDefinition classLibrary,
             SurvivorsProgressionTrackDefinition[] progressionTracks,
+            SurvivorsAuthoredContentBindingPolicy bindingPolicy,
             string sourceSummary)
         {
             _enemyProfiles = enemyProfiles ?? Array.Empty<SurvivorsEnemyProfile>();
             _enemyProfilesByRole = enemyProfilesByRole ?? new Dictionary<SurvivorsEnemyRole, SurvivorsEnemyProfile>();
             _runFlowProfiles = runFlowProfiles ?? new Dictionary<string, RunFlowProfileRecordJson>(StringComparer.Ordinal);
+            _sharedGameplayTuning = sharedGameplayTuning;
             _metaProgressionDefinition = metaProgressionDefinition;
             _weaponDefinitions = weaponDefinitions ?? Array.Empty<SurvivorsWeaponArchetypeDefinition>();
             _runUpgradeCatalog = runUpgradeCatalog;
@@ -45,10 +55,14 @@ namespace Deucarian.TemplateGameSurvivors
             _relicDefinitions = relicDefinitions ?? Array.Empty<SurvivorsRelicDefinition>();
             _classLibrary = classLibrary;
             _progressionTracks = progressionTracks ?? Array.Empty<SurvivorsProgressionTrackDefinition>();
+            BindingPolicy = bindingPolicy;
             SourceSummary = sourceSummary ?? string.Empty;
         }
 
         public string SourceSummary { get; }
+        public SurvivorsAuthoredContentBindingPolicy BindingPolicy { get; }
+        public bool IsStrictSample => BindingPolicy == SurvivorsAuthoredContentBindingPolicy.StrictSample;
+        public bool UsesBuiltInFallbacks => BindingPolicy == SurvivorsAuthoredContentBindingPolicy.AllowFallbacks;
         public bool HasEnemyProfiles => _enemyProfiles.Length > 0;
         public bool HasRunFlowProfiles => _runFlowProfiles.Count > 0;
         public bool HasMetaProgression => _metaProgressionDefinition != null;
@@ -68,6 +82,7 @@ namespace Deucarian.TemplateGameSurvivors
         public IReadOnlyList<SurvivorsRelicDefinition> RelicDefinitions => _relicDefinitions;
         public SurvivorsClassLibraryDefinition ClassLibrary => _classLibrary;
         public IReadOnlyList<SurvivorsProgressionTrackDefinition> ProgressionTracks => _progressionTracks;
+        public static IReadOnlyList<string> AuthoredGameplayTuningFieldNames => SurvivorsGameplayTuningRecordJson.FieldNames;
 
         public static bool TryCreate(
             string enemyJson,
@@ -86,6 +101,7 @@ namespace Deucarian.TemplateGameSurvivors
                 runFlowJson: runFlowJson,
                 rewardJson: rewardJson,
                 requireFullContent: false,
+                SurvivorsAuthoredContentBindingPolicy.AllowFallbacks,
                 out definition,
                 out error);
         }
@@ -102,6 +118,33 @@ namespace Deucarian.TemplateGameSurvivors
             out SurvivorsAuthoredContentDefinition definition,
             out string error)
         {
+            return TryCreate(
+                weaponJson,
+                upgradeJson,
+                relicJson,
+                classJson,
+                progressionJson,
+                enemyJson,
+                runFlowJson,
+                rewardJson,
+                SurvivorsAuthoredContentBindingPolicy.StrictSample,
+                out definition,
+                out error);
+        }
+
+        public static bool TryCreate(
+            string weaponJson,
+            string upgradeJson,
+            string relicJson,
+            string classJson,
+            string progressionJson,
+            string enemyJson,
+            string runFlowJson,
+            string rewardJson,
+            SurvivorsAuthoredContentBindingPolicy bindingPolicy,
+            out SurvivorsAuthoredContentDefinition definition,
+            out string error)
+        {
             return TryCreateCore(
                 weaponJson,
                 upgradeJson,
@@ -112,6 +155,7 @@ namespace Deucarian.TemplateGameSurvivors
                 runFlowJson,
                 rewardJson,
                 requireFullContent: true,
+                bindingPolicy,
                 out definition,
                 out error);
         }
@@ -126,11 +170,31 @@ namespace Deucarian.TemplateGameSurvivors
             string runFlowJson,
             string rewardJson,
             bool requireFullContent,
+            SurvivorsAuthoredContentBindingPolicy bindingPolicy,
             out SurvivorsAuthoredContentDefinition definition,
             out string error)
         {
             definition = null;
             var errors = new List<string>();
+            bool strictSample = bindingPolicy == SurvivorsAuthoredContentBindingPolicy.StrictSample;
+            if (requireFullContent && strictSample)
+            {
+                SurvivorsContentValidationResult validation = SurvivorsContentValidator.ValidateStrictAuthoredBindingJson(
+                    weaponJson,
+                    upgradeJson,
+                    enemyJson,
+                    rewardJson,
+                    relicJson,
+                    classJson,
+                    progressionJson,
+                    runFlowJson);
+                if (!validation.Succeeded)
+                {
+                    error = string.Join("; ", validation.Errors);
+                    return false;
+                }
+            }
+
             WeaponLibraryJson weapons = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", errors, requireFullContent);
             UpgradeLibraryJson upgrades = ParseJson<UpgradeLibraryJson>(upgradeJson, "upgrade library", errors, requireFullContent);
             RelicLibraryJson relics = ParseJson<RelicLibraryJson>(relicJson, "relic library", errors, requireFullContent);
@@ -140,17 +204,17 @@ namespace Deucarian.TemplateGameSurvivors
             RunFlowLibraryJson runFlow = ParseJson<RunFlowLibraryJson>(runFlowJson, "run flow library", errors, required: true);
             RewardLibraryJson rewards = ParseJson<RewardLibraryJson>(rewardJson, "reward library", errors, required: true);
 
-            SurvivorsWeaponArchetypeDefinition[] weaponDefinitions = CreateWeaponDefinitions(weapons, errors);
-            RunUpgradeCatalog runUpgradeCatalog = CreateRunUpgradeCatalog(upgrades, errors, requireFullContent);
+            SurvivorsWeaponArchetypeDefinition[] weaponDefinitions = CreateWeaponDefinitions(weapons, errors, !strictSample);
+            RunUpgradeCatalog runUpgradeCatalog = CreateRunUpgradeCatalog(upgrades, errors, strictSample);
             SurvivorsRelicDefinition[] relicDefinitions = CreateRelicDefinitions(relics, errors);
             SurvivorsClassLibraryDefinition classLibrary = CreateClassLibraryDefinition(classes, errors);
             SurvivorsProgressionTrackDefinition[] progressionTracks = CreateProgressionTracks(progression, errors);
             SurvivorsRunUpgradeMetadata[] runUpgradeMetadata = CreateRunUpgradeMetadata(upgrades, errors);
-            SurvivorsClassUpgradeGateDefinition[] classUpgradeGates = CreateClassUpgradeGates(upgrades, progressionTracks);
-            SurvivorsEnemyProfile[] enemyProfiles = CreateEnemyProfiles(enemies, errors);
+            SurvivorsClassUpgradeGateDefinition[] classUpgradeGates = CreateClassUpgradeGates(upgrades, progressionTracks, !strictSample);
+            SurvivorsEnemyProfile[] enemyProfiles = CreateEnemyProfiles(enemies, errors, !strictSample);
             Dictionary<SurvivorsEnemyRole, SurvivorsEnemyProfile> enemyProfilesByRole = IndexEnemyProfiles(enemyProfiles, errors);
             Dictionary<string, RunFlowProfileRecordJson> runFlowProfiles = IndexRunFlowProfiles(runFlow, errors);
-            SurvivorsMetaProgressionDefinition metaProgression = CreateMetaProgressionDefinition(rewards, errors);
+            SurvivorsMetaProgressionDefinition metaProgression = CreateMetaProgressionDefinition(rewards, errors, !strictSample);
 
             if (requireFullContent)
             {
@@ -199,6 +263,7 @@ namespace Deucarian.TemplateGameSurvivors
                 enemyProfiles,
                 enemyProfilesByRole,
                 runFlowProfiles,
+                runFlow == null ? null : runFlow.sharedGameplayTuning,
                 metaProgression,
                 weaponDefinitions,
                 runUpgradeCatalog,
@@ -207,6 +272,7 @@ namespace Deucarian.TemplateGameSurvivors
                 relicDefinitions,
                 classLibrary,
                 progressionTracks,
+                bindingPolicy,
                 summary);
             error = string.Empty;
             return true;
@@ -217,10 +283,17 @@ namespace Deucarian.TemplateGameSurvivors
             SurvivorsTemplateTuning tuning = BasicSurvivorsGame.CreateTuning(profile);
             if (!TryGetRunFlowProfile(profile, out RunFlowProfileRecordJson record))
             {
+                if (IsStrictSample)
+                {
+                    throw new InvalidOperationException($"Strict authored content is missing run-flow profile {profile}.");
+                }
+
                 return tuning;
             }
 
+            ApplyGameplayTuning(tuning, _sharedGameplayTuning, applyOnlyAuthoredOverrides: !IsStrictSample);
             ApplyRunFlowProfile(tuning, record);
+            ApplyGameplayTuning(tuning, record.gameplayTuningOverrides, applyOnlyAuthoredOverrides: true);
             return tuning;
         }
 
@@ -267,28 +340,43 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (!_enemyProfilesByRole.TryGetValue(role, out SurvivorsEnemyProfile authored))
             {
+                if (IsStrictSample)
+                {
+                    throw new InvalidOperationException($"Strict authored content is missing enemy role {role}.");
+                }
+
                 return BasicSurvivorsGame.CreateEnemyProfile(role, tuning);
             }
 
             SurvivorsTemplateTuning resolved = tuning ?? CreateTuning(SurvivorsPacingProfile.HumanPlaytest);
             SurvivorsTemplateTuning baseline = CreateTuning(SurvivorsPacingProfile.HumanPlaytest);
-            SurvivorsEnemyProfile tuned = BasicSurvivorsGame.CreateEnemyProfile(role, resolved);
-            SurvivorsEnemyProfile baselineProfile = BasicSurvivorsGame.CreateEnemyProfile(role, baseline);
+            float baselineHealth = ResolveEnemyHealthBasis(role, baseline);
+            float profileHealth = ResolveEnemyHealthBasis(role, resolved);
+            float baselineMoveSpeed = ResolveEnemyMoveSpeedBasis(role, baseline);
+            float profileMoveSpeed = ResolveEnemyMoveSpeedBasis(role, resolved);
+            float baselineRadius = ResolveEnemyRadiusBasis(role, baseline);
+            float profileRadius = ResolveEnemyRadiusBasis(role, resolved);
+            float baselineContactDamage = ResolveEnemyContactDamageBasis(role, baseline);
+            float profileContactDamage = ResolveEnemyContactDamageBasis(role, resolved);
+            float baselineContactInterval = ResolveEnemyContactIntervalBasis(role, baseline);
+            float profileContactInterval = ResolveEnemyContactIntervalBasis(role, resolved);
+            int baselineExperience = ResolveEnemyExperienceBasis(role, baseline);
+            int profileExperience = ResolveEnemyExperienceBasis(role, resolved);
             return new SurvivorsEnemyProfile(
                 role,
                 authored.Id,
                 authored.DisplayName,
-                ScaleAuthoredFloat(authored.MaxHealth, baselineProfile.MaxHealth, tuned.MaxHealth),
-                ScaleAuthoredFloat(authored.MoveSpeed, baselineProfile.MoveSpeed, tuned.MoveSpeed),
-                ScaleAuthoredFloat(authored.Radius, baselineProfile.Radius, tuned.Radius),
-                ScaleAuthoredFloat(authored.ContactDamage, baselineProfile.ContactDamage, tuned.ContactDamage),
-                ScaleAuthoredFloat(authored.ContactIntervalSeconds, baselineProfile.ContactIntervalSeconds, tuned.ContactIntervalSeconds),
-                ScaleAuthoredInt(authored.ExperienceReward, baselineProfile.ExperienceReward, tuned.ExperienceReward),
+                ScaleAuthoredFloat(authored.MaxHealth, baselineHealth, profileHealth),
+                ScaleAuthoredFloat(authored.MoveSpeed, baselineMoveSpeed, profileMoveSpeed),
+                ScaleAuthoredFloat(authored.Radius, baselineRadius, profileRadius),
+                ScaleAuthoredFloat(authored.ContactDamage, baselineContactDamage, profileContactDamage),
+                ScaleAuthoredFloat(authored.ContactIntervalSeconds, baselineContactInterval, profileContactInterval),
+                ScaleAuthoredInt(authored.ExperienceReward, baselineExperience, profileExperience),
                 authored.Tint,
-                ScaleAuthoredFloat(authored.RangedAttackRange, baselineProfile.RangedAttackRange, tuned.RangedAttackRange),
-                ScaleAuthoredFloat(authored.RangedAttackDamage, baselineProfile.RangedAttackDamage, tuned.RangedAttackDamage),
-                ScaleAuthoredFloat(authored.RangedAttackIntervalSeconds, baselineProfile.RangedAttackIntervalSeconds, tuned.RangedAttackIntervalSeconds),
-                ScaleAuthoredFloat(authored.PreferredRange, baselineProfile.PreferredRange, tuned.PreferredRange),
+                authored.RangedAttackRange,
+                ScaleAuthoredFloat(authored.RangedAttackDamage, baselineContactDamage, profileContactDamage),
+                authored.RangedAttackIntervalSeconds,
+                authored.PreferredRange,
                 authored.CanRecycle,
                 authored.CanLeash,
                 authored.CanReposition,
@@ -301,6 +389,66 @@ namespace Deucarian.TemplateGameSurvivors
                 authored.CatchUpSpeedMultiplier,
                 authored.RepositionTimeoutSeconds,
                 authored.SpawnTimeSeconds);
+        }
+
+        private static float ResolveEnemyHealthBasis(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
+        {
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                return tuning.MinibossMaxHealth;
+            }
+
+            return role == SurvivorsEnemyRole.Boss ? tuning.BossMaxHealth : tuning.EnemyMaxHealth;
+        }
+
+        private static float ResolveEnemyMoveSpeedBasis(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
+        {
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                return tuning.MinibossMoveSpeed;
+            }
+
+            return role == SurvivorsEnemyRole.Boss ? tuning.BossMoveSpeed : tuning.EnemyMoveSpeed;
+        }
+
+        private static float ResolveEnemyRadiusBasis(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
+        {
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                return tuning.MinibossRadius;
+            }
+
+            return role == SurvivorsEnemyRole.Boss ? tuning.BossRadius : tuning.EnemyRadius;
+        }
+
+        private static float ResolveEnemyContactDamageBasis(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
+        {
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                return tuning.MinibossContactDamage;
+            }
+
+            return role == SurvivorsEnemyRole.Boss ? tuning.BossContactDamage : tuning.EnemyContactDamage;
+        }
+
+        private static float ResolveEnemyContactIntervalBasis(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
+        {
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                return tuning.MinibossContactIntervalSeconds;
+            }
+
+            return role == SurvivorsEnemyRole.Boss ? tuning.BossContactIntervalSeconds : tuning.EnemyContactIntervalSeconds;
+        }
+
+        private static int ResolveEnemyExperienceBasis(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
+        {
+            if (role == SurvivorsEnemyRole.Miniboss)
+            {
+                return tuning.MinibossExperienceReward;
+            }
+
+            return role == SurvivorsEnemyRole.Boss ? tuning.BossExperienceReward : tuning.EnemyExperienceReward;
         }
 
         private static float ScaleAuthoredFloat(float authoredValue, float baselineValue, float profileValue)
@@ -327,6 +475,11 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (_enemyProfiles.Length == 0)
             {
+                if (IsStrictSample)
+                {
+                    throw new InvalidOperationException("Strict authored content has no enemy profiles.");
+                }
+
                 return BasicSurvivorsGame.CreateEnemyProfileDefinitions(tuning);
             }
 
@@ -339,7 +492,10 @@ namespace Deucarian.TemplateGameSurvivors
             return profiles;
         }
 
-        private static SurvivorsWeaponArchetypeDefinition[] CreateWeaponDefinitions(WeaponLibraryJson library, List<string> errors)
+        private static SurvivorsWeaponArchetypeDefinition[] CreateWeaponDefinitions(
+            WeaponLibraryJson library,
+            List<string> errors,
+            bool allowFallbacks)
         {
             if (library == null || library.weapons == null)
             {
@@ -347,7 +503,9 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             Dictionary<string, ProjectileRecordJson> projectiles = IndexProjectiles(library.projectiles, errors);
-            Dictionary<string, SurvivorsWeaponArchetypeDefinition> fallbackById = IndexWeapons(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions());
+            Dictionary<string, SurvivorsWeaponArchetypeDefinition> fallbackById = allowFallbacks
+                ? IndexWeapons(BasicSurvivorsGame.CreateWeaponArchetypeDefinitions())
+                : new Dictionary<string, SurvivorsWeaponArchetypeDefinition>(StringComparer.Ordinal);
             var definitions = new List<SurvivorsWeaponArchetypeDefinition>(library.weapons.Length);
             for (int i = 0; i < library.weapons.Length; i++)
             {
@@ -372,51 +530,58 @@ namespace Deucarian.TemplateGameSurvivors
 
                 fallbackById.TryGetValue(record.id, out SurvivorsWeaponArchetypeDefinition fallback);
                 projectiles.TryGetValue(record.projectileId ?? string.Empty, out ProjectileRecordJson projectile);
+                float authoredRange = record.range > 0f ? record.range : record.radius;
+                float authoredProjectileSpeed = record.projectileSpeed > 0f
+                    ? record.projectileSpeed
+                    : projectile == null ? 0f : projectile.speed;
+                float authoredProjectileLifetime = record.projectileLifetimeSeconds > 0f
+                    ? record.projectileLifetimeSeconds
+                    : projectile == null ? 0f : projectile.lifetimeSeconds;
                 try
                 {
                     definitions.Add(new SurvivorsWeaponArchetypeDefinition(
                         record.id,
                         record.displayName,
                         archetype,
-                        ResolvePositive(record.cooldownSeconds, fallback == null ? 1f : fallback.CooldownSeconds),
-                        ResolvePositive(record.damage, fallback == null ? 1f : fallback.Damage),
-                        ResolvePositive(record.range > 0f ? record.range : record.radius, fallback == null ? 1f : fallback.Range),
-                        ResolveColor(record.tint, fallback == null ? Color.white : fallback.Tint),
-                        projectileSpeed: ResolvePositive(ResolvePositive(record.projectileSpeed, projectile == null ? 0f : projectile.speed), fallback == null ? 0f : fallback.ProjectileSpeed),
-                        projectileRadius: ResolvePositive(record.projectileRadius, fallback == null ? 0.08f : fallback.ProjectileRadius),
-                        projectileLifetimeSeconds: ResolvePositive(ResolvePositive(record.projectileLifetimeSeconds, projectile == null ? 0f : projectile.lifetimeSeconds), fallback == null ? 1f : fallback.ProjectileLifetimeSeconds),
-                        projectilePierceCount: ResolveNonNegative(record.pierceCount, fallback == null ? 0 : fallback.ProjectilePierceCount),
-                        projectileChainCount: ResolveNonNegative(record.chainCount, fallback == null ? 0 : fallback.ProjectileChainCount),
-                        projectileForkCount: ResolveNonNegative(record.forkCount, fallback == null ? 0 : fallback.ProjectileForkCount),
-                        projectileReturnCount: ResolveNonNegative(record.returnCount, fallback == null ? 0 : fallback.ProjectileReturnCount),
-                        projectileFanCount: ResolvePositive(record.fanCount, fallback == null ? 1 : fallback.ProjectileFanCount),
-                        projectileSpreadDegrees: ResolveNonNegative(record.spreadDegrees, fallback == null ? 0f : fallback.ProjectileSpreadDegrees),
-                        orbitCount: ResolvePositive(record.orbitCount, fallback == null ? 1 : fallback.OrbitCount),
-                        orbitRadius: ResolvePositive(record.orbitRadius, fallback == null ? 1f : fallback.OrbitRadius),
-                        orbitDegreesPerSecond: ResolvePositive(record.orbitDegreesPerSecond, fallback == null ? 1f : fallback.OrbitDegreesPerSecond),
-                        orbitContactTickIntervalSeconds: ResolvePositive(record.contactTickIntervalSeconds, fallback == null ? 0.3f : fallback.OrbitContactTickIntervalSeconds),
-                        meleeHitCount: ResolvePositive(record.hitCount, fallback == null ? 1 : fallback.MeleeHitCount),
-                        meleeArcDegrees: ResolvePositive(record.arcDegrees, fallback == null ? 115f : fallback.MeleeArcDegrees),
-                        meleeVisualDurationSeconds: ResolvePositive(record.visualDurationSeconds, fallback == null ? 0.16f : fallback.MeleeVisualDurationSeconds),
-                        burstCount: ResolvePositive(record.burstCount, fallback == null ? 1 : fallback.BurstCount),
-                        burstRepeatIntervalSeconds: ResolvePositive(record.repeatIntervalSeconds, fallback == null ? 0.18f : fallback.BurstRepeatIntervalSeconds),
-                        burstVisualDurationSeconds: ResolvePositive(record.visualDurationSeconds, fallback == null ? 0.22f : fallback.BurstVisualDurationSeconds),
-                        hitscanCount: ResolvePositive(record.hitscanCount, fallback == null ? 1 : fallback.HitscanCount),
-                        hitscanWidth: ResolvePositive(record.beamWidth, fallback == null ? 0.18f : fallback.HitscanWidth),
-                        hitscanVisualDurationSeconds: ResolvePositive(record.visualDurationSeconds, fallback == null ? 0.08f : fallback.HitscanVisualDurationSeconds),
+                        allowFallbacks ? ResolvePositive(record.cooldownSeconds, fallback == null ? 1f : fallback.CooldownSeconds) : record.cooldownSeconds,
+                        allowFallbacks ? ResolvePositive(record.damage, fallback == null ? 1f : fallback.Damage) : record.damage,
+                        allowFallbacks ? ResolvePositive(authoredRange, fallback == null ? 1f : fallback.Range) : authoredRange,
+                        ResolveColor(record.tint, allowFallbacks && fallback != null ? fallback.Tint : Color.white),
+                        projectileSpeed: allowFallbacks ? ResolvePositive(authoredProjectileSpeed, fallback == null ? 0f : fallback.ProjectileSpeed) : authoredProjectileSpeed,
+                        projectileRadius: allowFallbacks ? ResolvePositive(record.projectileRadius, fallback == null ? 0.08f : fallback.ProjectileRadius) : record.projectileRadius,
+                        projectileLifetimeSeconds: allowFallbacks ? ResolvePositive(authoredProjectileLifetime, fallback == null ? 1f : fallback.ProjectileLifetimeSeconds) : authoredProjectileLifetime,
+                        projectilePierceCount: allowFallbacks ? ResolveNonNegative(record.pierceCount, fallback == null ? 0 : fallback.ProjectilePierceCount) : record.pierceCount,
+                        projectileChainCount: allowFallbacks ? ResolveNonNegative(record.chainCount, fallback == null ? 0 : fallback.ProjectileChainCount) : record.chainCount,
+                        projectileForkCount: allowFallbacks ? ResolveNonNegative(record.forkCount, fallback == null ? 0 : fallback.ProjectileForkCount) : record.forkCount,
+                        projectileReturnCount: allowFallbacks ? ResolveNonNegative(record.returnCount, fallback == null ? 0 : fallback.ProjectileReturnCount) : record.returnCount,
+                        projectileFanCount: allowFallbacks ? ResolvePositive(record.fanCount, fallback == null ? 1 : fallback.ProjectileFanCount) : record.fanCount,
+                        projectileSpreadDegrees: allowFallbacks ? ResolveNonNegative(record.spreadDegrees, fallback == null ? 0f : fallback.ProjectileSpreadDegrees) : record.spreadDegrees,
+                        orbitCount: allowFallbacks ? ResolvePositive(record.orbitCount, fallback == null ? 1 : fallback.OrbitCount) : record.orbitCount,
+                        orbitRadius: allowFallbacks ? ResolvePositive(record.orbitRadius, fallback == null ? 1f : fallback.OrbitRadius) : record.orbitRadius,
+                        orbitDegreesPerSecond: allowFallbacks ? ResolvePositive(record.orbitDegreesPerSecond, fallback == null ? 1f : fallback.OrbitDegreesPerSecond) : record.orbitDegreesPerSecond,
+                        orbitContactTickIntervalSeconds: allowFallbacks ? ResolvePositive(record.contactTickIntervalSeconds, fallback == null ? 0.3f : fallback.OrbitContactTickIntervalSeconds) : record.contactTickIntervalSeconds,
+                        meleeHitCount: allowFallbacks ? ResolvePositive(record.hitCount, fallback == null ? 1 : fallback.MeleeHitCount) : record.hitCount,
+                        meleeArcDegrees: allowFallbacks ? ResolvePositive(record.arcDegrees, fallback == null ? 115f : fallback.MeleeArcDegrees) : record.arcDegrees,
+                        meleeVisualDurationSeconds: allowFallbacks ? ResolvePositive(record.visualDurationSeconds, fallback == null ? 0.16f : fallback.MeleeVisualDurationSeconds) : record.visualDurationSeconds,
+                        burstCount: allowFallbacks ? ResolvePositive(record.burstCount, fallback == null ? 1 : fallback.BurstCount) : record.burstCount,
+                        burstRepeatIntervalSeconds: allowFallbacks ? ResolvePositive(record.repeatIntervalSeconds, fallback == null ? 0.18f : fallback.BurstRepeatIntervalSeconds) : record.repeatIntervalSeconds,
+                        burstVisualDurationSeconds: allowFallbacks ? ResolvePositive(record.visualDurationSeconds, fallback == null ? 0.22f : fallback.BurstVisualDurationSeconds) : record.visualDurationSeconds,
+                        hitscanCount: allowFallbacks ? ResolvePositive(record.hitscanCount, fallback == null ? 1 : fallback.HitscanCount) : record.hitscanCount,
+                        hitscanWidth: allowFallbacks ? ResolvePositive(record.beamWidth, fallback == null ? 0.18f : fallback.HitscanWidth) : record.beamWidth,
+                        hitscanVisualDurationSeconds: allowFallbacks ? ResolvePositive(record.visualDurationSeconds, fallback == null ? 0.08f : fallback.HitscanVisualDurationSeconds) : record.visualDurationSeconds,
                         hitscanPierces: record.pierces,
-                        payloadCount: ResolvePositive(record.payloadCount, fallback == null ? 1 : fallback.PayloadCount),
-                        payloadTravelSpeed: ResolvePositive(record.payloadTravelSpeed, fallback == null ? 9f : fallback.PayloadTravelSpeed),
-                        payloadArmingSeconds: ResolvePositive(record.payloadArmingSeconds, fallback == null ? 0.7f : fallback.PayloadArmingSeconds),
-                        payloadLifetimeSeconds: ResolvePositive(record.payloadLifetimeSeconds, fallback == null ? 4f : fallback.PayloadLifetimeSeconds),
-                        payloadTriggerRadius: ResolvePositive(record.payloadTriggerRadius, fallback == null ? 1.35f : fallback.PayloadTriggerRadius),
-                        payloadExplosionRadius: ResolvePositive(record.payloadExplosionRadius, fallback == null ? 2.4f : fallback.PayloadExplosionRadius),
-                        payloadPlacementRadius: ResolvePositive(record.payloadPlacementRadius, fallback == null ? 1.8f : fallback.PayloadPlacementRadius),
-                        payloadAutoDetonateAtExpiry: record.payloadAutoDetonateAtExpiry || (fallback != null && fallback.PayloadAutoDetonateAtExpiry),
+                        payloadCount: allowFallbacks ? ResolvePositive(record.payloadCount, fallback == null ? 1 : fallback.PayloadCount) : record.payloadCount,
+                        payloadTravelSpeed: allowFallbacks ? ResolvePositive(record.payloadTravelSpeed, fallback == null ? 9f : fallback.PayloadTravelSpeed) : record.payloadTravelSpeed,
+                        payloadArmingSeconds: allowFallbacks ? ResolvePositive(record.payloadArmingSeconds, fallback == null ? 0.7f : fallback.PayloadArmingSeconds) : record.payloadArmingSeconds,
+                        payloadLifetimeSeconds: allowFallbacks ? ResolvePositive(record.payloadLifetimeSeconds, fallback == null ? 4f : fallback.PayloadLifetimeSeconds) : record.payloadLifetimeSeconds,
+                        payloadTriggerRadius: allowFallbacks ? ResolvePositive(record.payloadTriggerRadius, fallback == null ? 1.35f : fallback.PayloadTriggerRadius) : record.payloadTriggerRadius,
+                        payloadExplosionRadius: allowFallbacks ? ResolvePositive(record.payloadExplosionRadius, fallback == null ? 2.4f : fallback.PayloadExplosionRadius) : record.payloadExplosionRadius,
+                        payloadPlacementRadius: allowFallbacks ? ResolvePositive(record.payloadPlacementRadius, fallback == null ? 1.8f : fallback.PayloadPlacementRadius) : record.payloadPlacementRadius,
+                        payloadAutoDetonateAtExpiry: allowFallbacks ? record.payloadAutoDetonateAtExpiry || (fallback != null && fallback.PayloadAutoDetonateAtExpiry) : record.payloadAutoDetonateAtExpiry,
                         payloadLeavesHazard: record.payloadLeavesHazard,
-                        payloadHazardDurationSeconds: ResolveNonNegative(record.payloadHazardDurationSeconds, fallback == null ? 0f : fallback.PayloadHazardDurationSeconds),
-                        payloadHazardTickIntervalSeconds: ResolvePositive(record.payloadHazardTickIntervalSeconds, fallback == null ? 0.45f : fallback.PayloadHazardTickIntervalSeconds),
-                        payloadHazardDamageRatio: ResolveNonNegative(record.payloadHazardDamageRatio, fallback == null ? 0f : fallback.PayloadHazardDamageRatio)));
+                        payloadHazardDurationSeconds: allowFallbacks ? ResolveNonNegative(record.payloadHazardDurationSeconds, fallback == null ? 0f : fallback.PayloadHazardDurationSeconds) : record.payloadHazardDurationSeconds,
+                        payloadHazardTickIntervalSeconds: allowFallbacks ? ResolvePositive(record.payloadHazardTickIntervalSeconds, fallback == null ? 0.45f : fallback.PayloadHazardTickIntervalSeconds) : record.payloadHazardTickIntervalSeconds,
+                        payloadHazardDamageRatio: allowFallbacks ? ResolveNonNegative(record.payloadHazardDamageRatio, fallback == null ? 0f : fallback.PayloadHazardDamageRatio) : record.payloadHazardDamageRatio));
                 }
                 catch (Exception ex)
                 {
@@ -468,8 +633,8 @@ namespace Deucarian.TemplateGameSurvivors
                     definitions.Add(new RunUpgradeDefinition(
                         new RunUpgradeId(record.id),
                         rarity,
-                        ResolvePositive(record.weight, fallback == null ? 1 : fallback.Weight),
-                        ResolvePositive(record.maxRank, fallback == null ? 1 : fallback.MaxRank),
+                        requireExplicitValues ? record.weight : ResolvePositive(record.weight, fallback == null ? 1 : fallback.Weight),
+                        requireExplicitValues ? record.maxRank : ResolvePositive(record.maxRank, fallback == null ? 1 : fallback.MaxRank),
                         effects));
                 }
                 catch (Exception ex)
@@ -544,7 +709,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static SurvivorsClassUpgradeGateDefinition[] CreateClassUpgradeGates(
             UpgradeLibraryJson library,
-            IReadOnlyList<SurvivorsProgressionTrackDefinition> progressionTracks)
+            IReadOnlyList<SurvivorsProgressionTrackDefinition> progressionTracks,
+            bool includeLegacyUpgradeGates)
         {
             var allowedClassIdsByUpgradeId = new Dictionary<string, List<string>>(StringComparer.Ordinal);
             if (progressionTracks != null)
@@ -568,7 +734,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            if (library != null && library.upgrades != null)
+            if (includeLegacyUpgradeGates && library != null && library.upgrades != null)
             {
                 for (int i = 0; i < library.upgrades.Length; i++)
                 {
@@ -1123,7 +1289,10 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private static SurvivorsEnemyProfile[] CreateEnemyProfiles(EnemyLibraryJson library, List<string> errors)
+        private static SurvivorsEnemyProfile[] CreateEnemyProfiles(
+            EnemyLibraryJson library,
+            List<string> errors,
+            bool allowFallbacks)
         {
             if (library == null || library.enemies == null)
             {
@@ -1146,22 +1315,24 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
-                SurvivorsEnemyProfile fallback = BasicSurvivorsGame.CreateEnemyProfile(role);
+                SurvivorsEnemyProfile fallback = allowFallbacks
+                    ? BasicSurvivorsGame.CreateEnemyProfile(role)
+                    : default;
                 profiles.Add(new SurvivorsEnemyProfile(
                     role,
-                    string.IsNullOrWhiteSpace(record.id) ? fallback.Id : record.id,
-                    string.IsNullOrWhiteSpace(record.displayName) ? fallback.DisplayName : record.displayName,
-                    record.health > 0f ? record.health : fallback.MaxHealth,
-                    record.moveSpeed > 0f ? record.moveSpeed : fallback.MoveSpeed,
-                    record.radius > 0f ? record.radius : fallback.Radius,
-                    record.contactDamage >= 0f ? record.contactDamage : fallback.ContactDamage,
-                    record.contactIntervalSeconds > 0f ? record.contactIntervalSeconds : fallback.ContactIntervalSeconds,
-                    record.experienceDrop > 0 ? record.experienceDrop : fallback.ExperienceReward,
-                    fallback.Tint,
-                    record.rangedAttackRange > 0f ? record.rangedAttackRange : fallback.RangedAttackRange,
-                    record.rangedAttackDamage > 0f ? record.rangedAttackDamage : fallback.RangedAttackDamage,
-                    record.rangedAttackIntervalSeconds > 0f ? record.rangedAttackIntervalSeconds : fallback.RangedAttackIntervalSeconds,
-                    record.preferredRange > 0f ? record.preferredRange : fallback.PreferredRange,
+                    allowFallbacks && string.IsNullOrWhiteSpace(record.id) ? fallback.Id : record.id,
+                    allowFallbacks && string.IsNullOrWhiteSpace(record.displayName) ? fallback.DisplayName : record.displayName,
+                    allowFallbacks && record.health <= 0f ? fallback.MaxHealth : record.health,
+                    allowFallbacks && record.moveSpeed <= 0f ? fallback.MoveSpeed : record.moveSpeed,
+                    allowFallbacks && record.radius <= 0f ? fallback.Radius : record.radius,
+                    allowFallbacks && record.contactDamage < 0f ? fallback.ContactDamage : record.contactDamage,
+                    allowFallbacks && record.contactIntervalSeconds <= 0f ? fallback.ContactIntervalSeconds : record.contactIntervalSeconds,
+                    allowFallbacks && record.experienceDrop <= 0 ? fallback.ExperienceReward : record.experienceDrop,
+                    ResolveColor(record.tint, allowFallbacks ? fallback.Tint : Color.white),
+                    allowFallbacks && record.rangedAttackRange <= 0f ? fallback.RangedAttackRange : record.rangedAttackRange,
+                    allowFallbacks && record.rangedAttackDamage <= 0f ? fallback.RangedAttackDamage : record.rangedAttackDamage,
+                    allowFallbacks && record.rangedAttackIntervalSeconds <= 0f ? fallback.RangedAttackIntervalSeconds : record.rangedAttackIntervalSeconds,
+                    allowFallbacks && record.preferredRange <= 0f ? fallback.PreferredRange : record.preferredRange,
                     record.canRecycle,
                     record.canLeash,
                     record.canReposition,
@@ -1232,14 +1403,17 @@ namespace Deucarian.TemplateGameSurvivors
             return index;
         }
 
-        private static SurvivorsMetaProgressionDefinition CreateMetaProgressionDefinition(RewardLibraryJson library, List<string> errors)
+        private static SurvivorsMetaProgressionDefinition CreateMetaProgressionDefinition(
+            RewardLibraryJson library,
+            List<string> errors,
+            bool allowFallbacks)
         {
             if (library == null)
             {
                 return null;
             }
 
-            CurrencyId currencyId = BasicSurvivorsGame.BloodShardsCurrencyId;
+            CurrencyId currencyId = allowFallbacks ? BasicSurvivorsGame.BloodShardsCurrencyId : default;
             if (library.currencies != null)
             {
                 for (int i = 0; i < library.currencies.Length; i++)
@@ -1253,7 +1427,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            TrackId trackId = BasicSurvivorsGame.LegacyExperienceTrackId;
+            TrackId trackId = allowFallbacks ? BasicSurvivorsGame.LegacyExperienceTrackId : default;
             if (library.tracks != null)
             {
                 for (int i = 0; i < library.tracks.Length; i++)
@@ -1304,9 +1478,9 @@ namespace Deucarian.TemplateGameSurvivors
 
                     rewards.Add(new SurvivorsRewardDefinition(
                         reward.id,
-                        string.IsNullOrWhiteSpace(reward.currencyId) ? currencyId : new CurrencyId(reward.currencyId),
+                        allowFallbacks && string.IsNullOrWhiteSpace(reward.currencyId) ? currencyId : new CurrencyId(reward.currencyId),
                         reward.currencyAmount,
-                        string.IsNullOrWhiteSpace(reward.trackId) ? trackId : new TrackId(reward.trackId),
+                        allowFallbacks && string.IsNullOrWhiteSpace(reward.trackId) ? trackId : new TrackId(reward.trackId),
                         reward.trackAmount));
                 }
             }
@@ -1338,6 +1512,146 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static void ApplyGameplayTuning(
+            SurvivorsTemplateTuning tuning,
+            SurvivorsGameplayTuningRecordJson authored,
+            bool applyOnlyAuthoredOverrides)
+        {
+            if (tuning == null || authored == null)
+            {
+                return;
+            }
+
+            ApplyAuthoredValue(ref tuning.PlayerMoveSpeed, authored.playerMoveSpeed, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PlayerRadius, authored.playerRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PlayerMaxHealth, authored.playerMaxHealth, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PlayerContactInvulnerabilitySeconds, authored.playerContactInvulnerabilitySeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.DashDistance, authored.dashDistance, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.DashCooldownSeconds, authored.dashCooldownSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.DashInvulnerabilitySeconds, authored.dashInvulnerabilitySeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.DashKnockbackRadius, authored.dashKnockbackRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.DashKnockbackDistance, authored.dashKnockbackDistance, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.DashDamage, authored.dashDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EnemySpawnRadius, authored.enemySpawnRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EnemySpawnPackIncreaseEveryEscalations, authored.enemySpawnPackIncreaseEveryEscalations, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EnemySeparationRadius, authored.enemySeparationRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EnemySeparationStrength, authored.enemySeparationStrength, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EnemySeparationMaxNeighbors, authored.enemySeparationMaxNeighbors, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EnemyRangedAttackWindupSeconds, authored.enemyRangedAttackWindupSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatWarningLeadSeconds, authored.majorThreatWarningLeadSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.HordeRushClearSurgeDurationSeconds, authored.hordeRushClearSurgeDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.HordeRushClearSurgeDamageBonus, authored.hordeRushClearSurgeDamageBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.HordeRushClearSurgeMoveSpeedBonus, authored.hordeRushClearSurgeMoveSpeedBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.HordeRushClearSurgeCooldownMultiplierBonus, authored.hordeRushClearSurgeCooldownMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.HordeRushClearSurgePickupRangeBonus, authored.hordeRushClearSurgePickupRangeBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatEnrageHealthThreshold, authored.majorThreatEnrageHealthThreshold, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatEnrageEliteSupportCount, authored.majorThreatEnrageEliteSupportCount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatEnrageMinibossSupportCount, authored.majorThreatEnrageMinibossSupportCount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatEnrageBossSupportCount, authored.majorThreatEnrageBossSupportCount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatEnrageExtraAliveAllowance, authored.majorThreatEnrageExtraAliveAllowance, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatEnrageSupportRadius, authored.majorThreatEnrageSupportRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatSlamIntervalSeconds, authored.majorThreatSlamIntervalSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatSlamTelegraphSeconds, authored.majorThreatSlamTelegraphSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatSlamRadius, authored.majorThreatSlamRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorThreatSlamDamage, authored.majorThreatSlamDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.OrbitKnockbackDistance, authored.orbitKnockbackDistance, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.CrimsonAegisOrbitKnockbackDistance, authored.crimsonAegisOrbitKnockbackDistance, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MagnetRecallSpeedMultiplier, authored.magnetRecallSpeedMultiplier, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.GemRushDurationSeconds, authored.gemRushDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.GemRushDamageBonus, authored.gemRushDamageBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.GemRushMoveSpeedBonus, authored.gemRushMoveSpeedBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.GemRushCooldownMultiplierBonus, authored.gemRushCooldownMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.GemRushPickupRangeBonus, authored.gemRushPickupRangeBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.MajorRewardCacheAttractionSpeedMultiplier, authored.majorRewardCacheAttractionSpeedMultiplier, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneDiscoveryRadius, authored.waystoneDiscoveryRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneExperienceGemCount, authored.waystoneExperienceGemCount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneBloodShardInterval, authored.waystoneBloodShardInterval, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneAmbushInterval, authored.waystoneAmbushInterval, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneAmbushBaseEnemyCount, authored.waystoneAmbushBaseEnemyCount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneAmbushExtraAliveAllowance, authored.waystoneAmbushExtraAliveAllowance, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneAmbushRadius, authored.waystoneAmbushRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneFocusDurationSeconds, authored.waystoneFocusDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneFocusDamageBonus, authored.waystoneFocusDamageBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneFocusMoveSpeedBonus, authored.waystoneFocusMoveSpeedBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneFocusCooldownMultiplierBonus, authored.waystoneFocusCooldownMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneFocusPickupRangeBonus, authored.waystoneFocusPickupRangeBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainInterval, authored.waystoneChainInterval, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainBonusGemCount, authored.waystoneChainBonusGemCount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainDurationSeconds, authored.waystoneChainDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainDamageBonus, authored.waystoneChainDamageBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainMoveSpeedBonus, authored.waystoneChainMoveSpeedBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainCooldownMultiplierBonus, authored.waystoneChainCooldownMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainPickupRangeBonus, authored.waystoneChainPickupRangeBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainPulseDamage, authored.waystoneChainPulseDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WaystoneChainPulseRadius, authored.waystoneChainPulseRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.HealthPickupHealAmount, authored.healthPickupHealAmount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.LowHealthClutchPulseDamage, authored.lowHealthClutchPulseDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.LowHealthClutchPulseRadius, authored.lowHealthClutchPulseRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.LowHealthClutchSafetySeconds, authored.lowHealthClutchSafetySeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BloodShardPickupAmount, authored.bloodShardPickupAmount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WeaponLoadoutSurgeDurationSeconds, authored.weaponLoadoutSurgeDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WeaponLoadoutSurgeDamageBonus, authored.weaponLoadoutSurgeDamageBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WeaponLoadoutSurgeMoveSpeedBonus, authored.weaponLoadoutSurgeMoveSpeedBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WeaponLoadoutSurgeCooldownMultiplierBonus, authored.weaponLoadoutSurgeCooldownMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WeaponLoadoutSurgePickupRangeBonus, authored.weaponLoadoutSurgePickupRangeBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WeaponLoadoutSurgePulseDamage, authored.weaponLoadoutSurgePulseDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.WeaponLoadoutSurgePulseRadius, authored.weaponLoadoutSurgePulseRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PassiveLoadoutSurgeDurationSeconds, authored.passiveLoadoutSurgeDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PassiveLoadoutSurgeDamageBonus, authored.passiveLoadoutSurgeDamageBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PassiveLoadoutSurgeMoveSpeedBonus, authored.passiveLoadoutSurgeMoveSpeedBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PassiveLoadoutSurgeCooldownMultiplierBonus, authored.passiveLoadoutSurgeCooldownMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PassiveLoadoutSurgePickupRangeBonus, authored.passiveLoadoutSurgePickupRangeBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PassiveLoadoutSurgeExperienceGainMultiplierBonus, authored.passiveLoadoutSurgeExperienceGainMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PassiveLoadoutSurgePulseDamage, authored.passiveLoadoutSurgePulseDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.PassiveLoadoutSurgePulseRadius, authored.passiveLoadoutSurgePulseRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.StatusPoisonDurationSeconds, authored.statusPoisonDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.StatusBleedDurationSeconds, authored.statusBleedDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.StatusBurnDurationSeconds, authored.statusBurnDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionSurgeDamage, authored.evolutionSurgeDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionSurgeRadius, authored.evolutionSurgeRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionChainSurgeMinimumEvolutions, authored.evolutionChainSurgeMinimumEvolutions, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionChainSurgeDurationSeconds, authored.evolutionChainSurgeDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionChainSurgeDamageBonus, authored.evolutionChainSurgeDamageBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionChainSurgeMoveSpeedBonus, authored.evolutionChainSurgeMoveSpeedBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionChainSurgeCooldownMultiplierBonus, authored.evolutionChainSurgeCooldownMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionChainSurgePickupRangeBonus, authored.evolutionChainSurgePickupRangeBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionChainSurgePulseDamage, authored.evolutionChainSurgePulseDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.EvolutionChainSurgePulseRadius, authored.evolutionChainSurgePulseRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.LevelUpPulseDamage, authored.levelUpPulseDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.LevelUpPulseRadius, authored.levelUpPulseRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.RewardUpgradeSurgeDamage, authored.rewardUpgradeSurgeDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.RewardUpgradeSurgeRadius, authored.rewardUpgradeSurgeRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.RewardJackpotExperienceGemBaseCount, authored.rewardJackpotExperienceGemBaseCount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.RewardJackpotExperienceGemPerRarityTier, authored.rewardJackpotExperienceGemPerRarityTier, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.RewardJackpotBloodShardBaseAmount, authored.rewardJackpotBloodShardBaseAmount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.RewardJackpotLegendaryExtraBloodShardAmount, authored.rewardJackpotLegendaryExtraBloodShardAmount, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BossRelicSurgeDamage, authored.bossRelicSurgeDamage, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BossRelicSurgeRadius, authored.bossRelicSurgeRadius, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BossRelicSurgeDurationSeconds, authored.bossRelicSurgeDurationSeconds, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BossRelicSurgeDamageBonus, authored.bossRelicSurgeDamageBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BossRelicSurgeMoveSpeedBonus, authored.bossRelicSurgeMoveSpeedBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BossRelicSurgeCooldownMultiplierBonus, authored.bossRelicSurgeCooldownMultiplierBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BossRelicSurgePickupRangeBonus, authored.bossRelicSurgePickupRangeBonus, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.StartingBarrierCapacity, authored.startingBarrierCapacity, applyOnlyAuthoredOverrides);
+            ApplyAuthoredValue(ref tuning.BaseBarrierRegenPerSecond, authored.baseBarrierRegenPerSecond, applyOnlyAuthoredOverrides);
+        }
+
+        private static void ApplyAuthoredValue(ref float target, float authored, bool applyOnlyAuthoredOverrides)
+        {
+            if (!applyOnlyAuthoredOverrides || !Mathf.Approximately(authored, 0f))
+            {
+                target = authored;
+            }
+        }
+
+        private static void ApplyAuthoredValue(ref int target, int authored, bool applyOnlyAuthoredOverrides)
+        {
+            if (!applyOnlyAuthoredOverrides || authored != 0)
+            {
+                target = authored;
+            }
+        }
+
         private static void ApplyRunFlowProfile(SurvivorsTemplateTuning tuning, RunFlowProfileRecordJson profile)
         {
             if (!string.IsNullOrWhiteSpace(profile.displayName))
@@ -1366,6 +1680,13 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.EnemyContactDamage = profile.enemyContactDamage;
             tuning.EnemyContactIntervalSeconds = profile.enemyContactIntervalSeconds;
             tuning.EnemyExperienceReward = profile.enemyExperienceReward;
+            tuning.SummonerSupportInitialDelaySeconds = profile.summonerSupportInitialDelaySeconds;
+            tuning.SummonerSupportIntervalSeconds = profile.summonerSupportIntervalSeconds;
+            tuning.SummonerSupportCount = profile.summonerSupportCount;
+            tuning.SummonerSupportExtraAliveAllowance = profile.summonerSupportExtraAliveAllowance;
+            tuning.SummonerSupportRadius = profile.summonerSupportRadius;
+            tuning.SplitterChildCount = profile.splitterChildCount;
+            tuning.SplitterChildSpawnRadius = profile.splitterChildSpawnRadius;
             tuning.EnemySoftLeashRadius = profile.enemySoftLeashRadius;
             tuning.EnemyHardRecycleRadius = profile.enemyHardRecycleRadius;
             tuning.EnemyRecycleDelaySeconds = profile.enemyRecycleDelaySeconds;
@@ -1475,6 +1796,9 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.MaximumQueuedLevelUps = profile.maximumQueuedLevelUps;
             tuning.PickupMagnetPulseBaseIntervalSeconds = profile.pickupMagnetPulseBaseIntervalSeconds;
             tuning.PickupMagnetPulseMinimumIntervalSeconds = profile.pickupMagnetPulseMinimumIntervalSeconds;
+            tuning.PickupAttractRange = profile.pickupAttractRange;
+            tuning.PickupAttractionSpeed = profile.pickupAttractionSpeed;
+            tuning.PickupCollectRadius = profile.pickupCollectRadius;
             tuning.MaxWeaponSlots = profile.maxWeaponSlots;
             tuning.MaxPassiveSlots = profile.maxPassiveSlots;
             tuning.DraftMidRarityLevel = profile.draftMidRarityLevel;
@@ -1750,6 +2074,7 @@ namespace Deucarian.TemplateGameSurvivors
             public string id;
             public string displayName;
             public string role;
+            public string tint;
             public float health;
             public float moveSpeed;
             public float radius;
@@ -1820,6 +2145,7 @@ namespace Deucarian.TemplateGameSurvivors
         [Serializable]
         private sealed class RunFlowLibraryJson
         {
+            public SurvivorsGameplayTuningRecordJson sharedGameplayTuning;
             public RunFlowProfileRecordJson[] profiles;
         }
 
@@ -1844,6 +2170,13 @@ namespace Deucarian.TemplateGameSurvivors
             public float enemyContactDamage;
             public float enemyContactIntervalSeconds;
             public int enemyExperienceReward;
+            public float summonerSupportInitialDelaySeconds;
+            public float summonerSupportIntervalSeconds;
+            public int summonerSupportCount;
+            public int summonerSupportExtraAliveAllowance;
+            public float summonerSupportRadius;
+            public int splitterChildCount;
+            public float splitterChildSpawnRadius;
             public float enemySoftLeashRadius;
             public float enemyHardRecycleRadius;
             public float enemyRecycleDelaySeconds;
@@ -1953,6 +2286,9 @@ namespace Deucarian.TemplateGameSurvivors
             public int maximumQueuedLevelUps;
             public float pickupMagnetPulseBaseIntervalSeconds;
             public float pickupMagnetPulseMinimumIntervalSeconds;
+            public float pickupAttractRange;
+            public float pickupAttractionSpeed;
+            public float pickupCollectRadius;
             public int maxWeaponSlots;
             public int maxPassiveSlots;
             public int draftMidRarityLevel;
@@ -1971,6 +2307,7 @@ namespace Deucarian.TemplateGameSurvivors
             public float endlessSurgePickupRangeBonus;
             public float endlessSurgePulseDamage;
             public float endlessSurgePulseRadius;
+            public SurvivorsGameplayTuningRecordJson gameplayTuningOverrides;
         }
 
         [Serializable]
@@ -1982,6 +2319,140 @@ namespace Deucarian.TemplateGameSurvivors
             public int rare;
             public int epic;
             public int legendary;
+        }
+    }
+
+    [Serializable]
+    internal sealed class SurvivorsGameplayTuningRecordJson
+    {
+        private static readonly string[] AuthoredFieldNames = CreateFieldNames();
+
+        public static IReadOnlyList<string> FieldNames => AuthoredFieldNames;
+
+        public float playerMoveSpeed;
+        public float playerRadius;
+        public float playerMaxHealth;
+        public float playerContactInvulnerabilitySeconds;
+        public float dashDistance;
+        public float dashCooldownSeconds;
+        public float dashInvulnerabilitySeconds;
+        public float dashKnockbackRadius;
+        public float dashKnockbackDistance;
+        public float dashDamage;
+        public float enemySpawnRadius;
+        public int enemySpawnPackIncreaseEveryEscalations;
+        public float enemySeparationRadius;
+        public float enemySeparationStrength;
+        public int enemySeparationMaxNeighbors;
+        public float enemyRangedAttackWindupSeconds;
+        public float majorThreatWarningLeadSeconds;
+        public float hordeRushClearSurgeDurationSeconds;
+        public float hordeRushClearSurgeDamageBonus;
+        public float hordeRushClearSurgeMoveSpeedBonus;
+        public float hordeRushClearSurgeCooldownMultiplierBonus;
+        public float hordeRushClearSurgePickupRangeBonus;
+        public float majorThreatEnrageHealthThreshold;
+        public int majorThreatEnrageEliteSupportCount;
+        public int majorThreatEnrageMinibossSupportCount;
+        public int majorThreatEnrageBossSupportCount;
+        public int majorThreatEnrageExtraAliveAllowance;
+        public float majorThreatEnrageSupportRadius;
+        public float majorThreatSlamIntervalSeconds;
+        public float majorThreatSlamTelegraphSeconds;
+        public float majorThreatSlamRadius;
+        public float majorThreatSlamDamage;
+        public float orbitKnockbackDistance;
+        public float crimsonAegisOrbitKnockbackDistance;
+        public float magnetRecallSpeedMultiplier;
+        public float gemRushDurationSeconds;
+        public float gemRushDamageBonus;
+        public float gemRushMoveSpeedBonus;
+        public float gemRushCooldownMultiplierBonus;
+        public float gemRushPickupRangeBonus;
+        public float majorRewardCacheAttractionSpeedMultiplier;
+        public float waystoneDiscoveryRadius;
+        public int waystoneExperienceGemCount;
+        public int waystoneBloodShardInterval;
+        public int waystoneAmbushInterval;
+        public int waystoneAmbushBaseEnemyCount;
+        public int waystoneAmbushExtraAliveAllowance;
+        public float waystoneAmbushRadius;
+        public float waystoneFocusDurationSeconds;
+        public float waystoneFocusDamageBonus;
+        public float waystoneFocusMoveSpeedBonus;
+        public float waystoneFocusCooldownMultiplierBonus;
+        public float waystoneFocusPickupRangeBonus;
+        public int waystoneChainInterval;
+        public int waystoneChainBonusGemCount;
+        public float waystoneChainDurationSeconds;
+        public float waystoneChainDamageBonus;
+        public float waystoneChainMoveSpeedBonus;
+        public float waystoneChainCooldownMultiplierBonus;
+        public float waystoneChainPickupRangeBonus;
+        public float waystoneChainPulseDamage;
+        public float waystoneChainPulseRadius;
+        public int healthPickupHealAmount;
+        public float lowHealthClutchPulseDamage;
+        public float lowHealthClutchPulseRadius;
+        public float lowHealthClutchSafetySeconds;
+        public int bloodShardPickupAmount;
+        public float weaponLoadoutSurgeDurationSeconds;
+        public float weaponLoadoutSurgeDamageBonus;
+        public float weaponLoadoutSurgeMoveSpeedBonus;
+        public float weaponLoadoutSurgeCooldownMultiplierBonus;
+        public float weaponLoadoutSurgePickupRangeBonus;
+        public float weaponLoadoutSurgePulseDamage;
+        public float weaponLoadoutSurgePulseRadius;
+        public float passiveLoadoutSurgeDurationSeconds;
+        public float passiveLoadoutSurgeDamageBonus;
+        public float passiveLoadoutSurgeMoveSpeedBonus;
+        public float passiveLoadoutSurgeCooldownMultiplierBonus;
+        public float passiveLoadoutSurgePickupRangeBonus;
+        public float passiveLoadoutSurgeExperienceGainMultiplierBonus;
+        public float passiveLoadoutSurgePulseDamage;
+        public float passiveLoadoutSurgePulseRadius;
+        public float statusPoisonDurationSeconds;
+        public float statusBleedDurationSeconds;
+        public float statusBurnDurationSeconds;
+        public float evolutionSurgeDamage;
+        public float evolutionSurgeRadius;
+        public int evolutionChainSurgeMinimumEvolutions;
+        public float evolutionChainSurgeDurationSeconds;
+        public float evolutionChainSurgeDamageBonus;
+        public float evolutionChainSurgeMoveSpeedBonus;
+        public float evolutionChainSurgeCooldownMultiplierBonus;
+        public float evolutionChainSurgePickupRangeBonus;
+        public float evolutionChainSurgePulseDamage;
+        public float evolutionChainSurgePulseRadius;
+        public float levelUpPulseDamage;
+        public float levelUpPulseRadius;
+        public float rewardUpgradeSurgeDamage;
+        public float rewardUpgradeSurgeRadius;
+        public int rewardJackpotExperienceGemBaseCount;
+        public int rewardJackpotExperienceGemPerRarityTier;
+        public int rewardJackpotBloodShardBaseAmount;
+        public int rewardJackpotLegendaryExtraBloodShardAmount;
+        public float bossRelicSurgeDamage;
+        public float bossRelicSurgeRadius;
+        public float bossRelicSurgeDurationSeconds;
+        public float bossRelicSurgeDamageBonus;
+        public float bossRelicSurgeMoveSpeedBonus;
+        public float bossRelicSurgeCooldownMultiplierBonus;
+        public float bossRelicSurgePickupRangeBonus;
+        public float startingBarrierCapacity;
+        public float baseBarrierRegenPerSecond;
+
+        private static string[] CreateFieldNames()
+        {
+            System.Reflection.FieldInfo[] fields = typeof(SurvivorsGameplayTuningRecordJson).GetFields(
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+            var names = new string[fields.Length];
+            for (int i = 0; i < fields.Length; i++)
+            {
+                names[i] = fields[i].Name;
+            }
+
+            return names;
         }
     }
 }

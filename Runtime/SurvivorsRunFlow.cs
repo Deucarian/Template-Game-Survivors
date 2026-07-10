@@ -396,37 +396,37 @@ namespace Deucarian.TemplateGameSurvivors
             int[] weights = new int[8];
             int candidateCount = 0;
             AddCandidate(SurvivorsEnemyRole.Swarm, 60, ref candidateCount, roles, weights, ref totalWeight);
-            if (elapsedTimeSeconds >= 20f)
+            if (elapsedTimeSeconds >= ResolveRoleSpawnTime(SurvivorsEnemyRole.Runner, 20f))
             {
                 AddCandidate(SurvivorsEnemyRole.Runner, 18 + Math.Min(18, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 55f)
+            if (elapsedTimeSeconds >= ResolveRoleSpawnTime(SurvivorsEnemyRole.Bruiser, 55f))
             {
                 AddCandidate(SurvivorsEnemyRole.Bruiser, 14 + Math.Min(16, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 95f)
+            if (elapsedTimeSeconds >= ResolveRoleSpawnTime(SurvivorsEnemyRole.Spitter, 95f))
             {
                 AddCandidate(SurvivorsEnemyRole.Spitter, 10 + Math.Min(18, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 125f)
+            if (elapsedTimeSeconds >= ResolveRoleSpawnTime(SurvivorsEnemyRole.Splitter, 125f))
             {
                 AddCandidate(SurvivorsEnemyRole.Splitter, 8 + Math.Min(12, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 155f)
+            if (elapsedTimeSeconds >= ResolveRoleSpawnTime(SurvivorsEnemyRole.Summoner, 155f))
             {
                 AddCandidate(SurvivorsEnemyRole.Summoner, 5 + Math.Min(10, EscalationLevel * 2), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 170f)
+            if (elapsedTimeSeconds >= ResolveRoleSpawnTime(SurvivorsEnemyRole.Elite, 170f))
             {
                 AddCandidate(SurvivorsEnemyRole.Elite, 2 + Math.Min(6, EscalationLevel), ref candidateCount, roles, weights, ref totalWeight);
             }
 
-            if (elapsedTimeSeconds >= 250f)
+            if (elapsedTimeSeconds >= ResolveRoleSpawnTime(SurvivorsEnemyRole.DreadElite, 250f))
             {
                 AddCandidate(SurvivorsEnemyRole.DreadElite, 1 + Math.Min(4, EscalationLevel / 2), ref candidateCount, roles, weights, ref totalWeight);
             }
@@ -448,6 +448,23 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return SurvivorsEnemyRole.Swarm;
+        }
+
+        private float ResolveRoleSpawnTime(SurvivorsEnemyRole role, float fallbackSeconds)
+        {
+            if (Definition != null)
+            {
+                for (int index = 0; index < Definition.SwarmProfiles.Count; index++)
+                {
+                    SurvivorsEnemyProfile profile = Definition.SwarmProfiles[index];
+                    if (profile.Role == role && profile.SpawnTimeSeconds > 0f)
+                    {
+                        return profile.SpawnTimeSeconds;
+                    }
+                }
+            }
+
+            return fallbackSeconds;
         }
 
         public SurvivorsEnemyProfile ResolveSwarmProfile(SurvivorsTemplateTuning tuning, float elapsedTimeSeconds = 0f, long spawnSequence = 0L)

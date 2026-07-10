@@ -298,10 +298,7 @@
       "effect": "survivors.weapon.unlock",
       "target": "survivors.weapon.moon-slash",
       "amount": 1.0,
-      "description": "Unlock weapon: sweep nearby enemies with arcing moon cuts.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Unlock weapon: sweep nearby enemies with arcing moon cuts."
     },
     {
       "id": "upgrade.survivors.weapon.rune-trap",
@@ -313,10 +310,7 @@
       "effect": "survivors.weapon.unlock",
       "target": "survivors.weapon.rune-trap",
       "amount": 1.0,
-      "description": "Unlock weapon: place traps that detonate under the horde.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Unlock weapon: place traps that detonate under the horde."
     },
     {
       "id": "upgrade.survivors.weapon.aether-mine",
@@ -328,10 +322,7 @@
       "effect": "survivors.weapon.unlock",
       "target": "survivors.weapon.aether-mine",
       "amount": 1.0,
-      "description": "Unlock weapon: seed mines that punish packed enemies.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Unlock weapon: seed mines that punish packed enemies."
     },
     {
       "id": "upgrade.survivors.frost-fan",
@@ -449,10 +440,7 @@
       "effect": "survivors.damage.flat",
       "target": "survivors.weapon.moon-slash",
       "amount": 1.5,
-      "description": "Moon Slash cuts harder.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Moon Slash cuts harder."
     },
     {
       "id": "upgrade.survivors.crescent-chain",
@@ -466,10 +454,7 @@
       "amount": 1.0,
       "requiredUpgradeId": "upgrade.survivors.moonlit-edge",
       "requiredUpgradeRank": 2,
-      "description": "Let Moon Slash cut through more targets.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Let Moon Slash cut through more targets."
     },
     {
       "id": "upgrade.survivors.lunar-tempo",
@@ -483,10 +468,7 @@
       "amount": -0.05,
       "requiredUpgradeId": "upgrade.survivors.moonlit-edge",
       "requiredUpgradeRank": 3,
-      "description": "Moon Slash recovers faster between cuts.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Moon Slash recovers faster between cuts."
     },
     {
       "id": "upgrade.survivors.nova-echo",
@@ -670,10 +652,7 @@
       "effect": "survivors.damage.flat",
       "target": "survivors.weapon.arcane-wand",
       "amount": 1.6,
-      "description": "Passive: commit to Arc Bolt damage and unlock Arcane Storm.",
-      "allowedClasses": [
-        "class.survivors.arcane-initiate"
-      ]
+      "description": "Passive: commit to Arc Bolt damage and unlock Arcane Storm."
     },
     {
       "id": "upgrade.survivors.frost-needlework",
@@ -685,10 +664,7 @@
       "effect": "survivors.projectile.pierce_count",
       "target": "survivors.weapon.frost-fan",
       "amount": 1.0,
-      "description": "Passive: sharpen frost shards and unlock Blizzard Crown.",
-      "allowedClasses": [
-        "class.survivors.arcane-initiate"
-      ]
+      "description": "Passive: sharpen frost shards and unlock Blizzard Crown."
     },
     {
       "id": "upgrade.survivors.blood-ring-canticle",
@@ -700,10 +676,7 @@
       "effect": "survivors.orbit.blade_count",
       "target": "survivors.weapon.orbit-ward",
       "amount": 1.0,
-      "description": "Passive: deepen orbit damage and unlock Crimson Aegis.",
-      "allowedClasses": [
-        "class.survivors.arcane-initiate"
-      ]
+      "description": "Passive: deepen orbit damage and unlock Crimson Aegis."
     },
     {
       "id": "upgrade.survivors.cinder-script",
@@ -715,10 +688,7 @@
       "effect": "survivors.burst.targeted_sigils",
       "target": "survivors.weapon.star-nova",
       "amount": 1.0,
-      "description": "Passive: focus burst sigils and unlock Inferno Heart.",
-      "allowedClasses": [
-        "class.survivors.arcane-initiate"
-      ]
+      "description": "Passive: focus burst sigils and unlock Inferno Heart."
     },
     {
       "id": "upgrade.survivors.ember-forge-heart",
@@ -730,10 +700,7 @@
       "effect": "survivors.damage.flat",
       "target": "survivors.weapon.star-nova",
       "amount": 2.2,
-      "description": "Passive: raise Ember weapon damage.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Passive: raise Ember weapon damage."
     },
     {
       "id": "upgrade.survivors.ember-tempo",
@@ -745,10 +712,7 @@
       "effect": "survivors.weapon.cooldown_multiplier",
       "target": "survivors.weapon.star-beam",
       "amount": -0.06,
-      "description": "Passive: quicken Star Beam for Ember builds.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Passive: quicken Star Beam for Ember builds."
     },
     {
       "id": "upgrade.survivors.moon-oath",
@@ -760,10 +724,7 @@
       "effect": "survivors.damage.flat",
       "target": "survivors.weapon.moon-slash",
       "amount": 1.8,
-      "description": "Passive: sharpen Moon Slash and unlock Eclipse Waltz.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Passive: sharpen Moon Slash and unlock Eclipse Waltz."
     },
     {
       "id": "upgrade.survivors.star-focus",
@@ -802,10 +763,7 @@
       "target": "survivors.weapon.payloads",
       "amount": 1.0,
       "affectedContentId": "survivors.weapon.payloads",
-      "description": "Passive: carry heavier payloads for Ember payload builds.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Passive: carry heavier payloads for Ember payload builds."
     },
     {
       "id": "upgrade.survivors.ember-ward",
@@ -817,10 +775,7 @@
       "effect": "survivors.barrier.capacity",
       "target": "survivors.barrier",
       "amount": 8.0,
-      "description": "Passive: add a larger defensive barrier.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Passive: add a larger defensive barrier."
     },
     {
       "id": "upgrade.survivors.prismatic-beam",
@@ -894,10 +849,7 @@
       "amount": 1.0,
       "affectedContentId": "weapon.survivors.rune-trap",
       "requiredOwnedWeaponId": "weapon.survivors.rune-trap",
-      "description": "Rune Trap and Aether Mine deploy more hazards.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Rune Trap and Aether Mine deploy more hazards."
     },
     {
       "id": "upgrade.survivors.snaring-runes",
@@ -913,10 +865,7 @@
       "requiredOwnedWeaponId": "weapon.survivors.rune-trap",
       "requiredUpgradeId": "upgrade.survivors.rune-lattice",
       "requiredUpgradeRank": 2,
-      "description": "Placed hazards trigger from farther away.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Placed hazards trigger from farther away."
     },
     {
       "id": "upgrade.survivors.aether-bloom",
@@ -932,10 +881,7 @@
       "requiredOwnedWeaponId": "weapon.survivors.aether-mine",
       "requiredUpgradeId": "upgrade.survivors.rune-lattice",
       "requiredUpgradeRank": 3,
-      "description": "Placed hazard detonations cover a wider area.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Placed hazard detonations cover a wider area."
     },
     {
       "id": "upgrade.survivors.evolution.arcane-storm",
@@ -1146,10 +1092,7 @@
       "requiredUpgradeId": "upgrade.survivors.moonlit-edge",
       "requiredUpgradeRank": 5,
       "requiredPassiveUpgradeId": "upgrade.survivors.moon-oath",
-      "description": "Evolution: Moon Slash cuts forward and backward in a rapid sweeping dance.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Evolution: Moon Slash cuts forward and backward in a rapid sweeping dance."
     },
     {
       "id": "upgrade.survivors.evolution.aetherfield-matrix",
@@ -1183,10 +1126,7 @@
       "requiredUpgradeId": "upgrade.survivors.rune-lattice",
       "requiredUpgradeRank": 5,
       "requiredPassiveUpgradeId": "upgrade.survivors.siege-payloads",
-      "description": "Evolution: Rune Trap and Aether Mine seed snaring satellite hazard fields.",
-      "allowedClasses": [
-        "class.survivors.ember-vanguard"
-      ]
+      "description": "Evolution: Rune Trap and Aether Mine seed snaring satellite hazard fields."
     }
   ]
 }

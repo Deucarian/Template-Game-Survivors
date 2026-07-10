@@ -30,6 +30,9 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
         private TextAsset enemyLibrary;
 
         [SerializeField]
+        private TextAsset pickupLibrary;
+
+        [SerializeField]
         private TextAsset runFlowLibrary;
 
         [SerializeField]
@@ -53,16 +56,18 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
                 controller = gameObject.AddComponent<SurvivorsTemplateController>();
             }
 
-            controller.ConfigureAuthoredContent(
+            controller.ConfigureStrictSampleContent(
                 weaponLibrary,
                 upgradeLibrary,
                 relicLibrary,
                 classLibrary,
                 progressionLibrary,
                 enemyLibrary,
+                pickupLibrary,
                 runFlowLibrary,
-                rewardLibrary);
-            controller.ConfigureUiThemes(uiThemeLibrary, neonArcanaThemeLibrary);
+                rewardLibrary,
+                uiThemeLibrary,
+                neonArcanaThemeLibrary);
             controller.ConfigureRunModeSelection(showRunModeSelection);
         }
     }
