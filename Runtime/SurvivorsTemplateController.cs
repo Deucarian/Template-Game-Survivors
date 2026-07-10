@@ -96,10 +96,10 @@ namespace Deucarian.TemplateGameSurvivors
         private static readonly string[] EmptyWeaponIds = Array.Empty<string>();
 
         [SerializeField]
-        private bool autoStart = true;
+        private bool autoStart = false;
 
         [SerializeField]
-        private bool showRunModeSelection = false;
+        private bool showRunModeSelection = true;
 
         [SerializeField]
         private bool buildVisualsOnAwake = true;
@@ -1074,7 +1074,7 @@ namespace Deucarian.TemplateGameSurvivors
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
             GUI.Box(rect, "Choose Run Mode");
             GUI.Label(new Rect(rect.x + 28f, rect.y + 34f, width - 56f, 28f), "Deucarian Survivors Run", _hudTitleStyle);
-            GUI.Label(new Rect(rect.x + 28f, rect.y + 64f, width - 56f, 22f), "Pick the full 30-minute arc or the compact five-minute loop.", _hudLabelStyle);
+            GUI.Label(new Rect(rect.x + 28f, rect.y + 64f, width - 56f, 22f), "Pick Standard / Human Playtest for the full 30-minute arc or Sprint Run for the compact five-minute loop.", _hudLabelStyle);
 
             Rect standardRect = new Rect(rect.x + 28f, rect.y + 102f, 336f, 190f);
             Rect sprintRect = new Rect(rect.x + width - 364f, rect.y + 102f, 336f, 190f);
@@ -1093,7 +1093,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             SurvivorsTemplateTuning preview = BasicSurvivorsGame.CreateTuning(profile);
             GUI.Box(rect, string.Empty);
-            GUI.Label(new Rect(rect.x + 16f, rect.y + 16f, rect.width - 32f, 24f), preview.RunModeDisplayName, _hudLabelStyle);
+            GUI.Label(new Rect(rect.x + 16f, rect.y + 16f, rect.width - 32f, 24f), FormatRunModeSelectionTitle(profile, preview), _hudLabelStyle);
             GUI.Label(new Rect(rect.x + 16f, rect.y + 44f, rect.width - 32f, 20f), preview.RunModeDurationLabel, _hudSmallStyle);
             GUI.Label(new Rect(rect.x + 16f, rect.y + 70f, rect.width - 32f, 42f), preview.RunModeDescription, _hudSmallStyle);
             GUI.Label(new Rect(rect.x + 16f, rect.y + 118f, rect.width - 32f, 20f), $"Boss {FormatRunTime(preview.BossSpawnTimeSeconds)}   Victory {FormatRunTime(preview.SurvivalVictoryTimeSeconds)}", _hudSmallStyle);
@@ -1104,6 +1104,18 @@ namespace Deucarian.TemplateGameSurvivors
         private static string GetPacingProfileDisplayNameForCard(SurvivorsPacingProfile profile)
         {
             return BasicSurvivorsGame.GetPacingProfileDisplayName(profile);
+        }
+
+        private static string FormatRunModeSelectionTitle(SurvivorsPacingProfile profile, SurvivorsTemplateTuning preview)
+        {
+            if (profile == SurvivorsPacingProfile.HumanPlaytest)
+            {
+                return "Standard / Human Playtest";
+            }
+
+            return preview == null || string.IsNullOrWhiteSpace(preview.RunModeDisplayName)
+                ? BasicSurvivorsGame.GetPacingProfileDisplayName(profile)
+                : preview.RunModeDisplayName;
         }
 
         public void ConfigureRunModeSelection(bool enabled)
@@ -10391,14 +10403,27 @@ namespace Deucarian.TemplateGameSurvivors
 
                 float restartX = CurrentTuning.EndlessContinuationEnabled ? rect.x + width - 266f : rect.x + width * 0.5f - 70f;
                 float restartWidth = CurrentTuning.EndlessContinuationEnabled ? 106f : 140f;
-                if (GUI.Button(new Rect(restartX, buttonY, restartWidth, 34f), "Restart"))
+                if (GUI.Button(new Rect(restartX, buttonY, restartWidth, 34f), "Restart Same"))
                 {
                     RestartRun();
                 }
+
+                if (GUI.Button(new Rect(rect.x + width - 150f, buttonY, 126f, 34f), "Change Mode"))
+                {
+                    OpenRunModeSelection();
+                }
             }
-            else if (GUI.Button(new Rect(rect.x + width * 0.5f - 70f, buttonY, 140f, 34f), "Restart"))
+            else
             {
-                RestartRun();
+                if (GUI.Button(new Rect(rect.x + width * 0.5f - 148f, buttonY, 140f, 34f), "Restart Same"))
+                {
+                    RestartRun();
+                }
+
+                if (GUI.Button(new Rect(rect.x + width * 0.5f + 8f, buttonY, 140f, 34f), "Change Mode"))
+                {
+                    OpenRunModeSelection();
+                }
             }
         }
 

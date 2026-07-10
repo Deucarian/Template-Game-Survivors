@@ -44,7 +44,7 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsPacingProfile PacingProfile = SurvivorsPacingProfile.HumanPlaytest;
         public string RunModeDisplayName = "Standard Run";
         public string RunModeDurationLabel = "30 min";
-        public string RunModeDescription = "Full progression run with bosses, evolutions, rewards, and endless continuation.";
+        public string RunModeDescription = "Full 30-minute run with boss, victory, rewards, and endless continuation.";
         public float TargetDurationSeconds = 1800f;
         public bool EndlessContinuationEnabled = true;
         public float RunRewardMultiplier = 1f;
@@ -1076,7 +1076,7 @@ namespace Deucarian.TemplateGameSurvivors
             tuning.PacingProfile = SurvivorsPacingProfile.SprintRun;
             tuning.RunModeDisplayName = "Sprint Run";
             tuning.RunModeDurationLabel = "5 min";
-            tuning.RunModeDescription = "Compact run with fast XP, early elites, reachable evolutions, and a quick final boss.";
+            tuning.RunModeDescription = "Fast 5-minute run with quicker XP, early elites, compressed boss climax, and fast restart.";
             tuning.TargetDurationSeconds = 300f;
             tuning.EndlessContinuationEnabled = false;
             tuning.RunRewardMultiplier = 0.65f;
