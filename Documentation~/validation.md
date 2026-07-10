@@ -175,6 +175,13 @@ Phase 3J adds audit-gap validation for authored runtime binding and HUD readabil
 - PlayMode coverage checks the dedicated top-center timer, exact Sprint `01:42` level/draft bounds, and concurrent major-threat life-bar state.
 - Manual validation should confirm the top-center timer remains readable with warnings, authored overhead elite/miniboss bars appear onscreen, authored boss bars appear for bosses, offscreen markers still preserve major-threat health, and authored reward caches remain recoverable.
 
+Phase 3K adds player-facing UI polish validation:
+
+- Runtime coverage checks the run-mode selector still appears at boot and Standard/Sprint still start their existing profiles.
+- EditMode coverage checks `Content/DefaultUiTheme/ui-theme.json` loads and exposes mode labels, rarity labels, category labels, and draft button copy for asset flips.
+- PlayMode coverage checks normal gameplay starts with the debug overlay hidden, F1/debug toggle state resets on mode change, full-screen draft cards expose name/rarity/category/affected/rank/description/effect/hotkey data, numbered draft hotkeys still select choices, and the build menu shows owned weapons, passives, relics, pickup/magnet stats, run info, and controls.
+- Manual validation should confirm the normal HUD looks player-facing, the old debug wall appears only when toggled, and `Tab`, `B`, or `Esc` opens and closes the build menu without conflicting with draft `1`/`2`/`3` selection.
+
 Required local validation for this pass:
 
 ```powershell

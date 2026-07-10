@@ -91,6 +91,41 @@ namespace Deucarian.TemplateGameSurvivors
             Boss = 4
         }
 
+        private enum BuildMenuTab
+        {
+            CurrentBuild = 0,
+            Stats = 1,
+            RunInfo = 2,
+            Controls = 3
+        }
+
+        private struct DraftCardPresentation
+        {
+            public int Index;
+            public string Hotkey;
+            public string Name;
+            public string RarityLabel;
+            public string CategoryId;
+            public string CategoryLabel;
+            public string AffectedLabel;
+            public string RankLabel;
+            public string Description;
+            public string EffectPreview;
+            public string RequirementHint;
+            public string IconId;
+            public string StyleToken;
+            public bool IsEvolution;
+            public Color AccentColor;
+
+            public string Summary
+            {
+                get
+                {
+                    return $"{Hotkey} | {Name} | {RarityLabel} | {CategoryLabel} | {AffectedLabel} | {RankLabel} | {Description} | {EffectPreview} | {RequirementHint}";
+                }
+            }
+        }
+
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
         private static readonly string[] EmptyWeaponIds = Array.Empty<string>();
@@ -109,6 +144,9 @@ namespace Deucarian.TemplateGameSurvivors
 
         [SerializeField]
         private SurvivorsTemplateTuning tuning;
+
+        [SerializeField]
+        private SurvivorsUiTheme uiTheme;
 
         private readonly List<SurvivorsEnemyActor> _enemies = new List<SurvivorsEnemyActor>(64);
         private readonly List<SurvivorsPickupActor> _pickups = new List<SurvivorsPickupActor>(128);
@@ -175,6 +213,14 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _lowHealthStyle;
         private GUIStyle _majorThreatWarningStyle;
         private GUIStyle _rewardFeedbackStyle;
+        private GUIStyle _draftTitleStyle;
+        private GUIStyle _draftCardNameStyle;
+        private GUIStyle _draftCardMetaStyle;
+        private GUIStyle _draftCardDescriptionStyle;
+        private GUIStyle _draftCardHotkeyStyle;
+        private GUIStyle _menuTitleStyle;
+        private GUIStyle _menuTabStyle;
+        private GUIStyle _transparentButtonStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService;
         private HealthState _playerHealth;
@@ -226,6 +272,9 @@ namespace Deucarian.TemplateGameSurvivors
         private int _payloadHazardChainSnareCount;
         private bool _runStarted;
         private bool _runModeSelectionOpen;
+        private bool _debugOverlayVisible;
+        private bool _buildMenuOpen;
+        private BuildMenuTab _buildMenuTab;
         private bool _lowHealthClutchPulseUsed;
         private bool _weaponLoadoutSurgeUsed;
         private bool _passiveLoadoutSurgeUsed;
@@ -763,6 +812,13 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsSprintRunMode => CurrentPacingProfile == SurvivorsPacingProfile.SprintRun;
         public bool IsRunModeSelectionOpen => _runModeSelectionOpen;
         public string CurrentRunModeDisplayName => CurrentTuning.RunModeDisplayName;
+        public bool IsDebugOverlayVisible => _debugOverlayVisible;
+        public bool IsBuildMenuOpen => _buildMenuOpen;
+        public string CurrentBuildMenuTabLabel => FormatBuildMenuTabLabel(_buildMenuTab);
+        public string CurrentUiThemeName => ActiveUiTheme.themeName;
+        public bool IsPlayerFacingDraftOverlayVisible => State == SurvivorsRunState.LevelUp && (_currentDraft != null || _currentRelicDraft != null);
+        public int CurrentDraftCardCountForTest => IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
+        public string CurrentDraftOverlayTitleForTest => ResolveRewardOverlayTitle();
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = CreateConfiguredTuning(pacingProfile));
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public bool IsAuthoredContentBound => _authoredContent != null;
@@ -873,6 +929,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void Awake()
         {
+            EnsureUiTheme();
             if (tuning == null)
             {
                 tuning = CreateConfiguredTuning(pacingProfile);
@@ -900,6 +957,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void Update()
         {
+            if (Input.GetKeyDown(KeyCode.F1))
+            {
+                _debugOverlayVisible = !_debugOverlayVisible;
+            }
+
             if (!_runStarted)
             {
                 if (_runModeSelectionOpen)
@@ -907,6 +969,11 @@ namespace Deucarian.TemplateGameSurvivors
                     HandleRunModeSelectionInput();
                 }
 
+                return;
+            }
+
+            if (HandleBuildMenuInput())
+            {
                 return;
             }
 
@@ -1001,34 +1068,13 @@ namespace Deucarian.TemplateGameSurvivors
 
             EnsureHudStyles();
             DrawTopCenterTimerHud();
-            string evolutionObjectiveHud = ResolveEvolutionObjectiveHudLabel();
-            string waystoneCompassHud = ResolveWaystoneCompassHudLabel();
-            GUI.Box(new Rect(12, 12, 356, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 424 : 448), string.Empty);
-            GUI.Label(new Rect(24, 22, 300, 22), "Deucarian Survivors Run", _hudTitleStyle);
-            DrawHudBar(new Rect(24, 50, 318, 18), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
-            DrawHudBar(new Rect(24, 74, 318, 18), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
-            DrawHudBar(new Rect(24, 98, 318, 18), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
-            DrawHudBar(new Rect(24, 122, 318, 18), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
-            GUI.Label(new Rect(24, 148, 318, 22), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 170, 318, 22), CurrentRunMilestoneHudLabel, _hudLabelStyle);
-            GUI.Label(new Rect(24, 192, 318, 22), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 214, 318, 22), $"Split {ActiveSplitterCount}   Call {ActiveSummonerCount}   Elite {ActiveEliteCount}   Mini {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
-            GUI.Label(new Rect(24, 236, 318, 22), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 258, 318, 22), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
-            GUI.Label(new Rect(24, 280, 318, 22), $"Mode {CurrentRunModeDisplayName}   Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 302, 318, 22), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
-            string surgeHud = ResolveSurgeHudLabel();
-            GUI.Label(new Rect(24, 324, 318, 22), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 346, 318, 22), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
-            GUI.Label(new Rect(24, 368, 318, 22), ResolveBuildSlotHudLabel(), _hudSmallStyle);
-            GUI.Label(new Rect(24, 390, 318, 22), waystoneCompassHud, _hudSmallStyle);
-            if (!string.IsNullOrWhiteSpace(evolutionObjectiveHud))
+            DrawPlayerHud();
+            if (_debugOverlayVisible)
             {
-                GUI.Label(new Rect(24, 412, 318, 22), evolutionObjectiveHud, _hudSmallStyle);
+                DrawDebugOverlay();
+                DrawBuildHudPanel();
             }
 
-            GUI.Label(new Rect(24, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 412 : 434, 318, 22), ResolveDashHudLabel(), _hudSmallStyle);
-            DrawBuildHudPanel();
             DrawLowHealthWarning();
             DrawMajorThreatWarning();
             DrawHordeRushWarning();
@@ -1053,6 +1099,11 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 DrawRunResultOverlay(victory: true);
             }
+
+            if (_buildMenuOpen && State == SurvivorsRunState.Playing)
+            {
+                DrawBuildMenuOverlay();
+            }
         }
 
         private void HandleRunModeSelectionInput()
@@ -1065,6 +1116,166 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 SelectSprintRun();
             }
+        }
+
+        private bool HandleBuildMenuInput()
+        {
+            if (State != SurvivorsRunState.Playing)
+            {
+                _buildMenuOpen = false;
+                return false;
+            }
+
+            bool menuToggle = Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B);
+            if (menuToggle)
+            {
+                _buildMenuOpen = !_buildMenuOpen;
+                if (_buildMenuOpen)
+                {
+                    _buildMenuTab = BuildMenuTab.CurrentBuild;
+                }
+
+                return _buildMenuOpen;
+            }
+
+            if (!_buildMenuOpen)
+            {
+                return false;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                _buildMenuTab = BuildMenuTab.CurrentBuild;
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                _buildMenuTab = BuildMenuTab.Stats;
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha3))
+            {
+                _buildMenuTab = BuildMenuTab.RunInfo;
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha4))
+            {
+                _buildMenuTab = BuildMenuTab.Controls;
+            }
+
+            return true;
+        }
+
+        private void DrawPlayerHud()
+        {
+            IReadOnlyList<string> lines = ResolvePlayerHudLines();
+            float panelWidth = Mathf.Min(340f, Mathf.Max(270f, Screen.width - 32f));
+            float lineHeight = 19f;
+            float panelHeight = 126f + Mathf.Min(4, lines.Count) * lineHeight;
+            Rect panel = new Rect(12f, 58f, panelWidth, panelHeight);
+            DrawSolidRect(panel, new Color(0.015f, 0.02f, 0.026f, 0.74f));
+            DrawSolidRect(new Rect(panel.x, panel.y, 4f, panel.height), new Color(0.2f, 0.78f, 1f, 0.9f));
+            GUI.Label(new Rect(panel.x + 14f, panel.y + 8f, panel.width - 28f, 22f), CurrentRunModeDisplayName, _hudTitleStyle);
+            DrawHudBar(new Rect(panel.x + 14f, panel.y + 36f, panel.width - 28f, 18f), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
+            if (BarrierCapacity > 0.01f)
+            {
+                DrawHudBar(new Rect(panel.x + 14f, panel.y + 60f, panel.width - 28f, 18f), "Barrier", BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
+            }
+
+            DrawHudBar(new Rect(panel.x + 14f, panel.y + 84f, panel.width - 28f, 18f), $"XP L{Level}", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
+            float y = panel.y + 110f;
+            int shown = Mathf.Min(4, lines.Count);
+            for (int i = 0; i < shown; i++)
+            {
+                GUI.Label(new Rect(panel.x + 14f, y, panel.width - 28f, lineHeight), lines[i], _hudSmallStyle);
+                y += lineHeight;
+            }
+        }
+
+        private void DrawDebugOverlay()
+        {
+            string evolutionObjectiveHud = ResolveEvolutionObjectiveHudLabel();
+            string waystoneCompassHud = ResolveWaystoneCompassHudLabel();
+            float panelHeight = string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 424f : 448f;
+            Rect panel = new Rect(12f, 58f + Mathf.Min(206f, Screen.height * 0.22f), 356f, panelHeight);
+            DrawSolidRect(panel, new Color(0.02f, 0.024f, 0.03f, 0.86f));
+            DrawSolidRect(new Rect(panel.x, panel.y, 4f, panel.height), new Color(1f, 0.72f, 0.22f, 0.86f));
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 10f, 300f, 22f), "Survivors Debug Overlay", _hudTitleStyle);
+            DrawHudBar(new Rect(panel.x + 12f, panel.y + 38f, 318f, 18f), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
+            DrawHudBar(new Rect(panel.x + 12f, panel.y + 62f, 318f, 18f), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
+            DrawHudBar(new Rect(panel.x + 12f, panel.y + 86f, 318f, 18f), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
+            DrawHudBar(new Rect(panel.x + 12f, panel.y + 110f, 318f, 18f), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 136f, 318f, 22f), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}", _hudLabelStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 158f, 318f, 22f), CurrentRunMilestoneHudLabel, _hudLabelStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 180f, 318f, 22f), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 202f, 318f, 22f), $"Split {ActiveSplitterCount}   Call {ActiveSummonerCount}   Elite {ActiveEliteCount}   Mini {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 224f, 318f, 22f), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 246f, 318f, 22f), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 268f, 318f, 22f), $"Mode {CurrentRunModeDisplayName}   Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}", _hudSmallStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 290f, 318f, 22f), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
+            string surgeHud = ResolveSurgeHudLabel();
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 312f, 318f, 22f), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 334f, 318f, 22f), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 356f, 318f, 22f), ResolveBuildSlotHudLabel(), _hudSmallStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 378f, 318f, 22f), waystoneCompassHud, _hudSmallStyle);
+            if (!string.IsNullOrWhiteSpace(evolutionObjectiveHud))
+            {
+                GUI.Label(new Rect(panel.x + 12f, panel.y + 400f, 318f, 22f), evolutionObjectiveHud, _hudSmallStyle);
+            }
+
+            GUI.Label(new Rect(panel.x + 12f, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? panel.y + 400f : panel.y + 422f, 318f, 22f), ResolveDashHudLabel(), _hudSmallStyle);
+        }
+
+        private void DrawBuildMenuOverlay()
+        {
+            DrawDimOverlay(0.62f);
+            float width = Mathf.Min(860f, Mathf.Max(520f, Screen.width - 48f));
+            float height = Mathf.Min(620f, Mathf.Max(420f, Screen.height - 72f));
+            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            DrawSolidRect(panel, new Color(0.018f, 0.023f, 0.032f, 0.96f));
+            DrawSolidRect(new Rect(panel.x, panel.y, panel.width, 4f), new Color(0.2f, 0.78f, 1f, 0.9f));
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 18f, panel.width - 48f, 32f), ActiveUiTheme.buildMenuTitle, _menuTitleStyle);
+            if (GUI.Button(new Rect(panel.xMax - 94f, panel.y + 18f, 70f, 28f), "Close"))
+            {
+                _buildMenuOpen = false;
+                return;
+            }
+
+            DrawBuildMenuTabs(new Rect(panel.x + 24f, panel.y + 62f, panel.width - 48f, 34f));
+            IReadOnlyList<string> lines = ResolveBuildMenuLines(_buildMenuTab);
+            float y = panel.y + 112f;
+            float lineHeight = 22f;
+            int maxLines = Mathf.FloorToInt((panel.yMax - y - 22f) / lineHeight);
+            int shown = Mathf.Min(maxLines, lines.Count);
+            for (int i = 0; i < shown; i++)
+            {
+                GUI.Label(new Rect(panel.x + 28f, y, panel.width - 56f, lineHeight), lines[i], _hudLabelStyle);
+                y += lineHeight;
+            }
+
+            if (lines.Count > shown)
+            {
+                GUI.Label(new Rect(panel.x + 28f, panel.yMax - 34f, panel.width - 56f, 22f), "+" + (lines.Count - shown).ToString() + " more", _hudSmallStyle);
+            }
+        }
+
+        private void DrawBuildMenuTabs(Rect rect)
+        {
+            float gap = 8f;
+            float width = (rect.width - gap * 3f) / 4f;
+            DrawBuildMenuTabButton(new Rect(rect.x, rect.y, width, rect.height), BuildMenuTab.CurrentBuild, "1 Current Build");
+            DrawBuildMenuTabButton(new Rect(rect.x + (width + gap), rect.y, width, rect.height), BuildMenuTab.Stats, "2 Stats");
+            DrawBuildMenuTabButton(new Rect(rect.x + (width + gap) * 2f, rect.y, width, rect.height), BuildMenuTab.RunInfo, "3 Run Info");
+            DrawBuildMenuTabButton(new Rect(rect.x + (width + gap) * 3f, rect.y, width, rect.height), BuildMenuTab.Controls, "4 Controls");
+        }
+
+        private void DrawBuildMenuTabButton(Rect rect, BuildMenuTab tab, string label)
+        {
+            Color oldColor = GUI.backgroundColor;
+            GUI.backgroundColor = _buildMenuTab == tab ? new Color(0.35f, 0.76f, 1f) : new Color(0.42f, 0.48f, 0.56f);
+            if (GUI.Button(rect, label, _menuTabStyle))
+            {
+                _buildMenuTab = tab;
+            }
+
+            GUI.backgroundColor = oldColor;
         }
 
         private void DrawRunModeSelectionOverlay()
@@ -1129,6 +1340,25 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        public bool ConfigureUiTheme(TextAsset themeLibrary)
+        {
+            return ConfigureUiThemeJson(themeLibrary == null ? null : themeLibrary.text);
+        }
+
+        public bool ConfigureUiThemeJson(string themeJson)
+        {
+            if (!SurvivorsUiTheme.TryFromJson(themeJson, out SurvivorsUiTheme parsed, out _))
+            {
+                uiTheme = SurvivorsUiTheme.CreateDefault();
+                ResetHudStyles();
+                return false;
+            }
+
+            uiTheme = parsed;
+            ResetHudStyles();
+            return true;
+        }
+
         public bool ConfigureAuthoredContent(TextAsset enemyLibrary, TextAsset runFlowLibrary, TextAsset rewardLibrary)
         {
             return ConfigureAuthoredContentJson(
@@ -1180,6 +1410,9 @@ namespace Deucarian.TemplateGameSurvivors
             ClearRewardDrafts();
             showRunModeSelection = true;
             autoStart = false;
+            _debugOverlayVisible = false;
+            _buildMenuOpen = false;
+            _buildMenuTab = BuildMenuTab.CurrentBuild;
             _runModeSelectionOpen = true;
             State = SurvivorsRunState.Booting;
         }
@@ -1204,9 +1437,13 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void StartRun()
         {
+            EnsureUiTheme();
             Time.timeScale = 1f;
             ClearRun();
             _runModeSelectionOpen = false;
+            _debugOverlayVisible = false;
+            _buildMenuOpen = false;
+            _buildMenuTab = BuildMenuTab.CurrentBuild;
             SurvivorsTemplateTuning resolved = CurrentTuning;
             _combatCatalog = BasicSurvivorsGame.CreateCombatCatalog();
             _combatRandom = new DeterministicRandom(resolved.RunSeed + 4049);
@@ -1603,6 +1840,11 @@ namespace Deucarian.TemplateGameSurvivors
         public void Simulate(float deltaTime, Vector2 movementInput = default)
         {
             if (!_runStarted)
+            {
+                return;
+            }
+
+            if (_buildMenuOpen && State == SurvivorsRunState.Playing)
             {
                 return;
             }
@@ -2460,6 +2702,27 @@ namespace Deucarian.TemplateGameSurvivors
             return FormatUpgradeChoiceLabel(index, _currentDraft.Choices[index]);
         }
 
+        public string GetCurrentDraftCardSummaryForTest(int index)
+        {
+            EnsureRunStartedForTest();
+            if (IsRelicChoiceOpen)
+            {
+                if (_currentRelicDraft == null || index < 0 || index >= _currentRelicDraft.Choices.Count)
+                {
+                    return string.Empty;
+                }
+
+                return CreateRelicDraftCard(index, _currentRelicDraft.Choices[index]).Summary;
+            }
+
+            if (_currentDraft == null || index < 0 || index >= _currentDraft.Choices.Count)
+            {
+                return string.Empty;
+            }
+
+            return CreateUpgradeDraftCard(index, _currentDraft.Choices[index]).Summary;
+        }
+
         public int GetRunUpgradeRankForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
@@ -2511,6 +2774,33 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureRunStartedForTest();
             return ResolveBuildHudSummaryLines();
+        }
+
+        public IReadOnlyList<string> CurrentBuildMenuLinesForTest()
+        {
+            EnsureRunStartedForTest();
+            return ResolveBuildMenuLines(_buildMenuTab);
+        }
+
+        public IReadOnlyList<string> PlayerHudLinesForTest()
+        {
+            EnsureRunStartedForTest();
+            return ResolvePlayerHudLines();
+        }
+
+        public void ToggleDebugOverlayForTest()
+        {
+            _debugOverlayVisible = !_debugOverlayVisible;
+        }
+
+        public void SetBuildMenuOpenForTest(bool open)
+        {
+            _buildMenuOpen = open && _runStarted && State == SurvivorsRunState.Playing;
+        }
+
+        public void SetBuildMenuTabForTest(int tabIndex)
+        {
+            _buildMenuTab = ClampBuildMenuTab(tabIndex);
         }
 
         public IReadOnlyList<string> DebugDescribeEligibleEvolutionPool()
@@ -2894,6 +3184,11 @@ namespace Deucarian.TemplateGameSurvivors
                 selectedRewardUpgrade: selectionKind != SurvivorsRewardSelectionKind.LevelUp);
 
             return true;
+        }
+
+        public bool SelectDraftHotkeyForTest(int hotkeyNumber)
+        {
+            return SelectUpgrade(hotkeyNumber - 1);
         }
 
         public bool RerollCurrentDraft()
@@ -10275,57 +10570,63 @@ namespace Deucarian.TemplateGameSurvivors
         private void DrawLevelUpOverlay()
         {
             bool upgradeDraftOpen = !IsRelicChoiceOpen;
-            float width = upgradeDraftOpen ? 660f : 560f;
             int choiceCount = IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
-            float rowHeight = IsRelicChoiceOpen ? 60f : 78f;
-            float footerHeight = upgradeDraftOpen ? 48f : 0f;
-            float height = 112f + choiceCount * rowHeight + footerHeight;
+            DrawDimOverlay(0.72f);
+            float width = Mathf.Min(1120f, Mathf.Max(620f, Screen.width - 56f));
+            float height = Mathf.Min(690f, Mathf.Max(470f, Screen.height - 72f));
             Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
-            GUI.Box(rect, ResolveRewardOverlayTitle());
+            DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.96f));
+            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), ResolveRewardTitleAccentColor());
+            string title = ResolveRewardOverlayTitle();
+            GUI.Label(new Rect(rect.x + 30f, rect.y + 20f, rect.width - 60f, 38f), title, _draftTitleStyle);
             GUI.Label(
-                new Rect(rect.x + 24f, rect.y + 28f, width - 48f, 18f),
-                RewardSelectionRemainingSeconds > 0f ? $"Auto-pick in {RewardSelectionRemainingSeconds:0}s" : "Choose a reward",
+                new Rect(rect.x + 30f, rect.y + 58f, rect.width - 60f, 22f),
+                RewardSelectionRemainingSeconds > 0f ? $"Auto-pick in {RewardSelectionRemainingSeconds:0}s" : "Choose one card. Mouse, 1/2/3, R reroll, Shift+number banish, S skip.",
                 _hudSmallStyle);
+
+            if (choiceCount <= 0)
+            {
+                GUI.Label(new Rect(rect.x + 30f, rect.y + 110f, rect.width - 60f, 28f), "No rewards available.", _hudLabelStyle);
+                return;
+            }
+
+            bool horizontal = rect.width >= 760f;
+            float cardAreaTop = rect.y + 100f;
+            float cardAreaBottom = upgradeDraftOpen ? rect.yMax - 86f : rect.yMax - 34f;
+            float cardGap = 16f;
+            float cardWidth = horizontal
+                ? (rect.width - 60f - cardGap * Mathf.Max(0, choiceCount - 1)) / choiceCount
+                : rect.width - 60f;
+            float cardHeight = horizontal
+                ? cardAreaBottom - cardAreaTop
+                : (cardAreaBottom - cardAreaTop - cardGap * Mathf.Max(0, choiceCount - 1)) / choiceCount;
             for (int i = 0; i < choiceCount; i++)
             {
-                Rect rowRect = new Rect(rect.x + 24f, rect.y + 68f + i * rowHeight, width - 48f, rowHeight - 12f);
-                Rect buttonRect = upgradeDraftOpen
-                    ? new Rect(rowRect.x, rowRect.y, rowRect.width - 88f, rowRect.height)
-                    : rowRect;
-                string label;
-                Color cardAccent;
-                if (IsRelicChoiceOpen)
+                Rect cardRect = horizontal
+                    ? new Rect(rect.x + 30f + i * (cardWidth + cardGap), cardAreaTop, cardWidth, cardHeight)
+                    : new Rect(rect.x + 30f, cardAreaTop + i * (cardHeight + cardGap), cardWidth, cardHeight);
+                DraftCardPresentation card = IsRelicChoiceOpen
+                    ? CreateRelicDraftCard(i, CurrentRelicChoices[i])
+                    : CreateUpgradeDraftCard(i, CurrentDraftChoices[i]);
+                bool hover = cardRect.Contains(Event.current.mousePosition);
+                DrawDraftChoiceCard(cardRect, card, hover);
+                Rect selectRect = upgradeDraftOpen
+                    ? new Rect(cardRect.x, cardRect.y, cardRect.width, Mathf.Max(24f, cardRect.height - 48f))
+                    : cardRect;
+                if (GUI.Button(selectRect, GUIContent.none, _transparentButtonStyle))
                 {
-                    SurvivorsRelicDefinition relic = CurrentRelicChoices[i];
-                    label = FormatRelicChoiceLabel(i, relic);
-                    cardAccent = ResolveRelicAccentColor(relic);
-                }
-                else
-                {
-                    RunUpgradeDefinition choice = CurrentDraftChoices[i];
-                    label = FormatUpgradeChoiceLabel(i, choice);
-                    cardAccent = choice == null ? Color.white : ResolveRarityAccentColor(choice.Rarity);
-                }
-
-                DrawRewardChoiceCard(rowRect, cardAccent);
-                Color previousBackgroundColor = GUI.backgroundColor;
-                GUI.backgroundColor = ResolveRewardButtonBackgroundColor(cardAccent);
-                if (GUI.Button(buttonRect, label))
-                {
-                    GUI.backgroundColor = previousBackgroundColor;
                     if (SelectUpgrade(i))
                     {
                         return;
                     }
                 }
-                GUI.backgroundColor = previousBackgroundColor;
 
                 if (upgradeDraftOpen)
                 {
                     bool previousEnabled = GUI.enabled;
                     GUI.enabled = previousEnabled && CanBanishCurrentDraft();
-                    Rect banishRect = new Rect(rowRect.xMax - 76f, rowRect.y, 76f, rowRect.height);
-                    if (GUI.Button(banishRect, "Banish"))
+                    Rect banishRect = new Rect(cardRect.x + 14f, cardRect.yMax - 40f, Mathf.Min(112f, cardRect.width - 28f), 28f);
+                    if (GUI.Button(banishRect, ActiveUiTheme.banishButtonLabel))
                     {
                         if (BanishDraftChoice(i))
                         {
@@ -10340,10 +10641,10 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (upgradeDraftOpen)
             {
-                float footerY = rect.y + 72f + choiceCount * rowHeight;
+                float footerY = rect.yMax - 58f;
                 bool previousEnabled = GUI.enabled;
                 GUI.enabled = previousEnabled && CanRerollCurrentDraft();
-                if (GUI.Button(new Rect(rect.x + 24f, footerY, 160f, 30f), $"Reroll ({DraftRerollsRemaining})"))
+                if (GUI.Button(new Rect(rect.x + 30f, footerY, 170f, 34f), $"{ActiveUiTheme.rerollButtonLabel} ({DraftRerollsRemaining})"))
                 {
                     if (RerollCurrentDraft())
                     {
@@ -10353,7 +10654,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 GUI.enabled = previousEnabled && CanSkipCurrentDraft();
-                if (GUI.Button(new Rect(rect.x + 194f, footerY, 180f, 30f), $"Skip (+{DraftSkipBloodShards} shards)"))
+                if (GUI.Button(new Rect(rect.x + 212f, footerY, 210f, 34f), $"{ActiveUiTheme.skipButtonLabel} (+{DraftSkipBloodShards} shards)"))
                 {
                     if (SkipCurrentDraft())
                     {
@@ -10364,10 +10665,518 @@ namespace Deucarian.TemplateGameSurvivors
 
                 GUI.enabled = previousEnabled;
                 GUI.Label(
-                    new Rect(rect.x + 390f, footerY + 6f, width - 414f, 18f),
+                    new Rect(rect.x + 438f, footerY + 7f, rect.width - 468f, 20f),
                     $"Banishes {DraftBanishesRemaining}",
                     _hudSmallStyle);
             }
+        }
+
+        private DraftCardPresentation CreateUpgradeDraftCard(int index, RunUpgradeDefinition choice)
+        {
+            if (choice == null)
+            {
+                return new DraftCardPresentation
+                {
+                    Index = index,
+                    Hotkey = (index + 1).ToString(),
+                    Name = "Missing Choice",
+                    RarityLabel = "Missing",
+                    CategoryId = "MetaReward",
+                    CategoryLabel = ActiveUiTheme.GetCategoryDisplayName("MetaReward", "Meta/Reward"),
+                    AffectedLabel = "Affects Build",
+                    RankLabel = "No rank",
+                    Description = "Missing upgrade definition.",
+                    EffectPreview = "No effect preview.",
+                    RequirementHint = string.Empty,
+                    IconId = ActiveUiTheme.GetCategoryIconId("MetaReward", "reward"),
+                    StyleToken = ActiveUiTheme.GetRarityStyleToken("Common"),
+                    AccentColor = Color.white
+                };
+            }
+
+            TryGetUpgradeMetadata(choice.Id.Value, out SurvivorsRunUpgradeMetadata metadata);
+            SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(choice);
+            string categoryId = ResolvePlayerUpgradeCategoryId(choice, category, metadata);
+            bool isEvolution = category == SurvivorsRunUpgradeCategory.Evolution;
+            string rarityId = isEvolution ? "Evolution" : choice.Rarity.ToString();
+            Color fallbackAccent = isEvolution
+                ? new Color(1f, 0.38f, 0.56f)
+                : ResolveRarityAccentColor(choice.Rarity);
+            int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(choice.Id);
+            int nextRank = Mathf.Min(choice.MaxRank, currentRank + 1);
+            return new DraftCardPresentation
+            {
+                Index = index,
+                Hotkey = (index + 1).ToString(),
+                Name = BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id),
+                RarityLabel = ActiveUiTheme.GetRarityDisplayName(rarityId),
+                CategoryId = categoryId,
+                CategoryLabel = ActiveUiTheme.GetCategoryDisplayName(categoryId, FormatUpgradeCategoryLabel(category)),
+                AffectedLabel = ResolveUpgradeAffectedLabel(choice),
+                RankLabel = choice.MaxRank <= 1 ? "One-time unlock" : $"Rank {currentRank}->{nextRank}/{choice.MaxRank}",
+                Description = metadata == null ? BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id) : metadata.Description,
+                EffectPreview = ResolveUpgradeEffectPreview(choice),
+                RequirementHint = ResolveUpgradeRequirementHint(choice, metadata, category),
+                IconId = ActiveUiTheme.GetCategoryIconId(categoryId, categoryId),
+                StyleToken = ActiveUiTheme.GetRarityStyleToken(rarityId),
+                IsEvolution = isEvolution,
+                AccentColor = ActiveUiTheme.GetRarityAccentColor(rarityId, fallbackAccent)
+            };
+        }
+
+        private DraftCardPresentation CreateRelicDraftCard(int index, SurvivorsRelicDefinition relic)
+        {
+            Color accent = ActiveUiTheme.GetRarityAccentColor("Relic", ResolveRelicAccentColor(relic));
+            return new DraftCardPresentation
+            {
+                Index = index,
+                Hotkey = (index + 1).ToString(),
+                Name = relic == null || string.IsNullOrWhiteSpace(relic.DisplayName) ? "Boss Relic" : relic.DisplayName,
+                RarityLabel = ActiveUiTheme.GetRarityDisplayName("Relic"),
+                CategoryId = "Relic",
+                CategoryLabel = ActiveUiTheme.GetCategoryDisplayName("Relic", "Relic"),
+                AffectedLabel = relic == null ? "Affects Build" : "Affects " + ShortWeaponName(relic.TargetId),
+                RankLabel = "Run relic",
+                Description = relic == null ? "Missing relic definition." : FormatRelicEffectSummary(relic),
+                EffectPreview = relic == null ? "No effect preview." : ResolveRelicEffectPreview(relic),
+                RequirementHint = "Unique boss relic for this run.",
+                IconId = ActiveUiTheme.GetCategoryIconId("Relic", "relic"),
+                StyleToken = ActiveUiTheme.GetRarityStyleToken("Relic"),
+                AccentColor = accent
+            };
+        }
+
+        private void DrawDraftChoiceCard(Rect rect, DraftCardPresentation card, bool hover)
+        {
+            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * (card.IsEvolution ? 5.5f : 3.2f)) * 0.14f;
+            Color accent = card.AccentColor;
+            DrawSolidRect(rect, new Color(0.022f, 0.027f, 0.038f, 0.96f));
+            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, rect.height), new Color(accent.r, accent.g, accent.b, hover ? 0.18f : 0.1f));
+            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 8f), new Color(accent.r, accent.g, accent.b, hover ? 1f : 0.82f));
+            DrawSolidRect(new Rect(rect.x, rect.y, 4f, rect.height), new Color(accent.r, accent.g, accent.b, card.IsEvolution ? 0.94f : 0.78f));
+            DrawSolidRect(new Rect(rect.xMax - 4f, rect.y, 4f, rect.height), new Color(accent.r, accent.g, accent.b, hover ? 0.74f : 0.38f));
+            if (card.IsEvolution || hover)
+            {
+                DrawSolidRect(new Rect(rect.x + 8f, rect.y + 8f, rect.width - 16f, 2f), new Color(accent.r, accent.g, accent.b, 0.22f + pulse * 0.18f));
+            }
+
+            Rect hotkey = new Rect(rect.xMax - 54f, rect.y + 18f, 34f, 30f);
+            DrawSolidRect(hotkey, new Color(accent.r, accent.g, accent.b, 0.84f));
+            GUI.Label(hotkey, card.Hotkey, _draftCardHotkeyStyle);
+            Rect icon = new Rect(rect.x + 18f, rect.y + 22f, 58f, 58f);
+            DrawSolidRect(icon, new Color(0.04f, 0.05f, 0.065f, 0.92f));
+            DrawSolidRect(new Rect(icon.x, icon.yMax - 3f, icon.width, 3f), new Color(accent.r, accent.g, accent.b, 0.86f));
+            GUI.Label(icon, ActiveUiTheme.iconPlaceholderPrefix + "\n" + card.IconId, _draftCardMetaStyle);
+
+            float x = rect.x + 90f;
+            float width = rect.width - 116f;
+            GUI.Label(new Rect(x, rect.y + 20f, width - 42f, 20f), card.RarityLabel + "  |  " + card.CategoryLabel, _draftCardMetaStyle);
+            GUI.Label(new Rect(x, rect.y + 44f, width - 42f, 42f), card.Name, _draftCardNameStyle);
+            if (card.IsEvolution)
+            {
+                DrawSolidRect(new Rect(rect.x + 18f, rect.y + 92f, rect.width - 36f, 24f), new Color(accent.r, accent.g, accent.b, 0.22f));
+                GUI.Label(new Rect(rect.x + 24f, rect.y + 94f, rect.width - 48f, 20f), "EVOLUTION REWARD", _draftCardMetaStyle);
+            }
+
+            float y = card.IsEvolution ? rect.y + 124f : rect.y + 94f;
+            GUI.Label(new Rect(rect.x + 20f, y, rect.width - 40f, 22f), card.AffectedLabel + "   " + card.RankLabel, _hudSmallStyle);
+            y += 28f;
+            GUI.Label(new Rect(rect.x + 20f, y, rect.width - 40f, Mathf.Max(72f, rect.height * 0.25f)), card.Description, _draftCardDescriptionStyle);
+            y += Mathf.Max(82f, rect.height * 0.27f);
+            GUI.Label(new Rect(rect.x + 20f, y, rect.width - 40f, 48f), "Effect: " + card.EffectPreview, _hudSmallStyle);
+            y += 54f;
+            if (!string.IsNullOrWhiteSpace(card.RequirementHint))
+            {
+                GUI.Label(new Rect(rect.x + 20f, y, rect.width - 40f, 44f), card.RequirementHint, _hudSmallStyle);
+            }
+        }
+
+        private string ResolvePlayerUpgradeCategoryId(RunUpgradeDefinition choice, SurvivorsRunUpgradeCategory category, SurvivorsRunUpgradeMetadata metadata)
+        {
+            if (choice != null && IsPickupMagnetUpgrade(choice))
+            {
+                return "PickupMagnet";
+            }
+
+            if (category == SurvivorsRunUpgradeCategory.Weapon)
+            {
+                return "NewWeapon";
+            }
+
+            return category.ToString();
+        }
+
+        private bool IsPickupMagnetUpgrade(RunUpgradeDefinition choice)
+        {
+            if (choice == null || choice.Effects == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < choice.Effects.Count; i++)
+            {
+                RunUpgradeEffectDescriptor effect = choice.Effects[i];
+                if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect) ||
+                    effect.EffectId.Equals(BasicSurvivorsGame.MagnetSpeedEffect) ||
+                    effect.EffectId.Equals(BasicSurvivorsGame.MagnetPulseEffect))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private string ResolveUpgradeEffectPreview(RunUpgradeDefinition choice)
+        {
+            if (choice == null || choice.Effects == null || choice.Effects.Count == 0)
+            {
+                return "No effect preview.";
+            }
+
+            int shown = Mathf.Min(2, choice.Effects.Count);
+            string label = string.Empty;
+            for (int i = 0; i < shown; i++)
+            {
+                if (i > 0)
+                {
+                    label += "; ";
+                }
+
+                label += FormatUpgradeEffectPreview(choice.Effects[i]);
+            }
+
+            if (choice.Effects.Count > shown)
+            {
+                label += "; +" + (choice.Effects.Count - shown).ToString() + " more";
+            }
+
+            return label;
+        }
+
+        private string ResolveRelicEffectPreview(SurvivorsRelicDefinition relic)
+        {
+            if (relic == null)
+            {
+                return "No effect preview.";
+            }
+
+            switch (relic.EffectKind)
+            {
+                case SurvivorsRelicEffectKind.DamageBonus:
+                    return $"+{relic.Amount:0.#} damage while this relic is held";
+                case SurvivorsRelicEffectKind.CooldownMultiplier:
+                    return $"{Mathf.Abs(relic.Amount):P0} faster attacks for {ShortWeaponName(relic.TargetId)}";
+                case SurvivorsRelicEffectKind.PickupRange:
+                    return $"+{relic.Amount:0.#} pickup radius and relic surge momentum";
+                default:
+                    return FormatRelicEffectSummary(relic);
+            }
+        }
+
+        private string FormatUpgradeEffectPreview(RunUpgradeEffectDescriptor effect)
+        {
+            if (effect.EffectId.Equals(BasicSurvivorsGame.DamageBonusEffect)) return FormatSignedFlat(effect.Amount, "damage");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.FireRateEffect)) return FormatCooldownEffect(effect.Amount);
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MoveSpeedEffect)) return FormatSignedFlat(effect.Amount, "move speed");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect)) return FormatSignedFlat(effect.Amount, "pickup radius");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetSpeedEffect)) return FormatSignedFlat(effect.Amount, "gem pull speed");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetPulseEffect)) return $"{Mathf.Abs((float)effect.Amount):0.#}s faster magnet pulse";
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MaxHealthEffect)) return FormatSignedFlat(effect.Amount, "max health");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitBladeEffect)) return FormatSignedFlat(effect.Amount, "orbit blades");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitRadiusEffect)) return FormatSignedFlat(effect.Amount, "orbit radius");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MeleeTargetEffect)) return FormatSignedFlat(effect.Amount, "slash targets");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BurstCountEffect)) return FormatSignedFlat(effect.Amount, "burst pulses");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BurstEchoEffect)) return FormatSignedFlat(effect.Amount, "echo pulses");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.TargetedBurstEffect)) return FormatSignedFlat(effect.Amount, "targeted sigils");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileFanEffect)) return FormatSignedFlat(effect.Amount, "fan shots");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectilePierceEffect)) return FormatSignedFlat(effect.Amount, "pierce");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileChainEffect)) return FormatSignedFlat(effect.Amount, "chains");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileForkEffect)) return FormatSignedFlat(effect.Amount, "forks");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileReturnEffect)) return FormatSignedFlat(effect.Amount, "returns");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.HitscanPierceEffect)) return FormatSignedFlat(effect.Amount, "beam pierce");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadCountEffect)) return FormatSignedFlat(effect.Amount, "payloads");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadRadiusEffect)) return FormatSignedFlat(effect.Amount, "payload radius");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadTriggerRadiusEffect)) return FormatSignedFlat(effect.Amount, "trigger radius");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.PoisonEffect)) return FormatSignedPercent(effect.Amount, "poison");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BleedEffect)) return FormatSignedPercent(effect.Amount, "bleed");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ExecuteEffect)) return FormatSignedPercent(effect.Amount, "execute threshold");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalChanceEffect)) return FormatSignedPercent(effect.Amount, "crit chance");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalDamageEffect)) return FormatSignedPercent(effect.Amount, "crit damage");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.DraftLuckEffect)) return FormatSignedPercent(effect.Amount, "draft luck");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaDamageEffect)) return FormatSignedFlat(effect.Amount, "death nova damage");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaRadiusEffect)) return FormatSignedFlat(effect.Amount, "death nova radius");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect)) return FormatSignedPercent(effect.Amount, "lifesteal");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierCapacityEffect)) return FormatSignedFlat(effect.Amount, "barrier");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierRegenEffect)) return FormatSignedFlat(effect.Amount, "barrier regen");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierOnDamageEffect)) return FormatSignedPercent(effect.Amount, "barrier on damage");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ExperienceGainEffect)) return FormatSignedPercent(effect.Amount, "XP gain");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.AreaRadiusEffect)) return FormatSignedFlat(effect.Amount, "area radius");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.WeaponUnlockEffect)) return "Unlocks " + ShortWeaponName(effect.TargetId.Value);
+            return FormatSignedFlat(effect.Amount, effect.EffectId.Value);
+        }
+
+        private string ResolveUpgradeRequirementHint(RunUpgradeDefinition choice, SurvivorsRunUpgradeMetadata metadata, SurvivorsRunUpgradeCategory category)
+        {
+            if (choice == null || metadata == null)
+            {
+                return string.Empty;
+            }
+
+            if (category == SurvivorsRunUpgradeCategory.Evolution)
+            {
+                string weapon = ShortWeaponName(metadata.AffectedContentId);
+                string rank = string.IsNullOrWhiteSpace(metadata.RequiredUpgradeId)
+                    ? "max weapon rank"
+                    : BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(metadata.RequiredUpgradeId)) + " rank " + ResolveRequiredUpgradeRank(metadata).ToString();
+                string passive = string.IsNullOrWhiteSpace(metadata.RequiredPassiveUpgradeId)
+                    ? "matching passive"
+                    : BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(metadata.RequiredPassiveUpgradeId));
+                return "Evolution path: " + weapon + " needs " + rank + " plus " + passive + ".";
+            }
+
+            if (!string.IsNullOrWhiteSpace(metadata.RequiredUpgradeId))
+            {
+                return "Requires " + BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(metadata.RequiredUpgradeId)) + " rank " + ResolveRequiredUpgradeRank(metadata).ToString() + ".";
+            }
+
+            if (!string.IsNullOrWhiteSpace(metadata.RequiredPassiveUpgradeId))
+            {
+                return "Requires " + BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(metadata.RequiredPassiveUpgradeId)) + ".";
+            }
+
+            if (!string.IsNullOrWhiteSpace(metadata.RequiredOwnedWeaponId))
+            {
+                return "Requires " + ShortWeaponName(metadata.RequiredOwnedWeaponId) + ".";
+            }
+
+            if (IsPickupMagnetUpgrade(choice))
+            {
+                return "Pickup build: improves gem reach without bypassing draft pacing.";
+            }
+
+            return string.Empty;
+        }
+
+        private static string FormatSignedFlat(double amount, string label)
+        {
+            string sign = amount >= 0d ? "+" : string.Empty;
+            return sign + amount.ToString("0.##") + " " + label;
+        }
+
+        private static string FormatSignedPercent(double amount, string label)
+        {
+            string sign = amount >= 0d ? "+" : string.Empty;
+            return sign + amount.ToString("P0") + " " + label;
+        }
+
+        private static string FormatCooldownEffect(double amount)
+        {
+            if (amount < 0d)
+            {
+                return Math.Abs(amount).ToString("P0") + " faster attacks";
+            }
+
+            return "+" + amount.ToString("P0") + " cooldown modifier";
+        }
+
+        private SurvivorsUiTheme ActiveUiTheme
+        {
+            get
+            {
+                EnsureUiTheme();
+                return uiTheme;
+            }
+        }
+
+        private void EnsureUiTheme()
+        {
+            if (uiTheme == null)
+            {
+                uiTheme = SurvivorsUiTheme.CreateDefault();
+            }
+        }
+
+        private void ResetHudStyles()
+        {
+            _hudTitleStyle = null;
+            _hudLabelStyle = null;
+            _hudSmallStyle = null;
+            _damagePopupStyle = null;
+            _playerDamagePopupStyle = null;
+            _lowHealthStyle = null;
+            _majorThreatWarningStyle = null;
+            _rewardFeedbackStyle = null;
+            _draftTitleStyle = null;
+            _draftCardNameStyle = null;
+            _draftCardMetaStyle = null;
+            _draftCardDescriptionStyle = null;
+            _draftCardHotkeyStyle = null;
+            _menuTitleStyle = null;
+            _menuTabStyle = null;
+            _transparentButtonStyle = null;
+        }
+
+        private IReadOnlyList<string> ResolvePlayerHudLines()
+        {
+            var lines = new List<string>(6)
+            {
+                CurrentRunMilestoneHudLabel,
+                ResolveBuildSlotHudLabel(),
+                "Weapons: " + FormatActiveWeaponList(),
+                $"Pickup {CurrentPickupAttractRange:0.#}   Pull {CurrentPickupAttractionSpeed:0.#}   Pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}"
+            };
+
+            string evolution = ResolveEvolutionObjectiveHudLabel();
+            if (!string.IsNullOrWhiteSpace(evolution))
+            {
+                lines.Add(evolution);
+            }
+
+            lines.Add("Tab/B Build Menu");
+            return lines;
+        }
+
+        private IReadOnlyList<string> ResolveBuildMenuLines(BuildMenuTab tab)
+        {
+            switch (tab)
+            {
+                case BuildMenuTab.Stats:
+                    return ResolveBuildMenuStatsLines();
+                case BuildMenuTab.RunInfo:
+                    return ResolveBuildMenuRunInfoLines();
+                case BuildMenuTab.Controls:
+                    return ResolveBuildMenuControlsLines();
+                default:
+                    return ResolveBuildMenuCurrentBuildLines();
+            }
+        }
+
+        private IReadOnlyList<string> ResolveBuildMenuCurrentBuildLines()
+        {
+            var lines = new List<string>(ResolveBuildHudSummaryLines());
+            if (lines.Count == 0)
+            {
+                lines.Add("No build data yet.");
+            }
+
+            return lines;
+        }
+
+        private IReadOnlyList<string> ResolveBuildMenuStatsLines()
+        {
+            return new List<string>
+            {
+                $"Damage +{DamageBonus + PersistentDamageBonus + RelicDamageBonus:0.#}   Surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus:0.#}",
+                $"Cooldown {WeaponCooldownSeconds:0.00}s   Move speed {PlayerMoveSpeed:0.0}",
+                $"Health {CurrentHealth:0}/{MaxHealth:0}   Barrier {BarrierValue:0.#}/{BarrierCapacity:0.#}   Armor: contact safety {CurrentTuning.PlayerContactInvulnerabilitySeconds:0.##}s",
+                $"Pickup radius {CurrentPickupAttractRange:0.#}   Magnet range {CurrentPickupAttractRange:0.#}   Magnet speed {CurrentPickupAttractionSpeed:0.#}   Pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}",
+                $"XP gain +{ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus:P0}   Draft luck +{DraftLuckBonus:P0}",
+                $"Area/radius +{AreaRadiusBonus:0.#}   Orbit +{OrbitRadiusBonus:0.#}   Death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
+                $"Projectiles fan +{ProjectileFanBonus}   pierce +{ProjectilePierceBonus}   chain +{ProjectileChainBonus}   fork +{ProjectileForkBonus}   return +{ProjectileReturnBonus}",
+                $"Payloads +{PayloadCountBonus}   payload radius +{PayloadExplosionRadiusBonus:0.#}   trigger +{PayloadTriggerRadiusBonus:0.#}",
+                $"Status poison {PoisonDamageRatio:P0}   bleed {BleedDamageRatio:P0}   execute {ExecuteThresholdNormalized:P0}   lifesteal {LifestealRatio:P0}",
+                $"Crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}"
+            };
+        }
+
+        private IReadOnlyList<string> ResolveBuildMenuRunInfoLines()
+        {
+            string remaining = IsEndlessRun
+                ? "Endless"
+                : FormatRunTime(Mathf.Max(0f, CurrentTuning.SurvivalVictoryTimeSeconds - RunTimeSeconds));
+            return new List<string>
+            {
+                $"Mode: {CurrentRunModeDisplayName} ({BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)})",
+                $"Elapsed {FormatRunTime(RunTimeSeconds)}   Remaining {remaining}",
+                $"Milestone: {CurrentRunMilestoneHudLabel}",
+                $"Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}   Level {Level}   Kills {KilledCount}",
+                $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Elites {ActiveEliteCount}   Minibosses {ActiveMinibossCount}   Bosses {ActiveBossCount}",
+                $"Run rewards: {BloodShardsEarnedThisRun + BonusBloodShardsEarnedThisRun} blood shards, {LegacyExperienceEarnedThisRun + BonusLegacyExperienceEarnedThisRun} legacy XP",
+                $"Meta bank: {MetaBloodShards} shards   Lifetime XP {LifetimeLegacyExperience}",
+                $"Rerolls {DraftRerollsRemaining}   Banishes {DraftBanishesRemaining}   Skip reward +{DraftSkipBloodShards} shards",
+                $"Waystones {WaystoneDiscoveryCount}   Roaming caches {RoamingCacheDropCount}   Arena trials {ArenaShrineTrialCount}"
+            };
+        }
+
+        private IReadOnlyList<string> ResolveBuildMenuControlsLines()
+        {
+            return new List<string>
+            {
+                "Move: WASD or arrow keys",
+                "Arc Step: Space",
+                "Draft choice: mouse or 1/2/3",
+                "Draft tools: R reroll, S skip, Shift+1/2/3 banish",
+                "Build menu: Esc, Tab, or B opens and closes",
+                "Build menu tabs: 1 Current Build, 2 Stats, 3 Run Info, 4 Controls",
+                "Debug overlay: F1",
+                "Victory: C continues Standard into endless if available",
+                "Result screen: Restart Same or Change Mode buttons"
+            };
+        }
+
+        private static BuildMenuTab ClampBuildMenuTab(int tabIndex)
+        {
+            if (tabIndex <= 0) return BuildMenuTab.CurrentBuild;
+            if (tabIndex == 1) return BuildMenuTab.Stats;
+            if (tabIndex == 2) return BuildMenuTab.RunInfo;
+            return BuildMenuTab.Controls;
+        }
+
+        private static string FormatBuildMenuTabLabel(BuildMenuTab tab)
+        {
+            switch (tab)
+            {
+                case BuildMenuTab.Stats:
+                    return "Stats";
+                case BuildMenuTab.RunInfo:
+                    return "Run Info";
+                case BuildMenuTab.Controls:
+                    return "Controls";
+                default:
+                    return "Current Build";
+            }
+        }
+
+        private Color ResolveRewardTitleAccentColor()
+        {
+            if (IsRelicChoiceOpen)
+            {
+                return ActiveUiTheme.GetRarityAccentColor("Relic", new Color(1f, 0.84f, 0.42f));
+            }
+
+            if (_currentDraft == null || _currentDraft.Choices.Count == 0)
+            {
+                return ActiveUiTheme.GetRarityAccentColor("Common", Color.white);
+            }
+
+            for (int i = 0; i < _currentDraft.Choices.Count; i++)
+            {
+                RunUpgradeDefinition choice = _currentDraft.Choices[i];
+                if (choice != null && ResolveCurrentUpgradeCategory(choice) == SurvivorsRunUpgradeCategory.Evolution)
+                {
+                    return ActiveUiTheme.GetRarityAccentColor("Evolution", new Color(1f, 0.38f, 0.56f));
+                }
+            }
+
+            RunUpgradeRarity rarity = ResolveHighestRarity(_currentDraft.Choices);
+            return ActiveUiTheme.GetRarityAccentColor(rarity, ResolveRarityAccentColor(rarity));
+        }
+
+        private static void DrawDimOverlay(float alpha)
+        {
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0f, 0f, 0f, Mathf.Clamp01(alpha));
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = oldColor;
+        }
+
+        private static void DrawSolidRect(Rect rect, Color color)
+        {
+            Color oldColor = GUI.color;
+            GUI.color = color;
+            GUI.DrawTexture(rect, Texture2D.whiteTexture);
+            GUI.color = oldColor;
         }
 
         private void DrawRunResultOverlay(bool victory)
@@ -10788,6 +11597,57 @@ namespace Deucarian.TemplateGameSurvivors
                 normal = { textColor = Color.white },
                 wordWrap = true
             };
+            _draftTitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = 26,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white }
+            };
+            _draftCardNameStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.UpperLeft,
+                fontSize = 19,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white },
+                wordWrap = true
+            };
+            _draftCardMetaStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = 11,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = new Color(0.84f, 0.92f, 1f) },
+                wordWrap = true
+            };
+            _draftCardDescriptionStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.UpperLeft,
+                fontSize = 13,
+                normal = { textColor = new Color(0.88f, 0.93f, 0.97f) },
+                wordWrap = true
+            };
+            _draftCardHotkeyStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 17,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.black }
+            };
+            _menuTitleStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.MiddleLeft,
+                fontSize = 24,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.white }
+            };
+            _menuTabStyle = new GUIStyle(GUI.skin.button)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 12,
+                fontStyle = FontStyle.Bold
+            };
+            _transparentButtonStyle = new GUIStyle(GUIStyle.none);
         }
 
         private void DrawHudBar(Rect rect, string label, float value, Color fill)

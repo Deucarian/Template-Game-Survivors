@@ -929,6 +929,111 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator PlayerHudStartsCleanAndDebugOverlayToggles()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            yield return null;
+
+            Assert.IsTrue(controller.IsRunModeSelectionOpen);
+            Assert.IsFalse(controller.IsDebugOverlayVisible);
+            Assert.IsTrue(controller.SelectStandardRun());
+            yield return null;
+
+            Assert.IsFalse(controller.IsDebugOverlayVisible);
+            string hud = string.Join("\n", controller.PlayerHudLinesForTest());
+            Assert.That(hud, Does.Contain("Weapons"));
+            Assert.That(hud, Does.Contain("Pickup"));
+            Assert.That(hud, Does.Not.Contain("Spawn "));
+            Assert.That(hud, Does.Not.Contain("Enemy Speed"));
+
+            controller.ToggleDebugOverlayForTest();
+            Assert.IsTrue(controller.IsDebugOverlayVisible);
+            controller.OpenRunModeSelection();
+            yield return null;
+
+            Assert.IsFalse(controller.IsDebugOverlayVisible);
+            Assert.IsFalse(controller.IsBuildMenuOpen);
+            Assert.IsTrue(controller.SelectSprintRun());
+            yield return null;
+
+            Assert.AreEqual(SurvivorsPacingProfile.SprintRun, controller.CurrentPacingProfile);
+            Assert.IsFalse(controller.IsDebugOverlayVisible);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator FullScreenDraftCardsExposeReadablePlayerFacingFields()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.ForceLevelUp();
+            yield return null;
+
+            Assert.IsTrue(controller.IsPlayerFacingDraftOverlayVisible);
+            Assert.AreEqual(3, controller.CurrentDraftCardCountForTest);
+            string summary = controller.GetCurrentDraftCardSummaryForTest(0);
+            Assert.That(summary, Does.Contain("1 |"));
+            Assert.That(summary, Does.Contain("Affects"));
+            Assert.IsTrue(summary.Contains("Rank") || summary.Contains("One-time unlock"), summary);
+            Assert.That(summary, Does.Not.Contain("upgrade.survivors"));
+            Assert.That(summary, Does.Not.Contain("survivors."));
+            Assert.IsTrue(controller.SelectDraftHotkeyForTest(1));
+            yield return null;
+
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.IsFalse(controller.IsPlayerFacingDraftOverlayVisible);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator BuildMenuShowsOwnedBuildStatsAndPickupMagnetPath()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.GemMagnetUpgradeId));
+            controller.SetBuildMenuOpenForTest(true);
+            Assert.IsTrue(controller.IsBuildMenuOpen);
+            Assert.AreEqual("Current Build", controller.CurrentBuildMenuTabLabel);
+            float pausedRunTime = controller.RunTimeSeconds;
+            controller.Simulate(1f, Vector2.right);
+            Assert.AreEqual(pausedRunTime, controller.RunTimeSeconds);
+
+            string build = string.Join("\n", controller.CurrentBuildMenuLinesForTest());
+            Assert.That(build, Does.Contain("Weapons"));
+            Assert.That(build, Does.Contain("Passives"));
+            Assert.That(build, Does.Contain("Relics"));
+            Assert.That(build, Does.Contain("Pickup range"));
+            Assert.That(build, Does.Contain("Gemheart"));
+
+            controller.SetBuildMenuTabForTest(1);
+            Assert.AreEqual("Stats", controller.CurrentBuildMenuTabLabel);
+            string stats = string.Join("\n", controller.CurrentBuildMenuLinesForTest());
+            Assert.That(stats, Does.Contain("Pickup radius"));
+            Assert.That(stats, Does.Contain("Magnet range"));
+            Assert.That(stats, Does.Contain("Magnet speed"));
+            Assert.That(stats, Does.Contain("XP gain"));
+
+            controller.SetBuildMenuTabForTest(2);
+            string runInfo = string.Join("\n", controller.CurrentBuildMenuLinesForTest());
+            Assert.That(runInfo, Does.Contain("Mode:"));
+            Assert.That(runInfo, Does.Contain("Elapsed"));
+
+            controller.SetBuildMenuTabForTest(3);
+            string controls = string.Join("\n", controller.CurrentBuildMenuLinesForTest());
+            Assert.That(controls, Does.Contain("Draft choice"));
+            Assert.That(controls, Does.Contain("Debug overlay"));
+
+            controller.SetBuildMenuOpenForTest(false);
+            Assert.IsFalse(controller.IsBuildMenuOpen);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator NormalEnemiesOutsideHardRecycleRadiusSafelyReenterPressureBand()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

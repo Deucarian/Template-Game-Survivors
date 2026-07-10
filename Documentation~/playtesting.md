@@ -12,7 +12,7 @@ Open this imported/editable scene:
 
 `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`
 
-Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should open the run-mode selector without requiring a setup or repair step. Choose Standard Run with `1`/Enter for the full 30-minute Human Playtest loop, or Sprint Run with `2`/`S` for the compact 5-minute loop. Once play starts, the top-center timer should remain readable above warning banners and should show elapsed time plus the selected mode's remaining target time.
+Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should open the run-mode selector without requiring a setup or repair step. Choose Standard Run with `1`/Enter for the full 30-minute Human Playtest loop, or Sprint Run with `2`/`S` for the compact 5-minute loop. Once play starts, the top-center timer should remain readable above warning banners and should show elapsed time plus the selected mode's remaining target time. Normal play should show the clean player HUD only; press `F1` to toggle the debug overlay when internal pacing, spawn, pool, or draft metrics are needed.
 
 ## Run Modes
 
@@ -45,7 +45,7 @@ First 30 seconds:
 - Longer kill streaks can leave blood shards; collecting one should increase the bonus blood shards counted in the run summary.
 - Opening spawns should arrive as small packs, while runners should not appear until about 35 seconds.
 - The first level-up draft should appear within about 30-60 seconds once the player moves through XP gems.
-- Draft cards should show rarity, category, affected build piece, description, and current-to-next rank such as `Rank 1->2/5`.
+- Draft cards should open as a full-screen reward overlay and show name, rarity, category, affected build piece, current-to-next rank such as `Rank 1->2/5`, description, effect preview, requirement/evolution hint, and hotkey.
 - Selecting a normal level-up card should flash a small Level Pulse that hits nearby regular enemies without deleting elite pressure.
 - Filling the weapon slots should flash an Arsenal Surge banner, hit nearby regular enemies, leave major threats intact, and briefly improve damage, cooldown, movement, and pickup attraction.
 - Filling the passive slots should flash a Harmony Surge banner, hit nearby regular enemies, leave major threats intact, briefly improve damage, cooldown, movement, pickup attraction, and XP gain, and show a Harmony timer in the HUD.
@@ -76,10 +76,10 @@ After 6 minutes:
 - The miniboss should have appeared, shown a health bar while alive, opened an elite reward draft on death, then chained into a boss relic choice before play resumes; its death should burst into a larger reward cache whose drops pull inward when the reward sequence resolves.
 - The boss relic choice should not include relics already selected earlier in the same run; if every relic has been claimed, the reward sequence should close and resume cleanly.
 - Selecting a boss relic should emit a brief Relic Surge that damages nearby non-major enemies without deleting the major-threat reward flow, briefly improves damage, cooldown, movement, and pickup attraction, and shows a Relic timer in the HUD.
-- After selecting a relic, the Current Build panel should update its relic count and names, and the eventual victory or defeat summary should include relics alongside weapons, passives, and evolutions.
+- After selecting a relic, the build menu should update its relic count and names, and the eventual victory or defeat summary should include relics alongside weapons, passives, and evolutions.
 - The miniboss warning should have appeared shortly before the miniboss entered.
 - The miniboss should paint a slam warning disc before area damage and call in a larger support ring near low health, making the fight briefly spike without hiding the health bar or reward flow.
-- The run should have a clear build direction from weapon ranks, passives, or branch mutations; the right-side Current Build panel should show owned weapon paths, passive ranks, evolution status, and relics without opening developer tools.
+- The run should have a clear build direction from weapon ranks, passives, or branch mutations; open the build menu with `Tab`, `B`, or `Esc` and confirm it shows owned weapon paths, passive ranks, pickup/magnet stats, evolution status, relics, run info, and controls without opening developer tools.
 - If a weapon path has reached its required rank and the matching passive is owned, the HUD should briefly announce Evolution Ready for that payoff.
 - Selecting an evolution should immediately fire a surge that hits nearby non-major enemies, then the evolved weapon behavior should be visible on subsequent attacks.
 
@@ -113,6 +113,13 @@ Choose Sprint Run from the selector or start it through the runtime debugger.
 - The victory summary should say Sprint Run, apply the `0.65` reward multiplier, and show Restart without the endless Continue option.
 - The runtime debugger's run metrics should show the selected mode, first draft, first elite, miniboss/dread, boss, evolution, kill, XP, and damage timings when those events happen.
 - The old player-centered circle and four bar-like arena markers should not appear in normal play; waystone compass guidance and explicit enemy/rush telegraphs should carry the readable navigation and danger information instead.
+
+## Player UI Checks
+
+- `Tab`, `B`, or `Esc` should pause normal gameplay and open the build menu. The tabs should show Current Build, Stats, Run Info, and Controls.
+- The Stats tab should show damage, cooldown, move speed, health/barrier, pickup radius, magnet range/speed/pulse, XP gain, area/radius, projectile modifiers, and sustain/status effects.
+- `F1` should show and hide the debug overlay. Debug metrics should not be visible by default after scene start, mode selection, restart, or change-mode.
+- Theme and card presentation copy lives in `Samples~/BasicSurvivorsGame/Content/DefaultUiTheme/ui-theme.json`. Edit that file for rarity labels, style tokens, placeholder icon IDs, mode display names, and draft button labels. Upgrade names/descriptions still come from the authored upgrade metadata in the runtime/sample content.
 
 ## Reset Save Data
 

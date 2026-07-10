@@ -20,6 +20,9 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
         [SerializeField]
         private TextAsset rewardLibrary;
 
+        [SerializeField]
+        private TextAsset uiThemeLibrary;
+
         private void Awake()
         {
             if (controller == null)
@@ -33,6 +36,7 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
             }
 
             controller.ConfigureAuthoredContent(enemyLibrary, runFlowLibrary, rewardLibrary);
+            controller.ConfigureUiTheme(uiThemeLibrary);
             controller.ConfigureRunModeSelection(showRunModeSelection);
         }
     }
