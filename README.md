@@ -6,6 +6,14 @@ The `Basic Survivors Game` sample is tuned as a small complete template game rat
 
 The template is intentionally a game slice, not a reusable Survivors framework. Genre-specific systems stay local until a second concrete game proves a shared package boundary.
 
+## Template Contract
+
+This is a playable game template, not a hollow framework. Import/open the `Basic Survivors Game` sample, press Play, choose Standard / Human Playtest or Sprint Run, and play the vertical slice.
+
+Asset flippers customize authored content in `Samples~/BasicSurvivorsGame/Content` first: weapons, upgrades, evolutions, enemies, run-flow profiles, rewards, progression, classes, themes, audio palette, tutorial copy, and presentation tokens. The template consumes reusable Deucarian packages while keeping its sample scene, authored content, tuning, UI, theme/audio/tutorial content, and playable loop intact.
+
+Package extraction is governed by `Documentation~/template-contract.md`: “Extract only reusable infrastructure, never the playable vertical slice.” Candidate boundaries are tracked in `Documentation~/survivors-package-extraction-candidates.md`.
+
 ## When To Use This
 
 Use this package when you want:
@@ -67,7 +75,7 @@ If the player has not claimed a passive yet, normal level-up drafts reserve a Co
 
 Standard Run uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` is reset to `1`, opening enemy spawns use two-enemy packs on a `0.95` second interval, pack size grows with escalation up to `6`, the opening max-alive cap is `38`, basic enemy speed is `1.35` versus player speed `5.55`, nearby enemies nudge apart so packs stay readable while still pressing inward, reward auto-pick is off, horde-rush events warn and then spawn a mixed enemy ring between major threats, clearing the ring drops a bonus cache, fires a breaker pulse into nearby regular enemies, and starts a short Breaker Surge for damage, cooldown, movement, and pickup attraction, Rift Callers enter the regular horde around `155` seconds and periodically call nearby support enemies, active elites/minibosses/bosses show a prioritized health bar, far major threats show an offscreen edge marker and safely re-enter without losing health, damaged major enemies call in a one-shot support ring near their low-health threshold, and dread elites/minibosses/bosses paint a brief ground slam disc before damaging nearby players. Normal enemies that fall far behind can recycle through an offscreen band to preserve pressure without instant contact. The first horde rush begins around `75` seconds, the first elite arrives around `135` seconds, the dread elite arrives around `255` seconds, the miniboss waits until `360` seconds, the final boss appears around `1140` seconds, and survival victory lands at `1800` seconds. After victory, continuing schedules recurring elite, miniboss, and boss pressure using the endless interval tuning on `SurvivorsTemplateTuning`; defeating those recurring major threats triggers stacking Endless Surge reward bursts with extra XP, blood shards, a non-major enemy pulse, and temporary damage, cooldown, movement, and pickup momentum.
 
-Sprint Run uses `SurvivorsPacingProfile.SprintRun` for a separate 5-minute loop: opening spawns use a `0.72` second interval with up to `46` alive enemies, denser offscreen recycle bands, a stricter XP curve of `260 + 54 per level`, an `18` second normal level-up draft cooldown, and at most `1` queued level-up draft. Reroll and banish charges start at `5`, the first elite arrives around `82` seconds, the first horde spike starts around `120` seconds, dread pressure appears around `165` seconds, the miniboss appears around `175` seconds, the final boss appears around `270` seconds, and victory lands at `300` seconds. Sprint lowers total meta rewards with a `0.65` reward multiplier, disables endless continuation, and applies a Sprint-only evolution rank assist so a focused build can reach an evolution without changing Standard rules. `Normal`, `DebugFast`, and `Showcase` profiles exist for validation and demos, but must be selected deliberately through the runtime debugger.
+Sprint Run uses `SurvivorsPacingProfile.SprintRun` for a separate 5-minute loop: opening spawns use a `0.72` second interval with up to `46` alive enemies, denser offscreen recycle bands, a stricter XP curve of `102 + 20 per level`, an `18` second normal level-up draft cooldown, and at most `1` queued level-up draft. Reroll and banish charges start at `5`, the first elite arrives around `82` seconds, the first horde spike starts around `120` seconds, dread pressure appears around `165` seconds, the miniboss appears around `175` seconds, the final boss appears around `270` seconds, and victory lands at `300` seconds. Sprint lowers total meta rewards with a `0.65` reward multiplier, disables endless continuation, and applies a Sprint-only evolution rank assist so a focused build can reach an evolution without changing Standard rules. `Normal`, `DebugFast`, and `Showcase` profiles exist for validation and demos, but must be selected deliberately through the runtime debugger.
 
 ## What To Customize First
 
@@ -118,6 +126,8 @@ Intentionally not ported wholesale: the clone's twelve-class content-pack ecosys
 - Structure notes: `Documentation~/survivors-template-structure.md`
 - Playtesting notes: `Documentation~/playtesting.md`
 - Validation notes: `Documentation~/validation.md`
+- Template Contract: `Documentation~/template-contract.md`
+- Package extraction candidates: `Documentation~/survivors-package-extraction-candidates.md`
 
 ## Integrations
 

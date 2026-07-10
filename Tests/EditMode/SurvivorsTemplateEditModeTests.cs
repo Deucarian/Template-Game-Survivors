@@ -1110,6 +1110,59 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void TemplateContractDocumentsVerticalSliceExtractionGuardrails()
+        {
+            string packageRoot = GetPackageRoot();
+            string contractPath = Path.Combine(packageRoot, "Documentation~", "template-contract.md");
+            string candidatesPath = Path.Combine(packageRoot, "Documentation~", "survivors-package-extraction-candidates.md");
+            Assert.IsTrue(File.Exists(contractPath), contractPath);
+            Assert.IsTrue(File.Exists(candidatesPath), candidatesPath);
+
+            string contract = File.ReadAllText(contractPath);
+            string candidates = File.ReadAllText(candidatesPath);
+
+            StringAssert.Contains("Extract only reusable infrastructure, never the playable vertical slice.", contract);
+            StringAssert.Contains("This template must always import/open as a complete playable vertical slice.", contract);
+            StringAssert.Contains("Fallback/default runtime code may exist only as safe/debug/unbound-host fallback.", contract);
+            StringAssert.Contains("Runtime code owns logic/execution. Authored content owns asset-flippable game content.", contract);
+            StringAssert.Contains("Basic Survivors sample scene opens.", contract);
+            StringAssert.Contains("Mode selector appears.", contract);
+            StringAssert.Contains("Sprint Run starts.", contract);
+            StringAssert.Contains("Standard / Human Playtest starts.", contract);
+            StringAssert.Contains("Top-center timer works.", contract);
+            StringAssert.Contains("Player starts with authored starting loadout.", contract);
+            StringAssert.Contains("Weapons come from authored content.", contract);
+            StringAssert.Contains("Enemies/elites/bosses come from authored content.", contract);
+            StringAssert.Contains("No manual reconstruction is required after import.", contract);
+            StringAssert.Contains("Known Contract Risks / Future Hardening", contract);
+            StringAssert.Contains("Some authored binders may use built-in per-field fallback values", contract);
+            StringAssert.Contains("`DefaultProgression/progression.json` is parsed and validated", contract);
+            StringAssert.Contains("Make `DefaultProgression/progression.json`'s exact runtime role explicit", contract);
+            StringAssert.Contains("Prove extraction with Idle Auto Defense", contract);
+
+            StringAssert.Contains("Specific Survivors weapons/enemies/bosses/evolutions remain local content.", candidates);
+            StringAssert.Contains("Survivors tuning and balance remain local content.", candidates);
+            StringAssert.Contains("The Basic Survivors sample scene remains in the template.", candidates);
+            StringAssert.Contains("The playable vertical slice remains in the template.", candidates);
+            StringAssert.Contains("Extraction must be tested by the template still playing.", candidates);
+            StringAssert.Contains("## Reward Draft UI / Card System", candidates);
+            StringAssert.Contains("## Rarity Tables And Rarity Presentation", candidates);
+            StringAssert.Contains("## Upgrade Comparison Preview Helper", candidates);
+            StringAssert.Contains("## Run Summary UI / Model", candidates);
+            StringAssert.Contains("## Tutorial / Onboarding Overlay", candidates);
+            StringAssert.Contains("## Audio Event Palette / Event Routing", candidates);
+            StringAssert.Contains("## Mobile-Safe UI Primitives", candidates);
+            StringAssert.Contains("## Theme / Style Token System", candidates);
+            StringAssert.Contains("## Build Menu / Stat Summary Model", candidates);
+            StringAssert.Contains("## Run Profile Selection", candidates);
+            StringAssert.Contains("## Health Bars / Threat Markers", candidates);
+            StringAssert.Contains("## Offscreen Spawn Resolver", candidates);
+            StringAssert.Contains("## Content Validation Helpers", candidates);
+            StringAssert.Contains("## Runtime Debug Overlay Framework", candidates);
+            StringAssert.Contains("Vertical-slice preservation risk:", candidates);
+        }
+
+        [Test]
         public void SampleRunFlowContentIncludesRewardTuning()
         {
             string sampleRoot = GetSampleRoot();
@@ -2144,11 +2197,17 @@ namespace Deucarian.TemplateGameSurvivors.Tests
 
         private static string GetSampleRoot()
         {
-            var packageInfo = PackageInfo.FindForAssembly(typeof(BasicSurvivorsGame).Assembly);
-            Assert.IsNotNull(packageInfo);
-            string sampleRoot = Path.Combine(packageInfo.resolvedPath, "Samples~", "BasicSurvivorsGame");
+            string sampleRoot = Path.Combine(GetPackageRoot(), "Samples~", "BasicSurvivorsGame");
             Assert.IsTrue(Directory.Exists(sampleRoot), "Sample root missing: " + sampleRoot);
             return sampleRoot;
+        }
+
+        private static string GetPackageRoot()
+        {
+            var packageInfo = PackageInfo.FindForAssembly(typeof(BasicSurvivorsGame).Assembly);
+            Assert.IsNotNull(packageInfo);
+            Assert.IsTrue(Directory.Exists(packageInfo.resolvedPath), "Package root missing: " + packageInfo.resolvedPath);
+            return packageInfo.resolvedPath;
         }
 
         private static RunFlowProfileForTest FindRunFlowProfile(RunFlowLibraryForTest library, string id)

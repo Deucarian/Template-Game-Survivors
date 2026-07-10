@@ -51,6 +51,7 @@ Architecture exceptions:
 
 - Keep reusable systems in lower packages; template code may compose and demonstrate them but should not become a generic framework.
 - Local genre-kit code can be pragmatic, but reusable behavior should be proposed to the owning package before extraction.
+- Template Contract: do not hollow out the template. Preserve the playable vertical slice, do not extract packages unless the Basic Survivors sample still plays, do not replace authored content with hardcoded runtime content, and do not use package extraction as an excuse to remove sample gameplay.
 - Do not add UI, monetization, networking, or broader framework dependencies unless the template actually ships those flows.
 - Logging: Direct Unity Debug calls are limited to editor/template validation diagnostics listed in `deucarian-package.json`.
 - Unity object lifetime: Use Common's `UnityObjectUtility.DestroySafely` for local template runtime cleanup.
