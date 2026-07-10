@@ -88,6 +88,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsFalse(controller.IsRunStarted, "Imported sample scene should not auto-start combat before mode selection.");
             Assert.IsTrue(controller.SelectStandardRun());
             yield return null;
+            if (controller.IsTutorialOverlayOpen)
+            {
+                Assert.IsTrue(controller.SkipTutorialForTest());
+                yield return null;
+            }
 
             float startingRunTime = controller.RunTimeSeconds;
             for (int i = 0; i < 120 && (!controller.IsPlaying || controller.RunTimeSeconds <= startingRunTime); i++)
@@ -143,6 +148,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.IsFalse(controller.IsRunStarted);
             Assert.IsTrue(controller.SelectStandardRun());
             yield return null;
+            if (controller.IsTutorialOverlayOpen)
+            {
+                Assert.IsTrue(controller.SkipTutorialForTest());
+                yield return null;
+            }
 
             float startingRunTime = controller.RunTimeSeconds;
             for (int i = 0; i < 180 && (!controller.IsPlaying || controller.RunTimeSeconds <= startingRunTime); i++)
@@ -929,6 +939,107 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator FirstTimeTutorialAppearsPausesSkipsAndPersists()
+        {
+            var storage = new InMemoryTextStorage();
+            const string slot = "tutorial-first-run";
+            SurvivorsTemplateController controller = CreateController(storage, slot, startRun: false, tutorialSeen: false);
+            yield return null;
+
+            Assert.IsTrue(controller.SelectSprintRun());
+            yield return null;
+
+            Assert.IsTrue(controller.IsTutorialOverlayOpen);
+            Assert.IsFalse(controller.IsTutorialSeen);
+            Assert.That(controller.CurrentTutorialLinesForTest().Count, Is.GreaterThanOrEqualTo(1));
+            float pausedTime = controller.RunTimeSeconds;
+            controller.Simulate(1f, Vector2.right);
+            Assert.AreEqual(pausedTime, controller.RunTimeSeconds);
+
+            Assert.IsTrue(controller.AdvanceTutorialForTest());
+            Assert.AreEqual(1, controller.CurrentTutorialStepIndex);
+            Assert.IsTrue(controller.BackTutorialForTest());
+            Assert.AreEqual(0, controller.CurrentTutorialStepIndex);
+            Assert.IsTrue(controller.SkipTutorialForTest());
+            Assert.IsFalse(controller.IsTutorialOverlayOpen);
+            Assert.IsTrue(controller.IsTutorialSeen);
+
+            controller.Simulate(0.25f, Vector2.right);
+            Assert.That(controller.RunTimeSeconds, Is.GreaterThan(pausedTime));
+
+            Object.Destroy(controller.gameObject);
+
+            SurvivorsTemplateController nextController = CreateController(storage, slot, startRun: false, tutorialSeen: false);
+            yield return null;
+            Assert.IsTrue(nextController.SelectSprintRun());
+            yield return null;
+            Assert.IsFalse(nextController.IsTutorialOverlayOpen);
+            Assert.IsTrue(nextController.IsTutorialSeen);
+
+            Object.Destroy(nextController.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator ThemeSelectionAndAudioRoutingWorkWithoutRealAudioClips()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            yield return null;
+
+            Assert.IsTrue(controller.ConfigureUiThemes(
+                new TextAsset("{\"themeName\":\"Default Test\",\"runSummaryTitle\":\"Run Summary\"}"),
+                new TextAsset("{\"themeName\":\"Neon Arcana\",\"runSummaryTitle\":\"Run Chronicle\",\"hudAccentColor\":\"#35F2FF\"}")));
+            Assert.That(controller.AvailableUiThemesForTest.Count, Is.EqualTo(2));
+            Assert.AreEqual("Default Test", controller.CurrentUiThemeName);
+            Assert.IsTrue(controller.SelectUiThemeForTest(1));
+            Assert.AreEqual("Neon Arcana", controller.CurrentUiThemeName);
+
+            Assert.IsFalse(controller.ConfigureUiThemeJson("{ not json"));
+            Assert.AreEqual("Deucarian Survivors", controller.CurrentUiThemeName);
+
+            int startingCount = controller.AudioEventDispatchCount;
+            Assert.IsTrue(controller.DispatchAudioEventForTest("pickup.xp"));
+            Assert.AreEqual(startingCount + 1, controller.AudioEventDispatchCount);
+            Assert.AreEqual("pickup.xp", controller.LastAudioEventId);
+            Assert.IsFalse(controller.DispatchAudioEventForTest("pickup.xp"), "XP pickup audio should be throttled.");
+
+            controller.SetAudioMutedForTest(true);
+            Assert.IsFalse(controller.DispatchAudioEventForTest("ui.select"));
+            Assert.AreEqual("pickup.xp", controller.LastAudioEventId);
+            controller.SetAudioMutedForTest(false);
+
+            Assert.IsTrue(controller.SelectSprintRun());
+            yield return null;
+            Assert.AreEqual("mode.selected", controller.LastAudioEventId);
+
+            controller.ForceLevelUpWithLockedChoiceForTest("upgrade.survivors.arcane-damage");
+            yield return null;
+            Assert.AreEqual("draft.opened", controller.LastAudioEventId);
+            Assert.IsTrue(controller.SelectUpgrade(IndexOfDraftChoice(controller, "upgrade.survivors.arcane-damage")));
+            Assert.AreEqual("draft.choice.selected", controller.LastAudioEventId);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator OverlayPanelRectsStayInsideSmallGameView()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            int originalWidth = Screen.width;
+            int originalHeight = Screen.height;
+            Screen.SetResolution(420, 320, false);
+            yield return null;
+
+            AssertPanelInsideScreen(controller.ResolveCenteredPanelRectForTest(820f, 430f, 340f, 360f, 20f));
+            AssertPanelInsideScreen(controller.ResolveCenteredPanelRectForTest(1120f, 690f, 320f, 420f, 20f));
+            AssertPanelInsideScreen(controller.ResolveCenteredPanelRectForTest(720f, 420f, 320f, 330f, 22f));
+            AssertPanelInsideScreen(controller.ResolveCenteredPanelRectForTest(860f, 620f, 360f, 360f, 24f));
+            AssertPanelInsideScreen(controller.ResolveCenteredPanelRectForTest(760f, 700f, 320f, 400f, 20f));
+
+            Screen.SetResolution(originalWidth, originalHeight, false);
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator PlayerHudStartsCleanAndDebugOverlayToggles()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);
@@ -976,6 +1087,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             string summary = controller.GetCurrentDraftCardSummaryForTest(0);
             Assert.That(summary, Does.Contain("1 |"));
             Assert.That(summary, Does.Contain("Affects"));
+            Assert.That(summary, Does.Contain("Preview:"));
             Assert.IsTrue(summary.Contains("Rank") || summary.Contains("One-time unlock"), summary);
             Assert.That(summary, Does.Not.Contain("upgrade.survivors"));
             Assert.That(summary, Does.Not.Contain("survivors."));
@@ -984,6 +1096,72 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.IsFalse(controller.IsPlayerFacingDraftOverlayVisible);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator DraftCardsShowComparisonPreviewsForStatsUnlocksPickupAndEvolutions()
+        {
+            SurvivorsTemplateController controller = CreateController();
+            yield return null;
+
+            controller.ForceLevelUpWithLockedChoiceForTest("upgrade.survivors.arcane-damage");
+            yield return null;
+            int damageIndex = IndexOfDraftChoice(controller, "upgrade.survivors.arcane-damage");
+            Assert.That(damageIndex, Is.GreaterThanOrEqualTo(0), "Arcane Damage should be force-locked into the preview draft.");
+            string damageSummary = controller.GetCurrentDraftCardSummaryForTest(damageIndex);
+            Assert.That(damageSummary, Does.Contain("Preview:"));
+            Assert.That(damageSummary, Does.Contain("Damage:"));
+            Assert.That(damageSummary, Does.Contain("->"));
+            Assert.That(damageSummary, Does.Not.Contain("survivors."));
+            Assert.IsTrue(controller.SkipCurrentDraft());
+            yield return null;
+
+            controller.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.StarBeamUnlockUpgradeId);
+            yield return null;
+            int unlockIndex = IndexOfDraftChoice(controller, BasicSurvivorsGame.StarBeamUnlockUpgradeId);
+            Assert.That(unlockIndex, Is.GreaterThanOrEqualTo(0), "Star Beam unlock should be force-locked into the preview draft.");
+            string unlockSummary = controller.GetCurrentDraftCardSummaryForTest(unlockIndex);
+            Assert.That(unlockSummary, Does.Contain("Unlocks Star Beam"));
+            Assert.That(unlockSummary, Does.Not.Contain("survivors."));
+            Assert.IsTrue(controller.SkipCurrentDraft());
+            yield return null;
+
+            controller.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.GemMagnetUpgradeId);
+            yield return null;
+            int pickupIndex = IndexOfDraftChoice(controller, BasicSurvivorsGame.GemMagnetUpgradeId);
+            Assert.That(pickupIndex, Is.GreaterThanOrEqualTo(0), "Gemheart should be force-locked into the pickup preview draft.");
+            string pickupSummary = controller.GetCurrentDraftCardSummaryForTest(pickupIndex);
+            Assert.That(pickupSummary, Does.Contain("Pickup Radius:"));
+            Assert.That(pickupSummary, Does.Contain("->"));
+            Assert.IsTrue(controller.SkipCurrentDraft());
+            yield return null;
+
+            controller.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.VacuumPulseUpgradeId);
+            yield return null;
+            int pulseIndex = IndexOfDraftChoice(controller, BasicSurvivorsGame.VacuumPulseUpgradeId);
+            Assert.That(pulseIndex, Is.GreaterThanOrEqualTo(0), "Vacuum Pulse should be force-locked into the magnet preview draft.");
+            string pulseSummary = controller.GetCurrentDraftCardSummaryForTest(pulseIndex);
+            Assert.That(pulseSummary, Does.Contain("Pulse Interval:"));
+            Assert.That(pulseSummary, Does.Contain("->"));
+            Assert.IsTrue(controller.SkipCurrentDraft());
+            yield return null;
+
+            for (int i = 0; i < 5; i++)
+            {
+                Assert.IsTrue(controller.ApplyUpgradeByIdForTest("upgrade.survivors.arcane-damage"));
+            }
+
+            Assert.IsTrue(controller.ApplyUpgradeByIdForTest(BasicSurvivorsGame.ArcaneThesisUpgradeId));
+            controller.CurrentTuning.NormalEarlyLegendaryWeight = 1;
+            controller.ForceLevelUpWithLockedChoiceForTest(BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId);
+            yield return null;
+            int evolutionIndex = IndexOfDraftChoice(controller, BasicSurvivorsGame.ArcaneStormEvolutionUpgradeId);
+            Assert.That(evolutionIndex, Is.GreaterThanOrEqualTo(0), "Arcane Storm should be force-locked into the evolution preview draft.");
+            string evolutionSummary = controller.GetCurrentDraftCardSummaryForTest(evolutionIndex);
+            Assert.That(evolutionSummary, Does.Contain("Evolves into Arcane Storm"));
+            Assert.That(evolutionSummary, Does.Not.Contain("survivors."));
 
             Object.Destroy(controller.gameObject);
         }
@@ -1938,6 +2116,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(label, Does.Contain("Weapon Upgrade"));
             Assert.That(label, Does.Contain("Rank 1->2/8"));
             Assert.That(label, Does.Contain("Affects Wand"));
+            string summary = controller.GetCurrentDraftCardSummaryForTest(choiceIndex);
+            Assert.That(summary, Does.Contain("Preview: Damage:"));
+            Assert.That(summary, Does.Contain("->"));
 
             Object.Destroy(controller.gameObject);
         }
@@ -2639,10 +2820,24 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.AreEqual(SurvivorsRunState.GameOver, controller.State);
             Assert.That(controller.LastRunSummaryLines.Count, Is.GreaterThanOrEqualTo(5));
+            Assert.IsTrue(controller.IsRunSummaryVisible);
+            Assert.That(controller.LastRunSummaryTitle, Does.Contain("Run Summary"));
             string defeatSummary = string.Join("\n", controller.LastRunSummaryLines);
             Assert.That(defeatSummary, Does.Contain("Defeat"));
-            Assert.That(defeatSummary, Does.Contain("Rewards"));
-            Assert.That(defeatSummary, Does.Contain("Meta"));
+            Assert.That(defeatSummary, Does.Contain("Run mode:"));
+            Assert.That(defeatSummary, Does.Contain("Run time:"));
+            Assert.That(defeatSummary, Does.Contain("Level reached:"));
+            Assert.That(defeatSummary, Does.Contain("Kills:"));
+            Assert.That(defeatSummary, Does.Contain("Rewards earned:"));
+            Assert.That(defeatSummary, Does.Contain("Meta bank:"));
+            Assert.That(defeatSummary, Does.Contain("Damage taken:"));
+            Assert.That(defeatSummary, Does.Contain("Final health:"));
+            Assert.That(defeatSummary, Does.Contain("Weapons"));
+            Assert.That(defeatSummary, Does.Contain("Passives"));
+            Assert.That(defeatSummary, Does.Contain("Evolutions"));
+            Assert.That(defeatSummary, Does.Contain("Relics"));
+            Assert.That(defeatSummary, Does.Contain("Pickup build:"));
+            Assert.That(defeatSummary, Does.Contain("Best moment:"));
 
             controller.RestartRun();
             yield return null;
@@ -4718,7 +4913,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             string runSummary = string.Join("\n", controller.LastRunSummaryLines);
             Assert.That(runSummary, Does.Contain("1/"));
-            Assert.That(runSummary, Does.Contain("relics"));
+            Assert.That(runSummary, Does.Contain("Relics"));
 
             Object.Destroy(controller.gameObject);
         }
@@ -4860,8 +5055,12 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.That(controller.LastRunSummaryLines.Count, Is.GreaterThanOrEqualTo(6));
             string victorySummary = string.Join("\n", controller.LastRunSummaryLines);
             Assert.That(victorySummary, Does.Contain("Victory"));
-            Assert.That(victorySummary, Does.Contain("Bosses 1"));
-            Assert.That(victorySummary, Does.Contain("Build"));
+            Assert.That(victorySummary, Does.Contain("Bosses: 1"));
+            Assert.That(victorySummary, Does.Contain("Weapons"));
+            Assert.That(victorySummary, Does.Contain("Passives"));
+            Assert.That(victorySummary, Does.Contain("Evolutions"));
+            Assert.That(victorySummary, Does.Contain("Relics"));
+            Assert.That(victorySummary, Does.Contain("Pickup build"));
             Assert.That(victorySummary, Does.Contain("Class unlocked"));
 
             Object.Destroy(controller.gameObject);
@@ -4944,10 +5143,26 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsPacingProfile.SprintRun, controller.CurrentPacingProfile);
             Assert.IsFalse(controller.CurrentTuning.EndlessContinuationEnabled);
             string summary = string.Join("\n", controller.LastRunSummaryLines);
-            Assert.That(summary, Does.Contain("Sprint Run Victory"));
-            Assert.That(summary, Does.Contain("Mode Sprint Run"));
-            Assert.That(summary, Does.Contain("reward x0.65"));
+            Assert.That(controller.LastRunSummaryTitle, Does.Contain("Run Summary"));
+            Assert.That(summary, Does.Contain("Run mode: Sprint Run"));
+            Assert.That(summary, Does.Contain("Result: Victory"));
+            Assert.That(summary, Does.Contain("Run time:"));
+            Assert.That(summary, Does.Contain("multiplier x0.65"));
+            Assert.That(summary, Does.Contain("Pickup build:"));
             Assert.IsFalse(controller.ContinueAfterVictory());
+            controller.RestartRun();
+            yield return null;
+            Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
+            Assert.AreEqual(SurvivorsPacingProfile.SprintRun, controller.CurrentPacingProfile);
+            Assert.AreEqual(0, controller.LastRunSummaryLines.Count);
+
+            controller.KillPlayerForTest();
+            yield return null;
+            Assert.AreEqual(SurvivorsRunState.GameOver, controller.State);
+            controller.OpenRunModeSelection();
+            yield return null;
+            Assert.IsTrue(controller.IsRunModeSelectionOpen);
+            Assert.IsFalse(controller.IsRunStarted);
 
             Object.Destroy(controller.gameObject);
         }
@@ -5636,13 +5851,18 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
         }
 
-        private static SurvivorsTemplateController CreateController(InMemoryTextStorage storage = null, string slot = null, bool startRun = true)
+        private static SurvivorsTemplateController CreateController(InMemoryTextStorage storage = null, string slot = null, bool startRun = true, bool tutorialSeen = true)
         {
             var root = new GameObject("Survivors Template PlayMode Test");
             SurvivorsTemplateController controller = root.AddComponent<SurvivorsTemplateController>();
             controller.ConfigureMetaPersistenceForTest(
                 new PersistenceService(storage ?? new InMemoryTextStorage()),
                 new SaveSlotId(string.IsNullOrWhiteSpace(slot) ? "play-" + Guid.NewGuid().ToString("N") : slot));
+            if (tutorialSeen)
+            {
+                controller.MarkTutorialSeenForTest();
+            }
+
             if (startRun)
             {
                 controller.StartRun();
@@ -5888,6 +6108,16 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             return -1;
+        }
+
+        private static void AssertPanelInsideScreen(Rect rect)
+        {
+            Assert.That(rect.width, Is.GreaterThan(0f));
+            Assert.That(rect.height, Is.GreaterThan(0f));
+            Assert.That(rect.xMin, Is.GreaterThanOrEqualTo(0f));
+            Assert.That(rect.yMin, Is.GreaterThanOrEqualTo(0f));
+            Assert.That(rect.xMax, Is.LessThanOrEqualTo(Screen.width + 0.01f));
+            Assert.That(rect.yMax, Is.LessThanOrEqualTo(Screen.height + 0.01f));
         }
 
         private static IEnumerator SimulateFrames(SurvivorsTemplateController controller, int frames)

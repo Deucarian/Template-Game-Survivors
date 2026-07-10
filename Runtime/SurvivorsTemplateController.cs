@@ -23,6 +23,27 @@ namespace Deucarian.TemplateGameSurvivors
         private const string LevelUpPulseName = "Survivors Level Up Pulse";
         private const string BossPulseName = "Survivors Boss Cue Pulse";
         private const string FeedbackAudioName = "Survivors Feedback Audio";
+        private const string AudioEventUiHover = "ui.hover";
+        private const string AudioEventUiSelect = "ui.select";
+        private const string AudioEventModeSelected = "mode.selected";
+        private const string AudioEventDraftOpened = "draft.opened";
+        private const string AudioEventDraftChoiceSelected = "draft.choice.selected";
+        private const string AudioEventDraftReroll = "draft.reroll";
+        private const string AudioEventDraftBanish = "draft.banish";
+        private const string AudioEventDraftSkip = "draft.skip";
+        private const string AudioEventLevelUp = "level.up";
+        private const string AudioEventXpPickup = "pickup.xp";
+        private const string AudioEventMagnetPulse = "pickup.magnet_pulse";
+        private const string AudioEventCombatHit = "combat.hit";
+        private const string AudioEventEnemyDeath = "combat.enemy_death";
+        private const string AudioEventEliteWarning = "warning.elite";
+        private const string AudioEventBossWarning = "warning.boss";
+        private const string AudioEventLowHealthWarning = "warning.low_health";
+        private const string AudioEventEvolution = "reward.evolution";
+        private const string AudioEventRelic = "reward.relic";
+        private const string AudioEventVictory = "run.victory";
+        private const string AudioEventDefeat = "run.defeat";
+        private const string AudioEventRunSummaryOpened = "run.summary.opened";
         private const string DirectionalLightName = "Survivors Directional Light";
         private const float InfiniteArenaTileSize = 12f;
         private const int InfiniteArenaGridRadius = 2;
@@ -99,6 +120,17 @@ namespace Deucarian.TemplateGameSurvivors
             Controls = 3
         }
 
+        private enum TutorialStep
+        {
+            Movement = 0,
+            Combat = 1,
+            Experience = 2,
+            Drafts = 3,
+            ElitesBosses = 4,
+            Evolutions = 5,
+            Modes = 6
+        }
+
         private struct DraftCardPresentation
         {
             public int Index;
@@ -121,7 +153,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 get
                 {
-                    return $"{Hotkey} | {Name} | {RarityLabel} | {CategoryLabel} | {AffectedLabel} | {RankLabel} | {Description} | {EffectPreview} | {RequirementHint}";
+                    return $"{Hotkey} | {Name} | {RarityLabel} | {CategoryLabel} | {AffectedLabel} | {RankLabel} | {Description} | Preview: {EffectPreview} | {RequirementHint}";
                 }
             }
         }
@@ -162,6 +194,8 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
         private readonly List<string> _lastRunSummaryLines = new List<string>(8);
         private readonly List<string> _runMetricsLines = new List<string>(16);
+        private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
+        private readonly Dictionary<string, float> _audioEventNextAllowedTime = new Dictionary<string, float>(StringComparer.Ordinal);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
@@ -275,6 +309,20 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _debugOverlayVisible;
         private bool _buildMenuOpen;
         private BuildMenuTab _buildMenuTab;
+        private Vector2 _buildMenuScrollPosition;
+        private Vector2 _runSummaryScrollPosition;
+        private Vector2 _draftCardScrollPosition;
+        private Vector2 _modeSelectionScrollPosition;
+        private bool _tutorialOverlayOpen;
+        private int _tutorialStepIndex;
+        private int _selectedUiThemeIndex;
+        private bool _audioMuted;
+        private int _audioEventDispatchCount;
+        private string _lastAudioEventId = string.Empty;
+        private string _lastRunSummaryTitle = string.Empty;
+        private RunUpgradeRarity _highestChosenRarity;
+        private string _highestChosenRarityLabel = string.Empty;
+        private string _bestMomentLabel = string.Empty;
         private bool _lowHealthClutchPulseUsed;
         private bool _weaponLoadoutSurgeUsed;
         private bool _passiveLoadoutSurgeUsed;
@@ -816,6 +864,18 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsBuildMenuOpen => _buildMenuOpen;
         public string CurrentBuildMenuTabLabel => FormatBuildMenuTabLabel(_buildMenuTab);
         public string CurrentUiThemeName => ActiveUiTheme.themeName;
+        public IReadOnlyList<SurvivorsUiTheme> AvailableUiThemesForTest => _availableUiThemes;
+        public int SelectedUiThemeIndex => _selectedUiThemeIndex;
+        public bool IsTutorialOverlayOpen => _tutorialOverlayOpen;
+        public bool IsTutorialSeen => _metaProgression != null && _metaProgression.TutorialSeen;
+        public string CurrentTutorialStepTitle => ResolveTutorialStepTitle(ClampTutorialStepIndex(_tutorialStepIndex));
+        public int CurrentTutorialStepIndex => ClampTutorialStepIndex(_tutorialStepIndex);
+        public int TutorialStepCount => Enum.GetValues(typeof(TutorialStep)).Length;
+        public bool IsAudioMuted => _audioMuted;
+        public int AudioEventDispatchCount => _audioEventDispatchCount;
+        public string LastAudioEventId => _lastAudioEventId;
+        public string LastRunSummaryTitle => _lastRunSummaryTitle;
+        public bool IsRunSummaryVisible => State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory;
         public bool IsPlayerFacingDraftOverlayVisible => State == SurvivorsRunState.LevelUp && (_currentDraft != null || _currentRelicDraft != null);
         public int CurrentDraftCardCountForTest => IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
         public string CurrentDraftOverlayTitleForTest => ResolveRewardOverlayTitle();
@@ -964,11 +1024,21 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (!_runStarted)
             {
-                if (_runModeSelectionOpen)
+                if (_tutorialOverlayOpen)
+                {
+                    HandleTutorialInput();
+                }
+                else if (_runModeSelectionOpen)
                 {
                     HandleRunModeSelectionInput();
                 }
 
+                return;
+            }
+
+            if (_tutorialOverlayOpen)
+            {
+                HandleTutorialInput();
                 return;
             }
 
@@ -1063,6 +1133,12 @@ namespace Deucarian.TemplateGameSurvivors
                     DrawRunModeSelectionOverlay();
                 }
 
+                if (_tutorialOverlayOpen)
+                {
+                    EnsureHudStyles();
+                    DrawTutorialOverlay();
+                }
+
                 return;
             }
 
@@ -1086,6 +1162,12 @@ namespace Deucarian.TemplateGameSurvivors
             DrawEvolutionReadyFeedback();
             DrawExperienceComboFeedback();
             DrawDamagePopups();
+
+            if (_tutorialOverlayOpen)
+            {
+                DrawTutorialOverlay();
+                return;
+            }
 
             if (State == SurvivorsRunState.LevelUp)
             {
@@ -1115,6 +1197,10 @@ namespace Deucarian.TemplateGameSurvivors
             else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.S))
             {
                 SelectSprintRun();
+            }
+            else if (Input.GetKeyDown(KeyCode.T))
+            {
+                OpenTutorialOverlay(markUnseen: false);
             }
         }
 
@@ -1226,34 +1312,31 @@ namespace Deucarian.TemplateGameSurvivors
         private void DrawBuildMenuOverlay()
         {
             DrawDimOverlay(0.62f);
-            float width = Mathf.Min(860f, Mathf.Max(520f, Screen.width - 48f));
-            float height = Mathf.Min(620f, Mathf.Max(420f, Screen.height - 72f));
-            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            Rect panel = ResolveCenteredPanelRect(860f, 620f, 360f, 360f, 24f);
             DrawSolidRect(panel, new Color(0.018f, 0.023f, 0.032f, 0.96f));
-            DrawSolidRect(new Rect(panel.x, panel.y, panel.width, 4f), new Color(0.2f, 0.78f, 1f, 0.9f));
+            Color accent = ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f));
+            DrawSolidRect(new Rect(panel.x, panel.y, panel.width, 4f), new Color(accent.r, accent.g, accent.b, 0.9f));
             GUI.Label(new Rect(panel.x + 24f, panel.y + 18f, panel.width - 48f, 32f), ActiveUiTheme.buildMenuTitle, _menuTitleStyle);
             if (GUI.Button(new Rect(panel.xMax - 94f, panel.y + 18f, 70f, 28f), "Close"))
             {
+                PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
                 _buildMenuOpen = false;
                 return;
             }
 
             DrawBuildMenuTabs(new Rect(panel.x + 24f, panel.y + 62f, panel.width - 48f, 34f));
             IReadOnlyList<string> lines = ResolveBuildMenuLines(_buildMenuTab);
-            float y = panel.y + 112f;
+            Rect viewRect = new Rect(panel.x + 24f, panel.y + 110f, panel.width - 48f, panel.height - 132f);
             float lineHeight = 22f;
-            int maxLines = Mathf.FloorToInt((panel.yMax - y - 22f) / lineHeight);
-            int shown = Mathf.Min(maxLines, lines.Count);
-            for (int i = 0; i < shown; i++)
+            Rect contentRect = new Rect(0f, 0f, Mathf.Max(1f, viewRect.width - 18f), Mathf.Max(viewRect.height, lines.Count * lineHeight + 10f));
+            _buildMenuScrollPosition = GUI.BeginScrollView(viewRect, _buildMenuScrollPosition, contentRect);
+            float y = 0f;
+            for (int i = 0; i < lines.Count; i++)
             {
-                GUI.Label(new Rect(panel.x + 28f, y, panel.width - 56f, lineHeight), lines[i], _hudLabelStyle);
+                GUI.Label(new Rect(0f, y, contentRect.width, lineHeight), lines[i], _hudLabelStyle);
                 y += lineHeight;
             }
-
-            if (lines.Count > shown)
-            {
-                GUI.Label(new Rect(panel.x + 28f, panel.yMax - 34f, panel.width - 56f, 22f), "+" + (lines.Count - shown).ToString() + " more", _hudSmallStyle);
-            }
+            GUI.EndScrollView();
         }
 
         private void DrawBuildMenuTabs(Rect rect)
@@ -1280,15 +1363,27 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void DrawRunModeSelectionOverlay()
         {
-            const float width = 760f;
-            const float height = 330f;
-            Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            Rect rect = ResolveCenteredPanelRect(820f, 430f, 340f, 360f, 20f);
+            float width = rect.width;
             GUI.Box(rect, "Choose Run Mode");
             GUI.Label(new Rect(rect.x + 28f, rect.y + 34f, width - 56f, 28f), "Deucarian Survivors Run", _hudTitleStyle);
             GUI.Label(new Rect(rect.x + 28f, rect.y + 64f, width - 56f, 22f), "Pick Standard / Human Playtest for the full 30-minute arc or Sprint Run for the compact five-minute loop.", _hudLabelStyle);
 
-            Rect standardRect = new Rect(rect.x + 28f, rect.y + 102f, 336f, 190f);
-            Rect sprintRect = new Rect(rect.x + width - 364f, rect.y + 102f, 336f, 190f);
+            Rect viewRect = new Rect(rect.x + 28f, rect.y + 98f, width - 56f, rect.height - 154f);
+            float contentWidth = Mathf.Max(1f, viewRect.width - 18f);
+            bool narrow = contentWidth < 700f;
+            float cardGap = 16f;
+            float cardWidth = narrow ? contentWidth : (contentWidth - cardGap) * 0.5f;
+            float cardHeight = narrow ? 132f : 190f;
+            float selectorY = narrow ? cardHeight * 2f + cardGap + 12f : cardHeight + 14f;
+            float selectorHeight = contentWidth < 360f ? 64f : 46f;
+            float contentHeight = Mathf.Max(viewRect.height, selectorY + selectorHeight);
+
+            _modeSelectionScrollPosition = GUI.BeginScrollView(viewRect, _modeSelectionScrollPosition, new Rect(0f, 0f, contentWidth, contentHeight));
+            Rect standardRect = new Rect(0f, 0f, cardWidth, cardHeight);
+            Rect sprintRect = narrow
+                ? new Rect(0f, standardRect.yMax + cardGap, cardWidth, cardHeight)
+                : new Rect(standardRect.xMax + cardGap, 0f, cardWidth, cardHeight);
             if (DrawRunModeCard(standardRect, SurvivorsPacingProfile.HumanPlaytest, "Start Standard"))
             {
                 SelectStandardRun();
@@ -1297,6 +1392,14 @@ namespace Deucarian.TemplateGameSurvivors
             if (DrawRunModeCard(sprintRect, SurvivorsPacingProfile.SprintRun, "Start Sprint"))
             {
                 SelectSprintRun();
+            }
+
+            DrawThemeSelector(new Rect(0f, selectorY, contentWidth, 42f));
+            GUI.EndScrollView();
+
+            if (GUI.Button(new Rect(rect.x + 28f, rect.yMax - 42f, Mathf.Min(180f, width - 56f), 30f), ActiveUiTheme.showTutorialButtonLabel + " (T)"))
+            {
+                OpenTutorialOverlay(markUnseen: false);
             }
         }
 
@@ -1307,9 +1410,239 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(rect.x + 16f, rect.y + 16f, rect.width - 32f, 24f), FormatRunModeSelectionTitle(profile, preview), _hudLabelStyle);
             GUI.Label(new Rect(rect.x + 16f, rect.y + 44f, rect.width - 32f, 20f), preview.RunModeDurationLabel, _hudSmallStyle);
             GUI.Label(new Rect(rect.x + 16f, rect.y + 70f, rect.width - 32f, 42f), preview.RunModeDescription, _hudSmallStyle);
-            GUI.Label(new Rect(rect.x + 16f, rect.y + 118f, rect.width - 32f, 20f), $"Boss {FormatRunTime(preview.BossSpawnTimeSeconds)}   Victory {FormatRunTime(preview.SurvivalVictoryTimeSeconds)}", _hudSmallStyle);
-            GUI.Label(new Rect(rect.x + 16f, rect.y + 140f, rect.width - 32f, 20f), $"Profile {GetPacingProfileDisplayNameForCard(profile)}", _hudSmallStyle);
-            return GUI.Button(new Rect(rect.x + 16f, rect.yMax - 38f, rect.width - 32f, 28f), buttonLabel);
+            if (rect.height > 150f)
+            {
+                GUI.Label(new Rect(rect.x + 16f, rect.y + 118f, rect.width - 32f, 20f), $"Boss {FormatRunTime(preview.BossSpawnTimeSeconds)}   Victory {FormatRunTime(preview.SurvivalVictoryTimeSeconds)}", _hudSmallStyle);
+                GUI.Label(new Rect(rect.x + 16f, rect.y + 140f, rect.width - 32f, 20f), $"Profile {GetPacingProfileDisplayNameForCard(profile)}", _hudSmallStyle);
+            }
+
+            bool hovered = rect.Contains(Event.current.mousePosition);
+            if (hovered)
+            {
+                PlayAudioEvent(AudioEventUiHover, _pickupClip, 0.08f);
+            }
+
+            bool clicked = GUI.Button(new Rect(rect.x + 16f, rect.yMax - 38f, rect.width - 32f, 30f), buttonLabel);
+            if (clicked)
+            {
+                PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+            }
+
+            return clicked;
+        }
+
+        private void DrawThemeSelector(Rect rect)
+        {
+            EnsureUiTheme();
+            bool stacked = rect.width < 360f;
+            GUI.Label(new Rect(rect.x, rect.y, stacked ? rect.width : Mathf.Min(96f, rect.width), 24f), ActiveUiTheme.themeSelectorTitle, _hudLabelStyle);
+            float x = stacked ? rect.x : rect.x + 104f;
+            float y = stacked ? rect.y + 24f : rect.y;
+            float availableWidth = Mathf.Max(1f, rect.xMax - x);
+            float width = Mathf.Max(96f, Mathf.Min(180f, (availableWidth - 8f) / Mathf.Max(1, _availableUiThemes.Count)));
+            for (int i = 0; i < _availableUiThemes.Count; i++)
+            {
+                SurvivorsUiTheme option = _availableUiThemes[i];
+                if (option == null)
+                {
+                    continue;
+                }
+
+                Rect button = new Rect(x + i * (width + 8f), y, width, 32f);
+                Color oldColor = GUI.backgroundColor;
+                GUI.backgroundColor = i == _selectedUiThemeIndex
+                    ? ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f))
+                    : new Color(0.72f, 0.72f, 0.76f);
+                if (GUI.Button(button, option.themeName))
+                {
+                    SelectUiTheme(i);
+                }
+
+                GUI.backgroundColor = oldColor;
+            }
+        }
+
+        private bool SelectUiTheme(int index)
+        {
+            EnsureUiTheme();
+            if (index < 0 || index >= _availableUiThemes.Count || _availableUiThemes[index] == null)
+            {
+                return false;
+            }
+
+            _selectedUiThemeIndex = index;
+            uiTheme = _availableUiThemes[index];
+            ResetHudStyles();
+            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+            return true;
+        }
+
+        private void HandleTutorialInput()
+        {
+            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.S))
+            {
+                CloseTutorialOverlay(markSeen: true);
+            }
+            else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
+            {
+                AdvanceTutorialStep();
+            }
+            else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.Backspace))
+            {
+                BackTutorialStep();
+            }
+        }
+
+        private void TryOpenFirstRunTutorial()
+        {
+            EnsureMetaProgressionLoaded();
+            if (_metaProgression != null && !_metaProgression.TutorialSeen)
+            {
+                OpenTutorialOverlay(markUnseen: true);
+            }
+        }
+
+        private bool OpenTutorialOverlay(bool markUnseen)
+        {
+            EnsureMetaProgressionLoaded();
+            _tutorialOverlayOpen = true;
+            _tutorialStepIndex = 0;
+            _buildMenuOpen = false;
+            if (markUnseen && _metaProgression != null && _metaProgression.TutorialSeen)
+            {
+                _metaProgression.ResetTutorialSeen();
+            }
+
+            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+            return true;
+        }
+
+        private bool CloseTutorialOverlay(bool markSeen)
+        {
+            if (!_tutorialOverlayOpen && !markSeen)
+            {
+                return false;
+            }
+
+            _tutorialOverlayOpen = false;
+            if (markSeen)
+            {
+                EnsureMetaProgressionLoaded();
+                _metaProgression?.MarkTutorialSeen();
+            }
+
+            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+            return true;
+        }
+
+        private bool AdvanceTutorialStep()
+        {
+            int max = TutorialStepCount - 1;
+            if (_tutorialStepIndex >= max)
+            {
+                return CloseTutorialOverlay(markSeen: true);
+            }
+
+            _tutorialStepIndex = Mathf.Min(max, _tutorialStepIndex + 1);
+            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+            return true;
+        }
+
+        private bool BackTutorialStep()
+        {
+            if (!_tutorialOverlayOpen || _tutorialStepIndex <= 0)
+            {
+                return false;
+            }
+
+            _tutorialStepIndex--;
+            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+            return true;
+        }
+
+        private void DrawTutorialOverlay()
+        {
+            DrawDimOverlay(0.7f);
+            Rect panel = ResolveCenteredPanelRect(720f, 420f, 320f, 330f, 22f);
+            Color accent = ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f));
+            DrawSolidRect(panel, new Color(0.016f, 0.02f, 0.03f, 0.97f));
+            DrawSolidRect(new Rect(panel.x, panel.y, panel.width, 4f), new Color(accent.r, accent.g, accent.b, 0.94f));
+            int step = ClampTutorialStepIndex(_tutorialStepIndex);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 20f, panel.width - 48f, 32f), ActiveUiTheme.tutorialTitle, _menuTitleStyle);
+            GUI.Label(new Rect(panel.x + 24f, panel.y + 56f, panel.width - 48f, 28f), $"{step + 1}/{TutorialStepCount}  {ResolveTutorialStepTitle(step)}", _hudLabelStyle);
+
+            IReadOnlyList<string> lines = ResolveTutorialStepLines(step);
+            float y = panel.y + 104f;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                GUI.Label(new Rect(panel.x + 28f, y, panel.width - 56f, 34f), lines[i], _draftCardDescriptionStyle);
+                y += 42f;
+            }
+
+            float buttonY = panel.yMax - 52f;
+            if (GUI.Button(new Rect(panel.x + 24f, buttonY, 108f, 34f), "Back"))
+            {
+                BackTutorialStep();
+            }
+
+            if (GUI.Button(new Rect(panel.x + 144f, buttonY, 120f, 34f), "Skip"))
+            {
+                CloseTutorialOverlay(markSeen: true);
+            }
+
+            string nextLabel = step >= TutorialStepCount - 1 ? "Finish" : "Next";
+            if (GUI.Button(new Rect(panel.xMax - 152f, buttonY, 128f, 34f), nextLabel))
+            {
+                AdvanceTutorialStep();
+            }
+        }
+
+        private static int ClampTutorialStepIndex(int index)
+        {
+            int max = Enum.GetValues(typeof(TutorialStep)).Length - 1;
+            return Mathf.Clamp(index, 0, Mathf.Max(0, max));
+        }
+
+        private static string ResolveTutorialStepTitle(int step)
+        {
+            switch ((TutorialStep)ClampTutorialStepIndex(step))
+            {
+                case TutorialStep.Combat:
+                    return "Weapons Auto-Attack";
+                case TutorialStep.Experience:
+                    return "Collect XP Gems";
+                case TutorialStep.Drafts:
+                    return "Choose Upgrades";
+                case TutorialStep.ElitesBosses:
+                    return "Major Threats";
+                case TutorialStep.Evolutions:
+                    return "Evolutions";
+                case TutorialStep.Modes:
+                    return "Run Modes";
+                default:
+                    return "Move To Survive";
+            }
+        }
+
+        private static IReadOnlyList<string> ResolveTutorialStepLines(int step)
+        {
+            switch ((TutorialStep)ClampTutorialStepIndex(step))
+            {
+                case TutorialStep.Combat:
+                    return new[] { "Weapons fire automatically. Your job is movement, positioning, and build choices.", "Choose weapons and passives that reinforce each other." };
+                case TutorialStep.Experience:
+                    return new[] { "Collect gems to level up. Pickup and magnet upgrades can become a real build path.", "Vacuum and pickup effects help you collect without breaking draft pacing." };
+                case TutorialStep.Drafts:
+                    return new[] { "Pick 1 of 3 upgrades. Read rarity, category, affected item, rank, and preview text.", "Use mouse or 1/2/3. Reroll, banish, and skip remain available when you have charges." };
+                case TutorialStep.ElitesBosses:
+                    return new[] { "Elites and bosses have life bars and markers. Defeat them for stronger rewards.", "Important threats stay persistent so running away does not lose the reward state." };
+                case TutorialStep.Evolutions:
+                    return new[] { "Upgrade weapons and pair the right passives to unlock evolved forms.", "Evolution cards are special reward moments and can swing a run hard." };
+                case TutorialStep.Modes:
+                    return new[] { "Sprint is the quick 5-minute loop with faster XP and early elites.", "Standard / Human Playtest is the full 30-minute run with boss, victory, and endless continuation." };
+                default:
+                    return new[] { "Move to survive. Standing still becomes dangerous unless your build is already overpowering the arena.", "Arc Step with Space can buy room when enemies get close." };
+            }
         }
 
         private static string GetPacingProfileDisplayNameForCard(SurvivorsPacingProfile profile)
@@ -1350,13 +1683,53 @@ namespace Deucarian.TemplateGameSurvivors
             if (!SurvivorsUiTheme.TryFromJson(themeJson, out SurvivorsUiTheme parsed, out _))
             {
                 uiTheme = SurvivorsUiTheme.CreateDefault();
+                _availableUiThemes.Clear();
+                _availableUiThemes.Add(uiTheme);
+                _selectedUiThemeIndex = 0;
                 ResetHudStyles();
                 return false;
             }
 
             uiTheme = parsed;
+            _availableUiThemes.Clear();
+            _availableUiThemes.Add(uiTheme);
+            _selectedUiThemeIndex = 0;
             ResetHudStyles();
             return true;
+        }
+
+        public bool ConfigureUiThemes(TextAsset defaultThemeLibrary, TextAsset alternateThemeLibrary)
+        {
+            bool configuredDefault = ConfigureUiThemeJson(defaultThemeLibrary == null ? null : defaultThemeLibrary.text);
+            if (alternateThemeLibrary == null)
+            {
+                return configuredDefault;
+            }
+
+            return ConfigureAdditionalUiThemeJson(alternateThemeLibrary.text) && configuredDefault;
+        }
+
+        public bool ConfigureAdditionalUiThemeJson(string themeJson)
+        {
+            if (!SurvivorsUiTheme.TryFromJson(themeJson, out SurvivorsUiTheme parsed, out _))
+            {
+                EnsureUiTheme();
+                return false;
+            }
+
+            EnsureUiTheme();
+            if (_availableUiThemes.Count == 0)
+            {
+                _availableUiThemes.Add(uiTheme);
+            }
+
+            _availableUiThemes.Add(parsed);
+            return true;
+        }
+
+        public bool SelectUiThemeForTest(int index)
+        {
+            return SelectUiTheme(index);
         }
 
         public bool ConfigureAuthoredContent(TextAsset enemyLibrary, TextAsset runFlowLibrary, TextAsset rewardLibrary)
@@ -1413,6 +1786,12 @@ namespace Deucarian.TemplateGameSurvivors
             _debugOverlayVisible = false;
             _buildMenuOpen = false;
             _buildMenuTab = BuildMenuTab.CurrentBuild;
+            _buildMenuScrollPosition = Vector2.zero;
+            _runSummaryScrollPosition = Vector2.zero;
+            _draftCardScrollPosition = Vector2.zero;
+            _modeSelectionScrollPosition = Vector2.zero;
+            _tutorialOverlayOpen = false;
+            _tutorialStepIndex = 0;
             _runModeSelectionOpen = true;
             State = SurvivorsRunState.Booting;
         }
@@ -1432,6 +1811,7 @@ namespace Deucarian.TemplateGameSurvivors
             ApplyPacingProfile(profile, restartRun: false);
             _runModeSelectionOpen = false;
             StartRun();
+            PlayAudioEvent(AudioEventModeSelected, _levelUpClip, 0.05f);
             return true;
         }
 
@@ -1444,6 +1824,18 @@ namespace Deucarian.TemplateGameSurvivors
             _debugOverlayVisible = false;
             _buildMenuOpen = false;
             _buildMenuTab = BuildMenuTab.CurrentBuild;
+            _buildMenuScrollPosition = Vector2.zero;
+            _runSummaryScrollPosition = Vector2.zero;
+            _draftCardScrollPosition = Vector2.zero;
+            _modeSelectionScrollPosition = Vector2.zero;
+            _tutorialOverlayOpen = false;
+            _tutorialStepIndex = 0;
+            _audioEventNextAllowedTime.Clear();
+            _audioEventDispatchCount = 0;
+            _lastAudioEventId = string.Empty;
+            _highestChosenRarity = RunUpgradeRarity.Common;
+            _highestChosenRarityLabel = string.Empty;
+            _bestMomentLabel = string.Empty;
             SurvivorsTemplateTuning resolved = CurrentTuning;
             _combatCatalog = BasicSurvivorsGame.CreateCombatCatalog();
             _combatRandom = new DeterministicRandom(resolved.RunSeed + 4049);
@@ -1691,6 +2083,7 @@ namespace Deucarian.TemplateGameSurvivors
             LegacyExperienceEarnedThisRun = 0;
             LastRunResult = null;
             _lastRunSummaryLines.Clear();
+            _lastRunSummaryTitle = string.Empty;
             ResetRunMetrics();
             RunTimeSeconds = 0f;
             MoveSpeedBonus = 0f;
@@ -1813,6 +2206,7 @@ namespace Deucarian.TemplateGameSurvivors
             _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(_weaponArchetypeDefinitions));
             State = SurvivorsRunState.Playing;
             _runStarted = true;
+            TryOpenFirstRunTutorial();
         }
 
         public void RestartRun()
@@ -1829,6 +2223,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             _victoryClearedThisRun = true;
             ClearRewardDrafts();
+            _tutorialOverlayOpen = false;
             State = SurvivorsRunState.Playing;
             _enemySpawnTimer = 0f;
             ScheduleEndlessThreats(RunTimeSeconds);
@@ -1845,6 +2240,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             if (_buildMenuOpen && State == SurvivorsRunState.Playing)
+            {
+                return;
+            }
+
+            if (_tutorialOverlayOpen)
             {
                 return;
             }
@@ -2782,10 +3182,20 @@ namespace Deucarian.TemplateGameSurvivors
             return ResolveBuildMenuLines(_buildMenuTab);
         }
 
+        public IReadOnlyList<string> RunSummaryLinesForTest()
+        {
+            return LastRunSummaryLines;
+        }
+
         public IReadOnlyList<string> PlayerHudLinesForTest()
         {
             EnsureRunStartedForTest();
             return ResolvePlayerHudLines();
+        }
+
+        public IReadOnlyList<string> CurrentTutorialLinesForTest()
+        {
+            return ResolveTutorialStepLines(ClampTutorialStepIndex(_tutorialStepIndex));
         }
 
         public void ToggleDebugOverlayForTest()
@@ -2801,6 +3211,56 @@ namespace Deucarian.TemplateGameSurvivors
         public void SetBuildMenuTabForTest(int tabIndex)
         {
             _buildMenuTab = ClampBuildMenuTab(tabIndex);
+        }
+
+        public void SetAudioMutedForTest(bool muted)
+        {
+            _audioMuted = muted;
+        }
+
+        public bool OpenTutorialForTest()
+        {
+            return OpenTutorialOverlay(markUnseen: false);
+        }
+
+        public bool SkipTutorialForTest()
+        {
+            return CloseTutorialOverlay(markSeen: true);
+        }
+
+        public bool AdvanceTutorialForTest()
+        {
+            return AdvanceTutorialStep();
+        }
+
+        public bool BackTutorialForTest()
+        {
+            return BackTutorialStep();
+        }
+
+        public void ResetTutorialSeenForTest()
+        {
+            EnsureMetaProgressionLoaded();
+            _metaProgression.ResetTutorialSeen();
+            _tutorialOverlayOpen = false;
+            _tutorialStepIndex = 0;
+        }
+
+        public void MarkTutorialSeenForTest()
+        {
+            EnsureMetaProgressionLoaded();
+            _metaProgression.MarkTutorialSeen();
+            _tutorialOverlayOpen = false;
+        }
+
+        public bool DispatchAudioEventForTest(string eventId)
+        {
+            return PlayAudioEvent(eventId, _pickupClip, 0f);
+        }
+
+        public Rect ResolveCenteredPanelRectForTest(float maxWidth, float maxHeight, float minWidth, float minHeight, float margin)
+        {
+            return ResolveCenteredPanelRect(maxWidth, maxHeight, minWidth, minHeight, margin);
         }
 
         public IReadOnlyList<string> DebugDescribeEligibleEvolutionPool()
@@ -3023,6 +3483,7 @@ namespace Deucarian.TemplateGameSurvivors
 
                 ApplyUpgrade(upgrade);
                 SelectedUpgradeCount++;
+                RecordBestRewardMoment(upgrade);
                 return true;
             }
 
@@ -3079,7 +3540,7 @@ namespace Deucarian.TemplateGameSurvivors
                 GrantRunRewards(victory: false);
                 State = SurvivorsRunState.GameOver;
                 ClearRewardDrafts();
-                PlayFeedback(_bossPulse, PlayerPosition, 34, _dangerClip);
+                PlayFeedback(_bossPulse, PlayerPosition, 34, _dangerClip, AudioEventDefeat, 0.5f);
             }
             else
             {
@@ -3135,7 +3596,7 @@ namespace Deucarian.TemplateGameSurvivors
             LowHealthClutchPulseHitCount += hitCount;
             LastLowHealthClutchPulseFeedbackLabel = $"Clutch Pulse: {hitCount} enemies hit, safety {safetySeconds:0.#}s";
             RecordStreakRewardFeedback(LastLowHealthClutchPulseFeedbackLabel, new Color(1f, 0.32f, 0.42f));
-            PlayFeedback(_bossPulse, PlayerPosition, Mathf.Clamp(24 + hitCount * 5, 30, 72), _dangerClip);
+            PlayFeedback(_bossPulse, PlayerPosition, Mathf.Clamp(24 + hitCount * 5, 30, 72), _dangerClip, AudioEventLowHealthWarning, 0.5f);
             return true;
         }
 
@@ -3167,6 +3628,11 @@ namespace Deucarian.TemplateGameSurvivors
             ApplyUpgrade(selected);
             SelectedUpgradeCount++;
             RecordRewardSelectionFeedback(selectionKind, selected);
+            PlayAudioEvent(AudioEventDraftChoiceSelected, _levelUpClip, 0.06f);
+            if (IsEvolutionUpgrade(selected))
+            {
+                PlayAudioEvent(AudioEventEvolution, _levelUpClip, 0.08f);
+            }
             if (selectionKind == SurvivorsRewardSelectionKind.LevelUp && !IsEvolutionUpgrade(selected))
             {
                 TriggerLevelUpPulse(selected);
@@ -3207,10 +3673,11 @@ namespace Deucarian.TemplateGameSurvivors
             _currentDraft = rerolled;
             _currentRelicDraft = null;
             _currentDraftRerollIndex = nextRerollIndex;
+            _draftCardScrollPosition = Vector2.zero;
             DraftRerollCount++;
             RecordRewardCardPresentation(_rewardSelectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
-            PlayFeedback(_levelUpPulse, PlayerPosition, 18, _levelUpClip);
+            PlayFeedback(_levelUpPulse, PlayerPosition, 18, _levelUpClip, AudioEventDraftReroll, 0.08f);
             return true;
         }
 
@@ -3250,6 +3717,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _currentDraft = rerolled;
                 _currentRelicDraft = null;
                 _currentDraftRerollIndex = nextRerollIndex;
+                _draftCardScrollPosition = Vector2.zero;
                 RecordRewardCardPresentation(selectionKind, _currentDraft);
                 BeginRewardSelectionTimeout();
             }
@@ -3261,7 +3729,7 @@ namespace Deucarian.TemplateGameSurvivors
                     selectedRewardUpgrade: false);
             }
 
-            PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip);
+            PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip, AudioEventDraftBanish, 0.08f);
             return true;
         }
 
@@ -3331,7 +3799,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (recalled > 0)
             {
                 MagnetRecallFeedbackCount++;
-                PlayFeedback(_pickupPulse, PlayerPosition, Mathf.Clamp(12 + recalled * 3, 18, 72), _pickupClip);
+                PlayFeedback(_pickupPulse, PlayerPosition, Mathf.Clamp(12 + recalled * 3, 18, 72), _pickupClip, AudioEventMagnetPulse, 0.4f);
             }
 
             return recalled;
@@ -3453,6 +3921,7 @@ namespace Deucarian.TemplateGameSurvivors
                 CriticalHitFeedbackCount++;
             }
 
+            PlayAudioEvent(AudioEventCombatHit, _fireClip, 0.08f);
             TryTriggerMajorThreatEnrage(enemy);
         }
 
@@ -3522,7 +3991,7 @@ namespace Deucarian.TemplateGameSurvivors
                 TryActivateEndlessSurge(role, position, xp);
             }
 
-            PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip);
+            PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip, AudioEventEnemyDeath, 0.08f);
             if (role == SurvivorsEnemyRole.Splitter)
             {
                 SpawnSplitterChildren(position, enemy.DisplayName);
@@ -3677,7 +4146,8 @@ namespace Deucarian.TemplateGameSurvivors
                 ExperiencePickupFeedbackCount++;
             }
 
-            PlayFeedback(_pickupPulse, pickup.transform.position, ResolvePickupFeedbackBurstCount(pickup.Kind), _pickupClip);
+            string audioEventId = pickup.Kind == SurvivorsPickupKind.Experience ? AudioEventXpPickup : AudioEventUiSelect;
+            PlayFeedback(_pickupPulse, pickup.transform.position, ResolvePickupFeedbackBurstCount(pickup.Kind), _pickupClip, audioEventId, 0.12f);
             _pickups.Remove(pickup);
             if (_spawnService != null && pickup.InstanceId.Value > 0)
             {
@@ -4930,7 +5400,7 @@ namespace Deucarian.TemplateGameSurvivors
             return particles;
         }
 
-        private void PlayFeedback(ParticleSystem particles, Vector3 position, int count, AudioClip clip)
+        private void PlayFeedback(ParticleSystem particles, Vector3 position, int count, AudioClip clip, string audioEventId = null, float audioThrottleSeconds = 0f)
         {
             if (particles != null)
             {
@@ -4938,10 +5408,52 @@ namespace Deucarian.TemplateGameSurvivors
                 particles.Emit(Mathf.Max(1, count));
             }
 
-            if (_feedbackAudio != null && clip != null)
+            if (!string.IsNullOrWhiteSpace(audioEventId))
+            {
+                PlayAudioEvent(audioEventId, clip, audioThrottleSeconds);
+                return;
+            }
+
+            if (!_audioMuted && _feedbackAudio != null && clip != null)
             {
                 _feedbackAudio.PlayOneShot(clip);
             }
+        }
+
+        private bool PlayAudioEvent(string eventId, AudioClip fallbackClip, float fallbackThrottleSeconds)
+        {
+            if (string.IsNullOrWhiteSpace(eventId) || _audioMuted)
+            {
+                return false;
+            }
+
+            EnsureUiTheme();
+            string normalized = eventId.Trim();
+            float now = Time.unscaledTime;
+            float throttleSeconds = ActiveUiTheme.GetAudioEventThrottleSeconds(normalized, fallbackThrottleSeconds);
+            if (throttleSeconds > 0f &&
+                _audioEventNextAllowedTime.TryGetValue(normalized, out float nextAllowed) &&
+                now < nextAllowed)
+            {
+                return false;
+            }
+
+            if (throttleSeconds > 0f)
+            {
+                _audioEventNextAllowedTime[normalized] = now + throttleSeconds;
+            }
+
+            _audioEventDispatchCount++;
+            _lastAudioEventId = normalized;
+            if (_feedbackAudio != null && fallbackClip != null)
+            {
+                float oldVolume = _feedbackAudio.volume;
+                _feedbackAudio.volume = ActiveUiTheme.GetAudioEventVolume(normalized, oldVolume);
+                _feedbackAudio.PlayOneShot(fallbackClip);
+                _feedbackAudio.volume = oldVolume;
+            }
+
+            return true;
         }
 
         private void RecordEnemyDeathEffect(Vector3 position, SurvivorsEnemyRole role, float radius)
@@ -7224,6 +7736,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             RebuildLastRunSummaryLines(victory);
+            PlayAudioEvent(AudioEventRunSummaryOpened, _levelUpClip, 0.25f);
         }
 
         private static void ApplyRunRewardMultiplier(SurvivorsRunRewardSummary summary, float multiplier)
@@ -7256,17 +7769,51 @@ namespace Deucarian.TemplateGameSurvivors
         private void RebuildLastRunSummaryLines(bool victory)
         {
             _lastRunSummaryLines.Clear();
-            string result = victory ? "Victory" : "Defeat";
-            _lastRunSummaryLines.Add($"{CurrentRunModeDisplayName} {result} - {FormatRunTime(RunTimeSeconds)} - Level {Level}");
-            _lastRunSummaryLines.Add($"Kills {KilledCount} - Best Streak {BestKillStreak} - Bosses {BossKilledCount}");
-            _lastRunSummaryLines.Add($"Build {ActiveWeaponCount}/{MaxWeaponSlots} weapons, {ActivePassiveCount}/{MaxPassiveSlots} passives, {EvolvedWeaponCount} evolutions, {SelectedRelicCount}/{ResolveTotalRelicCount()} relics");
-            _lastRunSummaryLines.Add($"Rewards +{BloodShardsEarnedThisRun} shards, +{LegacyExperienceEarnedThisRun} XP");
-            _lastRunSummaryLines.Add($"Mode {CurrentRunModeDisplayName} - target {FormatRunTime(CurrentTuning.TargetDurationSeconds)} - reward x{CurrentTuning.RunRewardMultiplier:0.##}");
-            _lastRunSummaryLines.Add($"Meta {MetaBloodShards} shards banked, {LifetimeLegacyExperience} lifetime XP");
+            string result = victory
+                ? (CurrentTuning.EndlessContinuationEnabled ? "Victory - Endless continuation available" : "Victory")
+                : "Defeat";
+            _lastRunSummaryTitle = ActiveUiTheme.runSummaryTitle + " - " + (victory ? "Victory" : "Defeat");
+            _lastRunSummaryLines.Add("Run mode: " + CurrentRunModeDisplayName);
+            _lastRunSummaryLines.Add("Result: " + result);
+            _lastRunSummaryLines.Add($"Run time: {FormatRunTime(RunTimeSeconds)} / target {FormatRunTime(CurrentTuning.SurvivalVictoryTimeSeconds)}");
+            _lastRunSummaryLines.Add($"Level reached: {Level}   XP collected: {ExperienceCollected}   Stored XP: {Experience}/{RequiredExperienceForNextLevel}");
+            _lastRunSummaryLines.Add($"Kills: {KilledCount}   Elites: {EliteKilledCount}   Minibosses: {MinibossKilledCount}   Bosses: {BossKilledCount}");
+            _lastRunSummaryLines.Add($"Rewards earned: +{BloodShardsEarnedThisRun} shards, +{LegacyExperienceEarnedThisRun} legacy XP");
+            _lastRunSummaryLines.Add($"Reward profile: target {FormatRunTime(CurrentTuning.TargetDurationSeconds)}, multiplier x{CurrentTuning.RunRewardMultiplier:0.##}");
+            _lastRunSummaryLines.Add($"Meta bank: {MetaBloodShards} shards, {LifetimeLegacyExperience} lifetime XP");
+            _lastRunSummaryLines.Add($"Damage taken: {DamageTakenThisRun:0.#}   Final health: {CurrentHealth:0.#}/{MaxHealth:0.#}");
+            _lastRunSummaryLines.Add($"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}");
+            _lastRunSummaryLines.Add($"Passives {ActivePassiveCount}/{MaxPassiveSlots}: {FormatRunSummaryUpgradeList(_ownedPassiveUpgradeIds, includeRanks: true)}");
+            _lastRunSummaryLines.Add($"Evolutions {EvolvedWeaponCount}: {FormatRunSummaryUpgradeList(_ownedEvolutionUpgradeIds, includeRanks: false)}");
+            _lastRunSummaryLines.Add($"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}");
+            _lastRunSummaryLines.Add($"Pickup build: radius {CurrentPickupAttractRange:0.#}, magnet range {CurrentPickupAttractRange:0.#}, pull speed {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, recalls {MagnetRecallCount}");
+            _lastRunSummaryLines.Add("Top weapon by damage: not tracked yet");
+            _lastRunSummaryLines.Add("Top weapon by kills: not tracked yet");
+            _lastRunSummaryLines.Add("Best moment: " + (string.IsNullOrWhiteSpace(_bestMomentLabel) ? ResolveFallbackBestMomentLabel() : _bestMomentLabel));
             if (ClassUnlockRewardCount > 0)
             {
                 _lastRunSummaryLines.Add("Class unlocked: Ember Vanguard");
             }
+        }
+
+        private string ResolveFallbackBestMomentLabel()
+        {
+            if (_firstEvolutionAcquiredTimeSeconds >= 0f)
+            {
+                return "First evolution at " + FormatRunTime(_firstEvolutionAcquiredTimeSeconds);
+            }
+
+            if (!string.IsNullOrWhiteSpace(_highestChosenRarityLabel))
+            {
+                return "Highest rarity chosen: " + _highestChosenRarityLabel;
+            }
+
+            if (BestKillStreak > 0)
+            {
+                return "Best streak " + BestKillStreak.ToString();
+            }
+
+            return "First run data captured";
         }
 
         private void GrantVictoryClassUnlockReward()
@@ -8443,7 +8990,7 @@ namespace Deucarian.TemplateGameSurvivors
             _majorThreatWarningTargetTimeSeconds = targetTimeSeconds;
             MajorThreatWarningCount++;
             RecordIncomingThreatTelegraph(PlayerPosition, role, _majorThreatWarningLabel, ResolveIncomingThreatTelegraphRadius(role), targetTimeSeconds - RunTimeSeconds);
-            PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 44 : 28, _dangerClip);
+            PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 44 : 28, _dangerClip, role == SurvivorsEnemyRole.Boss ? AudioEventBossWarning : AudioEventEliteWarning, 0.35f);
         }
 
         private static string ResolveMajorThreatWarningLabel(SurvivorsEnemyRole role)
@@ -8983,7 +9530,7 @@ namespace Deucarian.TemplateGameSurvivors
             ClearRewardDrafts();
             _victoryClearedThisRun = true;
             State = SurvivorsRunState.Victory;
-            PlayFeedback(_levelUpPulse, PlayerPosition, 42, _levelUpClip);
+            PlayFeedback(_levelUpPulse, PlayerPosition, 42, _levelUpClip, AudioEventVictory, 0.5f);
         }
 
         private float ResolveEnemySpawnIntervalSeconds()
@@ -9790,13 +10337,15 @@ namespace Deucarian.TemplateGameSurvivors
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
             State = SurvivorsRunState.LevelUp;
+            _draftCardScrollPosition = Vector2.zero;
             LevelUpDraftOpenCount++;
             _draftOpenCount++;
             _levelUpDraftCooldownTimer = Mathf.Max(0f, CurrentTuning.LevelUpDraftCooldownSeconds);
             RecordMetricTime(ref _firstLevelUpDraftTimeSeconds);
             RecordRewardCardPresentation(_rewardSelectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
-            PlayFeedback(_levelUpPulse, PlayerPosition, 34, _levelUpClip);
+            PlayAudioEvent(AudioEventLevelUp, _levelUpClip, 0.12f);
+            PlayFeedback(_levelUpPulse, PlayerPosition, 34, _levelUpClip, AudioEventDraftOpened, 0.1f);
         }
 
         private bool OpenUpgradeRewardDraft(SurvivorsEnemyRole role, bool requireEvolutionChoice)
@@ -9827,6 +10376,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardSelectionKind = selectionKind;
             _pendingVictoryAfterRewardDraft = role == SurvivorsEnemyRole.Boss && !_victoryClearedThisRun;
             _pendingBossRelicAfterRewardDraft = role == SurvivorsEnemyRole.Miniboss;
+            _draftCardScrollPosition = Vector2.zero;
             if (role == SurvivorsEnemyRole.Boss)
             {
                 BossUpgradeDraftOpenCount++;
@@ -9840,7 +10390,7 @@ namespace Deucarian.TemplateGameSurvivors
             _draftOpenCount++;
             RecordRewardCardPresentation(selectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
-            PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 72 : 54, _bossClip);
+            PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 72 : 54, _bossClip, AudioEventDraftOpened, 0.1f);
             return true;
         }
 
@@ -9887,10 +10437,11 @@ namespace Deucarian.TemplateGameSurvivors
             _pendingVictoryAfterRewardDraft = false;
             BossRelicDraftOpenCount++;
             State = SurvivorsRunState.LevelUp;
+            _draftCardScrollPosition = Vector2.zero;
             _draftOpenCount++;
             RecordRewardCardPresentation(_currentRelicDraft);
             BeginRewardSelectionTimeout();
-            PlayFeedback(_bossPulse, PlayerPosition, 44, _bossClip);
+            PlayFeedback(_bossPulse, PlayerPosition, 44, _bossClip, AudioEventDraftOpened, 0.1f);
             return true;
         }
 
@@ -9967,6 +10518,28 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
             _rewardFeedbackColor = ResolveRarityAccentColor(selected.Rarity);
             _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+            RecordBestRewardMoment(selected);
+        }
+
+        private void RecordBestRewardMoment(RunUpgradeDefinition selected)
+        {
+            if (selected == null)
+            {
+                return;
+            }
+
+            string name = BasicSurvivorsGame.GetUpgradeDisplayName(selected.Id);
+            if ((int)selected.Rarity >= (int)_highestChosenRarity)
+            {
+                _highestChosenRarity = selected.Rarity;
+                _highestChosenRarityLabel = selected.Rarity + " - " + name;
+                _bestMomentLabel = "Highest rarity chosen: " + _highestChosenRarityLabel;
+            }
+
+            if (IsEvolutionUpgrade(selected))
+            {
+                _bestMomentLabel = "Evolution acquired: " + name + " at " + FormatRunTime(RunTimeSeconds);
+            }
         }
 
         private void RecordRelicSelectionFeedback(SurvivorsRelicDefinition selected)
@@ -9981,6 +10554,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
             _rewardFeedbackColor = ResolveRelicAccentColor(selected);
             _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+            PlayAudioEvent(AudioEventRelic, _bossClip, 0.08f);
         }
 
         private void RecordRewardSkipFeedback(SurvivorsRewardSelectionKind selectionKind)
@@ -9990,6 +10564,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
             _rewardFeedbackColor = new Color(0.72f, 0.84f, 0.9f);
             _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+            PlayAudioEvent(AudioEventDraftSkip, _pickupClip, 0.08f);
         }
 
         private static RunUpgradeRarity ResolveHighestRarity(IReadOnlyList<RunUpgradeDefinition> choices)
@@ -10572,9 +11147,7 @@ namespace Deucarian.TemplateGameSurvivors
             bool upgradeDraftOpen = !IsRelicChoiceOpen;
             int choiceCount = IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
             DrawDimOverlay(0.72f);
-            float width = Mathf.Min(1120f, Mathf.Max(620f, Screen.width - 56f));
-            float height = Mathf.Min(690f, Mathf.Max(470f, Screen.height - 72f));
-            Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
+            Rect rect = ResolveCenteredPanelRect(1120f, 690f, 320f, 420f, 20f);
             DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.96f));
             DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), ResolveRewardTitleAccentColor());
             string title = ResolveRewardOverlayTitle();
@@ -10599,12 +11172,23 @@ namespace Deucarian.TemplateGameSurvivors
                 : rect.width - 60f;
             float cardHeight = horizontal
                 ? cardAreaBottom - cardAreaTop
-                : (cardAreaBottom - cardAreaTop - cardGap * Mathf.Max(0, choiceCount - 1)) / choiceCount;
+                : Mathf.Max(220f, Mathf.Min(330f, cardAreaBottom - cardAreaTop - 12f));
+            Rect cardViewRect = horizontal
+                ? Rect.zero
+                : new Rect(rect.x + 30f, cardAreaTop, cardWidth, Mathf.Max(1f, cardAreaBottom - cardAreaTop));
+            Rect cardContentRect = horizontal
+                ? Rect.zero
+                : new Rect(0f, 0f, cardWidth - 18f, choiceCount * cardHeight + Mathf.Max(0, choiceCount - 1) * cardGap);
+            if (!horizontal)
+            {
+                _draftCardScrollPosition = GUI.BeginScrollView(cardViewRect, _draftCardScrollPosition, cardContentRect);
+            }
+
             for (int i = 0; i < choiceCount; i++)
             {
                 Rect cardRect = horizontal
                     ? new Rect(rect.x + 30f + i * (cardWidth + cardGap), cardAreaTop, cardWidth, cardHeight)
-                    : new Rect(rect.x + 30f, cardAreaTop + i * (cardHeight + cardGap), cardWidth, cardHeight);
+                    : new Rect(0f, i * (cardHeight + cardGap), cardContentRect.width, cardHeight);
                 DraftCardPresentation card = IsRelicChoiceOpen
                     ? CreateRelicDraftCard(i, CurrentRelicChoices[i])
                     : CreateUpgradeDraftCard(i, CurrentDraftChoices[i]);
@@ -10639,12 +11223,22 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
+            if (!horizontal)
+            {
+                GUI.EndScrollView();
+            }
+
             if (upgradeDraftOpen)
             {
                 float footerY = rect.yMax - 58f;
+                float footerX = rect.x + 30f;
+                float footerWidth = rect.width - 60f;
+                float footerGap = 10f;
+                bool compactFooter = footerWidth < 560f;
+                float buttonWidth = compactFooter ? (footerWidth - footerGap) * 0.5f : 170f;
                 bool previousEnabled = GUI.enabled;
                 GUI.enabled = previousEnabled && CanRerollCurrentDraft();
-                if (GUI.Button(new Rect(rect.x + 30f, footerY, 170f, 34f), $"{ActiveUiTheme.rerollButtonLabel} ({DraftRerollsRemaining})"))
+                if (GUI.Button(new Rect(footerX, footerY, buttonWidth, 34f), $"{ActiveUiTheme.rerollButtonLabel} ({DraftRerollsRemaining})"))
                 {
                     if (RerollCurrentDraft())
                     {
@@ -10654,7 +11248,9 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 GUI.enabled = previousEnabled && CanSkipCurrentDraft();
-                if (GUI.Button(new Rect(rect.x + 212f, footerY, 210f, 34f), $"{ActiveUiTheme.skipButtonLabel} (+{DraftSkipBloodShards} shards)"))
+                float skipX = footerX + buttonWidth + footerGap;
+                float skipWidth = compactFooter ? buttonWidth : 210f;
+                if (GUI.Button(new Rect(skipX, footerY, skipWidth, 34f), $"{ActiveUiTheme.skipButtonLabel} (+{DraftSkipBloodShards})"))
                 {
                     if (SkipCurrentDraft())
                     {
@@ -10664,10 +11260,13 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 GUI.enabled = previousEnabled;
-                GUI.Label(
-                    new Rect(rect.x + 438f, footerY + 7f, rect.width - 468f, 20f),
-                    $"Banishes {DraftBanishesRemaining}",
-                    _hudSmallStyle);
+                if (!compactFooter)
+                {
+                    GUI.Label(
+                        new Rect(rect.x + 438f, footerY + 7f, rect.width - 468f, 20f),
+                        $"Banishes {DraftBanishesRemaining}",
+                        _hudSmallStyle);
+                }
             }
         }
 
@@ -10834,16 +11433,27 @@ namespace Deucarian.TemplateGameSurvivors
                 return "No effect preview.";
             }
 
-            int shown = Mathf.Min(2, choice.Effects.Count);
             string label = string.Empty;
+            if (IsEvolutionUpgrade(choice))
+            {
+                label = "Evolves into " + BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id);
+            }
+
+            int shown = Mathf.Min(2, choice.Effects.Count);
             for (int i = 0; i < shown; i++)
             {
-                if (i > 0)
+                string preview = FormatUpgradeEffectPreview(choice, choice.Effects[i]);
+                if (string.IsNullOrWhiteSpace(preview))
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrWhiteSpace(label))
                 {
                     label += "; ";
                 }
 
-                label += FormatUpgradeEffectPreview(choice.Effects[i]);
+                label += preview;
             }
 
             if (choice.Effects.Count > shown)
@@ -10851,7 +11461,7 @@ namespace Deucarian.TemplateGameSurvivors
                 label += "; +" + (choice.Effects.Count - shown).ToString() + " more";
             }
 
-            return label;
+            return string.IsNullOrWhiteSpace(label) ? "Adds behavior." : label;
         }
 
         private string ResolveRelicEffectPreview(SurvivorsRelicDefinition relic)
@@ -10874,46 +11484,83 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private string FormatUpgradeEffectPreview(RunUpgradeEffectDescriptor effect)
+        private string FormatUpgradeEffectPreview(RunUpgradeDefinition choice, RunUpgradeEffectDescriptor effect)
         {
-            if (effect.EffectId.Equals(BasicSurvivorsGame.DamageBonusEffect)) return FormatSignedFlat(effect.Amount, "damage");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.FireRateEffect)) return FormatCooldownEffect(effect.Amount);
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MoveSpeedEffect)) return FormatSignedFlat(effect.Amount, "move speed");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect)) return FormatSignedFlat(effect.Amount, "pickup radius");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetSpeedEffect)) return FormatSignedFlat(effect.Amount, "gem pull speed");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetPulseEffect)) return $"{Mathf.Abs((float)effect.Amount):0.#}s faster magnet pulse";
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MaxHealthEffect)) return FormatSignedFlat(effect.Amount, "max health");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitBladeEffect)) return FormatSignedFlat(effect.Amount, "orbit blades");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitRadiusEffect)) return FormatSignedFlat(effect.Amount, "orbit radius");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MeleeTargetEffect)) return FormatSignedFlat(effect.Amount, "slash targets");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BurstCountEffect)) return FormatSignedFlat(effect.Amount, "burst pulses");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BurstEchoEffect)) return FormatSignedFlat(effect.Amount, "echo pulses");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.TargetedBurstEffect)) return FormatSignedFlat(effect.Amount, "targeted sigils");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileFanEffect)) return FormatSignedFlat(effect.Amount, "fan shots");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectilePierceEffect)) return FormatSignedFlat(effect.Amount, "pierce");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileChainEffect)) return FormatSignedFlat(effect.Amount, "chains");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileForkEffect)) return FormatSignedFlat(effect.Amount, "forks");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileReturnEffect)) return FormatSignedFlat(effect.Amount, "returns");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.HitscanPierceEffect)) return FormatSignedFlat(effect.Amount, "beam pierce");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadCountEffect)) return FormatSignedFlat(effect.Amount, "payloads");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadRadiusEffect)) return FormatSignedFlat(effect.Amount, "payload radius");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadTriggerRadiusEffect)) return FormatSignedFlat(effect.Amount, "trigger radius");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.PoisonEffect)) return FormatSignedPercent(effect.Amount, "poison");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BleedEffect)) return FormatSignedPercent(effect.Amount, "bleed");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ExecuteEffect)) return FormatSignedPercent(effect.Amount, "execute threshold");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalChanceEffect)) return FormatSignedPercent(effect.Amount, "crit chance");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalDamageEffect)) return FormatSignedPercent(effect.Amount, "crit damage");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.DraftLuckEffect)) return FormatSignedPercent(effect.Amount, "draft luck");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaDamageEffect)) return FormatSignedFlat(effect.Amount, "death nova damage");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaRadiusEffect)) return FormatSignedFlat(effect.Amount, "death nova radius");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect)) return FormatSignedPercent(effect.Amount, "lifesteal");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierCapacityEffect)) return FormatSignedFlat(effect.Amount, "barrier");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierRegenEffect)) return FormatSignedFlat(effect.Amount, "barrier regen");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierOnDamageEffect)) return FormatSignedPercent(effect.Amount, "barrier on damage");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ExperienceGainEffect)) return FormatSignedPercent(effect.Amount, "XP gain");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.AreaRadiusEffect)) return FormatSignedFlat(effect.Amount, "area radius");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.WeaponUnlockEffect)) return "Unlocks " + ShortWeaponName(effect.TargetId.Value);
-            return FormatSignedFlat(effect.Amount, effect.EffectId.Value);
+            float amount = (float)effect.Amount;
+            if (effect.EffectId.Equals(BasicSurvivorsGame.DamageBonusEffect)) return FormatComparison("Damage", ProjectileDamage, ProjectileDamage + amount);
+            if (effect.EffectId.Equals(BasicSurvivorsGame.FireRateEffect)) return FormatComparison("Cooldown", WeaponCooldownSeconds, Mathf.Max(0.12f, WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + amount)), "0.00s");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MoveSpeedEffect)) return FormatComparison("Move Speed", PlayerMoveSpeed, PlayerMoveSpeed + amount);
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect)) return FormatComparison("Pickup Radius", CurrentPickupAttractRange, CurrentPickupAttractRange + amount);
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetSpeedEffect)) return FormatComparison("Magnet Pull Speed", CurrentPickupAttractionSpeed, CurrentPickupAttractionSpeed + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetPulseEffect)) return FormatPulseIntervalComparison(amount);
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MaxHealthEffect)) return FormatComparison("Max Health", MaxHealth, MaxHealth + amount);
+            if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitBladeEffect)) return FormatComparison("Orbit Blades", OrbitBladeBonus, OrbitBladeBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitRadiusEffect)) return FormatComparison("Orbit Radius", OrbitRadiusBonus, OrbitRadiusBonus + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.MeleeTargetEffect)) return FormatComparison("Slash Targets", MeleeTargetBonus, MeleeTargetBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BurstCountEffect)) return FormatComparison("Burst Pulses", BurstCountBonus, BurstCountBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BurstEchoEffect)) return FormatComparison("Echo Pulses", BurstEchoBonus, BurstEchoBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.TargetedBurstEffect)) return FormatComparison("Targeted Sigils", TargetedBurstSigilBonus, TargetedBurstSigilBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileFanEffect)) return FormatComparison("Projectiles", ProjectileFanBonus + 1, ProjectileFanBonus + 1 + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectilePierceEffect)) return FormatComparison("Pierce", ProjectilePierceBonus, ProjectilePierceBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileChainEffect)) return FormatComparison("Chain Count", ProjectileChainBonus, ProjectileChainBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileForkEffect)) return FormatComparison("Forks", ProjectileForkBonus, ProjectileForkBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileReturnEffect)) return FormatComparison("Returns", ProjectileReturnBonus, ProjectileReturnBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.HitscanPierceEffect)) return FormatComparison("Beam Pierce", HitscanPierceBonus, HitscanPierceBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadCountEffect)) return FormatComparison("Payloads", PayloadCountBonus, PayloadCountBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
+            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadRadiusEffect)) return FormatComparison("Area Radius", PayloadExplosionRadiusBonus, PayloadExplosionRadiusBonus + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadTriggerRadiusEffect)) return FormatComparison("Trigger Range", PayloadTriggerRadiusBonus, PayloadTriggerRadiusBonus + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.PoisonEffect)) return FormatPercentComparison("Poison", PoisonDamageRatio, PoisonDamageRatio + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BleedEffect)) return FormatPercentComparison("Bleed", BleedDamageRatio, BleedDamageRatio + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ExecuteEffect)) return FormatPercentComparison("Execute Threshold", ExecuteThresholdNormalized, Mathf.Clamp01(ExecuteThresholdNormalized + amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalChanceEffect)) return FormatPercentComparison("Crit Chance", CriticalChanceNormalized, Mathf.Clamp01(CriticalChanceNormalized + Mathf.Max(0f, amount)));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalDamageEffect)) return FormatComparison("Crit Damage", CriticalDamageMultiplier, CriticalDamageMultiplier + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.DraftLuckEffect)) return FormatPercentComparison("Draft Luck", DraftLuckBonus, DraftLuckBonus + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaDamageEffect)) return FormatComparison("Death Nova Damage", DeathNovaDamage, DeathNovaDamage + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaRadiusEffect)) return FormatComparison("Death Nova Radius", DeathNovaRadius, DeathNovaRadius + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect)) return FormatPercentComparison("Lifesteal", LifestealRatio, LifestealRatio + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierCapacityEffect)) return FormatComparison("Barrier", BarrierCapacity, BarrierCapacity + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierRegenEffect)) return FormatComparison("Barrier Regen", BarrierRegenPerSecondBonus, BarrierRegenPerSecondBonus + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierOnDamageEffect)) return FormatPercentComparison("Barrier On Damage", BarrierOnDamageRatio, BarrierOnDamageRatio + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.ExperienceGainEffect)) return FormatPercentComparison("XP Gain", ExperienceGainMultiplierBonus, ExperienceGainMultiplierBonus + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.AreaRadiusEffect)) return FormatComparison("Area Radius", AreaRadiusBonus, AreaRadiusBonus + Mathf.Max(0f, amount));
+            if (effect.EffectId.Equals(BasicSurvivorsGame.WeaponUnlockEffect))
+            {
+                string displayName = choice != null &&
+                    TryGetUpgradeMetadata(choice.Id.Value, out SurvivorsRunUpgradeMetadata metadata) &&
+                    !string.IsNullOrWhiteSpace(metadata.DisplayName)
+                        ? metadata.DisplayName
+                        : ShortWeaponName(effect.TargetId.Value);
+                return "Unlocks " + displayName;
+            }
+            if (choice != null && IsPickupMagnetUpgrade(choice)) return "Improves collector effects.";
+            return "Adds behavior.";
+        }
+
+        private string FormatPulseIntervalComparison(float reduction)
+        {
+            float before = CurrentPickupMagnetPulseIntervalSeconds;
+            float baseInterval = Mathf.Max(1f, CurrentTuning.PickupMagnetPulseBaseIntervalSeconds);
+            float minimum = Mathf.Max(1f, CurrentTuning.PickupMagnetPulseMinimumIntervalSeconds);
+            float after = before > 0f
+                ? Mathf.Max(minimum, before - Mathf.Max(0f, reduction))
+                : Mathf.Max(minimum, baseInterval - Mathf.Max(0f, reduction));
+            string beforeLabel = before > 0f ? before.ToString("0.#") + "s" : "inactive";
+            return "Pulse Interval: " + beforeLabel + " -> " + after.ToString("0.#") + "s";
+        }
+
+        private static string FormatComparison(string label, float before, float after, string format = "0.#")
+        {
+            return label + ": " + before.ToString(format) + " -> " + after.ToString(format);
+        }
+
+        private static string FormatComparison(string label, int before, int after, string format = "0")
+        {
+            return label + ": " + before.ToString(format) + " -> " + after.ToString(format);
+        }
+
+        private static string FormatPercentComparison(string label, float before, float after)
+        {
+            return label + ": " + before.ToString("P0") + " -> " + after.ToString("P0");
         }
 
         private string ResolveUpgradeRequirementHint(RunUpgradeDefinition choice, SurvivorsRunUpgradeMetadata metadata, SurvivorsRunUpgradeCategory category)
@@ -10958,28 +11605,6 @@ namespace Deucarian.TemplateGameSurvivors
             return string.Empty;
         }
 
-        private static string FormatSignedFlat(double amount, string label)
-        {
-            string sign = amount >= 0d ? "+" : string.Empty;
-            return sign + amount.ToString("0.##") + " " + label;
-        }
-
-        private static string FormatSignedPercent(double amount, string label)
-        {
-            string sign = amount >= 0d ? "+" : string.Empty;
-            return sign + amount.ToString("P0") + " " + label;
-        }
-
-        private static string FormatCooldownEffect(double amount)
-        {
-            if (amount < 0d)
-            {
-                return Math.Abs(amount).ToString("P0") + " faster attacks";
-            }
-
-            return "+" + amount.ToString("P0") + " cooldown modifier";
-        }
-
         private SurvivorsUiTheme ActiveUiTheme
         {
             get
@@ -10994,6 +11619,17 @@ namespace Deucarian.TemplateGameSurvivors
             if (uiTheme == null)
             {
                 uiTheme = SurvivorsUiTheme.CreateDefault();
+            }
+
+            if (_availableUiThemes.Count == 0)
+            {
+                _availableUiThemes.Add(uiTheme);
+                _selectedUiThemeIndex = 0;
+            }
+            else if (_selectedUiThemeIndex < 0 || _selectedUiThemeIndex >= _availableUiThemes.Count)
+            {
+                _selectedUiThemeIndex = 0;
+                uiTheme = _availableUiThemes[0] ?? SurvivorsUiTheme.CreateDefault();
             }
         }
 
@@ -11171,6 +11807,30 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
         }
 
+        private static Rect ResolveCenteredPanelRect(float maxWidth, float maxHeight, float minWidth, float minHeight, float margin)
+        {
+            float safeMargin = Mathf.Max(8f, margin);
+            float availableWidth = Mathf.Max(220f, Screen.width - safeMargin * 2f);
+            float availableHeight = Mathf.Max(220f, Screen.height - safeMargin * 2f);
+            float width = Mathf.Min(Mathf.Max(1f, maxWidth), availableWidth);
+            float height = Mathf.Min(Mathf.Max(1f, maxHeight), availableHeight);
+            if (width < minWidth)
+            {
+                width = availableWidth;
+            }
+
+            if (height < minHeight)
+            {
+                height = availableHeight;
+            }
+
+            return new Rect(
+                Mathf.Max(safeMargin, Screen.width * 0.5f - width * 0.5f),
+                Mathf.Max(safeMargin, Screen.height * 0.5f - height * 0.5f),
+                width,
+                height);
+        }
+
         private static void DrawSolidRect(Rect rect, Color color)
         {
             Color oldColor = GUI.color;
@@ -11181,56 +11841,86 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void DrawRunResultOverlay(bool victory)
         {
-            const float width = 560f;
-            float height = victory ? 470f : 440f;
-            Rect rect = new Rect(Screen.width * 0.5f - width * 0.5f, Screen.height * 0.5f - height * 0.5f, width, height);
-            GUI.Box(rect, victory ? "Victory" : "Game Over");
+            DrawDimOverlay(0.72f);
+            Rect rect = ResolveCenteredPanelRect(760f, 700f, 320f, 400f, 20f);
+            Color accent = ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f));
+            DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.97f));
+            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), new Color(accent.r, accent.g, accent.b, 0.95f));
+            string title = string.IsNullOrWhiteSpace(_lastRunSummaryTitle)
+                ? ActiveUiTheme.runSummaryTitle + " - " + (victory ? "Victory" : "Defeat")
+                : _lastRunSummaryTitle;
+            GUI.Label(new Rect(rect.x + 24f, rect.y + 18f, rect.width - 48f, 34f), title, _menuTitleStyle);
+
             IReadOnlyList<string> lines = LastRunSummaryLines;
-            int shown = Mathf.Min(lines == null ? 0 : lines.Count, 7);
-            if (shown == 0)
+            int lineCount = lines == null ? 0 : lines.Count;
+            Rect viewRect = new Rect(rect.x + 24f, rect.y + 64f, rect.width - 48f, rect.height - 130f);
+            float lineHeight = 22f;
+            float summaryHeight = Mathf.Max(58f, Mathf.Max(1, lineCount) * lineHeight + 12f);
+            float contentWidth = Mathf.Max(1f, viewRect.width - 18f);
+            float classOptionsY = summaryHeight + 8f;
+            float metaOptionsY = classOptionsY + 82f;
+            float contentHeight = Mathf.Max(viewRect.height, metaOptionsY + 132f);
+            _runSummaryScrollPosition = GUI.BeginScrollView(viewRect, _runSummaryScrollPosition, new Rect(0f, 0f, contentWidth, contentHeight));
+            if (lineCount == 0)
             {
-                GUI.Label(new Rect(rect.x + 24f, rect.y + 34f, width - 48f, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP", _hudLabelStyle);
+                GUI.Label(new Rect(0f, 0f, contentWidth, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP", _hudLabelStyle);
             }
             else
             {
-                for (int i = 0; i < shown; i++)
+                for (int i = 0; i < lineCount; i++)
                 {
-                    GUI.Label(new Rect(rect.x + 24f, rect.y + 34f + i * 22f, width - 48f, 22f), lines[i], _hudSmallStyle);
+                    GUI.Label(new Rect(0f, i * lineHeight, contentWidth, lineHeight), lines[i], _hudSmallStyle);
                 }
             }
 
-            DrawResultClassOptions(new Rect(rect.x + 24f, rect.y + 204f, width - 48f, 66f));
-            DrawResultMetaUpgradeOptions(new Rect(rect.x + 24f, rect.y + 284f, width - 48f, 96f));
+            DrawResultClassOptions(new Rect(0f, classOptionsY, contentWidth, 66f));
+            DrawResultMetaUpgradeOptions(new Rect(0f, metaOptionsY, contentWidth, 96f));
+            GUI.EndScrollView();
 
             float buttonY = rect.yMax - 48f;
             if (victory)
             {
-                if (CurrentTuning.EndlessContinuationEnabled && GUI.Button(new Rect(rect.x + 160f, buttonY, 106f, 34f), "Continue"))
+                int buttonCount = CurrentTuning.EndlessContinuationEnabled ? 3 : 2;
+                float gap = 10f;
+                float buttonWidth = (rect.width - 48f - gap * (buttonCount - 1)) / buttonCount;
+                float x = rect.x + 24f;
+                if (CurrentTuning.EndlessContinuationEnabled && GUI.Button(new Rect(x, buttonY, buttonWidth, 36f), ActiveUiTheme.continueButtonLabel))
                 {
+                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
                     ContinueAfterVictory();
                 }
 
-                float restartX = CurrentTuning.EndlessContinuationEnabled ? rect.x + width - 266f : rect.x + width * 0.5f - 70f;
-                float restartWidth = CurrentTuning.EndlessContinuationEnabled ? 106f : 140f;
-                if (GUI.Button(new Rect(restartX, buttonY, restartWidth, 34f), "Restart Same"))
+                if (CurrentTuning.EndlessContinuationEnabled)
                 {
+                    x += buttonWidth + gap;
+                }
+
+                if (GUI.Button(new Rect(x, buttonY, buttonWidth, 36f), ActiveUiTheme.restartSameButtonLabel))
+                {
+                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
                     RestartRun();
                 }
 
-                if (GUI.Button(new Rect(rect.x + width - 150f, buttonY, 126f, 34f), "Change Mode"))
+                x += buttonWidth + gap;
+                if (GUI.Button(new Rect(x, buttonY, buttonWidth, 36f), ActiveUiTheme.changeModeButtonLabel))
                 {
+                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
                     OpenRunModeSelection();
                 }
             }
             else
             {
-                if (GUI.Button(new Rect(rect.x + width * 0.5f - 148f, buttonY, 140f, 34f), "Restart Same"))
+                float gap = 10f;
+                float buttonWidth = (rect.width - 48f - gap) * 0.5f;
+                if (GUI.Button(new Rect(rect.x + 24f, buttonY, buttonWidth, 36f), ActiveUiTheme.restartSameButtonLabel))
                 {
+                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
                     RestartRun();
                 }
 
-                if (GUI.Button(new Rect(rect.x + width * 0.5f + 8f, buttonY, 140f, 34f), "Change Mode"))
+                if (GUI.Button(new Rect(rect.x + 24f + buttonWidth + gap, buttonY, buttonWidth, 36f), ActiveUiTheme.changeModeButtonLabel))
                 {
+                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
                     OpenRunModeSelection();
                 }
             }
@@ -11308,6 +11998,35 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return string.Join(", ", labels);
+        }
+
+        private string FormatRunSummaryUpgradeList(HashSet<string> upgradeIds, bool includeRanks)
+        {
+            if (upgradeIds == null || upgradeIds.Count == 0 || _upgradeCatalog == null)
+            {
+                return "None yet";
+            }
+
+            var labels = new List<string>(upgradeIds.Count);
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                if (definition == null || !upgradeIds.Contains(definition.Id.Value))
+                {
+                    continue;
+                }
+
+                string label = BasicSurvivorsGame.GetUpgradeDisplayName(definition.Id);
+                if (includeRanks && _upgradeState != null)
+                {
+                    int rank = Mathf.Max(1, _upgradeState.GetRank(definition.Id));
+                    label += " " + rank.ToString() + "/" + definition.MaxRank.ToString();
+                }
+
+                labels.Add(label);
+            }
+
+            return labels.Count == 0 ? "None yet" : string.Join(", ", labels);
         }
 
         private void AppendSelectedUpgradeRankLines(List<string> lines)

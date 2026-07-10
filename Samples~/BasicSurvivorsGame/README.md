@@ -6,6 +6,8 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 
 - Move with WASD or arrow keys, and use Space for Arc Step when the horde closes in.
 - The pre-run selector starts Standard Run with `1`/Enter or Sprint Run with `2`/`S`.
+- The pre-run selector includes a small theme selector for the default style and `Neon Arcana`. Press `T` or the Show Tutorial button to reopen the onboarding cards.
+- First-time profiles pause on a short tutorial after choosing a mode. Use Next, Back, Skip, Space/Enter, arrow keys, or Esc/S to move through it. Once skipped or finished, the local profile stores the tutorial-seen flag so repeat runs start fast.
 - Standard Run uses `SurvivorsPacingProfile.HumanPlaytest`: `Time.timeScale` stays at `1`, opening spawns use two-enemy packs on a `0.95` second interval, pack size grows with escalation up to `6`, the opening max alive cap is `38`, and reward choices stay open until the player chooses.
 - Sprint Run uses `SurvivorsPacingProfile.SprintRun`: it targets a 5-minute run, opens with a `0.72` second spawn interval and up to `46` alive enemies, uses a Sprint-only `260 + 54 per level` XP curve plus an `18` second normal level-up draft cooldown and `1` queued-draft cap, gives `5` rerolls and `5` banishes, schedules the first elite around `82` seconds, horde pressure around `120` seconds, dread/miniboss pressure around `165`-`175` seconds, boss around `270` seconds, and victory around `300` seconds.
 - The default Arcane Initiate class starts with Arc Bolt, Frost Fan, Blood Ring, Thorn Halo, and Cinder Burst so the first minute already feels like a real Survivors run.
@@ -37,7 +39,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Defeating the final boss or reaching the survival-duration clear condition triggers victory.
 - After Standard victory, press `C` or the Continue button to keep playing in endless escalation with denser pressure, recurring horde rushes with clear caches and breaker pulses, and recurring elite, miniboss, and boss reward threats; defeating those recurring threats triggers stacking Endless Surge bursts with extra XP, blood shards, a non-major enemy pulse, and short combat/pickup momentum. Roaming caches, waystones, ambush clears, and Arena Trial rewards also scale with the current Endless tier so movement across the arena keeps paying off. Sprint victory goes straight to reward summary and restart.
 - Defeating the final boss unlocks the Ember Vanguard sample class, flashes a class-unlock banner, and adds its authored class-unlock reward bonus to the run summary.
-- Victory or defeat persists the run summary to a local meta profile and shows a summary panel with time, level, kills, build size, rewards, meta totals, next-run class selection, and affordable meta upgrade purchases.
+- Victory or defeat persists the run summary to a local meta profile and shows Run Summary 2.0 with mode, result, time, level, kills, elite/miniboss/boss kills, XP, rewards, meta totals, damage taken, final health, weapons, passives, evolutions, relics, pickup/magnet stats, best moment, next-run class selection, affordable meta upgrade purchases, Restart Same, Change Mode, and Standard endless Continue when available.
 - The sample includes seven persistent meta upgrades for later-run damage, max health, pickup range, XP gain, and extra rerolls.
 - The sample includes a default Arcane Initiate class, one unlockable class, class-owned loadouts, passive atlases, weapon skill tracks, and six boss relics.
 - XP gems pull into the player when close. Gemheart, Lodestone Sigil, and Vacuum Pulse are authored draft choices that let a player lean into pickup radius, gem pull speed, and periodic magnet recall without bypassing Sprint draft pacing.
@@ -45,12 +47,12 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Blood shards can drop from longer streaks and add bonus run currency that is included in the end-of-run meta rewards.
 - Press `M` to trigger a debug magnet recall.
 - Press `1`/Enter on the pre-run selector to start Standard Run, or `2`/`S` to start Sprint Run.
-- Pick a level-up, reward, or result-screen meta upgrade choice with the mouse or number keys; pick a next-run class with the result-screen class buttons. Combat pauses while the full-screen draft overlay is open, and cards show name, rarity, category, affected build piece, current-to-next rank, description, effect preview, requirement/evolution hints, and hotkey.
+- Pick a level-up, reward, or result-screen meta upgrade choice with the mouse or number keys; pick a next-run class with the result-screen class buttons. Combat pauses while the full-screen draft overlay is open, and cards show name, rarity, category, affected build piece, current-to-next rank, description, comparison preview, requirement/evolution hints, and hotkey. Numeric previews use current-to-next values for damage, cooldown, projectiles, pickup radius, magnet pull speed, pulse interval, health, XP gain, and similar stats when available.
 - Press `R` during an upgrade draft to reroll while charges remain.
 - Press `S` during an upgrade draft to skip for a small blood shard bonus.
 - Press `Shift+1`, `Shift+2`, or `Shift+3` during an upgrade draft to banish a choice while charges remain.
 - Press `Tab`, `B`, or `Esc` during normal play to open or close the build menu.
-- Edit draft-card and HUD presentation labels, rarity names, style tokens, placeholder icon IDs, and button copy in `Content/DefaultUiTheme/ui-theme.json`.
+- Edit draft-card, tutorial, run-summary, HUD, rarity, category, placeholder icon, button, and audio event palette presentation in `Content/DefaultUiTheme/ui-theme.json`. Use `Content/NeonArcanaUiTheme/ui-theme.json` as the alternate asset-flip example.
 - Press `C` after Standard victory to continue into endless escalation.
 - Press `R` after death or victory to restart.
 - Use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to start Standard or Sprint, force XP, grant blood shards, force level-up, trigger or clear horde rushes, force elite/miniboss/boss spawns including a Sprint boss, spawn bursts, fill the arena, switch pacing profiles with a current-run restart, apply stress targets, trigger magnet recall, inspect live build ranks, eligible evolutions, current drafts, run metrics, or explicitly reset save/progress.

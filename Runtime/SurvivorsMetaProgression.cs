@@ -212,7 +212,7 @@ namespace Deucarian.TemplateGameSurvivors
 
     public sealed class SurvivorsMetaProfileDocument
     {
-        public const int CurrentSchemaVersion = 3;
+        public const int CurrentSchemaVersion = 4;
 
         public long LifetimeBloodShards;
         public long UnspentBloodShards;
@@ -221,6 +221,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float BestRunDurationSeconds;
         public int CompletedRuns;
         public int BossVictories;
+        public bool TutorialSeen;
         public List<SurvivorsPersistentUpgradeRankRecord> PersistentUpgradeRanks = new List<SurvivorsPersistentUpgradeRankRecord>();
         public string SelectedClassId;
         public List<string> UnlockedClassIds = new List<string>();
@@ -265,6 +266,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int BossVictories => _profile == null ? 0 : _profile.BossVictories;
         public int HighestLevelReached => _profile == null ? 0 : _profile.HighestLevelReached;
         public float BestRunDurationSeconds => _profile == null ? 0f : _profile.BestRunDurationSeconds;
+        public bool TutorialSeen => _profile != null && _profile.TutorialSeen;
 
         public static DocumentDefinition<SurvivorsMetaProfileDocument> CreateDocumentDefinition()
         {
@@ -284,7 +286,12 @@ namespace Deucarian.TemplateGameSurvivors
                         ProfileDocumentId,
                         new SchemaVersion(2),
                         new SchemaVersion(3),
-                        MigrateV2ToV3)
+                        MigrateV2ToV3),
+                    new DelegateDocumentMigration(
+                        ProfileDocumentId,
+                        new SchemaVersion(3),
+                        new SchemaVersion(4),
+                        MigrateV3ToV4)
                 }));
         }
 
@@ -313,6 +320,25 @@ namespace Deucarian.TemplateGameSurvivors
             WriteResult deleteResult = _persistence.DeleteAsync(new DocumentLocation(ProfileDocumentId, _slotId)).GetAwaiter().GetResult();
             WriteResult saveResult = Save();
             return saveResult.Succeeded ? saveResult : deleteResult;
+        }
+
+        public WriteResult MarkTutorialSeen()
+        {
+            ThrowIfDisposed();
+            if (_profile.TutorialSeen)
+            {
+                return Save();
+            }
+
+            _profile.TutorialSeen = true;
+            return Save();
+        }
+
+        public WriteResult ResetTutorialSeen()
+        {
+            ThrowIfDisposed();
+            _profile.TutorialSeen = false;
+            return Save();
         }
 
         public ProgressionResult GrantRunRewards(SurvivorsRunRewardSummary summary)
@@ -762,6 +788,7 @@ namespace Deucarian.TemplateGameSurvivors
                 BestRunDurationSeconds = Math.Max(0f, old.BestRunDurationSeconds),
                 CompletedRuns = Math.Max(0, old.CompletedRuns),
                 BossVictories = Math.Max(0, old.BossVictories),
+                TutorialSeen = false,
                 PersistentUpgradeRanks = old.PersistentUpgradeRanks ?? new List<SurvivorsPersistentUpgradeRankRecord>(),
                 SelectedClassId = string.Empty,
                 UnlockedClassIds = new List<string>()
@@ -781,9 +808,31 @@ namespace Deucarian.TemplateGameSurvivors
                 BestRunDurationSeconds = Math.Max(0f, old.BestRunDurationSeconds),
                 CompletedRuns = Math.Max(0, old.CompletedRuns),
                 BossVictories = Math.Max(0, old.BossVictories),
+                TutorialSeen = false,
                 PersistentUpgradeRanks = old.PersistentUpgradeRanks ?? new List<SurvivorsPersistentUpgradeRankRecord>(),
                 SelectedClassId = string.Empty,
                 UnlockedClassIds = new List<string>()
+            };
+            NormalizeProfile(migrated);
+            return serializer.Serialize(migrated);
+        }
+
+        private static string MigrateV3ToV4(string payloadJson, IPersistenceSerializer serializer)
+        {
+            SurvivorsMetaProfileDocumentV3 old = serializer.Deserialize<SurvivorsMetaProfileDocumentV3>(payloadJson) ?? new SurvivorsMetaProfileDocumentV3();
+            var migrated = new SurvivorsMetaProfileDocument
+            {
+                LifetimeBloodShards = Math.Max(0, old.LifetimeBloodShards),
+                UnspentBloodShards = Math.Max(0, old.UnspentBloodShards),
+                LifetimeLegacyExperience = Math.Max(0, old.LifetimeLegacyExperience),
+                HighestLevelReached = Math.Max(0, old.HighestLevelReached),
+                BestRunDurationSeconds = Math.Max(0f, old.BestRunDurationSeconds),
+                CompletedRuns = Math.Max(0, old.CompletedRuns),
+                BossVictories = Math.Max(0, old.BossVictories),
+                TutorialSeen = old.TutorialSeen || old.CompletedRuns > 0 || old.BossVictories > 0 || old.HighestLevelReached > 0,
+                PersistentUpgradeRanks = old.PersistentUpgradeRanks ?? new List<SurvivorsPersistentUpgradeRankRecord>(),
+                SelectedClassId = string.IsNullOrWhiteSpace(old.SelectedClassId) ? string.Empty : old.SelectedClassId,
+                UnlockedClassIds = old.UnlockedClassIds ?? new List<string>()
             };
             NormalizeProfile(migrated);
             return serializer.Serialize(migrated);
@@ -870,6 +919,21 @@ namespace Deucarian.TemplateGameSurvivors
             public int CompletedRuns;
             public int BossVictories;
             public List<SurvivorsPersistentUpgradeRankRecord> PersistentUpgradeRanks = new List<SurvivorsPersistentUpgradeRankRecord>();
+        }
+
+        private sealed class SurvivorsMetaProfileDocumentV3
+        {
+            public long LifetimeBloodShards;
+            public long UnspentBloodShards;
+            public long LifetimeLegacyExperience;
+            public int HighestLevelReached;
+            public float BestRunDurationSeconds;
+            public int CompletedRuns;
+            public int BossVictories;
+            public bool TutorialSeen;
+            public List<SurvivorsPersistentUpgradeRankRecord> PersistentUpgradeRanks = new List<SurvivorsPersistentUpgradeRankRecord>();
+            public string SelectedClassId;
+            public List<string> UnlockedClassIds = new List<string>();
         }
     }
 }
