@@ -4,6 +4,8 @@ Playable sample for the Deucarian Survivors template.
 
 This sample is protected by `Documentation~/template-contract.md` as the playable vertical slice. Asset flips should edit authored content/config first; package extraction must not remove this scene, authored content, tuning, UI, themes, audio palette, tutorial copy, or playable loop unless an equivalent replacement is already wired and validated.
 
+The sample includes two playable scenes. `Scenes/BasicSurvivorsGame.unity` binds the original `Default*` libraries. `Scenes/NeonArcana.unity` binds the complete independent `Content/NeonArcana` tree. Both use `BasicSurvivorsGameBootstrap` and `SurvivorsTemplateController`, show Standard/Sprint selection before combat, and enforce the same strict authored-content policy. Neon Arcana is the concrete asset-flip proof; it is not a second gameplay implementation.
+
 For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`. Before exposing Standard/Sprint, the bootstrap strictly validates and binds every gameplay library, the pickup manifest, both themes, audio IDs, and tutorial copy. It then builds the selector, arena, player, horde loop, pooled enemies, pickups, projectiles, clean HUD, drafts, build/relic UI, meta profile, summaries, endless continuation, and restart flow.
 
 - Move with WASD or arrow keys, and use Space for Arc Step when the horde closes in.
@@ -58,7 +60,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Press `S` during an upgrade draft to skip for a small blood shard bonus.
 - Press `Shift+1`, `Shift+2`, or `Shift+3` during an upgrade draft to banish a choice while charges remain.
 - Press `Tab`, `B`, or `Esc` during normal play to open or close the build menu.
-- Edit draft-card, tutorial, run-summary, HUD, rarity, category, placeholder icon, button, and audio event palette presentation in `Content/DefaultUiTheme/ui-theme.json`. Use `Content/NeonArcanaUiTheme/ui-theme.json` as the alternate asset-flip example.
+- Edit draft-card, tutorial, run-summary, HUD, rarity, category, placeholder icon, button, and audio event palette presentation in `Content/DefaultUiTheme/ui-theme.json`. `Content/NeonArcanaUiTheme/ui-theme.json` is the Basic scene's UI-only variant; the complete game-content flip lives under `Content/NeonArcana` and is wired by `Scenes/NeonArcana.unity`.
 - Press `C` after Standard victory to continue into endless escalation.
 - Press `R` after death or victory to restart.
 - Use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to start Standard or Sprint, force XP, grant blood shards, force level-up, trigger or clear horde rushes, force elite/miniboss/boss spawns including a Sprint boss, spawn bursts, fill the arena, switch pacing profiles with a current-run restart, apply stress targets, trigger magnet recall, inspect live build ranks, eligible evolutions, current drafts, run metrics, or explicitly reset save/progress.

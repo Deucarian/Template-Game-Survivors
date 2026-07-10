@@ -79,6 +79,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
             Assert.IsNotNull(controller);
+            controller.ConfigureMetaPersistenceForTest(
+                new PersistenceService(new InMemoryTextStorage()),
+                new SaveSlotId("play-imported-draft-" + Guid.NewGuid().ToString("N")));
             for (int i = 0; i < 60 && !controller.IsRunModeSelectionOpen && !controller.IsRunStarted; i++)
             {
                 yield return null;
@@ -146,6 +149,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
             Assert.IsNotNull(controller);
+            controller.ConfigureMetaPersistenceForTest(
+                new PersistenceService(new InMemoryTextStorage()),
+                new SaveSlotId("play-imported-draft-resume-" + Guid.NewGuid().ToString("N")));
             for (int i = 0; i < 60 && !controller.IsRunModeSelectionOpen && !controller.IsRunStarted; i++)
             {
                 yield return null;
@@ -195,6 +201,13 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count);
             Assert.IsTrue(controller.SelectUpgrade(0), "Imported playtest scene rejected the first level-up choice.");
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State, "Imported playtest scene did not resume after selecting the first draft choice.");
+            Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.ArcaneWandWeaponContentId));
+
+            SurvivorsEnemyActor postDraftTarget = controller.SpawnEnemyForTest(
+                controller.PlayerPosition + new Vector3(4f, 0f, 0f),
+                SurvivorsEnemyRole.Swarm,
+                1000f);
+            Assert.IsNotNull(postDraftTarget);
 
             float resumedRunTime = controller.RunTimeSeconds;
             int resumedSpawned = controller.SpawnedCount;

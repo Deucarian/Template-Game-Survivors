@@ -1,0 +1,24 @@
+{
+    "pickups":  [
+                    {
+                        "id":  "pickup.survivors.experience",
+                        "displayName":  "Signal Mote",
+                        "behavior":  "Uses the selected run-flow profile\u0027s pickup attraction range and speed"
+                    },
+                    {
+                        "id":  "pickup.survivors.magnet",
+                        "displayName":  "Flux Sweep",
+                        "behavior":  "Recall all active XP gems"
+                    },
+                    {
+                        "id":  "pickup.survivors.vital-shard",
+                        "displayName":  "Repair Cell",
+                        "behavior":  "Restore player health when collected"
+                    },
+                    {
+                        "id":  "pickup.survivors.blood-shard",
+                        "displayName":  "Neon Fragment",
+                        "behavior":  "Add run bonus currency for meta progression"
+                    }
+                ]
+}

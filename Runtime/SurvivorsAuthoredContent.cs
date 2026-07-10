@@ -1414,6 +1414,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             CurrencyId currencyId = allowFallbacks ? BasicSurvivorsGame.BloodShardsCurrencyId : default;
+            string currencyDisplayName = "Blood Shards";
             if (library.currencies != null)
             {
                 for (int i = 0; i < library.currencies.Length; i++)
@@ -1422,12 +1423,14 @@ namespace Deucarian.TemplateGameSurvivors
                     if (currency != null && !string.IsNullOrWhiteSpace(currency.id))
                     {
                         currencyId = new CurrencyId(currency.id);
+                        currencyDisplayName = string.IsNullOrWhiteSpace(currency.displayName) ? currencyDisplayName : currency.displayName;
                         break;
                     }
                 }
             }
 
             TrackId trackId = allowFallbacks ? BasicSurvivorsGame.LegacyExperienceTrackId : default;
+            string trackDisplayName = "Legacy XP";
             if (library.tracks != null)
             {
                 for (int i = 0; i < library.tracks.Length; i++)
@@ -1436,6 +1439,7 @@ namespace Deucarian.TemplateGameSurvivors
                     if (track != null && !string.IsNullOrWhiteSpace(track.id))
                     {
                         trackId = new TrackId(track.id);
+                        trackDisplayName = string.IsNullOrWhiteSpace(track.displayName) ? trackDisplayName : track.displayName;
                         break;
                     }
                 }
@@ -1485,7 +1489,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            return new SurvivorsMetaProgressionDefinition(currencyId, trackId, persistentUpgrades, rewards);
+            return new SurvivorsMetaProgressionDefinition(currencyId, trackId, persistentUpgrades, rewards, currencyDisplayName, trackDisplayName);
         }
 
         private static void RequireEnemyRole(Dictionary<SurvivorsEnemyRole, SurvivorsEnemyProfile> profiles, SurvivorsEnemyRole role, List<string> errors)
@@ -2112,12 +2116,14 @@ namespace Deucarian.TemplateGameSurvivors
         private sealed class CurrencyRecordJson
         {
             public string id;
+            public string displayName;
         }
 
         [Serializable]
         private sealed class TrackRecordJson
         {
             public string id;
+            public string displayName;
         }
 
         [Serializable]

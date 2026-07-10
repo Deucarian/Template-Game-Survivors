@@ -1,0 +1,322 @@
+{
+    "themeName":  "Neon Arcana: Afterglow",
+    "cardBackgroundToken":  "neon-ink-panel",
+    "cardFrameToken":  "arcana-glow-frame",
+    "standardModeDisplayName":  "Neon Arcana Standard",
+    "sprintModeDisplayName":  "Neon Arcana Sprint",
+    "chooseRewardTitle":  "Choose A Protocol",
+    "levelUpTitle":  "Circuit Leveled",
+    "eliteRewardTitle":  "Sentinel Cache",
+    "bossRewardTitle":  "Sovereign Cache",
+    "bossRelicTitle":  "Sovereign Relic",
+    "rerollButtonLabel":  "Rescan",
+    "skipButtonLabel":  "Archive",
+    "banishButtonLabel":  "Purge",
+    "restartSameButtonLabel":  "Recompile Same",
+    "changeModeButtonLabel":  "Switch Protocol",
+    "continueButtonLabel":  "Continue Beyond",
+    "buildMenuTitle":  "Loadout Matrix",
+    "runSummaryTitle":  "Arcana Run Report",
+    "tutorialTitle":  "Neon Arcana Primer",
+    "themeSelectorTitle":  "Spectrum",
+    "showTutorialButtonLabel":  "Replay Primer",
+    "debugToggleLabel":  "Diagnostics",
+    "iconPlaceholderPrefix":  "Glyph",
+    "hudAccentColor":  "#FF4DFF",
+    "buttonStyleToken":  "neon-solid",
+    "rarityStyles":  [
+                         {
+                             "id":  "Common",
+                             "displayName":  "Common",
+                             "styleToken":  "neon-common",
+                             "accentColor":  "#B7D9E8",
+                             "iconId":  "spark"
+                         },
+                         {
+                             "id":  "Uncommon",
+                             "displayName":  "Verdant",
+                             "styleToken":  "neon-verdant",
+                             "accentColor":  "#4DFF9A",
+                             "iconId":  "leaf-rune"
+                         },
+                         {
+                             "id":  "Rare",
+                             "displayName":  "Azure",
+                             "styleToken":  "neon-azure",
+                             "accentColor":  "#35F2FF",
+                             "iconId":  "star-rune"
+                         },
+                         {
+                             "id":  "Epic",
+                             "displayName":  "Violet",
+                             "styleToken":  "neon-violet",
+                             "accentColor":  "#D76BFF",
+                             "iconId":  "diamond-rune"
+                         },
+                         {
+                             "id":  "Legendary",
+                             "displayName":  "Solar",
+                             "styleToken":  "neon-solar",
+                             "accentColor":  "#FFE05C",
+                             "iconId":  "sun-rune"
+                         },
+                         {
+                             "id":  "Evolution",
+                             "displayName":  "Ascended",
+                             "styleToken":  "neon-ascended",
+                             "accentColor":  "#FF5DAE",
+                             "iconId":  "spiral-rune"
+                         },
+                         {
+                             "id":  "Relic",
+                             "displayName":  "Relic",
+                             "styleToken":  "neon-relic",
+                             "accentColor":  "#FFC96B",
+                             "iconId":  "prism"
+                         }
+                     ],
+    "categoryStyles":  [
+                           {
+                               "id":  "NewWeapon",
+                               "displayName":  "New Focus",
+                               "iconId":  "focus-new"
+                           },
+                           {
+                               "id":  "WeaponUpgrade",
+                               "displayName":  "Focus Rank",
+                               "iconId":  "focus-rank"
+                           },
+                           {
+                               "id":  "Passive",
+                               "displayName":  "Charm",
+                               "iconId":  "charm"
+                           },
+                           {
+                               "id":  "PassiveUpgrade",
+                               "displayName":  "Charm Rank",
+                               "iconId":  "charm-rank"
+                           },
+                           {
+                               "id":  "Mutation",
+                               "displayName":  "Mutation",
+                               "iconId":  "mutation"
+                           },
+                           {
+                               "id":  "Evolution",
+                               "displayName":  "Ascension",
+                               "iconId":  "ascension"
+                           },
+                           {
+                               "id":  "Relic",
+                               "displayName":  "Relic",
+                               "iconId":  "relic-prism"
+                           },
+                           {
+                               "id":  "PickupMagnet",
+                               "displayName":  "Collector",
+                               "iconId":  "collector"
+                           },
+                           {
+                               "id":  "MetaReward",
+                               "displayName":  "Progress",
+                               "iconId":  "progress"
+                           }
+                       ],
+    "tutorialSteps":  [
+                          {
+                              "id":  "combat",
+                              "title":  "Run The Circuit",
+                              "lines":  [
+                                            "Move with WASD or the left stick. Neon Pulse and later protocols fire automatically at nearby anomalies.",
+                                            "Use Phase Step to cut through pressure, repel nearby constructs, and open a brief escape lane.",
+                                            "Keep moving, harvest signal motes, and keep the anomaly field barely under control."
+                                        ]
+                          },
+                          {
+                              "id":  "experience",
+                              "title":  "Harvest Signal Motes",
+                              "lines":  [
+                                            "Defeated anomalies drop signal motes. Move near them to pull them into your level circuit.",
+                                            "Flux Sweep pickups and collector upgrades recover distant motes without changing their XP value.",
+                                            "Streak rewards, arena clears, and signal pylons can seed extra pickups when you play actively."
+                                        ]
+                          },
+                          {
+                              "id":  "drafts",
+                              "title":  "Compile A Loadout",
+                              "lines":  [
+                                            "Level-ups pause the circuit and offer protocols: weapons, passives, mutations, and ascensions.",
+                                            "Rescan changes the cards, Purge removes one for the run, and Archive grants neon fragments.",
+                                            "Open Loadout Matrix to compare current weapons, passives, relics, run data, and controls."
+                                        ]
+                          },
+                          {
+                              "id":  "threats",
+                              "title":  "Sentinels And Sovereigns",
+                              "lines":  [
+                                            "Sentinels, Null Beacons, Hexframe Prime, and the Blacklight Sovereign keep health, bars, and offscreen tracking.",
+                                            "Major anomalies drop recoverable caches, relic protocols, upgrade protocols, or class unlock rewards.",
+                                            "Warnings, slam markers, and relay-call banners announce sharp spikes in circuit pressure."
+                                        ]
+                          },
+                          {
+                              "id":  "evolutions",
+                              "title":  "Ascend Protocols",
+                              "lines":  [
+                                            "Ascensions need a ranked weapon path plus its matching passive; ready banners name the missing piece.",
+                                            "Ascension picks trigger a payoff surge, signal-mote recall, and stronger weapon behavior.",
+                                            "Multiple ascensions stack into a late-run Legend Surge."
+                                        ]
+                          },
+                          {
+                              "id":  "modes",
+                              "title":  "Choose A Circuit",
+                              "lines":  [
+                                            "Neon Arcana Standard is the full 30-minute circuit with Sovereign rewards, victory, and endless continuation.",
+                                            "Neon Arcana Sprint compresses the circuit into 5 minutes with quicker XP, early sentinels, and a fast climax.",
+                                            "After victory or defeat, recompile the same circuit or return to protocol selection."
+                                        ]
+                          }
+                      ],
+    "audioEvents":  [
+                        {
+                            "id":  "ui.hover",
+                            "category":  "UI",
+                            "volume":  0.14,
+                            "throttleSeconds":  0.08
+                        },
+                        {
+                            "id":  "ui.select",
+                            "category":  "UI",
+                            "volume":  0.26,
+                            "throttleSeconds":  0.04
+                        },
+                        {
+                            "id":  "mode.selected",
+                            "category":  "UI",
+                            "volume":  0.34,
+                            "throttleSeconds":  0.05
+                        },
+                        {
+                            "id":  "draft.opened",
+                            "category":  "Rewards",
+                            "volume":  0.36,
+                            "throttleSeconds":  0.1
+                        },
+                        {
+                            "id":  "draft.choice.selected",
+                            "category":  "Rewards",
+                            "volume":  0.42,
+                            "throttleSeconds":  0.06
+                        },
+                        {
+                            "id":  "draft.reroll",
+                            "category":  "UI",
+                            "volume":  0.3,
+                            "throttleSeconds":  0.08
+                        },
+                        {
+                            "id":  "draft.banish",
+                            "category":  "UI",
+                            "volume":  0.25,
+                            "throttleSeconds":  0.08
+                        },
+                        {
+                            "id":  "draft.skip",
+                            "category":  "UI",
+                            "volume":  0.22,
+                            "throttleSeconds":  0.08
+                        },
+                        {
+                            "id":  "level.up",
+                            "category":  "Rewards",
+                            "volume":  0.46,
+                            "throttleSeconds":  0.12
+                        },
+                        {
+                            "id":  "pickup.xp",
+                            "category":  "Rewards",
+                            "volume":  0.14,
+                            "throttleSeconds":  0.12
+                        },
+                        {
+                            "id":  "pickup.magnet_pulse",
+                            "category":  "Rewards",
+                            "volume":  0.3,
+                            "throttleSeconds":  0.4
+                        },
+                        {
+                            "id":  "combat.hit",
+                            "category":  "Combat",
+                            "volume":  0.14,
+                            "throttleSeconds":  0.08
+                        },
+                        {
+                            "id":  "combat.enemy_death",
+                            "category":  "Combat",
+                            "volume":  0.16,
+                            "throttleSeconds":  0.08
+                        },
+                        {
+                            "id":  "warning.elite",
+                            "category":  "Warnings",
+                            "volume":  0.34,
+                            "throttleSeconds":  0.35
+                        },
+                        {
+                            "id":  "warning.boss",
+                            "category":  "Warnings",
+                            "volume":  0.46,
+                            "throttleSeconds":  0.35
+                        },
+                        {
+                            "id":  "warning.low_health",
+                            "category":  "Warnings",
+                            "volume":  0.34,
+                            "throttleSeconds":  0.5
+                        },
+                        {
+                            "id":  "reward.evolution",
+                            "category":  "Rewards",
+                            "volume":  0.48,
+                            "throttleSeconds":  0.08
+                        },
+                        {
+                            "id":  "reward.relic",
+                            "category":  "Rewards",
+                            "volume":  0.44,
+                            "throttleSeconds":  0.08
+                        },
+                        {
+                            "id":  "run.victory",
+                            "category":  "Rewards",
+                            "volume":  0.48,
+                            "throttleSeconds":  0.5
+                        },
+                        {
+                            "id":  "run.defeat",
+                            "category":  "Warnings",
+                            "volume":  0.42,
+                            "throttleSeconds":  0.5
+                        },
+                        {
+                            "id":  "run.summary.opened",
+                            "category":  "UI",
+                            "volume":  0.38,
+                            "throttleSeconds":  0.25
+                        }
+                    ],
+    "worldPresentation":  {
+                              "authored":  true,
+                              "playerColor":  "#FFF1A8",
+                              "arenaFloorColor":  "#100512",
+                              "arenaGridColor":  "#24102C",
+                              "arenaAccentColor":  "#FF4DFF",
+                              "experiencePickupColor":  "#A8FFEA",
+                              "healthPickupColor":  "#FF5C8A",
+                              "currencyPickupColor":  "#FFD166",
+                              "eliteThreatColor":  "#00F5D4",
+                              "bossThreatColor":  "#FF3D81",
+                              "feedbackAccentColor":  "#7A8CFF"
+                          }
+}

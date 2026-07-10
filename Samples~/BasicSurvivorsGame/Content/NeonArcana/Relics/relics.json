@@ -1,0 +1,58 @@
+{
+    "relics":  [
+                   {
+                       "id":  "relic.survivors.blood-star",
+                       "displayName":  "Pulsar Core",
+                       "target":  "survivors.weapon.arcane-wand",
+                       "effect":  "survivors.damage.flat",
+                       "effectKind":  "DamageBonus",
+                       "amount":  3,
+                       "weight":  60
+                   },
+                   {
+                       "id":  "relic.survivors.quickened-sigil",
+                       "displayName":  "Clock Crystal",
+                       "target":  "survivors.weapon.arcane-wand",
+                       "effect":  "survivors.weapon.cooldown_multiplier",
+                       "effectKind":  "CooldownMultiplier",
+                       "amount":  -0.12,
+                       "weight":  45
+                   },
+                   {
+                       "id":  "relic.survivors.gemheart-charm",
+                       "displayName":  "Collector Prism",
+                       "target":  "survivors.pickups",
+                       "effect":  "survivors.pickup.range",
+                       "effectKind":  "PickupRange",
+                       "amount":  1.25,
+                       "weight":  40
+                   },
+                   {
+                       "id":  "relic.survivors.monolith-splinter",
+                       "displayName":  "Obelisk Chip",
+                       "target":  "survivors.weapon.arcane-wand",
+                       "effect":  "survivors.damage.flat",
+                       "effectKind":  "DamageBonus",
+                       "amount":  5,
+                       "weight":  28
+                   },
+                   {
+                       "id":  "relic.survivors.fever-engine",
+                       "displayName":  "Overdrive Coil",
+                       "target":  "survivors.weapon.star-nova",
+                       "effect":  "survivors.weapon.cooldown_multiplier",
+                       "effectKind":  "CooldownMultiplier",
+                       "amount":  -0.18,
+                       "weight":  26
+                   },
+                   {
+                       "id":  "relic.survivors.vacuum-lattice",
+                       "displayName":  "Capture Array",
+                       "target":  "survivors.pickups",
+                       "effect":  "survivors.pickup.range",
+                       "effectKind":  "PickupRange",
+                       "amount":  2.25,
+                       "weight":  24
+                   }
+               ]
+}

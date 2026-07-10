@@ -1,0 +1,1132 @@
+{
+    "upgrades":  [
+                     {
+                         "id":  "upgrade.survivors.arcane-damage",
+                         "displayName":  "Pulse Voltage",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Common",
+                         "weight":  70,
+                         "maxRank":  8,
+                         "effect":  "survivors.damage.flat",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  2.0,
+                         "description":  "Neon Pulse deals more damage."
+                     },
+                     {
+                         "id":  "upgrade.survivors.quick-casting",
+                         "displayName":  "Overclock Cycle",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Common",
+                         "weight":  60,
+                         "maxRank":  6,
+                         "effect":  "survivors.weapon.cooldown_multiplier",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  -0.08,
+                         "description":  "Neon Pulse fires more often."
+                     },
+                     {
+                         "id":  "upgrade.survivors.swift-steps",
+                         "displayName":  "Phase Stride",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  44,
+                         "maxRank":  5,
+                         "effect":  "survivors.player.move_speed",
+                         "target":  "survivors.player",
+                         "amount":  0.45,
+                         "description":  "Passive: move faster through horde pressure."
+                     },
+                     {
+                         "id":  "upgrade.survivors.gem-magnet",
+                         "displayName":  "Data Vacuum",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  52,
+                         "maxRank":  5,
+                         "effect":  "survivors.pickup.range",
+                         "target":  "survivors.pickups",
+                         "amount":  1.05,
+                         "description":  "Passive: increase pickup radius so loose signal motes start moving sooner."
+                     },
+                     {
+                         "id":  "upgrade.survivors.lodestone-sigil",
+                         "displayName":  "Flux Collector",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  42,
+                         "maxRank":  5,
+                         "effect":  "survivors.pickup.pull_speed",
+                         "target":  "survivors.pickups",
+                         "amount":  1.25,
+                         "description":  "Passive: attracted signal motes fly to you faster without increasing their XP value."
+                     },
+                     {
+                         "id":  "upgrade.survivors.vacuum-pulse",
+                         "displayName":  "Sweep Protocol",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  4,
+                         "effect":  "survivors.pickup.magnet_pulse",
+                         "target":  "survivors.pickups",
+                         "amount":  7.0,
+                         "description":  "Passive: periodically recall nearby loose signal motes while the level-up queue throttles burst collection."
+                     },
+                     {
+                         "id":  "upgrade.survivors.iron-blood",
+                         "displayName":  "Reinforced Shell",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  28,
+                         "maxRank":  4,
+                         "effect":  "survivors.player.max_health",
+                         "target":  "survivors.player",
+                         "amount":  8.0,
+                         "description":  "Passive: increase maximum health."
+                     },
+                     {
+                         "id":  "upgrade.survivors.keen-edge",
+                         "displayName":  "Critical Kernel",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  24,
+                         "maxRank":  4,
+                         "effect":  "survivors.critical.chance",
+                         "target":  "survivors.critical",
+                         "amount":  0.25,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.critical.chance",
+                                             "target":  "survivors.critical",
+                                             "amount":  0.25
+                                         },
+                                         {
+                                             "effect":  "survivors.critical.damage",
+                                             "target":  "survivors.critical",
+                                             "amount":  0.15
+                                         }
+                                     ],
+                         "description":  "Passive: weapon hits can critically strike for higher damage."
+                     },
+                     {
+                         "id":  "upgrade.survivors.fate-lens",
+                         "displayName":  "Probability Lens",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  4,
+                         "effect":  "survivors.draft.luck",
+                         "target":  "survivors.draft",
+                         "amount":  0.2,
+                         "description":  "Passive: improve future draft odds for rare, epic, and legendary choices."
+                     },
+                     {
+                         "id":  "upgrade.survivors.soulflare-glyph",
+                         "displayName":  "Cascade Spark",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  4,
+                         "effect":  "survivors.on_kill.nova_damage",
+                         "target":  "survivors.on_kill",
+                         "amount":  5.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.on_kill.nova_damage",
+                                             "target":  "survivors.on_kill",
+                                             "amount":  5.0
+                                         },
+                                         {
+                                             "effect":  "survivors.on_kill.nova_radius",
+                                             "target":  "survivors.on_kill",
+                                             "amount":  0.22
+                                         }
+                                     ],
+                         "description":  "Passive: weapon kills burst outward and damage nearby enemies."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.arcane-wand",
+                         "displayName":  "Neon Pulse",
+                         "category":  "Weapon",
+                         "rarity":  "Common",
+                         "weight":  42,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: fire focused neon bolts at nearby enemies."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.frost-fan",
+                         "displayName":  "Prism Volley",
+                         "category":  "Weapon",
+                         "rarity":  "Uncommon",
+                         "weight":  34,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.frost-fan",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: cast a cone of slowing prism shards."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.orbit-ward",
+                         "displayName":  "Photon Guard",
+                         "category":  "Weapon",
+                         "rarity":  "Uncommon",
+                         "weight":  32,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.orbit-ward",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: orbit blades around the player."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.thorn-halo",
+                         "displayName":  "Firewall Halo",
+                         "category":  "Weapon",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.thorn-halo",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: form a wider guard ring around the player."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.star-nova",
+                         "displayName":  "Reactor Nova",
+                         "category":  "Weapon",
+                         "rarity":  "Rare",
+                         "weight":  24,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.star-nova",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: pulse a fiery burst around the player and burn enemies."
+                     },
+                     {
+                         "id":  "upgrade.survivors.scholars-lens",
+                         "displayName":  "Archive Lens",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  36,
+                         "maxRank":  5,
+                         "effect":  "survivors.experience.gain_multiplier",
+                         "target":  "survivors.experience",
+                         "amount":  0.12,
+                         "description":  "Passive: increase XP gained from gems and debug grants."
+                     },
+                     {
+                         "id":  "upgrade.survivors.giant-rune",
+                         "displayName":  "Scale Matrix",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  34,
+                         "maxRank":  5,
+                         "effect":  "survivors.area.radius",
+                         "target":  "survivors.area",
+                         "amount":  0.22,
+                         "description":  "Passive: enlarge bursts, orbit paths, payload explosions, and close-range swings."
+                     },
+                     {
+                         "id":  "upgrade.survivors.twin-charm",
+                         "displayName":  "Twin Thread",
+                         "category":  "Passive",
+                         "rarity":  "Epic",
+                         "weight":  16,
+                         "maxRank":  4,
+                         "effect":  "survivors.projectile.fan_count",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  1.0,
+                         "description":  "Epic passive: duplicate projectile-style attacks with extra fan shots."
+                     },
+                     {
+                         "id":  "upgrade.survivors.astral-convergence",
+                         "displayName":  "Spectrum Merge",
+                         "category":  "Mutation",
+                         "rarity":  "Epic",
+                         "weight":  12,
+                         "maxRank":  2,
+                         "effect":  "survivors.area.radius",
+                         "target":  "survivors.area",
+                         "amount":  0.36,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.area.radius",
+                                             "target":  "survivors.area",
+                                             "amount":  0.36
+                                         },
+                                         {
+                                             "effect":  "survivors.damage.flat",
+                                             "target":  "survivors.weapon.arcane-wand",
+                                             "amount":  3.0
+                                         }
+                                     ],
+                         "description":  "Epic mutation: enlarge area weapons and sharpen global damage."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.star-beam",
+                         "displayName":  "Lumen Rail",
+                         "category":  "Weapon",
+                         "rarity":  "Uncommon",
+                         "weight":  34,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.star-beam",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: a focused beam that pierces the front line."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.gravity-grenade",
+                         "displayName":  "Singularity Packet",
+                         "category":  "Weapon",
+                         "rarity":  "Rare",
+                         "weight":  18,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.gravity-grenade",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: lob a heavy payload that detonates inside the horde."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.moon-slash",
+                         "displayName":  "Vector Slash",
+                         "category":  "Weapon",
+                         "rarity":  "Uncommon",
+                         "weight":  24,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.moon-slash",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: sweep nearby enemies with arcing vector cuts."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.rune-trap",
+                         "displayName":  "Signal Trap",
+                         "category":  "Weapon",
+                         "rarity":  "Uncommon",
+                         "weight":  22,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.rune-trap",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: place traps that detonate under the horde."
+                     },
+                     {
+                         "id":  "upgrade.survivors.weapon.aether-mine",
+                         "displayName":  "Glitch Mine",
+                         "category":  "Weapon",
+                         "rarity":  "Uncommon",
+                         "weight":  20,
+                         "maxRank":  1,
+                         "effect":  "survivors.weapon.unlock",
+                         "target":  "survivors.weapon.aether-mine",
+                         "amount":  1.0,
+                         "description":  "Unlock weapon: seed mines that punish packed enemies."
+                     },
+                     {
+                         "id":  "upgrade.survivors.frost-fan",
+                         "displayName":  "Prism Volley",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Uncommon",
+                         "weight":  40,
+                         "maxRank":  5,
+                         "effect":  "survivors.projectile.fan_count",
+                         "target":  "survivors.weapon.frost-fan",
+                         "amount":  1.0,
+                         "description":  "Add more prism shards to the fan pattern."
+                     },
+                     {
+                         "id":  "upgrade.survivors.frost-splinter",
+                         "displayName":  "Prism Shatter",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  24,
+                         "maxRank":  3,
+                         "effect":  "survivors.projectile.fork_count",
+                         "target":  "survivors.weapon.frost-fan",
+                         "amount":  1.0,
+                         "requiredUpgradeId":  "upgrade.survivors.frost-fan",
+                         "requiredUpgradeRank":  2,
+                         "description":  "Prism shards split into secondary shards after impact."
+                     },
+                     {
+                         "id":  "upgrade.survivors.frost-ricochet",
+                         "displayName":  "Refraction Jump",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  2,
+                         "effect":  "survivors.projectile.chain_count",
+                         "target":  "survivors.weapon.frost-fan",
+                         "amount":  1.0,
+                         "requiredUpgradeId":  "upgrade.survivors.frost-fan",
+                         "requiredUpgradeRank":  3,
+                         "description":  "Prism shards jump between packed enemies."
+                     },
+                     {
+                         "id":  "upgrade.survivors.orbiting-focus",
+                         "displayName":  "Orbit Node",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Uncommon",
+                         "weight":  38,
+                         "maxRank":  5,
+                         "effect":  "survivors.orbit.blade_count",
+                         "target":  "survivors.weapon.orbit-ward",
+                         "amount":  1.0,
+                         "description":  "Add blades to the orbiting ward."
+                     },
+                     {
+                         "id":  "upgrade.survivors.serrated-orbit",
+                         "displayName":  "Razor Circuit",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  24,
+                         "maxRank":  2,
+                         "effect":  "survivors.orbit.radius",
+                         "target":  "survivors.weapon.orbit-ward",
+                         "amount":  0.28,
+                         "requiredUpgradeId":  "upgrade.survivors.orbiting-focus",
+                         "requiredUpgradeRank":  3,
+                         "description":  "Photon Guard widens and adds another cutting edge."
+                     },
+                     {
+                         "id":  "upgrade.survivors.bramble-guard",
+                         "displayName":  "Firewall Nodes",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Uncommon",
+                         "weight":  34,
+                         "maxRank":  5,
+                         "effect":  "survivors.orbit.blade_count",
+                         "target":  "survivors.weapon.thorn-halo",
+                         "amount":  1.0,
+                         "description":  "Firewall Halo adds denser guard blades."
+                     },
+                     {
+                         "id":  "upgrade.survivors.thorn-halo-wall",
+                         "displayName":  "Firewall Wall",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  30,
+                         "maxRank":  3,
+                         "effect":  "survivors.orbit.radius",
+                         "target":  "survivors.weapon.thorn-halo",
+                         "amount":  0.35,
+                         "requiredUpgradeId":  "upgrade.survivors.bramble-guard",
+                         "requiredUpgradeRank":  2,
+                         "description":  "Push the halo outward and add another guard blade."
+                     },
+                     {
+                         "id":  "upgrade.survivors.halo-spiral",
+                         "displayName":  "Spiral Firewall",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  2,
+                         "effect":  "survivors.orbit.radius",
+                         "target":  "survivors.weapon.thorn-halo",
+                         "amount":  0.3,
+                         "requiredUpgradeId":  "upgrade.survivors.bramble-guard",
+                         "requiredUpgradeRank":  3,
+                         "description":  "Firewall Halo widens into a denser spiral."
+                     },
+                     {
+                         "id":  "upgrade.survivors.moonlit-edge",
+                         "displayName":  "Vector Edge",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Uncommon",
+                         "weight":  30,
+                         "maxRank":  5,
+                         "effect":  "survivors.damage.flat",
+                         "target":  "survivors.weapon.moon-slash",
+                         "amount":  1.5,
+                         "description":  "Vector Slash cuts harder."
+                     },
+                     {
+                         "id":  "upgrade.survivors.crescent-chain",
+                         "displayName":  "Chained Cut",
+                         "category":  "Mutation",
+                         "rarity":  "Uncommon",
+                         "weight":  34,
+                         "maxRank":  4,
+                         "effect":  "survivors.melee.target_count",
+                         "target":  "survivors.weapon.moon-slash",
+                         "amount":  1.0,
+                         "requiredUpgradeId":  "upgrade.survivors.moonlit-edge",
+                         "requiredUpgradeRank":  2,
+                         "description":  "Let Vector Slash cut through more targets."
+                     },
+                     {
+                         "id":  "upgrade.survivors.lunar-tempo",
+                         "displayName":  "Vector Tempo",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  2,
+                         "effect":  "survivors.weapon.cooldown_multiplier",
+                         "target":  "survivors.weapon.moon-slash",
+                         "amount":  -0.05,
+                         "requiredUpgradeId":  "upgrade.survivors.moonlit-edge",
+                         "requiredUpgradeRank":  3,
+                         "description":  "Vector Slash recovers faster between cuts."
+                     },
+                     {
+                         "id":  "upgrade.survivors.nova-echo",
+                         "displayName":  "Nova Repeat",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Rare",
+                         "weight":  24,
+                         "maxRank":  5,
+                         "effect":  "survivors.burst.count",
+                         "target":  "survivors.weapon.star-nova",
+                         "amount":  1.0,
+                         "description":  "Add another pulse to Reactor Nova."
+                     },
+                     {
+                         "id":  "upgrade.survivors.cinder-echoes",
+                         "displayName":  "Reactor Echoes",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  24,
+                         "maxRank":  3,
+                         "effect":  "survivors.burst.echo_count",
+                         "target":  "survivors.weapon.star-nova",
+                         "amount":  1.0,
+                         "requiredUpgradeId":  "upgrade.survivors.nova-echo",
+                         "requiredUpgradeRank":  2,
+                         "description":  "Repeat Reactor Nova with delayed echoes."
+                     },
+                     {
+                         "id":  "upgrade.survivors.targeted-burst-sigils",
+                         "displayName":  "Target Locks",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  1,
+                         "effect":  "survivors.burst.targeted_sigils",
+                         "target":  "survivors.weapon.star-nova",
+                         "amount":  1.0,
+                         "requiredUpgradeId":  "upgrade.survivors.nova-echo",
+                         "requiredUpgradeRank":  3,
+                         "description":  "Reactor Nova leaves focused sigils on nearby enemies."
+                     },
+                     {
+                         "id":  "upgrade.survivors.piercing-bolts",
+                         "displayName":  "Penetration Pulse",
+                         "category":  "Mutation",
+                         "rarity":  "Uncommon",
+                         "weight":  36,
+                         "maxRank":  4,
+                         "effect":  "survivors.projectile.pierce_count",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  1.0,
+                         "description":  "Neon Pulse pierces additional enemies."
+                     },
+                     {
+                         "id":  "upgrade.survivors.chain-bolts",
+                         "displayName":  "Relay Pulse",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  26,
+                         "maxRank":  3,
+                         "effect":  "survivors.projectile.chain_count",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  1.0,
+                         "description":  "Neon Pulse jumps to a nearby enemy after impact."
+                     },
+                     {
+                         "id":  "upgrade.survivors.forked-bolts",
+                         "displayName":  "Split Pulse",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  24,
+                         "maxRank":  3,
+                         "effect":  "survivors.projectile.fork_count",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  1.0,
+                         "description":  "Neon Pulse splits after a hit."
+                     },
+                     {
+                         "id":  "upgrade.survivors.returning-bolts",
+                         "displayName":  "Recall Pulse",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  2,
+                         "effect":  "survivors.projectile.return_count",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  1.0,
+                         "description":  "Neon Pulse boomerangs after impact."
+                     },
+                     {
+                         "id":  "upgrade.survivors.distilled-poison",
+                         "displayName":  "Corrupt Packet",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  34,
+                         "maxRank":  5,
+                         "effect":  "survivors.status.poison_ratio",
+                         "target":  "survivors.status",
+                         "amount":  0.16,
+                         "description":  "Passive: weapon hits leave poison damage over time."
+                     },
+                     {
+                         "id":  "upgrade.survivors.hemorrhage-edge",
+                         "displayName":  "Leak Routine",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  32,
+                         "maxRank":  5,
+                         "effect":  "survivors.status.bleed_ratio",
+                         "target":  "survivors.status",
+                         "amount":  0.18,
+                         "description":  "Passive: weapon hits add bleeding damage over time."
+                     },
+                     {
+                         "id":  "upgrade.survivors.execution-rite",
+                         "displayName":  "Shutdown Threshold",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  3,
+                         "effect":  "survivors.status.execute_threshold",
+                         "target":  "survivors.status",
+                         "amount":  0.08,
+                         "description":  "Passive: wounded enemies can be executed by weapon hits."
+                     },
+                     {
+                         "id":  "upgrade.survivors.sanguine-feast",
+                         "displayName":  "Energy Siphon",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  24,
+                         "maxRank":  4,
+                         "effect":  "survivors.sustain.lifesteal_ratio",
+                         "target":  "survivors.player",
+                         "amount":  0.035,
+                         "description":  "Passive: heal from a portion of weapon damage."
+                     },
+                     {
+                         "id":  "upgrade.survivors.guardian-barrier",
+                         "displayName":  "Shield Buffer",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  30,
+                         "maxRank":  4,
+                         "effect":  "survivors.barrier.capacity",
+                         "target":  "survivors.barrier",
+                         "amount":  6.0,
+                         "description":  "Passive: increase starting barrier capacity."
+                     },
+                     {
+                         "id":  "upgrade.survivors.ward-recovery",
+                         "displayName":  "Buffer Recovery",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  28,
+                         "maxRank":  4,
+                         "effect":  "survivors.barrier.regen",
+                         "target":  "survivors.barrier",
+                         "amount":  0.18,
+                         "description":  "Passive: regenerate barrier during the run."
+                     },
+                     {
+                         "id":  "upgrade.survivors.mirror-bulwark",
+                         "displayName":  "Reflective Buffer",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  20,
+                         "maxRank":  3,
+                         "effect":  "survivors.barrier.on_damage_ratio",
+                         "target":  "survivors.barrier",
+                         "amount":  0.04,
+                         "description":  "Passive: weapon damage restores a little barrier."
+                     },
+                     {
+                         "id":  "upgrade.survivors.arcane-thesis",
+                         "displayName":  "Pulse Thesis",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  34,
+                         "maxRank":  4,
+                         "effect":  "survivors.damage.flat",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  1.6,
+                         "description":  "Passive: commit to Neon Pulse damage and unlock Neon Tempest."
+                     },
+                     {
+                         "id":  "upgrade.survivors.frost-needlework",
+                         "displayName":  "Prism Calibration",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  32,
+                         "maxRank":  3,
+                         "effect":  "survivors.projectile.pierce_count",
+                         "target":  "survivors.weapon.frost-fan",
+                         "amount":  1.0,
+                         "description":  "Passive: sharpen prism shards and unlock Prism Crown."
+                     },
+                     {
+                         "id":  "upgrade.survivors.blood-ring-canticle",
+                         "displayName":  "Photon Lattice",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  3,
+                         "effect":  "survivors.orbit.blade_count",
+                         "target":  "survivors.weapon.orbit-ward",
+                         "amount":  1.0,
+                         "description":  "Passive: deepen orbit damage and unlock Photon Aegis."
+                     },
+                     {
+                         "id":  "upgrade.survivors.cinder-script",
+                         "displayName":  "Reactor Script",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  3,
+                         "effect":  "survivors.burst.targeted_sigils",
+                         "target":  "survivors.weapon.star-nova",
+                         "amount":  1.0,
+                         "description":  "Passive: focus burst sigils and unlock Reactor Heart."
+                     },
+                     {
+                         "id":  "upgrade.survivors.ember-forge-heart",
+                         "displayName":  "Core Amplifier",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  34,
+                         "maxRank":  4,
+                         "effect":  "survivors.damage.flat",
+                         "target":  "survivors.weapon.star-nova",
+                         "amount":  2.2,
+                         "description":  "Passive: raise Reactor weapon damage."
+                     },
+                     {
+                         "id":  "upgrade.survivors.ember-tempo",
+                         "displayName":  "Core Tempo",
+                         "category":  "Passive",
+                         "rarity":  "Uncommon",
+                         "weight":  30,
+                         "maxRank":  3,
+                         "effect":  "survivors.weapon.cooldown_multiplier",
+                         "target":  "survivors.weapon.star-beam",
+                         "amount":  -0.06,
+                         "description":  "Passive: quicken Lumen Rail for Reactor builds."
+                     },
+                     {
+                         "id":  "upgrade.survivors.moon-oath",
+                         "displayName":  "Vector Oath",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  3,
+                         "effect":  "survivors.damage.flat",
+                         "target":  "survivors.weapon.moon-slash",
+                         "amount":  1.8,
+                         "description":  "Passive: sharpen Vector Slash and unlock Vector Waltz."
+                     },
+                     {
+                         "id":  "upgrade.survivors.star-focus",
+                         "displayName":  "Rail Focus",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Uncommon",
+                         "weight":  30,
+                         "maxRank":  5,
+                         "effect":  "survivors.damage.flat",
+                         "target":  "survivors.weapon.star-beam",
+                         "amount":  1.4,
+                         "description":  "Lumen Rail deals more damage."
+                     },
+                     {
+                         "id":  "upgrade.survivors.star-pulse",
+                         "displayName":  "Rail Cycle",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  20,
+                         "maxRank":  2,
+                         "effect":  "survivors.weapon.cooldown_multiplier",
+                         "target":  "survivors.weapon.star-beam",
+                         "amount":  -0.05,
+                         "requiredUpgradeId":  "upgrade.survivors.star-focus",
+                         "requiredUpgradeRank":  3,
+                         "description":  "Lumen Rail fires more often."
+                     },
+                     {
+                         "id":  "upgrade.survivors.siege-payloads",
+                         "displayName":  "Siege Packets",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  20,
+                         "maxRank":  3,
+                         "effect":  "survivors.payload.count",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  1.0,
+                         "affectedContentId":  "survivors.weapon.payloads",
+                         "description":  "Passive: carry heavier payloads for Reactor payload builds."
+                     },
+                     {
+                         "id":  "upgrade.survivors.ember-ward",
+                         "displayName":  "Core Shield",
+                         "category":  "Passive",
+                         "rarity":  "Rare",
+                         "weight":  20,
+                         "maxRank":  3,
+                         "effect":  "survivors.barrier.capacity",
+                         "target":  "survivors.barrier",
+                         "amount":  8.0,
+                         "description":  "Passive: add a larger defensive barrier."
+                     },
+                     {
+                         "id":  "upgrade.survivors.prismatic-beam",
+                         "displayName":  "Split Spectrum",
+                         "category":  "Mutation",
+                         "rarity":  "Uncommon",
+                         "weight":  30,
+                         "maxRank":  3,
+                         "effect":  "survivors.hitscan.pierce",
+                         "target":  "survivors.weapon.star-beam",
+                         "amount":  1.0,
+                         "requiredUpgradeId":  "upgrade.survivors.star-focus",
+                         "requiredUpgradeRank":  2,
+                         "description":  "Lumen Rail pierces more enemies."
+                     },
+                     {
+                         "id":  "upgrade.survivors.extra-payload",
+                         "displayName":  "Packet Duplication",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  5,
+                         "effect":  "survivors.payload.count",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  1.0,
+                         "affectedContentId":  "weapon.survivors.gravity-grenade",
+                         "requiredOwnedWeaponId":  "weapon.survivors.gravity-grenade",
+                         "description":  "Throw or place additional payloads."
+                     },
+                     {
+                         "id":  "upgrade.survivors.bigger-booms",
+                         "displayName":  "Expanded Blast",
+                         "category":  "Mutation",
+                         "rarity":  "Uncommon",
+                         "weight":  32,
+                         "maxRank":  4,
+                         "effect":  "survivors.payload.radius",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  0.45,
+                         "affectedContentId":  "weapon.survivors.gravity-grenade",
+                         "requiredOwnedWeaponId":  "weapon.survivors.gravity-grenade",
+                         "requiredUpgradeId":  "upgrade.survivors.extra-payload",
+                         "requiredUpgradeRank":  2,
+                         "description":  "Payload explosions cover a wider area."
+                     },
+                     {
+                         "id":  "upgrade.survivors.wider-triggers",
+                         "displayName":  "Wide Sensors",
+                         "category":  "Mutation",
+                         "rarity":  "Uncommon",
+                         "weight":  28,
+                         "maxRank":  4,
+                         "effect":  "survivors.payload.trigger_radius",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  0.35,
+                         "affectedContentId":  "weapon.survivors.gravity-grenade",
+                         "requiredOwnedWeaponId":  "weapon.survivors.gravity-grenade",
+                         "requiredUpgradeId":  "upgrade.survivors.extra-payload",
+                         "requiredUpgradeRank":  2,
+                         "description":  "Payloads trigger from farther away."
+                     },
+                     {
+                         "id":  "upgrade.survivors.rune-lattice",
+                         "displayName":  "Signal Lattice",
+                         "category":  "WeaponUpgrade",
+                         "rarity":  "Uncommon",
+                         "weight":  28,
+                         "maxRank":  5,
+                         "effect":  "survivors.payload.count",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  1.0,
+                         "affectedContentId":  "weapon.survivors.rune-trap",
+                         "requiredOwnedWeaponId":  "weapon.survivors.rune-trap",
+                         "description":  "Signal Trap and Glitch Mine deploy more hazards."
+                     },
+                     {
+                         "id":  "upgrade.survivors.snaring-runes",
+                         "displayName":  "Snare Code",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  3,
+                         "effect":  "survivors.payload.trigger_radius",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  0.35,
+                         "affectedContentId":  "weapon.survivors.rune-trap",
+                         "requiredOwnedWeaponId":  "weapon.survivors.rune-trap",
+                         "requiredUpgradeId":  "upgrade.survivors.rune-lattice",
+                         "requiredUpgradeRank":  2,
+                         "description":  "Placed hazards trigger from farther away."
+                     },
+                     {
+                         "id":  "upgrade.survivors.aether-bloom",
+                         "displayName":  "Glitch Bloom",
+                         "category":  "Mutation",
+                         "rarity":  "Rare",
+                         "weight":  22,
+                         "maxRank":  3,
+                         "effect":  "survivors.payload.radius",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  0.45,
+                         "affectedContentId":  "weapon.survivors.aether-mine",
+                         "requiredOwnedWeaponId":  "weapon.survivors.aether-mine",
+                         "requiredUpgradeId":  "upgrade.survivors.rune-lattice",
+                         "requiredUpgradeRank":  3,
+                         "description":  "Placed hazard detonations cover a wider area."
+                     },
+                     {
+                         "id":  "upgrade.survivors.evolution.arcane-storm",
+                         "displayName":  "Neon Tempest",
+                         "category":  "Evolution",
+                         "rarity":  "Legendary",
+                         "weight":  14,
+                         "maxRank":  1,
+                         "effect":  "survivors.projectile.chain_count",
+                         "target":  "survivors.weapon.arcane-wand",
+                         "amount":  3.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.projectile.chain_count",
+                                             "target":  "survivors.weapon.arcane-wand",
+                                             "amount":  3.0
+                                         },
+                                         {
+                                             "effect":  "survivors.projectile.fork_count",
+                                             "target":  "survivors.weapon.arcane-wand",
+                                             "amount":  1.0
+                                         },
+                                         {
+                                             "effect":  "survivors.damage.flat",
+                                             "target":  "survivors.weapon.arcane-wand",
+                                             "amount":  5.0
+                                         }
+                                     ],
+                         "requiredUpgradeId":  "upgrade.survivors.arcane-damage",
+                         "requiredUpgradeRank":  5,
+                         "requiredPassiveUpgradeId":  "upgrade.survivors.arcane-thesis",
+                         "description":  "Evolution: Neon Pulse becomes a storm of chaining, forking bolts."
+                     },
+                     {
+                         "id":  "upgrade.survivors.evolution.blizzard-crown",
+                         "displayName":  "Prism Crown",
+                         "category":  "Evolution",
+                         "rarity":  "Legendary",
+                         "weight":  14,
+                         "maxRank":  1,
+                         "effect":  "survivors.projectile.fan_count",
+                         "target":  "survivors.weapon.frost-fan",
+                         "amount":  3.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.projectile.fan_count",
+                                             "target":  "survivors.weapon.frost-fan",
+                                             "amount":  3.0
+                                         },
+                                         {
+                                             "effect":  "survivors.projectile.pierce_count",
+                                             "target":  "survivors.weapon.frost-fan",
+                                             "amount":  2.0
+                                         }
+                                     ],
+                         "requiredUpgradeId":  "upgrade.survivors.frost-fan",
+                         "requiredUpgradeRank":  5,
+                         "requiredPassiveUpgradeId":  "upgrade.survivors.frost-needlework",
+                         "description":  "Evolution: Prism Volley expands into a piercing crown of shards."
+                     },
+                     {
+                         "id":  "upgrade.survivors.evolution.crimson-aegis",
+                         "displayName":  "Photon Aegis",
+                         "category":  "Evolution",
+                         "rarity":  "Legendary",
+                         "weight":  14,
+                         "maxRank":  1,
+                         "effect":  "survivors.orbit.blade_count",
+                         "target":  "survivors.weapon.orbit-ward",
+                         "amount":  3.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.orbit.blade_count",
+                                             "target":  "survivors.weapon.orbit-ward",
+                                             "amount":  3.0
+                                         },
+                                         {
+                                             "effect":  "survivors.orbit.radius",
+                                             "target":  "survivors.weapon.thorn-halo",
+                                             "amount":  0.75
+                                         }
+                                     ],
+                         "requiredUpgradeId":  "upgrade.survivors.orbiting-focus",
+                         "requiredUpgradeRank":  5,
+                         "requiredPassiveUpgradeId":  "upgrade.survivors.blood-ring-canticle",
+                         "description":  "Evolution: Photon Guard and Firewall Halo gain a counter-rotating shield ring that pushes back the horde."
+                     },
+                     {
+                         "id":  "upgrade.survivors.evolution.inferno-heart",
+                         "displayName":  "Reactor Heart",
+                         "category":  "Evolution",
+                         "rarity":  "Legendary",
+                         "weight":  14,
+                         "maxRank":  1,
+                         "effect":  "survivors.burst.count",
+                         "target":  "survivors.weapon.star-nova",
+                         "amount":  2.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.burst.count",
+                                             "target":  "survivors.weapon.star-nova",
+                                             "amount":  2.0
+                                         },
+                                         {
+                                             "effect":  "survivors.burst.echo_count",
+                                             "target":  "survivors.weapon.star-nova",
+                                             "amount":  2.0
+                                         },
+                                         {
+                                             "effect":  "survivors.burst.targeted_sigils",
+                                             "target":  "survivors.weapon.star-nova",
+                                             "amount":  1.0
+                                         }
+                                     ],
+                         "requiredUpgradeId":  "upgrade.survivors.nova-echo",
+                         "requiredUpgradeRank":  5,
+                         "requiredPassiveUpgradeId":  "upgrade.survivors.cinder-script",
+                         "description":  "Evolution: Reactor Nova repeats, echoes, burns longer, and targets the horde."
+                     },
+                     {
+                         "id":  "upgrade.survivors.evolution.tempest-prism",
+                         "displayName":  "Spectrum Storm",
+                         "category":  "Evolution",
+                         "rarity":  "Legendary",
+                         "weight":  10,
+                         "maxRank":  1,
+                         "effect":  "survivors.hitscan.pierce",
+                         "target":  "survivors.weapon.star-beam",
+                         "amount":  3.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.hitscan.pierce",
+                                             "target":  "survivors.weapon.star-beam",
+                                             "amount":  3.0
+                                         },
+                                         {
+                                             "effect":  "survivors.weapon.cooldown_multiplier",
+                                             "target":  "survivors.weapon.star-beam",
+                                             "amount":  -0.12
+                                         }
+                                     ],
+                         "requiredUpgradeId":  "upgrade.survivors.star-focus",
+                         "requiredUpgradeRank":  5,
+                         "requiredPassiveUpgradeId":  "upgrade.survivors.twin-charm",
+                         "description":  "Evolution: Lumen Rail becomes a rapid prism that splits into angled side beams and arcing refractions."
+                     },
+                     {
+                         "id":  "upgrade.survivors.evolution.gravefield-engine",
+                         "displayName":  "Singularity Grid",
+                         "category":  "Evolution",
+                         "rarity":  "Legendary",
+                         "weight":  10,
+                         "maxRank":  1,
+                         "effect":  "survivors.payload.count",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  2.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.payload.count",
+                                             "target":  "survivors.weapon.payloads",
+                                             "amount":  2.0
+                                         },
+                                         {
+                                             "effect":  "survivors.payload.radius",
+                                             "target":  "survivors.weapon.payloads",
+                                             "amount":  0.85
+                                         },
+                                         {
+                                             "effect":  "survivors.payload.trigger_radius",
+                                             "target":  "survivors.weapon.payloads",
+                                             "amount":  0.65
+                                         }
+                                     ],
+                         "affectedContentId":  "weapon.survivors.gravity-grenade",
+                         "requiredOwnedWeaponId":  "weapon.survivors.gravity-grenade",
+                         "requiredUpgradeId":  "upgrade.survivors.bigger-booms",
+                         "requiredUpgradeRank":  4,
+                         "requiredPassiveUpgradeId":  "upgrade.survivors.giant-rune",
+                         "description":  "Evolution: payload detonations seed snaring satellite danger fields."
+                     },
+                     {
+                         "id":  "upgrade.survivors.evolution.eclipse-waltz",
+                         "displayName":  "Vector Waltz",
+                         "category":  "Evolution",
+                         "rarity":  "Legendary",
+                         "weight":  10,
+                         "maxRank":  1,
+                         "effect":  "survivors.melee.target_count",
+                         "target":  "survivors.weapon.moon-slash",
+                         "amount":  3.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.melee.target_count",
+                                             "target":  "survivors.weapon.moon-slash",
+                                             "amount":  3.0
+                                         },
+                                         {
+                                             "effect":  "survivors.weapon.cooldown_multiplier",
+                                             "target":  "survivors.weapon.moon-slash",
+                                             "amount":  -0.1
+                                         },
+                                         {
+                                             "effect":  "survivors.damage.flat",
+                                             "target":  "survivors.weapon.moon-slash",
+                                             "amount":  4.0
+                                         }
+                                     ],
+                         "requiredUpgradeId":  "upgrade.survivors.moonlit-edge",
+                         "requiredUpgradeRank":  5,
+                         "requiredPassiveUpgradeId":  "upgrade.survivors.moon-oath",
+                         "description":  "Evolution: Vector Slash cuts forward and backward in a rapid sweeping dance."
+                     },
+                     {
+                         "id":  "upgrade.survivors.evolution.aetherfield-matrix",
+                         "displayName":  "Glitchfield Matrix",
+                         "category":  "Evolution",
+                         "rarity":  "Legendary",
+                         "weight":  10,
+                         "maxRank":  1,
+                         "effect":  "survivors.payload.count",
+                         "target":  "survivors.weapon.payloads",
+                         "amount":  2.0,
+                         "effects":  [
+                                         {
+                                             "effect":  "survivors.payload.count",
+                                             "target":  "survivors.weapon.payloads",
+                                             "amount":  2.0
+                                         },
+                                         {
+                                             "effect":  "survivors.payload.radius",
+                                             "target":  "survivors.weapon.payloads",
+                                             "amount":  0.75
+                                         },
+                                         {
+                                             "effect":  "survivors.payload.trigger_radius",
+                                             "target":  "survivors.weapon.payloads",
+                                             "amount":  0.65
+                                         }
+                                     ],
+                         "affectedContentId":  "weapon.survivors.rune-trap",
+                         "requiredOwnedWeaponId":  "weapon.survivors.rune-trap",
+                         "requiredUpgradeId":  "upgrade.survivors.rune-lattice",
+                         "requiredUpgradeRank":  5,
+                         "requiredPassiveUpgradeId":  "upgrade.survivors.siege-payloads",
+                         "description":  "Evolution: Signal Trap and Glitch Mine seed snaring satellite hazard fields."
+                     }
+                 ]
+}
