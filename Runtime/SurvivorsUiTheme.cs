@@ -8,6 +8,9 @@ namespace Deucarian.TemplateGameSurvivors
     [Serializable]
     public sealed class SurvivorsUiTheme
     {
+        [NonSerialized]
+        private bool _hasAuthoredWorldPresentation;
+
         public string themeName = "Deucarian Survivors";
         public string cardBackgroundToken = "obsidian-panel";
         public string cardFrameToken = "rarity-frame";
@@ -33,10 +36,13 @@ namespace Deucarian.TemplateGameSurvivors
         public string iconPlaceholderPrefix = "Icon";
         public string hudAccentColor = "#33C7FF";
         public string buttonStyleToken = "solid";
+        public SurvivorsWorldPresentationToken worldPresentation;
         public RarityStyleToken[] rarityStyles;
         public CategoryStyleToken[] categoryStyles;
         public TutorialStepStyleToken[] tutorialSteps;
         public AudioEventStyleToken[] audioEvents;
+
+        public bool HasAuthoredWorldPresentation => _hasAuthoredWorldPresentation;
 
         public static SurvivorsUiTheme CreateDefault()
         {
@@ -63,6 +69,7 @@ namespace Deucarian.TemplateGameSurvivors
                     return false;
                 }
 
+                parsed._hasAuthoredWorldPresentation = parsed.worldPresentation != null && parsed.worldPresentation.authored;
                 parsed.ApplyFallbacks();
                 theme = parsed;
                 return true;
@@ -197,6 +204,56 @@ namespace Deucarian.TemplateGameSurvivors
             return ColorUtility.TryParseHtmlString(hudAccentColor, out Color color) ? color : fallback;
         }
 
+        public Color GetPlayerColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.playerColor : null, fallback);
+        }
+
+        public Color GetArenaFloorColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.arenaFloorColor : null, fallback);
+        }
+
+        public Color GetArenaGridColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.arenaGridColor : null, fallback);
+        }
+
+        public Color GetArenaAccentColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.arenaAccentColor : null, fallback);
+        }
+
+        public Color GetExperiencePickupColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.experiencePickupColor : null, fallback);
+        }
+
+        public Color GetHealthPickupColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.healthPickupColor : null, fallback);
+        }
+
+        public Color GetCurrencyPickupColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.currencyPickupColor : null, fallback);
+        }
+
+        public Color GetEliteThreatColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.eliteThreatColor : null, fallback);
+        }
+
+        public Color GetBossThreatColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.bossThreatColor : null, fallback);
+        }
+
+        public Color GetFeedbackAccentColor(Color fallback)
+        {
+            return ResolveWorldColor(_hasAuthoredWorldPresentation && worldPresentation != null ? worldPresentation.feedbackAccentColor : null, fallback);
+        }
+
         private void ApplyFallbacks()
         {
             themeName = string.IsNullOrWhiteSpace(themeName) ? "Deucarian Survivors" : themeName;
@@ -224,10 +281,18 @@ namespace Deucarian.TemplateGameSurvivors
             iconPlaceholderPrefix = string.IsNullOrWhiteSpace(iconPlaceholderPrefix) ? "Icon" : iconPlaceholderPrefix;
             hudAccentColor = string.IsNullOrWhiteSpace(hudAccentColor) ? "#33C7FF" : hudAccentColor;
             buttonStyleToken = string.IsNullOrWhiteSpace(buttonStyleToken) ? "solid" : buttonStyleToken;
+            worldPresentation = SurvivorsWorldPresentationToken.MergeWithFallback(worldPresentation);
             rarityStyles = MergeRarityFallbacks(rarityStyles);
             categoryStyles = MergeCategoryFallbacks(categoryStyles);
             tutorialSteps = MergeTutorialFallbacks(tutorialSteps);
             audioEvents = MergeAudioFallbacks(audioEvents);
+        }
+
+        private static Color ResolveWorldColor(string value, Color fallback)
+        {
+            return !string.IsNullOrWhiteSpace(value) && ColorUtility.TryParseHtmlString(value, out Color color)
+                ? color
+                : fallback;
         }
 
         private RarityStyleToken FindRarityStyle(string rarityId)
@@ -526,6 +591,65 @@ namespace Deucarian.TemplateGameSurvivors
                 string.IsNullOrWhiteSpace(source.id) ? fallback.id : source.id,
                 string.IsNullOrWhiteSpace(source.title) ? fallback.title : source.title,
                 source.lines == null || source.lines.Length == 0 ? fallback.lines : source.lines);
+        }
+    }
+
+    [Serializable]
+    public sealed class SurvivorsWorldPresentationToken
+    {
+        public bool authored;
+        public string playerColor;
+        public string arenaFloorColor;
+        public string arenaGridColor;
+        public string arenaAccentColor;
+        public string experiencePickupColor;
+        public string healthPickupColor;
+        public string currencyPickupColor;
+        public string eliteThreatColor;
+        public string bossThreatColor;
+        public string feedbackAccentColor;
+
+        internal static SurvivorsWorldPresentationToken MergeWithFallback(SurvivorsWorldPresentationToken configured)
+        {
+            var fallback = new SurvivorsWorldPresentationToken
+            {
+                authored = false,
+                playerColor = "#C7E8FF",
+                arenaFloorColor = "#0B0E0F",
+                arenaGridColor = "#0E110D",
+                arenaAccentColor = "#52F0FF",
+                experiencePickupColor = "#38D4FF",
+                healthPickupColor = "#FF3D6B",
+                currencyPickupColor = "#F5142E",
+                eliteThreatColor = "#FFC233",
+                bossThreatColor = "#FF3373",
+                feedbackAccentColor = "#D166FF"
+            };
+
+            if (configured == null)
+            {
+                return fallback;
+            }
+
+            return new SurvivorsWorldPresentationToken
+            {
+                authored = configured.authored,
+                playerColor = Resolve(configured.playerColor, fallback.playerColor),
+                arenaFloorColor = Resolve(configured.arenaFloorColor, fallback.arenaFloorColor),
+                arenaGridColor = Resolve(configured.arenaGridColor, fallback.arenaGridColor),
+                arenaAccentColor = Resolve(configured.arenaAccentColor, fallback.arenaAccentColor),
+                experiencePickupColor = Resolve(configured.experiencePickupColor, fallback.experiencePickupColor),
+                healthPickupColor = Resolve(configured.healthPickupColor, fallback.healthPickupColor),
+                currencyPickupColor = Resolve(configured.currencyPickupColor, fallback.currencyPickupColor),
+                eliteThreatColor = Resolve(configured.eliteThreatColor, fallback.eliteThreatColor),
+                bossThreatColor = Resolve(configured.bossThreatColor, fallback.bossThreatColor),
+                feedbackAccentColor = Resolve(configured.feedbackAccentColor, fallback.feedbackAccentColor)
+            };
+        }
+
+        private static string Resolve(string configured, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(configured) ? fallback : configured;
         }
     }
 

@@ -1,0 +1,42 @@
+{
+    "defaultClassId":  "class.survivors.arcane-initiate",
+    "classes":  [
+                    {
+                        "id":  "class.survivors.arcane-initiate",
+                        "displayName":  "Pulse Runner",
+                        "startingWeaponId":  "weapon.survivors.arcane-wand",
+                        "startingWeaponIds":  [
+                                                  "weapon.survivors.arcane-wand"
+                                              ],
+                        "unlockedByDefault":  true,
+                        "unlockRewardId":  "",
+                        "statModifiers":  [
+
+                                          ]
+                    },
+                    {
+                        "id":  "class.survivors.ember-vanguard",
+                        "displayName":  "Reactor Knight",
+                        "startingWeaponId":  "weapon.survivors.star-beam",
+                        "startingWeaponIds":  [
+                                                  "weapon.survivors.star-beam"
+                                              ],
+                        "unlockedByDefault":  false,
+                        "unlockRewardId":  "reward.survivors.class.ember-vanguard",
+                        "statModifiers":  [
+                                              {
+                                                  "stat":  "MoveSpeed",
+                                                  "amount":  0.65
+                                              },
+                                              {
+                                                  "stat":  "Damage",
+                                                  "amount":  1.25
+                                              },
+                                              {
+                                                  "stat":  "MaxHealth",
+                                                  "amount":  6
+                                              }
+                                          ]
+                    }
+                ]
+}

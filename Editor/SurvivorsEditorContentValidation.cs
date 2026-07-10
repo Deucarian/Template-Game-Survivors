@@ -17,6 +17,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public static void ValidateContent()
         {
             ContentValidationReport report = BuildBasicSampleReport();
+            Merge(report, BuildNeonArcanaSampleReport());
             string summary = GameContentAuthoringValidationReports.BuildSummary(report);
             string markdown = BuildMarkdownReport(report);
 
@@ -54,6 +55,36 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string runFlowJson = ReadRequiredText(sampleRoot, "Content/DefaultRunFlow/run-flow.json", report);
             string uiThemeJson = ReadRequiredText(sampleRoot, "Content/DefaultUiTheme/ui-theme.json", report);
             string alternateUiThemeJson = ReadRequiredText(sampleRoot, "Content/NeonArcanaUiTheme/ui-theme.json", report);
+
+            if (report.ErrorCount > 0)
+            {
+                return report;
+            }
+
+            Merge(report, ValidateJsonContent(weaponJson, upgradeJson, enemyJson, rewardJson, relicJson, classJson, progressionJson, pickupJson, runFlowJson, uiThemeJson, alternateUiThemeJson));
+            return report;
+        }
+
+        public static ContentValidationReport BuildNeonArcanaSampleReport()
+        {
+            var report = new ContentValidationReport();
+            string sampleRoot = ResolveSampleRoot(report);
+            if (string.IsNullOrWhiteSpace(sampleRoot))
+            {
+                return report;
+            }
+
+            string weaponJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Weapons/weapons.json", report);
+            string upgradeJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Upgrades/upgrades.json", report);
+            string enemyJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Enemies/enemies.json", report);
+            string pickupJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Pickups/pickups.json", report);
+            string rewardJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Rewards/rewards.json", report);
+            string relicJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Relics/relics.json", report);
+            string classJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Classes/classes.json", report);
+            string progressionJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Progression/progression.json", report);
+            string runFlowJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/RunFlow/run-flow.json", report);
+            string uiThemeJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Themes/NeonArcana/ui-theme.json", report);
+            string alternateUiThemeJson = ReadRequiredText(sampleRoot, "Content/NeonArcana/Themes/Afterglow/ui-theme.json", report);
 
             if (report.ErrorCount > 0)
             {

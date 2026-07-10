@@ -1,0 +1,625 @@
+{
+    "tracks":  [
+                   {
+                       "id":  "progression.survivors.arcane-initiate.passives",
+                       "displayName":  "Pulse Runner Passive Atlas",
+                       "kind":  "PassiveAtlas",
+                       "classId":  "class.survivors.arcane-initiate",
+                       "targetWeaponId":  "",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.arcane-initiate.arcane-thesis",
+                                         "displayName":  "Pulse Thesis",
+                                         "upgradeId":  "upgrade.survivors.arcane-thesis",
+                                         "kind":  "Passive",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  4
+                                     },
+                                     {
+                                         "id":  "node.survivors.arcane-initiate.frost-needlework",
+                                         "displayName":  "Prism Calibration",
+                                         "upgradeId":  "upgrade.survivors.frost-needlework",
+                                         "kind":  "Passive",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.arcane-initiate.blood-ring-canticle",
+                                         "displayName":  "Photon Lattice",
+                                         "upgradeId":  "upgrade.survivors.blood-ring-canticle",
+                                         "kind":  "Passive",
+                                         "tier":  2,
+                                         "pointCost":  2,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.arcane-initiate.cinder-script",
+                                         "displayName":  "Reactor Script",
+                                         "upgradeId":  "upgrade.survivors.cinder-script",
+                                         "kind":  "Passive",
+                                         "tier":  3,
+                                         "pointCost":  2,
+                                         "maxRank":  3
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.ember-vanguard.passives",
+                       "displayName":  "Reactor Knight Passive Atlas",
+                       "kind":  "PassiveAtlas",
+                       "classId":  "class.survivors.ember-vanguard",
+                       "targetWeaponId":  "",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.forge-heart",
+                                         "displayName":  "Core Amplifier",
+                                         "upgradeId":  "upgrade.survivors.ember-forge-heart",
+                                         "kind":  "Passive",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  4
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.battle-tempo",
+                                         "displayName":  "Core Tempo",
+                                         "upgradeId":  "upgrade.survivors.ember-tempo",
+                                         "kind":  "Passive",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.moon-oath",
+                                         "displayName":  "Vector Oath",
+                                         "upgradeId":  "upgrade.survivors.moon-oath",
+                                         "kind":  "Passive",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.siege-payloads",
+                                         "displayName":  "Siege Packets",
+                                         "upgradeId":  "upgrade.survivors.siege-payloads",
+                                         "kind":  "Passive",
+                                         "tier":  3,
+                                         "pointCost":  2,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.ember-ward",
+                                         "displayName":  "Core Shield",
+                                         "upgradeId":  "upgrade.survivors.ember-ward",
+                                         "kind":  "Passive",
+                                         "tier":  4,
+                                         "pointCost":  2,
+                                         "maxRank":  3
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.arc-bolt.weapon",
+                       "displayName":  "Neon Pulse Skill Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "",
+                       "targetWeaponId":  "weapon.survivors.arcane-wand",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.arc-bolt.unlock",
+                                         "displayName":  "Neon Pulse",
+                                         "upgradeId":  "upgrade.survivors.weapon.arcane-wand",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.arc-bolt.damage",
+                                         "displayName":  "Pulse Voltage",
+                                         "upgradeId":  "upgrade.survivors.arcane-damage",
+                                         "kind":  "WeaponRank",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  8
+                                     },
+                                     {
+                                         "id":  "node.survivors.arc-bolt.pierce",
+                                         "displayName":  "Penetration Pulse",
+                                         "upgradeId":  "upgrade.survivors.piercing-bolts",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  4
+                                     },
+                                     {
+                                         "id":  "node.survivors.arc-bolt.chain",
+                                         "displayName":  "Relay Pulse",
+                                         "upgradeId":  "upgrade.survivors.chain-bolts",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  3,
+                                         "pointCost":  2,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.arc-bolt.return",
+                                         "displayName":  "Recall Pulse",
+                                         "upgradeId":  "upgrade.survivors.returning-bolts",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  4,
+                                         "pointCost":  2,
+                                         "maxRank":  2
+                                     },
+                                     {
+                                         "id":  "node.survivors.arc-bolt.evolution",
+                                         "displayName":  "Neon Tempest",
+                                         "upgradeId":  "upgrade.survivors.evolution.arcane-storm",
+                                         "kind":  "Evolution",
+                                         "tier":  5,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.frost-fan.weapon",
+                       "displayName":  "Prism Volley Skill Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "",
+                       "targetWeaponId":  "weapon.survivors.frost-fan",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.frost-fan.unlock",
+                                         "displayName":  "Prism Volley",
+                                         "upgradeId":  "upgrade.survivors.weapon.frost-fan",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.frost-fan.rank",
+                                         "displayName":  "Prism Volley",
+                                         "upgradeId":  "upgrade.survivors.frost-fan",
+                                         "kind":  "WeaponRank",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  5
+                                     },
+                                     {
+                                         "id":  "node.survivors.frost-fan.splinter",
+                                         "displayName":  "Prism Shatter",
+                                         "upgradeId":  "upgrade.survivors.frost-splinter",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.frost-fan.ricochet",
+                                         "displayName":  "Refraction Jump",
+                                         "upgradeId":  "upgrade.survivors.frost-ricochet",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  3,
+                                         "pointCost":  1,
+                                         "maxRank":  2
+                                     },
+                                     {
+                                         "id":  "node.survivors.frost-fan.needles",
+                                         "displayName":  "Prism Calibration",
+                                         "upgradeId":  "upgrade.survivors.frost-needlework",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  4,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.frost-fan.evolution",
+                                         "displayName":  "Prism Crown",
+                                         "upgradeId":  "upgrade.survivors.evolution.blizzard-crown",
+                                         "kind":  "Evolution",
+                                         "tier":  5,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.blood-ring.weapon",
+                       "displayName":  "Photon Guard Skill Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "",
+                       "targetWeaponId":  "weapon.survivors.orbit-ward",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.blood-ring.unlock",
+                                         "displayName":  "Photon Guard",
+                                         "upgradeId":  "upgrade.survivors.weapon.orbit-ward",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.blood-ring.focus",
+                                         "displayName":  "Orbit Node",
+                                         "upgradeId":  "upgrade.survivors.orbiting-focus",
+                                         "kind":  "WeaponRank",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  5
+                                     },
+                                     {
+                                         "id":  "node.survivors.blood-ring.serrated-orbit",
+                                         "displayName":  "Razor Circuit",
+                                         "upgradeId":  "upgrade.survivors.serrated-orbit",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  2
+                                     },
+                                     {
+                                         "id":  "node.survivors.blood-ring.canticle",
+                                         "displayName":  "Photon Lattice",
+                                         "upgradeId":  "upgrade.survivors.blood-ring-canticle",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  2,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.blood-ring.evolution",
+                                         "displayName":  "Photon Aegis",
+                                         "upgradeId":  "upgrade.survivors.evolution.crimson-aegis",
+                                         "kind":  "Evolution",
+                                         "tier":  5,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.thorn-halo.weapon",
+                       "displayName":  "Firewall Halo Skill Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "",
+                       "targetWeaponId":  "weapon.survivors.thorn-halo",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.thorn-halo.unlock",
+                                         "displayName":  "Firewall Halo",
+                                         "upgradeId":  "upgrade.survivors.weapon.thorn-halo",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.thorn-halo.bramble-guard",
+                                         "displayName":  "Firewall Nodes",
+                                         "upgradeId":  "upgrade.survivors.bramble-guard",
+                                         "kind":  "WeaponRank",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  5
+                                     },
+                                     {
+                                         "id":  "node.survivors.thorn-halo.wall",
+                                         "displayName":  "Firewall Wall",
+                                         "upgradeId":  "upgrade.survivors.thorn-halo-wall",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.thorn-halo.spiral",
+                                         "displayName":  "Spiral Firewall",
+                                         "upgradeId":  "upgrade.survivors.halo-spiral",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  3,
+                                         "pointCost":  1,
+                                         "maxRank":  2
+                                     },
+                                     {
+                                         "id":  "node.survivors.thorn-halo.evolution",
+                                         "displayName":  "Photon Aegis",
+                                         "upgradeId":  "upgrade.survivors.evolution.crimson-aegis",
+                                         "kind":  "Evolution",
+                                         "tier":  5,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.cinder-burst.weapon",
+                       "displayName":  "Reactor Nova Skill Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "",
+                       "targetWeaponId":  "weapon.survivors.star-nova",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.cinder-burst.unlock",
+                                         "displayName":  "Reactor Nova",
+                                         "upgradeId":  "upgrade.survivors.weapon.star-nova",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.cinder-burst.nova-echo",
+                                         "displayName":  "Nova Repeat",
+                                         "upgradeId":  "upgrade.survivors.nova-echo",
+                                         "kind":  "WeaponRank",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  5
+                                     },
+                                     {
+                                         "id":  "node.survivors.cinder-burst.cinder-echoes",
+                                         "displayName":  "Reactor Echoes",
+                                         "upgradeId":  "upgrade.survivors.cinder-echoes",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  2,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.cinder-burst.targeted-sigils",
+                                         "displayName":  "Target Locks",
+                                         "upgradeId":  "upgrade.survivors.targeted-burst-sigils",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  3,
+                                         "pointCost":  2,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.cinder-burst.evolution",
+                                         "displayName":  "Reactor Heart",
+                                         "upgradeId":  "upgrade.survivors.evolution.inferno-heart",
+                                         "kind":  "Evolution",
+                                         "tier":  5,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.star-beam.weapon",
+                       "displayName":  "Lumen Rail Skill Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "",
+                       "targetWeaponId":  "weapon.survivors.star-beam",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.star-beam.unlock",
+                                         "displayName":  "Lumen Rail",
+                                         "upgradeId":  "upgrade.survivors.weapon.star-beam",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.star-beam.focus",
+                                         "displayName":  "Rail Focus",
+                                         "upgradeId":  "upgrade.survivors.star-focus",
+                                         "kind":  "WeaponRank",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  5
+                                     },
+                                     {
+                                         "id":  "node.survivors.star-beam.prismatic-beam",
+                                         "displayName":  "Split Spectrum",
+                                         "upgradeId":  "upgrade.survivors.prismatic-beam",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.star-beam.pulse",
+                                         "displayName":  "Rail Cycle",
+                                         "upgradeId":  "upgrade.survivors.star-pulse",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  3,
+                                         "pointCost":  1,
+                                         "maxRank":  2
+                                     },
+                                     {
+                                         "id":  "node.survivors.star-beam.evolution",
+                                         "displayName":  "Spectrum Storm",
+                                         "upgradeId":  "upgrade.survivors.evolution.tempest-prism",
+                                         "kind":  "Evolution",
+                                         "tier":  5,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.ember-vanguard.moon-slash.weapon",
+                       "displayName":  "Reactor Knight Vector Slash Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "class.survivors.ember-vanguard",
+                       "targetWeaponId":  "weapon.survivors.moon-slash",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.moon-slash.unlock",
+                                         "displayName":  "Vector Slash",
+                                         "upgradeId":  "upgrade.survivors.weapon.moon-slash",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.moon-slash.edge",
+                                         "displayName":  "Vector Edge",
+                                         "upgradeId":  "upgrade.survivors.moonlit-edge",
+                                         "kind":  "WeaponRank",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  5
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.moon-slash.crescent-chain",
+                                         "displayName":  "Chained Cut",
+                                         "upgradeId":  "upgrade.survivors.crescent-chain",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  4
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.moon-slash.tempo",
+                                         "displayName":  "Vector Tempo",
+                                         "upgradeId":  "upgrade.survivors.lunar-tempo",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  3,
+                                         "pointCost":  1,
+                                         "maxRank":  2
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.moon-slash.evolution",
+                                         "displayName":  "Vector Waltz",
+                                         "upgradeId":  "upgrade.survivors.evolution.eclipse-waltz",
+                                         "kind":  "Evolution",
+                                         "tier":  5,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.gravity-grenade.unlock",
+                       "displayName":  "Singularity Packet Skill Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "",
+                       "targetWeaponId":  "weapon.survivors.gravity-grenade",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.gravity-grenade.unlock",
+                                         "displayName":  "Singularity Packet",
+                                         "upgradeId":  "upgrade.survivors.weapon.gravity-grenade",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.gravity-grenade.extra",
+                                         "displayName":  "Packet Duplication",
+                                         "upgradeId":  "upgrade.survivors.extra-payload",
+                                         "kind":  "WeaponRank",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  5
+                                     },
+                                     {
+                                         "id":  "node.survivors.gravity-grenade.bigger-booms",
+                                         "displayName":  "Expanded Blast",
+                                         "upgradeId":  "upgrade.survivors.bigger-booms",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  4
+                                     },
+                                     {
+                                         "id":  "node.survivors.gravity-grenade.wider-triggers",
+                                         "displayName":  "Wide Sensors",
+                                         "upgradeId":  "upgrade.survivors.wider-triggers",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  4
+                                     },
+                                     {
+                                         "id":  "node.survivors.gravity-grenade.evolution",
+                                         "displayName":  "Singularity Grid",
+                                         "upgradeId":  "upgrade.survivors.evolution.gravefield-engine",
+                                         "kind":  "Evolution",
+                                         "tier":  5,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   },
+                   {
+                       "id":  "progression.survivors.ember-vanguard.payloads.weapon",
+                       "displayName":  "Reactor Knight Payload Track",
+                       "kind":  "WeaponSkillTrack",
+                       "classId":  "class.survivors.ember-vanguard",
+                       "targetWeaponId":  "weapon.survivors.rune-trap",
+                       "nodes":  [
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.payloads.rune-trap-unlock",
+                                         "displayName":  "Signal Trap",
+                                         "upgradeId":  "upgrade.survivors.weapon.rune-trap",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  0,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.payloads.aether-mine-unlock",
+                                         "displayName":  "Glitch Mine",
+                                         "upgradeId":  "upgrade.survivors.weapon.aether-mine",
+                                         "kind":  "WeaponUnlock",
+                                         "tier":  1,
+                                         "pointCost":  1,
+                                         "maxRank":  1
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.payloads.rune-lattice",
+                                         "displayName":  "Signal Lattice",
+                                         "upgradeId":  "upgrade.survivors.rune-lattice",
+                                         "kind":  "WeaponRank",
+                                         "tier":  2,
+                                         "pointCost":  1,
+                                         "maxRank":  5
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.payloads.snaring-runes",
+                                         "displayName":  "Snare Code",
+                                         "upgradeId":  "upgrade.survivors.snaring-runes",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  3,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.payloads.aether-bloom",
+                                         "displayName":  "Glitch Bloom",
+                                         "upgradeId":  "upgrade.survivors.aether-bloom",
+                                         "kind":  "WeaponMutation",
+                                         "tier":  4,
+                                         "pointCost":  1,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.payloads.siege",
+                                         "displayName":  "Siege Packets",
+                                         "upgradeId":  "upgrade.survivors.siege-payloads",
+                                         "kind":  "WeaponRank",
+                                         "tier":  5,
+                                         "pointCost":  2,
+                                         "maxRank":  3
+                                     },
+                                     {
+                                         "id":  "node.survivors.ember-vanguard.payloads.evolution",
+                                         "displayName":  "Glitchfield Matrix",
+                                         "upgradeId":  "upgrade.survivors.evolution.aetherfield-matrix",
+                                         "kind":  "Evolution",
+                                         "tier":  6,
+                                         "pointCost":  3,
+                                         "maxRank":  1
+                                     }
+                                 ]
+                   }
+               ]
+}

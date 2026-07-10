@@ -1307,7 +1307,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(panel.x + 12f, panel.y + 158f, 318f, 22f), CurrentRunMilestoneHudLabel, _hudLabelStyle);
             GUI.Label(new Rect(panel.x + 12f, panel.y + 180f, 318f, 22f), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
             GUI.Label(new Rect(panel.x + 12f, panel.y + 202f, 318f, 22f), $"Split {ActiveSplitterCount}   Call {ActiveSummonerCount}   Elite {ActiveEliteCount}   Mini {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 224f, 318f, 22f), $"Shards {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
+            GUI.Label(new Rect(panel.x + 12f, panel.y + 224f, 318f, 22f), $"{CurrencyDisplayName} {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
             GUI.Label(new Rect(panel.x + 12f, panel.y + 246f, 318f, 22f), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
             GUI.Label(new Rect(panel.x + 12f, panel.y + 268f, 318f, 22f), $"Mode {CurrentRunModeDisplayName}   Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}", _hudSmallStyle);
             GUI.Label(new Rect(panel.x + 12f, panel.y + 290f, 318f, 22f), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
@@ -1500,6 +1500,7 @@ namespace Deucarian.TemplateGameSurvivors
             _selectedUiThemeIndex = index;
             uiTheme = _availableUiThemes[index];
             ResetHudStyles();
+            ApplyWorldPresentation();
             PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
             return true;
         }
@@ -1728,6 +1729,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _availableUiThemes.Add(uiTheme);
                 _selectedUiThemeIndex = 0;
                 ResetHudStyles();
+                ApplyWorldPresentation();
                 return false;
             }
 
@@ -1736,6 +1738,7 @@ namespace Deucarian.TemplateGameSurvivors
             _availableUiThemes.Add(uiTheme);
             _selectedUiThemeIndex = 0;
             ResetHudStyles();
+            ApplyWorldPresentation();
             return true;
         }
 
@@ -3118,7 +3121,7 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureMetaProgressionLoaded();
             int currentRank = _metaProgression.GetPersistentUpgradeRank(upgrade.Id.Value);
             int nextCost = ResolveNextPersistentUpgradeCost(upgrade, currentRank);
-            return $"{index + 1}. {upgrade.DisplayName} rank {currentRank}->{Mathf.Min(upgrade.MaxRank, currentRank + 1)}/{upgrade.MaxRank} ({nextCost} shards) - {FormatPersistentUpgradeEffectLabel(upgrade)}";
+            return $"{index + 1}. {upgrade.DisplayName} rank {currentRank}->{Mathf.Min(upgrade.MaxRank, currentRank + 1)}/{upgrade.MaxRank} ({nextCost} {CurrencyRewardLabel}) - {FormatPersistentUpgradeEffectLabel(upgrade)}";
         }
 
         private string FormatResultClassOptionLabel(int index, SurvivorsClassDefinition definition)
@@ -3369,7 +3372,7 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureRunStartedForTest();
             return TryGetUpgradeMetadata(upgradeId, out SurvivorsRunUpgradeMetadata metadata)
                 ? metadata.Description
-                : BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(upgradeId));
+                : ResolveUpgradeDisplayName(new RunUpgradeId(upgradeId));
         }
 
         public string GetCurrentDraftChoiceLabelForTest(int index)
@@ -4151,9 +4154,10 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 FrostFanSlowApplicationCount++;
-                LastFrostFanSlowFeedbackLabel = evolved
-                    ? $"Blizzard Crown chilled {enemy.DisplayName}"
-                    : $"Frost Fan chilled {enemy.DisplayName}";
+                string sourceName = evolved
+                    ? ResolveUpgradeDisplayName(new RunUpgradeId(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId))
+                    : ResolveWeaponBuildDisplayName(definition.Id);
+                LastFrostFanSlowFeedbackLabel = $"{sourceName} chilled {enemy.DisplayName}";
             }
 
             if (!string.Equals(definition.Id, BasicSurvivorsGame.StarNovaWeaponContentId, StringComparison.Ordinal) || damage == null)
@@ -5269,14 +5273,14 @@ namespace Deucarian.TemplateGameSurvivors
             _playerObject.transform.SetParent(_worldRoot, false);
             _playerObject.transform.localScale = new Vector3(0.85f, 1f, 0.85f);
             _playerRenderer = _playerObject.GetComponentInChildren<Renderer>();
-            ApplyColor(_playerRenderer, new Color(0.78f, 0.91f, 1f));
+            ApplyColor(_playerRenderer, ActiveUiTheme.GetPlayerColor(new Color(0.78f, 0.91f, 1f)));
 
             _enemyPrefab = CreatePrimitivePrefab("Survivors Swarm Enemy Prefab", PrimitiveType.Capsule, new Color(0.88f, 0.22f, 0.32f), typeof(SurvivorsEnemyActor));
-            _experiencePickupPrefab = CreatePrimitivePrefab("Survivors XP Gem Prefab", PrimitiveType.Sphere, new Color(0.22f, 0.83f, 1f), typeof(SurvivorsPickupActor));
-            _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, new Color(1f, 0.86f, 0.18f), typeof(SurvivorsPickupActor));
-            _healthPickupPrefab = CreatePrimitivePrefab("Survivors Vital Shard Prefab", PrimitiveType.Sphere, new Color(1f, 0.24f, 0.42f), typeof(SurvivorsPickupActor));
-            _bloodShardPickupPrefab = CreatePrimitivePrefab("Survivors Blood Shard Prefab", PrimitiveType.Sphere, new Color(0.96f, 0.08f, 0.18f), typeof(SurvivorsPickupActor));
-            _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, new Color(0.78f, 0.42f, 1f), typeof(SurvivorsProjectileActor));
+            _experiencePickupPrefab = CreatePrimitivePrefab("Survivors XP Gem Prefab", PrimitiveType.Sphere, ActiveUiTheme.GetExperiencePickupColor(new Color(0.22f, 0.83f, 1f)), typeof(SurvivorsPickupActor));
+            _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, ActiveUiTheme.GetArenaAccentColor(new Color(1f, 0.86f, 0.18f)), typeof(SurvivorsPickupActor));
+            _healthPickupPrefab = CreatePrimitivePrefab("Survivors Vital Shard Prefab", PrimitiveType.Sphere, ActiveUiTheme.GetHealthPickupColor(new Color(1f, 0.24f, 0.42f)), typeof(SurvivorsPickupActor));
+            _bloodShardPickupPrefab = CreatePrimitivePrefab("Survivors Blood Shard Prefab", PrimitiveType.Sphere, ActiveUiTheme.GetCurrencyPickupColor(new Color(0.96f, 0.08f, 0.18f)), typeof(SurvivorsPickupActor));
+            _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, ResolveProjectileFallbackColor(), typeof(SurvivorsProjectileActor));
 
             BuildSceneLighting();
 
@@ -5319,8 +5323,8 @@ namespace Deucarian.TemplateGameSurvivors
                 trail.startWidth = 0.2f;
                 trail.endWidth = 0.02f;
                 trail.material = new Material(Shader.Find("Sprites/Default"));
-                trail.startColor = new Color(0.86f, 0.48f, 1f, 0.95f);
-                trail.endColor = new Color(0.18f, 0.86f, 1f, 0f);
+                trail.startColor = WithAlpha(ActiveUiTheme.GetFeedbackAccentColor(new Color(0.86f, 0.48f, 1f)), 0.95f);
+                trail.endColor = WithAlpha(ActiveUiTheme.GetArenaAccentColor(new Color(0.18f, 0.86f, 1f)), 0f);
             }
 
             prefab.SetActive(false);
@@ -5372,7 +5376,7 @@ namespace Deucarian.TemplateGameSurvivors
                 PrimitiveType.Cube,
                 new Vector3(0f, 0.18f, 3.08f),
                 new Vector3(0.16f, 0.08f, 1.36f),
-                new Color(0.32f, 0.94f, 1f),
+                ActiveUiTheme.GetArenaAccentColor(new Color(0.32f, 0.94f, 1f)),
                 _waystoneCompassRoot);
 
             GameObject head = CreateArenaPrimitive(
@@ -5380,7 +5384,7 @@ namespace Deucarian.TemplateGameSurvivors
                 PrimitiveType.Cube,
                 new Vector3(0f, 0.2f, 3.88f),
                 new Vector3(0.62f, 0.1f, 0.62f),
-                new Color(0.92f, 1f, 0.42f),
+                ActiveUiTheme.GetFeedbackAccentColor(new Color(0.92f, 1f, 0.42f)),
                 _waystoneCompassRoot);
             head.transform.localRotation = Quaternion.Euler(0f, 45f, 0f);
 
@@ -5389,7 +5393,7 @@ namespace Deucarian.TemplateGameSurvivors
                 PrimitiveType.Cylinder,
                 new Vector3(0f, 0.13f, 3.88f),
                 new Vector3(1.05f, 0.025f, 1.05f),
-                new Color(0.12f, 0.58f, 0.72f),
+                ActiveUiTheme.GetArenaGridColor(new Color(0.12f, 0.58f, 0.72f)),
                 _waystoneCompassRoot);
 
             root.SetActive(false);
@@ -5402,7 +5406,9 @@ namespace Deucarian.TemplateGameSurvivors
                 for (int z = -InfiniteArenaGridRadius; z <= InfiniteArenaGridRadius; z++)
                 {
                     bool alternate = ((x + z) & 1) == 0;
-                    Color tileColor = alternate ? new Color(0.045f, 0.055f, 0.058f) : new Color(0.055f, 0.065f, 0.05f);
+                    Color tileColor = alternate
+                        ? ActiveUiTheme.GetArenaFloorColor(new Color(0.045f, 0.055f, 0.058f))
+                        : ActiveUiTheme.GetArenaGridColor(new Color(0.055f, 0.065f, 0.05f));
                     GameObject tile = CreateArenaPrimitive(
                         "Infinite Arena Tile " + x.ToString() + "," + z.ToString(),
                         PrimitiveType.Cube,
@@ -5475,7 +5481,7 @@ namespace Deucarian.TemplateGameSurvivors
                 if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + offset, amount) != null)
                 {
                     StreakBloodShardDropCount++;
-                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: Blood Shards +{amount}", new Color(1f, 0.34f, 0.42f));
+                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: {CurrencyDisplayName} +{amount}", new Color(1f, 0.34f, 0.42f));
                 }
             }
 
@@ -5686,12 +5692,16 @@ namespace Deucarian.TemplateGameSurvivors
             GameObject root = new GameObject(FeedbackRootName);
             root.transform.SetParent(_worldRoot, false);
             _feedbackRoot = root.transform;
-            _spawnPulse = CreateFeedbackPulse(SpawnPulseName, new Color(1f, 0.3f, 0.28f), 0.2f, 2.2f, 0.5f);
-            _firePulse = CreateFeedbackPulse(FirePulseName, new Color(0.82f, 0.4f, 1f), 0.16f, 2.8f, 0.35f);
-            _killPulse = CreateFeedbackPulse(KillPulseName, new Color(0.4f, 0.95f, 1f), 0.22f, 3.2f, 0.45f);
-            _pickupPulse = CreateFeedbackPulse(PickupPulseName, new Color(0.2f, 0.82f, 1f), 0.14f, 2.4f, 0.35f);
-            _levelUpPulse = CreateFeedbackPulse(LevelUpPulseName, new Color(1f, 0.85f, 0.24f), 0.28f, 2.0f, 0.7f);
-            _bossPulse = CreateFeedbackPulse(BossPulseName, new Color(1f, 0.3f, 0.82f), 0.32f, 3.6f, 0.65f);
+            Color accent = ActiveUiTheme.GetFeedbackAccentColor(new Color(0.82f, 0.4f, 1f));
+            Color arenaAccent = ActiveUiTheme.GetArenaAccentColor(new Color(0.2f, 0.82f, 1f));
+            Color elite = ActiveUiTheme.GetEliteThreatColor(new Color(1f, 0.85f, 0.24f));
+            Color boss = ActiveUiTheme.GetBossThreatColor(new Color(1f, 0.3f, 0.82f));
+            _spawnPulse = CreateFeedbackPulse(SpawnPulseName, Color.Lerp(boss, arenaAccent, 0.25f), 0.2f, 2.2f, 0.5f);
+            _firePulse = CreateFeedbackPulse(FirePulseName, accent, 0.16f, 2.8f, 0.35f);
+            _killPulse = CreateFeedbackPulse(KillPulseName, Color.Lerp(arenaAccent, accent, 0.25f), 0.22f, 3.2f, 0.45f);
+            _pickupPulse = CreateFeedbackPulse(PickupPulseName, arenaAccent, 0.14f, 2.4f, 0.35f);
+            _levelUpPulse = CreateFeedbackPulse(LevelUpPulseName, elite, 0.28f, 2.0f, 0.7f);
+            _bossPulse = CreateFeedbackPulse(BossPulseName, boss, 0.32f, 3.6f, 0.65f);
 
             GameObject audioObject = new GameObject(FeedbackAudioName);
             audioObject.transform.SetParent(_feedbackRoot, false);
@@ -5706,6 +5716,106 @@ namespace Deucarian.TemplateGameSurvivors
             _levelUpClip = CreateTone("survivors-level-up", 880f, 0.2f, 0.2f);
             _bossClip = CreateTone("survivors-boss", 92f, 0.28f, 0.24f);
             _dangerClip = CreateTone("survivors-danger", 130f, 0.16f, 0.2f);
+        }
+
+        private void ApplyWorldPresentation()
+        {
+            if (_worldRoot == null)
+            {
+                return;
+            }
+
+            SetRendererColor(_playerRenderer, ActiveUiTheme.GetPlayerColor(new Color(0.78f, 0.91f, 1f)));
+            SetPrefabColor(_experiencePickupPrefab, ActiveUiTheme.GetExperiencePickupColor(new Color(0.22f, 0.83f, 1f)));
+            SetPrefabColor(_magnetPickupPrefab, ActiveUiTheme.GetArenaAccentColor(new Color(1f, 0.86f, 0.18f)));
+            SetPrefabColor(_healthPickupPrefab, ActiveUiTheme.GetHealthPickupColor(new Color(1f, 0.24f, 0.42f)));
+            SetPrefabColor(_bloodShardPickupPrefab, ActiveUiTheme.GetCurrencyPickupColor(new Color(0.96f, 0.08f, 0.18f)));
+            SetPrefabColor(_projectilePrefab, ResolveProjectileFallbackColor());
+
+            TrailRenderer projectileTrail = _projectilePrefab == null ? null : _projectilePrefab.GetComponent<TrailRenderer>();
+            if (projectileTrail != null)
+            {
+                projectileTrail.startColor = WithAlpha(ActiveUiTheme.GetFeedbackAccentColor(new Color(0.86f, 0.48f, 1f)), 0.95f);
+                projectileTrail.endColor = ResolveProjectileTrailEndColor();
+            }
+
+            for (int i = 0; i < _arenaTiles.Count; i++)
+            {
+                Color color = (i & 1) == 0
+                    ? ActiveUiTheme.GetArenaFloorColor(new Color(0.045f, 0.055f, 0.058f))
+                    : ActiveUiTheme.GetArenaGridColor(new Color(0.055f, 0.065f, 0.05f));
+                SetTransformColor(_arenaTiles[i], color);
+            }
+
+            for (int i = 0; i < _arenaLandmarks.Count; i++)
+            {
+                SetTransformColor(_arenaLandmarks[i], ResolveArenaLandmarkColor(i));
+            }
+
+            if (_waystoneCompassRoot != null)
+            {
+                Renderer[] compassRenderers = _waystoneCompassRoot.GetComponentsInChildren<Renderer>(true);
+                for (int i = 0; i < compassRenderers.Length; i++)
+                {
+                    Renderer renderer = compassRenderers[i];
+                    Color color = renderer != null && renderer.gameObject.name.IndexOf("Head", StringComparison.Ordinal) >= 0
+                        ? ActiveUiTheme.GetFeedbackAccentColor(new Color(0.92f, 1f, 0.42f))
+                        : renderer != null && renderer.gameObject.name.IndexOf("Pulse", StringComparison.Ordinal) >= 0
+                            ? ActiveUiTheme.GetArenaGridColor(new Color(0.12f, 0.58f, 0.72f))
+                            : ActiveUiTheme.GetArenaAccentColor(new Color(0.32f, 0.94f, 1f));
+                    SetRendererColor(renderer, color);
+                }
+            }
+
+            Color accent = ActiveUiTheme.GetFeedbackAccentColor(new Color(0.82f, 0.4f, 1f));
+            Color arenaAccent = ActiveUiTheme.GetArenaAccentColor(new Color(0.2f, 0.82f, 1f));
+            Color elite = ActiveUiTheme.GetEliteThreatColor(new Color(1f, 0.85f, 0.24f));
+            Color boss = ActiveUiTheme.GetBossThreatColor(new Color(1f, 0.3f, 0.82f));
+            SetParticleColor(_spawnPulse, Color.Lerp(boss, arenaAccent, 0.25f));
+            SetParticleColor(_firePulse, accent);
+            SetParticleColor(_killPulse, Color.Lerp(arenaAccent, accent, 0.25f));
+            SetParticleColor(_pickupPulse, arenaAccent);
+            SetParticleColor(_levelUpPulse, elite);
+            SetParticleColor(_bossPulse, boss);
+        }
+
+        internal Color ResolveProjectileFallbackColor()
+        {
+            return ActiveUiTheme.GetFeedbackAccentColor(new Color(0.78f, 0.42f, 1f));
+        }
+
+        internal Color ResolveProjectileTrailEndColor()
+        {
+            return WithAlpha(ActiveUiTheme.GetArenaAccentColor(new Color(0.18f, 0.86f, 1f)), 0f);
+        }
+
+        private static void SetPrefabColor(GameObject prefab, Color color)
+        {
+            SetRendererColor(prefab == null ? null : prefab.GetComponentInChildren<Renderer>(), color);
+        }
+
+        private static void SetTransformColor(Transform target, Color color)
+        {
+            SetRendererColor(target == null ? null : target.GetComponentInChildren<Renderer>(), color);
+        }
+
+        private static void SetRendererColor(Renderer renderer, Color color)
+        {
+            if (renderer != null && renderer.sharedMaterial != null)
+            {
+                renderer.sharedMaterial.color = color;
+            }
+        }
+
+        private static void SetParticleColor(ParticleSystem particles, Color color)
+        {
+            if (particles == null)
+            {
+                return;
+            }
+
+            ParticleSystem.MainModule main = particles.main;
+            main.startColor = color;
         }
 
         private ParticleSystem CreateFeedbackPulse(string name, Color color, float startSize, float startSpeed, float lifetime)
@@ -6354,18 +6464,20 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private static Color ResolveMajorRewardDropColor(SurvivorsEnemyRole role)
+        private Color ResolveMajorRewardDropColor(SurvivorsEnemyRole role)
         {
+            Color elite = ActiveUiTheme.GetEliteThreatColor(new Color(1f, 0.76f, 0.2f));
+            Color boss = ActiveUiTheme.GetBossThreatColor(new Color(1f, 0.2f, 0.45f));
             switch (role)
             {
                 case SurvivorsEnemyRole.Boss:
-                    return new Color(1f, 0.2f, 0.45f, 0.95f);
+                    return WithAlpha(boss, 0.95f);
                 case SurvivorsEnemyRole.Miniboss:
-                    return new Color(0.78f, 0.35f, 1f, 0.95f);
+                    return WithAlpha(Color.Lerp(elite, boss, 0.62f), 0.95f);
                 case SurvivorsEnemyRole.DreadElite:
-                    return new Color(0.38f, 0.9f, 1f, 0.92f);
+                    return WithAlpha(Color.Lerp(elite, ActiveUiTheme.GetArenaAccentColor(new Color(0.38f, 0.9f, 1f)), 0.58f), 0.92f);
                 default:
-                    return new Color(1f, 0.76f, 0.2f, 0.92f);
+                    return WithAlpha(elite, 0.92f);
             }
         }
 
@@ -6529,6 +6641,18 @@ namespace Deucarian.TemplateGameSurvivors
                 ? _authoredContent.MetaProgressionDefinition
                 : BasicSurvivorsGame.CreateMetaProgressionDefinition();
         }
+
+        private string CurrencyDisplayName => ResolveMetaProgressionDefinition().CurrencyDisplayName;
+
+        private string CurrencyRewardLabel => string.Equals(CurrencyDisplayName, "Blood Shards", StringComparison.Ordinal)
+            ? "shards"
+            : CurrencyDisplayName;
+
+        private string ProgressionDisplayName => ResolveMetaProgressionDefinition().LegacyExperienceDisplayName;
+
+        private string ProgressionRewardLabel => string.Equals(ProgressionDisplayName, "Legacy XP", StringComparison.Ordinal)
+            ? "XP"
+            : ProgressionDisplayName;
 
         private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> CreateWeaponArchetypeDefinitions(SurvivorsTemplateTuning resolved)
         {
@@ -7334,6 +7458,14 @@ namespace Deucarian.TemplateGameSurvivors
             return !string.IsNullOrWhiteSpace(upgradeId) && _upgradeMetadataById.TryGetValue(upgradeId, out metadata);
         }
 
+        private string ResolveUpgradeDisplayName(RunUpgradeId upgradeId)
+        {
+            return TryGetUpgradeMetadata(upgradeId.Value, out SurvivorsRunUpgradeMetadata metadata) &&
+                !string.IsNullOrWhiteSpace(metadata.DisplayName)
+                    ? metadata.DisplayName
+                    : BasicSurvivorsGame.GetUpgradeDisplayName(upgradeId);
+        }
+
         private int ResolveRequiredUpgradeRank(SurvivorsRunUpgradeMetadata metadata)
         {
             if (metadata == null)
@@ -7500,7 +7632,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             float radius = Mathf.Max(0f, CurrentTuning.EvolutionSurgeRadius);
             float damage = Mathf.Max(0f, CurrentTuning.EvolutionSurgeDamage);
-            string name = upgrade == null ? "Evolution" : BasicSurvivorsGame.GetUpgradeDisplayName(upgrade.Id);
+            string name = upgrade == null ? "Evolution" : ResolveUpgradeDisplayName(upgrade.Id);
             int hitCount = 0;
             if (radius > 0f && damage > 0f)
             {
@@ -7573,7 +7705,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            string name = upgrade == null ? "Evolution" : BasicSurvivorsGame.GetUpgradeDisplayName(upgrade.Id);
+            string name = upgrade == null ? "Evolution" : ResolveUpgradeDisplayName(upgrade.Id);
             EvolutionChainSurgeActivationCount++;
             EvolutionChainSurgePulseHitCount += hitCount;
             LastEvolutionChainSurgeFeedbackLabel = $"{name} Legend Surge: {evolutionCount} evolutions, {hitCount} enemies hit";
@@ -7590,7 +7722,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             float radius = Mathf.Max(0f, CurrentTuning.RewardUpgradeSurgeRadius);
             float damage = Mathf.Max(0f, CurrentTuning.RewardUpgradeSurgeDamage);
-            string name = upgrade == null ? ResolveRewardKindLabel(selectionKind) : BasicSurvivorsGame.GetUpgradeDisplayName(upgrade.Id);
+            string name = upgrade == null ? ResolveRewardKindLabel(selectionKind) : ResolveUpgradeDisplayName(upgrade.Id);
             int hitCount = 0;
             if (radius > 0f && damage > 0f)
             {
@@ -7627,7 +7759,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             float radius = Mathf.Max(0f, CurrentTuning.LevelUpPulseRadius);
             float damage = Mathf.Max(0f, CurrentTuning.LevelUpPulseDamage);
-            string name = upgrade == null ? "Level Up" : BasicSurvivorsGame.GetUpgradeDisplayName(upgrade.Id);
+            string name = upgrade == null ? "Level Up" : ResolveUpgradeDisplayName(upgrade.Id);
             int hitCount = 0;
             if (radius > 0f && damage > 0f)
             {
@@ -7717,7 +7849,7 @@ namespace Deucarian.TemplateGameSurvivors
             LastRewardJackpotFeedbackLabel = $"{rewardLabel} Jackpot: {upgrade.Rarity} +{totalExperience} XP";
             if (spawnedShardAmount > 0)
             {
-                LastRewardJackpotFeedbackLabel += $" +{spawnedShardAmount} shards";
+                LastRewardJackpotFeedbackLabel += $" +{spawnedShardAmount} {CurrencyRewardLabel}";
             }
 
             RecordStreakRewardFeedback(LastRewardJackpotFeedbackLabel, ResolveRarityAccentColor(upgrade.Rarity));
@@ -7768,8 +7900,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordEvolutionGoalFeedback(RunUpgradeDefinition evolution, RunUpgradeDefinition missingPassive)
         {
-            string evolutionName = evolution == null ? "Evolution" : BasicSurvivorsGame.GetUpgradeDisplayName(evolution.Id);
-            string passiveName = missingPassive == null ? "matching passive" : BasicSurvivorsGame.GetUpgradeDisplayName(missingPassive.Id);
+            string evolutionName = evolution == null ? "Evolution" : ResolveUpgradeDisplayName(evolution.Id);
+            string passiveName = missingPassive == null ? "matching passive" : ResolveUpgradeDisplayName(missingPassive.Id);
             _evolutionReadyFeedbackLabel = $"Evolution Goal: {passiveName} for {evolutionName}";
             _evolutionReadyFeedbackTimer = EvolutionReadyFeedbackDurationSeconds;
             EvolutionGoalFeedbackCount++;
@@ -7780,7 +7912,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void RecordEvolutionReadyFeedback(RunUpgradeDefinition evolution)
         {
             RecordMetricTime(ref _firstEvolutionEligibilityTimeSeconds);
-            string name = BasicSurvivorsGame.GetUpgradeDisplayName(evolution.Id);
+            string name = ResolveUpgradeDisplayName(evolution.Id);
             _evolutionReadyFeedbackLabel = $"Evolution Ready: {name}";
             _evolutionReadyFeedbackTimer = EvolutionReadyFeedbackDurationSeconds;
             EvolutionReadyFeedbackCount++;
@@ -7942,7 +8074,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            string name = addedPassive == null ? "Passive" : BasicSurvivorsGame.GetUpgradeDisplayName(addedPassive.Id);
+            string name = addedPassive == null ? "Passive" : ResolveUpgradeDisplayName(addedPassive.Id);
             PassiveLoadoutSurgeActivationCount++;
             PassiveLoadoutSurgePulseHitCount += hitCount;
             LastPassiveLoadoutSurgeFeedbackLabel = $"{name} Harmony Surge: {ActivePassiveCount}/{MaxPassiveSlots} passives, {hitCount} enemies hit";
@@ -8149,9 +8281,9 @@ namespace Deucarian.TemplateGameSurvivors
             _lastRunSummaryLines.Add($"Run time: {FormatRunTime(RunTimeSeconds)} / target {FormatRunTime(CurrentTuning.SurvivalVictoryTimeSeconds)}");
             _lastRunSummaryLines.Add($"Level reached: {Level}   XP collected: {ExperienceCollected}   Stored XP: {Experience}/{RequiredExperienceForNextLevel}");
             _lastRunSummaryLines.Add($"Kills: {KilledCount}   Elites: {EliteKilledCount}   Minibosses: {MinibossKilledCount}   Bosses: {BossKilledCount}");
-            _lastRunSummaryLines.Add($"Rewards earned: +{BloodShardsEarnedThisRun} shards, +{LegacyExperienceEarnedThisRun} legacy XP");
+            _lastRunSummaryLines.Add($"Rewards earned: +{BloodShardsEarnedThisRun} {CurrencyRewardLabel}, +{LegacyExperienceEarnedThisRun} {ProgressionRewardLabel}");
             _lastRunSummaryLines.Add($"Reward profile: target {FormatRunTime(CurrentTuning.TargetDurationSeconds)}, multiplier x{CurrentTuning.RunRewardMultiplier:0.##}");
-            _lastRunSummaryLines.Add($"Meta bank: {MetaBloodShards} shards, {LifetimeLegacyExperience} lifetime XP");
+            _lastRunSummaryLines.Add($"Meta bank: {MetaBloodShards} {CurrencyDisplayName}, {LifetimeLegacyExperience} {ProgressionDisplayName}");
             _lastRunSummaryLines.Add($"Damage taken: {DamageTakenThisRun:0.#}   Final health: {CurrentHealth:0.#}/{MaxHealth:0.#}");
             _lastRunSummaryLines.Add($"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}");
             _lastRunSummaryLines.Add($"Passives {ActivePassiveCount}/{MaxPassiveSlots}: {FormatRunSummaryUpgradeList(_ownedPassiveUpgradeIds, includeRanks: true)}");
@@ -8163,7 +8295,7 @@ namespace Deucarian.TemplateGameSurvivors
             _lastRunSummaryLines.Add("Best moment: " + (string.IsNullOrWhiteSpace(_bestMomentLabel) ? ResolveFallbackBestMomentLabel() : _bestMomentLabel));
             if (ClassUnlockRewardCount > 0)
             {
-                _lastRunSummaryLines.Add("Class unlocked: Ember Vanguard");
+                _lastRunSummaryLines.Add("Class unlocked: " + ResolveClassDisplayName(BasicSurvivorsGame.EmberVanguardClassId, "Ember Vanguard"));
             }
         }
 
@@ -8199,16 +8331,26 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordClassUnlockRewardFeedback()
         {
-            LastClassUnlockRewardFeedbackLabel = "Class Unlocked: Ember Vanguard";
+            LastClassUnlockRewardFeedbackLabel = "Class Unlocked: " + ResolveClassDisplayName(BasicSurvivorsGame.EmberVanguardClassId, "Ember Vanguard");
             SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
             if (definition.TryGetReward(BasicSurvivorsGame.EmberVanguardUnlockRewardId, out SurvivorsRewardDefinition reward))
             {
-                LastClassUnlockRewardFeedbackLabel += $" +{reward.CurrencyAmount} shards +{reward.TrackAmount} XP";
+                LastClassUnlockRewardFeedbackLabel += $" +{reward.CurrencyAmount} {CurrencyRewardLabel} +{reward.TrackAmount} {ProgressionRewardLabel}";
             }
 
             _classUnlockRewardFeedbackLabel = LastClassUnlockRewardFeedbackLabel;
             _classUnlockRewardFeedbackTimer = ClassUnlockRewardFeedbackDurationSeconds;
             PlayFeedback(_bossPulse, PlayerPosition, 52, _levelUpClip);
+        }
+
+        private string ResolveClassDisplayName(string classId, string fallback)
+        {
+            EnsureClassLibraryLoaded();
+            return _classLibrary != null &&
+                _classLibrary.TryGetClass(classId, out SurvivorsClassDefinition definition) &&
+                !string.IsNullOrWhiteSpace(definition.DisplayName)
+                    ? definition.DisplayName
+                    : fallback;
         }
 
         private bool ShouldGrantVictoryClassUnlockReward(bool victory)
@@ -8827,7 +8969,7 @@ namespace Deucarian.TemplateGameSurvivors
             string label = $"Arena Trial Cleared: +{spawnedExperience} XP";
             if (spawnedBloodShard)
             {
-                label += $" +{shardAmount} shards";
+                label += $" +{shardAmount} {CurrencyRewardLabel}";
             }
 
             label += $" + Shrine Surge ({pulseHitCount} hit)";
@@ -9267,18 +9409,18 @@ namespace Deucarian.TemplateGameSurvivors
             return ((long)cellX << 32) ^ (uint)cellZ;
         }
 
-        private static Color ResolveArenaLandmarkColor(int index)
+        private Color ResolveArenaLandmarkColor(int index)
         {
             switch (index % 4)
             {
                 case 0:
-                    return new Color(0.28f, 0.9f, 1f);
+                    return ActiveUiTheme.GetArenaAccentColor(new Color(0.28f, 0.9f, 1f));
                 case 1:
-                    return new Color(0.95f, 0.38f, 0.56f);
+                    return ActiveUiTheme.GetBossThreatColor(new Color(0.95f, 0.38f, 0.56f));
                 case 2:
-                    return new Color(0.98f, 0.82f, 0.24f);
+                    return ActiveUiTheme.GetEliteThreatColor(new Color(0.98f, 0.82f, 0.24f));
                 default:
-                    return new Color(0.48f, 0.92f, 0.42f);
+                    return ActiveUiTheme.GetFeedbackAccentColor(new Color(0.48f, 0.92f, 0.42f));
             }
         }
 
@@ -9529,7 +9671,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             int pulseHitCount = TriggerEndlessSurgePulse(position);
-            string label = $"Endless Surge T{EndlessSurgeTier}: {ResolveEndlessSurgeThreatLabel(role)} cleared, +{spawnedExperience} XP, +{shardAmount} shards, {pulseHitCount} hit";
+            string label = $"Endless Surge T{EndlessSurgeTier}: {ResolveEndlessSurgeThreatLabel(role)} cleared, +{spawnedExperience} XP, +{shardAmount} {CurrencyRewardLabel}, {pulseHitCount} hit";
             LastEndlessSurgeFeedbackLabel = label;
             RecordStreakRewardFeedback(label, new Color(0.52f, 0.84f, 1f));
             PlayFeedback(_levelUpPulse, position, Mathf.Clamp(32 + pulseHitCount * 5 + threatTier * 6, 42, 96), _pickupClip);
@@ -11126,7 +11268,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            string name = BasicSurvivorsGame.GetUpgradeDisplayName(selected.Id);
+            string name = ResolveUpgradeDisplayName(selected.Id);
             string category = ResolveCurrentUpgradeCategory(selected).ToString();
             string affected = ResolveUpgradeAffectedLabel(selected);
             LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)}: {selected.Rarity} {category} - {name} ({affected})";
@@ -11144,7 +11286,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            string name = BasicSurvivorsGame.GetUpgradeDisplayName(selected.Id);
+            string name = ResolveUpgradeDisplayName(selected.Id);
             if ((int)selected.Rarity >= (int)_highestChosenRarity)
             {
                 _highestChosenRarity = selected.Rarity;
@@ -11175,7 +11317,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordRewardSkipFeedback(SurvivorsRewardSelectionKind selectionKind)
         {
-            LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)} skipped +{DraftSkipBloodShards} shards";
+            LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)} skipped +{DraftSkipBloodShards} {CurrencyRewardLabel}";
             RewardSelectionFeedbackCount++;
             _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
             _rewardFeedbackColor = new Color(0.72f, 0.84f, 0.9f);
@@ -11923,13 +12065,13 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 Index = index,
                 Hotkey = (index + 1).ToString(),
-                Name = BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id),
+                Name = ResolveUpgradeDisplayName(choice.Id),
                 RarityLabel = ActiveUiTheme.GetRarityDisplayName(rarityId),
                 CategoryId = categoryId,
                 CategoryLabel = ActiveUiTheme.GetCategoryDisplayName(categoryId, FormatUpgradeCategoryLabel(category)),
                 AffectedLabel = ResolveUpgradeAffectedLabel(choice),
                 RankLabel = choice.MaxRank <= 1 ? "One-time unlock" : $"Rank {currentRank}->{nextRank}/{choice.MaxRank}",
-                Description = metadata == null ? BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id) : metadata.Description,
+                Description = metadata == null ? ResolveUpgradeDisplayName(choice.Id) : metadata.Description,
                 EffectPreview = ResolveUpgradeEffectPreview(choice),
                 RequirementHint = ResolveUpgradeRequirementHint(choice, metadata, category),
                 IconId = ActiveUiTheme.GetCategoryIconId(categoryId, categoryId),
@@ -12052,7 +12194,7 @@ namespace Deucarian.TemplateGameSurvivors
             string label = string.Empty;
             if (IsEvolutionUpgrade(choice))
             {
-                label = "Evolves into " + BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id);
+                label = "Evolves into " + ResolveUpgradeDisplayName(choice.Id);
             }
 
             int shown = Mathf.Min(2, choice.Effects.Count);
@@ -12191,21 +12333,21 @@ namespace Deucarian.TemplateGameSurvivors
                 string weapon = ShortWeaponName(metadata.AffectedContentId);
                 string rank = string.IsNullOrWhiteSpace(metadata.RequiredUpgradeId)
                     ? "max weapon rank"
-                    : BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(metadata.RequiredUpgradeId)) + " rank " + ResolveRequiredUpgradeRank(metadata).ToString();
+                    : ResolveUpgradeDisplayName(new RunUpgradeId(metadata.RequiredUpgradeId)) + " rank " + ResolveRequiredUpgradeRank(metadata).ToString();
                 string passive = string.IsNullOrWhiteSpace(metadata.RequiredPassiveUpgradeId)
                     ? "matching passive"
-                    : BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(metadata.RequiredPassiveUpgradeId));
+                    : ResolveUpgradeDisplayName(new RunUpgradeId(metadata.RequiredPassiveUpgradeId));
                 return "Evolution path: " + weapon + " needs " + rank + " plus " + passive + ".";
             }
 
             if (!string.IsNullOrWhiteSpace(metadata.RequiredUpgradeId))
             {
-                return "Requires " + BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(metadata.RequiredUpgradeId)) + " rank " + ResolveRequiredUpgradeRank(metadata).ToString() + ".";
+                return "Requires " + ResolveUpgradeDisplayName(new RunUpgradeId(metadata.RequiredUpgradeId)) + " rank " + ResolveRequiredUpgradeRank(metadata).ToString() + ".";
             }
 
             if (!string.IsNullOrWhiteSpace(metadata.RequiredPassiveUpgradeId))
             {
-                return "Requires " + BasicSurvivorsGame.GetUpgradeDisplayName(new RunUpgradeId(metadata.RequiredPassiveUpgradeId)) + ".";
+                return "Requires " + ResolveUpgradeDisplayName(new RunUpgradeId(metadata.RequiredPassiveUpgradeId)) + ".";
             }
 
             if (!string.IsNullOrWhiteSpace(metadata.RequiredOwnedWeaponId))
@@ -12344,9 +12486,9 @@ namespace Deucarian.TemplateGameSurvivors
                 $"Milestone: {CurrentRunMilestoneHudLabel}",
                 $"Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}   Level {Level}   Kills {KilledCount}",
                 $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Elites {ActiveEliteCount}   Minibosses {ActiveMinibossCount}   Bosses {ActiveBossCount}",
-                $"Run rewards: {BloodShardsEarnedThisRun + BonusBloodShardsEarnedThisRun} blood shards, {LegacyExperienceEarnedThisRun + BonusLegacyExperienceEarnedThisRun} legacy XP",
-                $"Meta bank: {MetaBloodShards} shards   Lifetime XP {LifetimeLegacyExperience}",
-                $"Rerolls {DraftRerollsRemaining}   Banishes {DraftBanishesRemaining}   Skip reward +{DraftSkipBloodShards} shards",
+                $"Run rewards: {BloodShardsEarnedThisRun + BonusBloodShardsEarnedThisRun} {CurrencyDisplayName}, {LegacyExperienceEarnedThisRun + BonusLegacyExperienceEarnedThisRun} {ProgressionDisplayName}",
+                $"Meta bank: {MetaBloodShards} {CurrencyDisplayName}   {ProgressionDisplayName} {LifetimeLegacyExperience}",
+                $"Rerolls {DraftRerollsRemaining}   Banishes {DraftBanishesRemaining}   Skip reward +{DraftSkipBloodShards} {CurrencyRewardLabel}",
                 $"Waystones {WaystoneDiscoveryCount}   Roaming caches {RoamingCacheDropCount}   Arena trials {ArenaShrineTrialCount}"
             };
         }
@@ -12479,7 +12621,7 @@ namespace Deucarian.TemplateGameSurvivors
             _runSummaryScrollPosition = GUI.BeginScrollView(viewRect, _runSummaryScrollPosition, new Rect(0f, 0f, contentWidth, contentHeight));
             if (lineCount == 0)
             {
-                GUI.Label(new Rect(0f, 0f, contentWidth, 22f), $"Rewards {BloodShardsEarnedThisRun} shards / {LegacyExperienceEarnedThisRun} XP", _hudLabelStyle);
+                GUI.Label(new Rect(0f, 0f, contentWidth, 22f), $"Rewards {BloodShardsEarnedThisRun} {CurrencyRewardLabel} / {LegacyExperienceEarnedThisRun} {ProgressionDisplayName}", _hudLabelStyle);
             }
             else
             {
@@ -12581,10 +12723,10 @@ namespace Deucarian.TemplateGameSurvivors
         private void DrawResultMetaUpgradeOptions(Rect rect)
         {
             IReadOnlyList<SurvivorsPersistentUpgradeDefinition> options = ResolveResultMetaUpgradeOptions(ResultMetaUpgradeOptionCount);
-            GUI.Label(new Rect(rect.x, rect.y, rect.width, 20f), $"Meta Upgrades - {MetaBloodShards} shards banked", _hudLabelStyle);
+            GUI.Label(new Rect(rect.x, rect.y, rect.width, 20f), $"Meta Upgrades - {MetaBloodShards} {CurrencyDisplayName} banked", _hudLabelStyle);
             if (options.Count == 0)
             {
-                GUI.Label(new Rect(rect.x, rect.y + 24f, rect.width, 20f), "No affordable meta upgrades yet. Bank more shards from runs, elites, bosses, or skips.", _hudSmallStyle);
+                GUI.Label(new Rect(rect.x, rect.y + 24f, rect.width, 20f), $"No affordable meta upgrades yet. Bank more {CurrencyDisplayName} from runs, elites, bosses, or skips.", _hudSmallStyle);
                 return;
             }
 
@@ -12632,7 +12774,7 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
-                string label = BasicSurvivorsGame.GetUpgradeDisplayName(definition.Id);
+                string label = ResolveUpgradeDisplayName(definition.Id);
                 if (includeRanks && _upgradeState != null)
                 {
                     int rank = Mathf.Max(1, _upgradeState.GetRank(definition.Id));
@@ -12679,7 +12821,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return "Missing upgrade";
             }
 
-            string name = BasicSurvivorsGame.GetUpgradeDisplayName(definition.Id);
+            string name = ResolveUpgradeDisplayName(definition.Id);
             SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(definition);
             string affected = TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
                 ? ShortWeaponName(metadata.AffectedContentId)
@@ -12695,7 +12837,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             string prefix = index >= 0 ? $"{index + 1}. " : string.Empty;
-            string name = BasicSurvivorsGame.GetUpgradeDisplayName(definition.Id);
+            string name = ResolveUpgradeDisplayName(definition.Id);
             SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(definition);
             int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(definition.Id);
             int nextRank = Mathf.Min(definition.MaxRank, currentRank + 1);
@@ -12714,7 +12856,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(choice);
-            string name = BasicSurvivorsGame.GetUpgradeDisplayName(choice.Id);
+            string name = ResolveUpgradeDisplayName(choice.Id);
             string affected = ResolveUpgradeAffectedLabel(choice);
             string description = TryGetUpgradeMetadata(choice.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
                 ? metadata.Description
@@ -13744,37 +13886,51 @@ namespace Deucarian.TemplateGameSurvivors
 
         private string ResolveWeaponBuildDisplayName(string weaponId)
         {
-            if (_upgradeCatalog != null)
-            {
-                for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
-                {
-                    RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
-                    if (definition == null ||
-                        !TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata) ||
-                        metadata.Category != SurvivorsRunUpgradeCategory.Weapon ||
-                        !string.Equals(metadata.AffectedContentId, weaponId, StringComparison.Ordinal))
-                    {
-                        continue;
-                    }
-
-                    return metadata.DisplayName;
-                }
-            }
-
-            return ShortWeaponName(weaponId);
+            return TryResolveWeaponUpgradeDisplayName(weaponId, out string displayName, out _)
+                ? displayName
+                : ShortWeaponName(weaponId);
         }
 
-        private static string FormatBuildRankFragment(RunUpgradeDefinition definition, int rank)
+        private bool TryResolveWeaponUpgradeDisplayName(string weaponId, out string displayName, out RunUpgradeId upgradeId)
+        {
+            displayName = string.Empty;
+            upgradeId = default;
+            if (_upgradeCatalog == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            {
+                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                if (definition == null ||
+                    !TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata) ||
+                    metadata.Category != SurvivorsRunUpgradeCategory.Weapon ||
+                    !string.Equals(metadata.AffectedContentId, weaponId, StringComparison.Ordinal) ||
+                    string.IsNullOrWhiteSpace(metadata.DisplayName))
+                {
+                    continue;
+                }
+
+                displayName = metadata.DisplayName;
+                upgradeId = definition.Id;
+                return true;
+            }
+
+            return false;
+        }
+
+        private string FormatBuildRankFragment(RunUpgradeDefinition definition, int rank)
         {
             if (definition == null)
             {
                 return "Missing";
             }
 
-            return $"{BasicSurvivorsGame.GetUpgradeDisplayName(definition.Id)} {rank}/{Mathf.Max(1, definition.MaxRank)}";
+            return $"{ResolveUpgradeDisplayName(definition.Id)} {rank}/{Mathf.Max(1, definition.MaxRank)}";
         }
 
-        private static string FormatPassiveBuildHudLine(RunUpgradeDefinition definition, SurvivorsRunUpgradeMetadata metadata, int rank)
+        private string FormatPassiveBuildHudLine(RunUpgradeDefinition definition, SurvivorsRunUpgradeMetadata metadata, int rank)
         {
             string line = FormatBuildRankFragment(definition, rank);
             if (metadata == null || string.IsNullOrWhiteSpace(metadata.AffectedContentId))
@@ -13871,7 +14027,7 @@ namespace Deucarian.TemplateGameSurvivors
                 RunUpgradeDefinition evolution = _upgradeCatalog.Definitions[i];
                 if (TryResolveEvolutionMissingPassive(evolution, out RunUpgradeDefinition passive))
                 {
-                    return $"Goal {BasicSurvivorsGame.GetUpgradeDisplayName(passive.Id)} -> {BasicSurvivorsGame.GetUpgradeDisplayName(evolution.Id)}";
+                    return $"Goal {ResolveUpgradeDisplayName(passive.Id)} -> {ResolveUpgradeDisplayName(evolution.Id)}";
                 }
             }
 
@@ -13890,7 +14046,7 @@ namespace Deucarian.TemplateGameSurvivors
                 RunUpgradeDefinition evolution = _upgradeCatalog.Definitions[i];
                 if (evolution != null && IsEvolutionUpgrade(evolution) && IsUpgradeEligibleForCurrentBuild(evolution))
                 {
-                    return $"Ready {BasicSurvivorsGame.GetUpgradeDisplayName(evolution.Id)} -> elite/boss reward";
+                    return $"Ready {ResolveUpgradeDisplayName(evolution.Id)} -> elite/boss reward";
                 }
             }
 
@@ -14129,8 +14285,14 @@ namespace Deucarian.TemplateGameSurvivors
             return "Affects " + ShortWeaponName(metadata.AffectedContentId);
         }
 
-        private static string ShortWeaponName(string weaponId)
+        private string ShortWeaponName(string weaponId)
         {
+            if (TryResolveWeaponUpgradeDisplayName(weaponId, out string authoredName, out RunUpgradeId upgradeId) &&
+                !string.Equals(authoredName, BasicSurvivorsGame.GetUpgradeDisplayName(upgradeId), StringComparison.Ordinal))
+            {
+                return authoredName;
+            }
+
             if (weaponId == BasicSurvivorsGame.ArcaneWandWeaponContentId) return "Wand";
             if (weaponId == BasicSurvivorsGame.FrostFanWeaponContentId) return "Frost";
             if (weaponId == BasicSurvivorsGame.OrbitWardWeaponContentId) return "Orbit";
@@ -14250,6 +14412,12 @@ namespace Deucarian.TemplateGameSurvivors
             Material material = new Material(shader) { color = color };
             renderer.sharedMaterial = material;
             return material;
+        }
+
+        private static Color WithAlpha(Color color, float alpha)
+        {
+            color.a = Mathf.Clamp01(alpha);
+            return color;
         }
 
         private static void ReleaseTemplateObject(UnityEngine.Object target)
@@ -15034,6 +15202,9 @@ namespace Deucarian.TemplateGameSurvivors
         private int _remainingForks;
         private int _remainingReturns;
         private bool _returningToPlayer;
+        private Renderer _renderer;
+        private TrailRenderer _trail;
+        private Material _runtimeMaterial;
 
         public SpawnInstanceId InstanceId { get; private set; }
         public bool IsActive { get; private set; }
@@ -15064,6 +15235,9 @@ namespace Deucarian.TemplateGameSurvivors
             _remainingForks = Mathf.Max(0, remainingForks);
             _remainingReturns = Mathf.Max(0, remainingReturns);
             _returningToPlayer = false;
+            ApplyPresentation(definition == null
+                ? controller == null ? new Color(0.78f, 0.42f, 1f) : controller.ResolveProjectileFallbackColor()
+                : definition.Tint);
             _hitEnemyIds.Clear();
             if (ignoredEnemyIds != null)
             {
@@ -15381,6 +15555,41 @@ namespace Deucarian.TemplateGameSurvivors
             _returningToPlayer = false;
             IsActive = false;
             InstanceId = default;
+        }
+
+        private void ApplyPresentation(Color tint)
+        {
+            if (_renderer == null)
+            {
+                _renderer = GetComponentInChildren<Renderer>();
+            }
+
+            if (_renderer != null)
+            {
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                if (_runtimeMaterial == null || _runtimeMaterial.shader != shader)
+                {
+                    _runtimeMaterial = new Material(shader);
+                }
+
+                _runtimeMaterial.color = tint;
+                _renderer.sharedMaterial = _runtimeMaterial;
+            }
+
+            if (_trail == null)
+            {
+                _trail = GetComponent<TrailRenderer>();
+            }
+
+            if (_trail != null)
+            {
+                Color trailStart = tint;
+                trailStart.a = 0.95f;
+                _trail.startColor = trailStart;
+                _trail.endColor = _controller == null
+                    ? new Color(0.18f, 0.86f, 1f, 0f)
+                    : _controller.ResolveProjectileTrailEndColor();
+            }
         }
     }
 

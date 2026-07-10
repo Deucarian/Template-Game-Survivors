@@ -19,6 +19,12 @@ This contract protects Template-Game-Survivors as a complete playable game templ
 - Runtime code owns logic/execution. Authored content owns asset-flippable game content.
 - Any future package extraction must prove the playable sample still works.
 
+## Concrete Asset-Flip Proof
+
+`Samples~/BasicSurvivorsGame/Scenes/NeonArcana.unity` and `Samples~/BasicSurvivorsGame/Content/NeonArcana` are the required concrete proof that this contract is real. The alternate scene uses the same `BasicSurvivorsGameBootstrap`, `SurvivorsTemplateController`, weapon executors, spawning, combat, XP, drafts, evolutions, rewards, profiles, persistence, and restart flow. It binds a separate complete authored tree, contains no alternate controller or genre runtime, and cannot reference or silently borrow a Basic `Default*` content asset.
+
+Future changes must keep both Basic Survivors and Neon Arcana strict, directly playable, and able to start Standard and Sprint with exactly one authored starting attack. `Documentation~/neon-arcana-asset-flip.md` owns the replacement map, visual-boundary audit, and extraction-readiness classification.
+
 ## What Stays In The Template
 
 - The Basic Survivors sample scene and bootstrap.

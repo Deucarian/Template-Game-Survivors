@@ -2,6 +2,8 @@
 
 This polish pass keeps every system local to Template-Game-Survivors. No package extraction, publishing, registry update, or shared dependency change was performed.
 
+Neon Arcana now proves a second complete content variation inside this template can use the same strict binding, runtime, UI, and presentation hooks. That is sufficient for asset-flip confidence and for evaluating the candidates below. It is not a second game-template proof: Idle Auto Defense or another distinct game must still consume a genuinely generic boundary before anything moves to a shared package.
+
 Use these notes only with `Documentation~/template-contract.md`. The governing rule is: “Extract only reusable infrastructure, never the playable vertical slice.”
 
 Before any extraction, protect these local boundaries:

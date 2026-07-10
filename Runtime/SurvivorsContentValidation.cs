@@ -2814,10 +2814,33 @@ namespace Deucarian.TemplateGameSurvivors
             ValidateRequiredThemeText(label, "icon placeholder prefix", theme.iconPlaceholderPrefix, result);
             ValidateRequiredThemeText(label, "button style token", theme.buttonStyleToken, result);
             ValidateColorValue(label + " HUD accent", theme.hudAccentColor, result);
+            ValidateWorldPresentation(theme.worldPresentation, label, result);
             ValidateRequiredRarityStyles(theme.rarityStyles, label, result);
             ValidateRequiredCategoryStyles(theme.categoryStyles, label, result);
             ValidateRequiredAudioEvents(theme.audioEvents, label, result);
             ValidateRequiredTutorialSteps(theme.tutorialSteps, label, result);
+        }
+
+        private static void ValidateWorldPresentation(
+            WorldPresentationRecordJson presentation,
+            string label,
+            SurvivorsContentValidationResult result)
+        {
+            if (presentation == null || !presentation.authored)
+            {
+                return;
+            }
+
+            ValidateColorValue(label + " player presentation", presentation.playerColor, result);
+            ValidateColorValue(label + " arena floor presentation", presentation.arenaFloorColor, result);
+            ValidateColorValue(label + " arena grid presentation", presentation.arenaGridColor, result);
+            ValidateColorValue(label + " arena accent presentation", presentation.arenaAccentColor, result);
+            ValidateColorValue(label + " experience pickup presentation", presentation.experiencePickupColor, result);
+            ValidateColorValue(label + " health pickup presentation", presentation.healthPickupColor, result);
+            ValidateColorValue(label + " currency pickup presentation", presentation.currencyPickupColor, result);
+            ValidateColorValue(label + " elite threat presentation", presentation.eliteThreatColor, result);
+            ValidateColorValue(label + " boss threat presentation", presentation.bossThreatColor, result);
+            ValidateColorValue(label + " feedback accent presentation", presentation.feedbackAccentColor, result);
         }
 
         private static void ValidateRequiredThemeText(
@@ -4158,10 +4181,27 @@ namespace Deucarian.TemplateGameSurvivors
             public string iconPlaceholderPrefix;
             public string hudAccentColor;
             public string buttonStyleToken;
+            public WorldPresentationRecordJson worldPresentation;
             public RarityStyleRecordJson[] rarityStyles;
             public CategoryStyleRecordJson[] categoryStyles;
             public AudioEventRecordJson[] audioEvents;
             public TutorialStepRecordJson[] tutorialSteps;
+        }
+
+        [Serializable]
+        private sealed class WorldPresentationRecordJson
+        {
+            public bool authored;
+            public string playerColor;
+            public string arenaFloorColor;
+            public string arenaGridColor;
+            public string arenaAccentColor;
+            public string experiencePickupColor;
+            public string healthPickupColor;
+            public string currencyPickupColor;
+            public string eliteThreatColor;
+            public string bossThreatColor;
+            public string feedbackAccentColor;
         }
 
         [Serializable]

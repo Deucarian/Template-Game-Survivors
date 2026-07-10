@@ -1,0 +1,135 @@
+{
+    "currencies":  [
+                       {
+                           "id":  "currency.survivors.blood-shards",
+                           "displayName":  "Neon Fragments"
+                       }
+                   ],
+    "tracks":  [
+                   {
+                       "id":  "track.survivors.legacy-xp",
+                       "displayName":  "Signal Memory"
+                   }
+               ],
+    "persistentUpgrades":  [
+                               {
+                                   "id":  "meta.survivors.arcane-legacy",
+                                   "displayName":  "Pulse Legacy",
+                                   "target":  "survivors.weapon.arcane-wand",
+                                   "effect":  "survivors.meta.damage.flat",
+                                   "maxRank":  3,
+                                   "rankCosts":  [
+                                                     5,
+                                                     8,
+                                                     13
+                                                 ],
+                                   "amountPerRank":  1.5
+                               },
+                               {
+                                   "id":  "meta.survivors.battle-tempo",
+                                   "displayName":  "Combat Clock",
+                                   "target":  "survivors.weapon.arcane-wand",
+                                   "effect":  "survivors.meta.damage.flat",
+                                   "maxRank":  3,
+                                   "rankCosts":  [
+                                                     6,
+                                                     10,
+                                                     16
+                                                 ],
+                                   "amountPerRank":  1
+                               },
+                               {
+                                   "id":  "meta.survivors.boss-hunters-ledger",
+                                   "displayName":  "Sovereign Index",
+                                   "target":  "survivors.weapon.arcane-wand",
+                                   "effect":  "survivors.meta.damage.flat",
+                                   "maxRank":  2,
+                                   "rankCosts":  [
+                                                     12,
+                                                     20
+                                                 ],
+                                   "amountPerRank":  2.25
+                               },
+                               {
+                                   "id":  "meta.survivors.vital-ward",
+                                   "displayName":  "Vital Buffer",
+                                   "target":  "survivors.player",
+                                   "effect":  "survivors.meta.player.max_health",
+                                   "maxRank":  3,
+                                   "rankCosts":  [
+                                                     4,
+                                                     8,
+                                                     12
+                                                 ],
+                                   "amountPerRank":  6
+                               },
+                               {
+                                   "id":  "meta.survivors.gemheart-legacy",
+                                   "displayName":  "Collector Legacy",
+                                   "target":  "survivors.pickups",
+                                   "effect":  "survivors.meta.pickup.range",
+                                   "maxRank":  3,
+                                   "rankCosts":  [
+                                                     4,
+                                                     7,
+                                                     11
+                                                 ],
+                                   "amountPerRank":  0.75
+                               },
+                               {
+                                   "id":  "meta.survivors.scholar-index",
+                                   "displayName":  "Archive Index",
+                                   "target":  "survivors.experience",
+                                   "effect":  "survivors.meta.experience.gain_multiplier",
+                                   "maxRank":  3,
+                                   "rankCosts":  [
+                                                     6,
+                                                     10,
+                                                     15
+                                                 ],
+                                   "amountPerRank":  0.08
+                               },
+                               {
+                                   "id":  "meta.survivors.prepared-draft",
+                                   "displayName":  "Prepared Choice",
+                                   "target":  "survivors.player",
+                                   "effect":  "survivors.meta.draft.reroll_charge",
+                                   "maxRank":  2,
+                                   "rankCosts":  [
+                                                     10,
+                                                     18
+                                                 ],
+                                   "amountPerRank":  1
+                               }
+                           ],
+    "rewards":  [
+                    {
+                        "id":  "reward.survivors.miniboss",
+                        "currencyId":  "currency.survivors.blood-shards",
+                        "currencyAmount":  4,
+                        "trackId":  "track.survivors.legacy-xp",
+                        "trackAmount":  25
+                    },
+                    {
+                        "id":  "reward.survivors.final-boss",
+                        "currencyId":  "currency.survivors.blood-shards",
+                        "currencyAmount":  18,
+                        "trackId":  "track.survivors.legacy-xp",
+                        "trackAmount":  120
+                    },
+                    {
+                        "id":  "reward.survivors.class.ember-vanguard",
+                        "currencyId":  "currency.survivors.blood-shards",
+                        "currencyAmount":  10,
+                        "trackId":  "track.survivors.legacy-xp",
+                        "trackAmount":  60
+                    },
+                    {
+                        "id":  "reward.survivors.elite-clear",
+                        "currencyId":  "currency.survivors.blood-shards",
+                        "currencyAmount":  2,
+                        "trackId":  "track.survivors.legacy-xp",
+                        "trackAmount":  12
+                    }
+                ]
+}

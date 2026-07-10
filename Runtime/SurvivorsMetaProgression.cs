@@ -55,10 +55,14 @@ namespace Deucarian.TemplateGameSurvivors
             CurrencyId bloodShardsCurrencyId,
             TrackId legacyExperienceTrackId,
             IReadOnlyList<SurvivorsPersistentUpgradeDefinition> persistentUpgrades,
-            IReadOnlyList<SurvivorsRewardDefinition> rewards)
+            IReadOnlyList<SurvivorsRewardDefinition> rewards,
+            string currencyDisplayName = "Blood Shards",
+            string legacyExperienceDisplayName = "Legacy XP")
         {
             BloodShardsCurrencyId = bloodShardsCurrencyId;
             LegacyExperienceTrackId = legacyExperienceTrackId;
+            CurrencyDisplayName = string.IsNullOrWhiteSpace(currencyDisplayName) ? "Blood Shards" : currencyDisplayName;
+            LegacyExperienceDisplayName = string.IsNullOrWhiteSpace(legacyExperienceDisplayName) ? "Legacy XP" : legacyExperienceDisplayName;
             PersistentUpgrades = persistentUpgrades == null ? Array.Empty<SurvivorsPersistentUpgradeDefinition>() : Copy(persistentUpgrades);
             Rewards = rewards == null ? Array.Empty<SurvivorsRewardDefinition>() : Copy(rewards);
             ProgressionCatalog = CreateCatalog();
@@ -66,6 +70,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         public CurrencyId BloodShardsCurrencyId { get; }
         public TrackId LegacyExperienceTrackId { get; }
+        public string CurrencyDisplayName { get; }
+        public string LegacyExperienceDisplayName { get; }
         public IReadOnlyList<SurvivorsPersistentUpgradeDefinition> PersistentUpgrades { get; }
         public IReadOnlyList<SurvivorsRewardDefinition> Rewards { get; }
         public ProgressionCatalog ProgressionCatalog { get; }

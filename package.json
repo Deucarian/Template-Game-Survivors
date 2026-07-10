@@ -37,7 +37,7 @@
   "samples": [
     {
       "displayName": "Basic Survivors Game",
-      "description": "A playable Survivors-style slice with five default weapons, pressure enemy roles, projectile/orbit/melee/burst/hitscan/payload options, status and barrier upgrades, XP gems, timed relic/level-up choices, class loadouts, passive atlases, weapon tracks, boss/victory flow, rewards, meta progression, persistence, and restart flow.",
+      "description": "A playable Survivors-style slice plus the complete Neon Arcana authored asset-flip scene, both using the same strict runtime with Standard and Sprint modes.",
       "path": "Samples~/BasicSurvivorsGame"
     }
   ]

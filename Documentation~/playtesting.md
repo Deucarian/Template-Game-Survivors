@@ -24,6 +24,8 @@ First-time profiles show a short onboarding overlay after mode selection. It pau
 
 The run-mode selector includes a simple theme selector. Default uses `Samples~/BasicSurvivorsGame/Content/DefaultUiTheme/ui-theme.json`; Neon Arcana uses `Samples~/BasicSurvivorsGame/Content/NeonArcanaUiTheme/ui-theme.json`. Theme files can change mode labels, rarity/category display, draft button labels, tutorial and run-summary copy, HUD accent color, placeholder icon IDs, and the audio event palette without retuning gameplay.
 
+For the complete alternate-content proof, open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/NeonArcana.unity`. This is distinct from selecting the older Neon Arcana UI theme in the Basic scene: the alternate scene binds `Content/NeonArcana` for every gameplay and presentation library. Confirm Neon Arcana Standard with `1`, Neon Arcana Sprint with `2`, one Neon Pulse starter, Pulse Runner, Static Wisp, Blacklight Sovereign, Neon Fragments, Signal Memory, the authored world palette, and no fallback-content status. The full checklist is in `Documentation~/neon-arcana-asset-flip.md`.
+
 ## Run Modes
 
 Standard Run uses `SurvivorsPacingProfile.HumanPlaytest`.
