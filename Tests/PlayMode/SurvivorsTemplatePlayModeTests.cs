@@ -86,6 +86,11 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             Assert.IsTrue(controller.IsRunModeSelectionOpen, "Imported sample scene should wait at run mode selection before combat starts.");
             Assert.IsFalse(controller.IsRunStarted, "Imported sample scene should not auto-start combat before mode selection.");
+            Assert.IsTrue(controller.IsStrictAuthoredSample, controller.AuthoredContentStatus);
+            Assert.IsTrue(controller.IsAuthoredContentBound, controller.AuthoredContentStatus);
+            Assert.IsFalse(controller.IsFallbackContentActive, controller.AuthoredContentStatus);
+            Assert.IsTrue(controller.CanStartConfiguredRun, controller.AuthoredContentStatus);
+            StringAssert.Contains("Strict authored Survivors sample bound", controller.AuthoredContentStatus);
             Assert.IsTrue(controller.SelectStandardRun());
             yield return null;
             if (controller.IsTutorialOverlayOpen)
@@ -1395,6 +1400,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
             controller.StartRun();
             yield return null;
+            controller.enabled = false;
 
             const float deltaTime = 0.1f;
             float elapsed = 0f;
@@ -5836,9 +5842,30 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             controller.StartRun();
             yield return null;
 
+            float expectedStartingDamage = 0f;
+            IReadOnlyList<SurvivorsWeaponArchetypeDefinition> fallbackWeapons = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(controller.CurrentTuning);
+            for (int i = 0; i < fallbackWeapons.Count; i++)
+            {
+                if (fallbackWeapons[i] != null && string.Equals(fallbackWeapons[i].Id, BasicSurvivorsGame.StarBeamWeaponContentId, StringComparison.Ordinal))
+                {
+                    expectedStartingDamage = fallbackWeapons[i].Damage;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(BasicSurvivorsGame.CreateClassLibraryDefinition().TryGetClass(BasicSurvivorsGame.EmberVanguardClassId, out SurvivorsClassDefinition ember));
+            for (int i = 0; i < ember.StartingStatModifiers.Count; i++)
+            {
+                SurvivorsClassStatModifierDefinition modifier = ember.StartingStatModifiers[i];
+                if (modifier != null && modifier.StatKind == SurvivorsClassStatKind.Damage)
+                {
+                    expectedStartingDamage += modifier.Amount;
+                }
+            }
+
             Assert.AreEqual(BasicSurvivorsGame.EmberVanguardClassId, controller.SelectedClassId);
             Assert.That(controller.PlayerMoveSpeed, Is.GreaterThan(controller.CurrentTuning.PlayerMoveSpeed));
-            Assert.That(controller.ProjectileDamage, Is.GreaterThan(controller.CurrentTuning.ProjectileDamage));
+            Assert.That(controller.ProjectileDamage, Is.EqualTo(expectedStartingDamage).Within(0.001f));
             Assert.That(controller.MaxHealth, Is.GreaterThan(controller.CurrentTuning.PlayerMaxHealth));
             Assert.AreEqual(1, controller.ActiveWeaponCount);
             Assert.IsTrue(controller.HasWeaponInLoadoutForTest(BasicSurvivorsGame.StarBeamWeaponContentId));

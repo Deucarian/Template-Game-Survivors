@@ -68,6 +68,31 @@ The Basic Survivors sample must remain driven by editable authored content/confi
 
 Runtime fallback content is allowed for tests, unbound hosts, and debug safety. It must not become the normal path for the Basic Survivors sample.
 
+### Strict Basic Sample Policy
+
+`BasicSurvivorsGameBootstrap` configures `SurvivorsAuthoredContentBindingPolicy.StrictSample` before it opens mode selection. The strict bind includes weapons, upgrades, relics, classes, progression, enemies, run flow, rewards, pickups, both sample themes, the audio palette, and tutorial copy. A missing or invalid required value leaves the controller in its pre-run state, disables Standard/Sprint start, and reports the validation error. It must never continue by silently launching `BasicSurvivorsGame` fallback balance.
+
+`SurvivorsAuthoredContentBindingPolicy.AllowFallbacks` is reserved for the legacy partial binder, programmatic tests, runtime debugging, and hosts that intentionally do not provide the complete Basic sample. The controller exposes this state through `IsFallbackContentActive` and an authored-content status beginning with `Fallback content active`.
+
+### Field Classification
+
+| Classification | Basic sample policy |
+| --- | --- |
+| Required authored field | Weapon identity/display/archetype/tint/cooldown/damage/range and relevant archetype values; upgrade identity/display/category/rarity/weight/max rank/effects/targets/amounts; enemy identity/display/role/tint/combat/lifecycle/marker/life-bar values; relic/class/progression/reward references and amounts; required run-flow profiles, rarity tables, shared gameplay tuning, pickup manifest entries, theme tokens, audio IDs, and tutorial copy. Missing or invalid values fail strict validation. |
+| Optional authored field with documented default | Omitted zero-count projectile mutations and false capability flags mean zero/false where validation allows that state. Empty prerequisite/reference fields mean no prerequisite/reference. `affectedContentId` and `requiredOwnedWeaponId` may be derived from the authored upgrade category/target. An omitted `gameplayTuningOverrides` field inherits the required authored `sharedGameplayTuning` value. These defaults never consult `BasicSurvivorsGame` in strict mode. |
+| Runtime algorithmic value | Deterministic seeds/selection hashes, role weighting inside authored pools, elapsed-time phase evaluation, collision and damage execution, clamping, pooling, rendering, and the formula that scales an authored Human enemy baseline by authored profile basis values. These are implementation rules rather than game records. |
+| Debug/unbound fallback only | `BasicSurvivorsGame` catalogs and tuning factories, built-in class/relic/progression/theme defaults, and the three-file legacy binder remain available only to explicit fallback hosts, tests, and debug recovery. They are not consulted to fill strict sample fields. |
+
+`DefaultRunFlow/run-flow.json` uses one explicit authored inheritance rule. `sharedGameplayTuning` is a complete required baseline for player movement/health/dash, spawn geometry and crowd spacing, threat warnings/slams/support, pickup/reward feedback, waystones, statuses, barriers, and surge feedback. Each profile may provide non-zero `gameplayTuningOverrides`; omission means inherit from that authored baseline. Profile pacing fields remain fully explicit per profile. `PacingProfile` identity and deterministic `RunSeed` remain runtime algorithmic values.
+
+### Progression And Reward Ownership
+
+`DefaultProgression/progression.json` owns class passive atlases, weapon skill tracks, track nodes, evolution nodes, node tiers/costs/max ranks, and class-specific upgrade gates. Class-owned passive-atlas nodes actively drive strict runtime class gates; upgrade JSON does not duplicate `allowedClasses` ownership. Weapon-track grouping, tier, point-cost, and node-rank data is currently bound and validated reference/tooling metadata: the live run does not spend progression points, and upgrade/evolution rank requirements still come from `DefaultUpgrades/upgrades.json`. Mutation tests prove both the live class eligibility path and the bound weapon/evolution metadata change when progression JSON changes.
+
+`DefaultRewards/rewards.json` owns currencies, run reward grants, elite/miniboss/boss/class-unlock reward amounts, legacy-XP grants, and the current persistent meta-upgrade definitions/costs/effects. It does not own class gates, weapon tracks, or evolution-node structure.
+
+No Game Content Authoring package change is required for this policy. Survivors-specific required-field and cross-reference rules remain local; the existing package report adapter is sufficient.
+
 ## Vertical-Slice Preservation Checklist
 
 After any package extraction or major refactor, verify:
@@ -120,10 +145,8 @@ Idle Auto Defense can be used as the second-template proof for reusable infrastr
 
 ## Known Contract Risks / Future Hardening
 
-- Some authored binders may use built-in per-field fallback values when optional fields are missing.
-- `DefaultProgression/progression.json` is parsed and validated, but its exact live gameplay role should be clearly documented or hardened in a separate pass.
-- Remove or reduce hidden scalar/effect fallbacks for asset-flip-critical fields.
-- Make `DefaultProgression/progression.json`'s exact runtime role explicit in docs and validation.
+- Keep the strict schema and authored tuning-parity mutation tests current when adding new gameplay fields.
+- Do not let copied/imported sample scenes become stale when bootstrap content references change.
 - Keep offscreen spawn resolver package candidacy separate from Survivors enemy content, tuning, and reward rules.
 - Prove extraction with Idle Auto Defense before moving shared systems broadly.
 

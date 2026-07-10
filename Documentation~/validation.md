@@ -110,7 +110,7 @@ Phase 3E adds editor-side validation adoption:
 
 - `Tools > Deucarian > Templates > Survivors > Validate Content` validates the package `Samples~/BasicSurvivorsGame` JSON libraries.
 - The menu action runs the local `SurvivorsContentValidator`; Survivors-specific rules remain in this template.
-- The editor report includes pickup JSON validation for required pickup ids, duplicate ids, display names, attraction values, and behavior text.
+- The editor report includes pickup JSON validation for required pickup ids, duplicate ids, display names, and behavior text. Pickup attraction values are validated in authored run flow.
 - The editor runner converts local validation errors to Gameplay Foundation `ContentValidationReport` issues.
 - Game Content Authoring formats and summarizes that report for console output only. Runtime assemblies do not reference editor-only authoring packages.
 - EditMode coverage checks that the editor runner builds a report, valid sample content has no errors, invalid sample content appears through the shared authoring report path, and the runtime asmdef has no editor-only authoring references.
@@ -171,7 +171,7 @@ The pacing profiles remain local template tuning. No package extraction or share
 
 Phase 3J adds audit-gap validation for authored runtime binding and HUD readability:
 
-- The sample scene binds `Samples~/BasicSurvivorsGame/Content/DefaultEnemies/enemies.json`, `Samples~/BasicSurvivorsGame/Content/DefaultRunFlow/run-flow.json`, and `Samples~/BasicSurvivorsGame/Content/DefaultRewards/rewards.json` through `BasicSurvivorsGameBootstrap` before run-mode selection.
+- The sample scene binds all gameplay libraries, the pickup manifest, both themes, audio IDs, and tutorial copy through `BasicSurvivorsGameBootstrap` before run-mode selection. Enemies, run flow, and rewards were the first runtime-bound audit targets; Phase 3N makes the complete path strict.
 - EditMode coverage checks that authored Human Playtest/Sprint run-flow profiles, authored elite/miniboss/boss IDs, major reward IDs, rarity tables, and lifecycle/life-bar flags are used by runtime definitions, and that invalid authored reward references fail validation.
 - PlayMode coverage checks the dedicated top-center timer, exact Sprint `01:42` level/draft bounds, and concurrent major-threat life-bar state.
 - Manual validation should confirm the top-center timer remains readable with warnings, authored overhead elite/miniboss bars appear onscreen, authored boss bars appear for bosses, offscreen markers still preserve major-threat health, and authored reward caches remain recoverable.
@@ -230,3 +230,27 @@ Phase 3M adds Template Contract validation:
 - EditMode coverage checks the contract document, required vertical-slice checklist items, protected local-content statements, package extraction candidates, and known hardening caveats remain documented.
 - Existing authored-content, run-mode, UI, theme/audio/tutorial, Sprint/Standard, and sample scene tests remain the runtime guardrails for proving the template still plays after extraction.
 - No package extraction, gameplay retuning, new weapons, new enemies, new upgrades, or shared package publishing is part of Phase 3M.
+
+Phase 3N hardens authored content as the normal sample source of truth:
+
+- `BasicSurvivorsGameBootstrap` uses `SurvivorsAuthoredContentBindingPolicy.StrictSample` and validates gameplay libraries, pickups, both themes, audio IDs, and tutorial copy before mode selection.
+- Strict binding rejects missing gameplay-defining scalars and broken references instead of borrowing per-field values from `BasicSurvivorsGame`; failed binding keeps Standard/Sprint unavailable and reports the content error.
+- `DefaultRunFlow/run-flow.json` contains a required `sharedGameplayTuning` baseline for 112 previously inherited live player, spawn, threat, pickup, status, barrier, waystone, and reward-feedback values. Optional non-zero `gameplayTuningOverrides` inherit from that authored baseline when omitted. The HUD's primary weapon damage/cooldown now resolves from the active authored weapon rather than duplicating weapon values in run flow.
+- A parity test compares every shared/override field for Human Playtest, Sprint, Normal, Debug Fast, and Showcase against the previously effective built-in values, proving the hardening pass does not retune gameplay.
+- Weapon/projectile, upgrade, enemy, Standard/Sprint run-flow, reward, live class-gate, and bound weapon/evolution-track metadata mutation tests prove JSON changes reach their intended runtime definitions. Missing required field tests prove strict validation fails rather than substituting fallback values.
+- `DefaultProgression/progression.json` owns passive atlases, weapon tracks/nodes, evolution nodes, node costs/ranks, and class-specific gates. Class-atlas nodes drive live class eligibility; weapon-track point/tier metadata remains bound validation/tooling data, not a live point-spending system. `DefaultRewards/rewards.json` owns currencies, run/major/class-unlock grants, legacy XP, and persistent meta upgrades.
+- Unbound and deliberately partial hosts remain supported through the explicit `AllowFallbacks` policy and report that fallback content is active.
+- Game Content Authoring required no package change; the existing generic report adapter is sufficient and Survivors schema rules remain template-local.
+- No package extraction, gameplay retuning, new content, or push is part of Phase 3N.
+
+Latest local validation for Phase 3N on `2026-07-10`:
+
+- Authored tuning capture: `112` shared fields across `5` profiles, `0` effective-value mismatches against the pre-hardening tuning factories.
+- Package validator: passed with `Deucarian validation passed: com.deucarian.template.game.survivors`.
+- Content validation: passed with `0` errors and `0` warnings; log at `C:\Repositories\_survivors_validation_tmp\authored-hardening-content-validation-final.log`.
+- Restricted text scan: only the three allowed editor validation console calls in `Editor/SurvivorsEditorContentValidation.cs`; no TODO/FIXME/HACK markers.
+- `git diff --check`: passed.
+- EditMode: passed with `75` passed, `0` failed; final durable result at `C:\Repositories\_survivors_validation_tmp\authored-hardening-editmode-final-rerun.json`.
+- PlayMode: the first full run passed `149` and exposed the known manual-simulation/frame-update Sprint race plus an obsolete generic-damage assertion. The test was made deterministic and the assertion was changed to the selected starter definition; the full rerun passed with `151` passed, `0` failed at `C:\Repositories\_survivors_validation_tmp\authored-hardening-playmode-rerun.json`.
+- Imported sample smoke: covered by the full PlayMode rerun after refreshing the disposable validation project's imported sample from the current `Samples~/BasicSurvivorsGame` source. The source repository did not receive generated/imported files.
+- Game Content Authoring package: inspected read-only; no generic package gap or package change was required.

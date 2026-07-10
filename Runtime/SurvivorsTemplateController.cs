@@ -271,7 +271,9 @@ namespace Deucarian.TemplateGameSurvivors
         private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> _weaponArchetypeDefinitions = Array.Empty<SurvivorsWeaponArchetypeDefinition>();
         private SurvivorsRunFlowRuntime _runFlow;
         private SurvivorsAuthoredContentDefinition _authoredContent;
-        private string _authoredContentStatus = "Using built-in Survivors fallback content.";
+        private SurvivorsAuthoredContentBindingPolicy _authoredBindingPolicy = SurvivorsAuthoredContentBindingPolicy.AllowFallbacks;
+        private bool _strictSampleContentReady;
+        private string _authoredContentStatus = "Fallback content active for an unbound host.";
         private bool _usingAuthoredRunFlow;
         private IReadOnlyList<SurvivorsRelicDefinition> _relicDefinitions;
         private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> _upgradeClassGates;
@@ -841,8 +843,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float DashCooldownRemainingSeconds => Mathf.Max(0f, _dashCooldownTimer);
         public float PlayerSafetyRemainingSeconds => Mathf.Max(0f, _playerInvulnerabilityTimer);
         public bool IsPlayerSafetyActive => _playerInvulnerabilityTimer > 0f;
-        public float ProjectileDamage => Mathf.Max(0f, (float)_projectileDefinition.BaseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus);
-        public float WeaponCooldownSeconds => Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + ArenaShrineSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + WaystoneChainSurgeCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus + EndlessSurgeCooldownMultiplierBonus));
+        public float ProjectileDamage => ResolveDisplayedWeaponDamage();
+        public float WeaponCooldownSeconds => ResolveDisplayedWeaponCooldownSeconds();
         public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + ArenaShrineSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus + WaystoneChainSurgePickupRangeBonus + HordeRushClearSurgePickupRangeBonus + WeaponLoadoutSurgePickupRangeBonus + PassiveLoadoutSurgePickupRangeBonus + BossRelicSurgePickupRangeBonus + GemRushPickupRangeBonus + EvolutionChainSurgePickupRangeBonus + EndlessSurgePickupRangeBonus);
         public float CurrentPickupAttractionSpeed => Mathf.Max(0.1f, CurrentTuning.PickupAttractionSpeed + PickupAttractionSpeedBonus);
         public float CurrentPickupMagnetPulseIntervalSeconds => ResolvePickupMagnetPulseIntervalSeconds();
@@ -892,6 +894,9 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = CreateConfiguredTuning(pacingProfile));
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
         public bool IsAuthoredContentBound => _authoredContent != null;
+        public bool IsStrictAuthoredSample => _authoredBindingPolicy == SurvivorsAuthoredContentBindingPolicy.StrictSample;
+        public bool IsFallbackContentActive => !IsStrictAuthoredSample && (_authoredContent == null || _authoredContent.UsesBuiltInFallbacks);
+        public bool CanStartConfiguredRun => !IsStrictAuthoredSample || (_strictSampleContentReady && _authoredContent != null);
         public bool IsUsingAuthoredRunFlow => _usingAuthoredRunFlow;
         public string AuthoredContentStatus => _authoredContentStatus;
         public string TopCenterTimerHudLabel => _runStarted ? ResolveTopCenterTimerHudLabel() : string.Empty;
@@ -1379,7 +1384,16 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(rect.x + 28f, rect.y + 34f, width - 56f, 28f), "Deucarian Survivors Run", _hudTitleStyle);
             GUI.Label(new Rect(rect.x + 28f, rect.y + 64f, width - 56f, 22f), "Pick Standard / Human Playtest for the full 30-minute arc or Sprint Run for the compact five-minute loop.", _hudLabelStyle);
 
-            Rect viewRect = new Rect(rect.x + 28f, rect.y + 98f, width - 56f, rect.height - 154f);
+            float viewOffset = 98f;
+            float viewBottomPadding = 154f;
+            if (IsStrictAuthoredSample && !CanStartConfiguredRun)
+            {
+                GUI.Label(new Rect(rect.x + 28f, rect.y + 86f, width - 56f, 34f), _authoredContentStatus, _hudSmallStyle);
+                viewOffset = 122f;
+                viewBottomPadding = 178f;
+            }
+
+            Rect viewRect = new Rect(rect.x + 28f, rect.y + viewOffset, width - 56f, rect.height - viewBottomPadding);
             float contentWidth = Mathf.Max(1f, viewRect.width - 18f);
             bool narrow = contentWidth < 700f;
             float cardGap = 16f;
@@ -1394,6 +1408,8 @@ namespace Deucarian.TemplateGameSurvivors
             Rect sprintRect = narrow
                 ? new Rect(0f, standardRect.yMax + cardGap, cardWidth, cardHeight)
                 : new Rect(standardRect.xMax + cardGap, 0f, cardWidth, cardHeight);
+            bool previousEnabled = GUI.enabled;
+            GUI.enabled = previousEnabled && CanStartConfiguredRun;
             if (DrawRunModeCard(standardRect, SurvivorsPacingProfile.HumanPlaytest, "Start Standard"))
             {
                 SelectStandardRun();
@@ -1403,6 +1419,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 SelectSprintRun();
             }
+            GUI.enabled = previousEnabled;
 
             DrawThemeSelector(new Rect(0f, selectorY, contentWidth, 42f));
             GUI.EndScrollView();
@@ -1758,6 +1775,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         public bool ConfigureAuthoredContent(TextAsset enemyLibrary, TextAsset runFlowLibrary, TextAsset rewardLibrary)
         {
+            _authoredBindingPolicy = SurvivorsAuthoredContentBindingPolicy.AllowFallbacks;
+            _strictSampleContentReady = false;
             return ConfigureAuthoredContentJson(
                 enemyLibrary == null ? null : enemyLibrary.text,
                 runFlowLibrary == null ? null : runFlowLibrary.text,
@@ -1774,6 +1793,29 @@ namespace Deucarian.TemplateGameSurvivors
             TextAsset runFlowLibrary,
             TextAsset rewardLibrary)
         {
+            return ConfigureAuthoredContent(
+                weaponLibrary,
+                upgradeLibrary,
+                relicLibrary,
+                classLibrary,
+                progressionLibrary,
+                enemyLibrary,
+                runFlowLibrary,
+                rewardLibrary,
+                SurvivorsAuthoredContentBindingPolicy.StrictSample);
+        }
+
+        public bool ConfigureAuthoredContent(
+            TextAsset weaponLibrary,
+            TextAsset upgradeLibrary,
+            TextAsset relicLibrary,
+            TextAsset classLibrary,
+            TextAsset progressionLibrary,
+            TextAsset enemyLibrary,
+            TextAsset runFlowLibrary,
+            TextAsset rewardLibrary,
+            SurvivorsAuthoredContentBindingPolicy bindingPolicy)
+        {
             return ConfigureAuthoredContentJson(
                 weaponLibrary == null ? null : weaponLibrary.text,
                 upgradeLibrary == null ? null : upgradeLibrary.text,
@@ -1782,11 +1824,92 @@ namespace Deucarian.TemplateGameSurvivors
                 progressionLibrary == null ? null : progressionLibrary.text,
                 enemyLibrary == null ? null : enemyLibrary.text,
                 runFlowLibrary == null ? null : runFlowLibrary.text,
-                rewardLibrary == null ? null : rewardLibrary.text);
+                rewardLibrary == null ? null : rewardLibrary.text,
+                bindingPolicy);
+        }
+
+        public bool ConfigureStrictSampleContent(
+            TextAsset weaponLibrary,
+            TextAsset upgradeLibrary,
+            TextAsset relicLibrary,
+            TextAsset classLibrary,
+            TextAsset progressionLibrary,
+            TextAsset enemyLibrary,
+            TextAsset pickupLibrary,
+            TextAsset runFlowLibrary,
+            TextAsset rewardLibrary,
+            TextAsset defaultThemeLibrary,
+            TextAsset alternateThemeLibrary)
+        {
+            _authoredBindingPolicy = SurvivorsAuthoredContentBindingPolicy.StrictSample;
+            _strictSampleContentReady = false;
+            TextAsset[] requiredAssets =
+            {
+                weaponLibrary,
+                upgradeLibrary,
+                relicLibrary,
+                classLibrary,
+                progressionLibrary,
+                enemyLibrary,
+                pickupLibrary,
+                runFlowLibrary,
+                rewardLibrary,
+                defaultThemeLibrary,
+                alternateThemeLibrary
+            };
+            for (int i = 0; i < requiredAssets.Length; i++)
+            {
+                if (requiredAssets[i] == null)
+                {
+                    return SetAuthoredBindingFailure($"Strict authored sample is missing required TextAsset at slot {i}.");
+                }
+            }
+
+            SurvivorsContentValidationResult validation = SurvivorsContentValidator.ValidateSampleJson(
+                weaponLibrary.text,
+                upgradeLibrary.text,
+                enemyLibrary.text,
+                rewardLibrary.text,
+                relicLibrary.text,
+                classLibrary.text,
+                progressionLibrary.text,
+                pickupLibrary.text,
+                runFlowLibrary.text,
+                defaultThemeLibrary.text,
+                alternateThemeLibrary.text);
+            if (!validation.Succeeded)
+            {
+                return SetAuthoredBindingFailure("Strict authored sample validation failed: " + string.Join("; ", validation.Errors));
+            }
+
+            if (!ConfigureAuthoredContent(
+                weaponLibrary,
+                upgradeLibrary,
+                relicLibrary,
+                classLibrary,
+                progressionLibrary,
+                enemyLibrary,
+                runFlowLibrary,
+                rewardLibrary,
+                SurvivorsAuthoredContentBindingPolicy.StrictSample))
+            {
+                return false;
+            }
+
+            if (!ConfigureUiThemes(defaultThemeLibrary, alternateThemeLibrary))
+            {
+                return SetAuthoredBindingFailure("Strict authored sample UI themes failed to bind.");
+            }
+
+            _strictSampleContentReady = true;
+            _authoredContentStatus = "Strict authored Survivors sample bound: " + _authoredContent.SourceSummary;
+            return true;
         }
 
         public bool ConfigureAuthoredContentJson(string enemyJson, string runFlowJson, string rewardJson)
         {
+            _authoredBindingPolicy = SurvivorsAuthoredContentBindingPolicy.AllowFallbacks;
+            _strictSampleContentReady = false;
             if (!SurvivorsAuthoredContentDefinition.TryCreate(
                 enemyJson,
                 runFlowJson,
@@ -1796,8 +1919,8 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 _authoredContent = null;
                 _authoredContentStatus = string.IsNullOrWhiteSpace(error)
-                    ? "Authored Survivors content failed to bind."
-                    : "Authored Survivors content failed to bind: " + error;
+                    ? "Fallback policy active after authored Survivors content failed to bind."
+                    : "Fallback policy active after authored Survivors content failed to bind: " + error;
                 if (!_runStarted)
                 {
                     tuning = CreateConfiguredTuning(pacingProfile);
@@ -1808,7 +1931,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _authoredContent = definition;
-            _authoredContentStatus = "Using authored Survivors content: " + definition.SourceSummary;
+            _authoredContentStatus = "Authored Survivors content bound with fallback policy active: " + definition.SourceSummary;
             if (!_runStarted)
             {
                 tuning = CreateConfiguredTuning(pacingProfile);
@@ -1828,6 +1951,31 @@ namespace Deucarian.TemplateGameSurvivors
             string runFlowJson,
             string rewardJson)
         {
+            return ConfigureAuthoredContentJson(
+                weaponJson,
+                upgradeJson,
+                relicJson,
+                classJson,
+                progressionJson,
+                enemyJson,
+                runFlowJson,
+                rewardJson,
+                SurvivorsAuthoredContentBindingPolicy.StrictSample);
+        }
+
+        public bool ConfigureAuthoredContentJson(
+            string weaponJson,
+            string upgradeJson,
+            string relicJson,
+            string classJson,
+            string progressionJson,
+            string enemyJson,
+            string runFlowJson,
+            string rewardJson,
+            SurvivorsAuthoredContentBindingPolicy bindingPolicy)
+        {
+            _authoredBindingPolicy = bindingPolicy;
+            _strictSampleContentReady = false;
             if (!SurvivorsAuthoredContentDefinition.TryCreate(
                 weaponJson,
                 upgradeJson,
@@ -1837,6 +1985,7 @@ namespace Deucarian.TemplateGameSurvivors
                 enemyJson,
                 runFlowJson,
                 rewardJson,
+                bindingPolicy,
                 out SurvivorsAuthoredContentDefinition definition,
                 out string error))
             {
@@ -1854,7 +2003,10 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _authoredContent = definition;
-            _authoredContentStatus = "Authored Survivors content bound: " + definition.SourceSummary;
+            _strictSampleContentReady = bindingPolicy == SurvivorsAuthoredContentBindingPolicy.StrictSample;
+            _authoredContentStatus = definition.IsStrictSample
+                ? "Strict authored Survivors content bound: " + definition.SourceSummary
+                : "Authored Survivors content bound with fallback policy: " + definition.SourceSummary;
             if (!_runStarted)
             {
                 tuning = CreateConfiguredTuning(pacingProfile);
@@ -1862,6 +2014,22 @@ namespace Deucarian.TemplateGameSurvivors
 
             ReleaseMetaProgressionService();
             return true;
+        }
+
+        private bool SetAuthoredBindingFailure(string message)
+        {
+            _authoredContent = null;
+            _strictSampleContentReady = false;
+            _authoredContentStatus = string.IsNullOrWhiteSpace(message)
+                ? "Strict authored Survivors content failed to bind."
+                : message;
+            if (!_runStarted)
+            {
+                tuning = CreateConfiguredTuning(pacingProfile);
+            }
+
+            ReleaseMetaProgressionService();
+            return false;
         }
 
         public void OpenRunModeSelection()
@@ -1899,6 +2067,13 @@ namespace Deucarian.TemplateGameSurvivors
 
         public bool SelectRunMode(SurvivorsPacingProfile profile)
         {
+            if (!CanStartConfiguredRun)
+            {
+                _runModeSelectionOpen = true;
+                State = SurvivorsRunState.Booting;
+                return false;
+            }
+
             ApplyPacingProfile(profile, restartRun: false);
             _runModeSelectionOpen = false;
             StartRun();
@@ -1908,6 +2083,13 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void StartRun()
         {
+            if (!CanStartConfiguredRun)
+            {
+                _runModeSelectionOpen = true;
+                State = SurvivorsRunState.Booting;
+                return;
+            }
+
             EnsureUiTheme();
             Time.timeScale = 1f;
             ClearRun();
@@ -4328,6 +4510,51 @@ namespace Deucarian.TemplateGameSurvivors
         internal IReadOnlyList<SurvivorsEnemyActor> ActiveEnemies => _enemies;
 
         internal Transform RuntimeWorldRoot => _worldRoot;
+
+        private float ResolveDisplayedWeaponDamage()
+        {
+            SurvivorsWeaponArchetypeDefinition definition = ResolvePrimaryWeaponDefinitionForDisplay();
+            if (definition != null)
+            {
+                return ResolveWeaponDamage(definition);
+            }
+
+            float baseDamage = _projectileDefinition == null ? 0f : (float)_projectileDefinition.BaseDamage;
+            return Mathf.Max(0f, baseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus);
+        }
+
+        private float ResolveDisplayedWeaponCooldownSeconds()
+        {
+            SurvivorsWeaponArchetypeDefinition definition = ResolvePrimaryWeaponDefinitionForDisplay();
+            if (definition != null)
+            {
+                return ResolveWeaponCooldownSeconds(definition);
+            }
+
+            return Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + ArenaShrineSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + WaystoneChainSurgeCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus + EndlessSurgeCooldownMultiplierBonus));
+        }
+
+        private SurvivorsWeaponArchetypeDefinition ResolvePrimaryWeaponDefinitionForDisplay()
+        {
+            IReadOnlyList<string> weaponIds = _weaponLoadout == null ? null : _weaponLoadout.WeaponIds;
+            IReadOnlyList<SurvivorsWeaponArchetypeDefinition> definitions = _weaponArchetypeDefinitions;
+            if (weaponIds == null || weaponIds.Count == 0 || definitions == null)
+            {
+                return null;
+            }
+
+            string primaryWeaponId = weaponIds[0];
+            for (int i = 0; i < definitions.Count; i++)
+            {
+                SurvivorsWeaponArchetypeDefinition definition = definitions[i];
+                if (definition != null && string.Equals(definition.Id, primaryWeaponId, StringComparison.Ordinal))
+                {
+                    return definition;
+                }
+            }
+
+            return null;
+        }
 
         internal float ResolveWeaponDamage(SurvivorsWeaponArchetypeDefinition definition)
         {

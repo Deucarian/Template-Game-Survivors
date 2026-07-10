@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Deucarian.GameplayFoundation;
 using Deucarian.Progression;
 using Deucarian.RunUpgrades;
@@ -47,6 +48,9 @@ namespace Deucarian.TemplateGameSurvivors
             "mode.selected",
             "draft.opened",
             "draft.choice.selected",
+            "draft.reroll",
+            "draft.banish",
+            "draft.skip",
             "level.up",
             "pickup.xp",
             "pickup.magnet_pulse",
@@ -70,6 +74,30 @@ namespace Deucarian.TemplateGameSurvivors
             "threats",
             "evolutions",
             "modes"
+        };
+
+        private static readonly string[] RequiredThemeRarityStyleIds =
+        {
+            "Common",
+            "Uncommon",
+            "Rare",
+            "Epic",
+            "Legendary",
+            "Evolution",
+            "Relic"
+        };
+
+        private static readonly string[] RequiredThemeCategoryStyleIds =
+        {
+            "NewWeapon",
+            "WeaponUpgrade",
+            "Passive",
+            "PassiveUpgrade",
+            "Mutation",
+            "Evolution",
+            "Relic",
+            "PickupMagnet",
+            "MetaReward"
         };
 
         public static SurvivorsContentValidationResult ValidateRuntimeContent(
@@ -139,6 +167,68 @@ namespace Deucarian.TemplateGameSurvivors
             string uiThemeJson = null,
             string alternateUiThemeJson = null)
         {
+            SurvivorsContentValidationResult result = ValidateSampleJsonCore(
+                weaponJson,
+                upgradeJson,
+                enemyJson,
+                rewardJson,
+                relicJson,
+                classJson,
+                progressionJson,
+                pickupJson,
+                runFlowJson,
+                uiThemeJson,
+                alternateUiThemeJson);
+            ValidateAuthoredRuntimeBinding(
+                weaponJson,
+                upgradeJson,
+                relicJson,
+                classJson,
+                progressionJson,
+                enemyJson,
+                runFlowJson,
+                rewardJson,
+                result);
+            return result;
+        }
+
+        internal static SurvivorsContentValidationResult ValidateStrictAuthoredBindingJson(
+            string weaponJson,
+            string upgradeJson,
+            string enemyJson,
+            string rewardJson,
+            string relicJson,
+            string classJson,
+            string progressionJson,
+            string runFlowJson)
+        {
+            return ValidateSampleJsonCore(
+                weaponJson,
+                upgradeJson,
+                enemyJson,
+                rewardJson,
+                relicJson,
+                classJson,
+                progressionJson,
+                pickupJson: null,
+                runFlowJson: runFlowJson,
+                uiThemeJson: null,
+                alternateUiThemeJson: null);
+        }
+
+        private static SurvivorsContentValidationResult ValidateSampleJsonCore(
+            string weaponJson,
+            string upgradeJson,
+            string enemyJson,
+            string rewardJson,
+            string relicJson,
+            string classJson,
+            string progressionJson,
+            string pickupJson,
+            string runFlowJson,
+            string uiThemeJson,
+            string alternateUiThemeJson)
+        {
             var result = new SurvivorsContentValidationResult();
             WeaponLibraryJson weaponLibrary = ParseJson<WeaponLibraryJson>(weaponJson, "weapon library", result);
             UpgradeLibraryJson upgradeLibrary = ParseJson<UpgradeLibraryJson>(upgradeJson, "upgrade library", result);
@@ -181,14 +271,18 @@ namespace Deucarian.TemplateGameSurvivors
             ValidateRunFlowLibrary(runFlowLibrary, result);
             ValidateUiTheme(uiTheme, "Default UI theme", result);
             ValidateUiTheme(alternateUiTheme, "Alternate UI theme", result);
-            ValidateAuthoredRuntimeBinding(enemyJson, rewardJson, runFlowJson, result);
             return result;
         }
 
         private static void ValidateAuthoredRuntimeBinding(
+            string weaponJson,
+            string upgradeJson,
+            string relicJson,
+            string classJson,
+            string progressionJson,
             string enemyJson,
-            string rewardJson,
             string runFlowJson,
+            string rewardJson,
             SurvivorsContentValidationResult result)
         {
             if (string.IsNullOrWhiteSpace(enemyJson) ||
@@ -198,12 +292,39 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            if (!SurvivorsAuthoredContentDefinition.TryCreate(
-                enemyJson,
-                runFlowJson,
-                rewardJson,
-                out _,
-                out string authoredError))
+            bool hasFullContent = !string.IsNullOrWhiteSpace(weaponJson) &&
+                !string.IsNullOrWhiteSpace(upgradeJson) &&
+                !string.IsNullOrWhiteSpace(relicJson) &&
+                !string.IsNullOrWhiteSpace(classJson) &&
+                !string.IsNullOrWhiteSpace(progressionJson);
+            bool created;
+            string authoredError;
+            if (hasFullContent)
+            {
+                created = SurvivorsAuthoredContentDefinition.TryCreate(
+                    weaponJson,
+                    upgradeJson,
+                    relicJson,
+                    classJson,
+                    progressionJson,
+                    enemyJson,
+                    runFlowJson,
+                    rewardJson,
+                    SurvivorsAuthoredContentBindingPolicy.StrictSample,
+                    out _,
+                    out authoredError);
+            }
+            else
+            {
+                created = SurvivorsAuthoredContentDefinition.TryCreate(
+                    enemyJson,
+                    runFlowJson,
+                    rewardJson,
+                    out _,
+                    out authoredError);
+            }
+
+            if (!created)
             {
                 result.AddError("Authored runtime binding is invalid: " + authoredError);
             }
@@ -760,6 +881,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             var projectileIds = new HashSet<string>(StringComparer.Ordinal);
+            var projectilesById = new Dictionary<string, ProjectileRecordJson>(StringComparer.Ordinal);
             if (library.projectiles != null)
             {
                 for (int i = 0; i < library.projectiles.Length; i++)
@@ -774,6 +896,20 @@ namespace Deucarian.TemplateGameSurvivors
                     if (!projectileIds.Add(projectile.id))
                     {
                         result.AddError($"Duplicate projectile id: {projectile.id}");
+                    }
+                    else
+                    {
+                        projectilesById.Add(projectile.id, projectile);
+                    }
+
+                    if (projectile.speed <= 0f)
+                    {
+                        result.AddError($"Projectile {projectile.id} requires speed above zero.");
+                    }
+
+                    if (projectile.lifetimeSeconds <= 0f)
+                    {
+                        result.AddError($"Projectile {projectile.id} requires lifetime above zero.");
                     }
                 }
             }
@@ -806,9 +942,101 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
-                if (archetype == SurvivorsWeaponArchetype.Projectile && !projectileIds.Contains(weapon.projectileId))
+                if (string.IsNullOrWhiteSpace(weapon.displayName))
                 {
-                    result.AddError($"Weapon {weapon.id} references missing projectile id: {weapon.projectileId}");
+                    result.AddError($"Weapon {weapon.id} is missing a display name.");
+                }
+
+                if (weapon.cooldownSeconds <= 0f)
+                {
+                    result.AddError($"Weapon {weapon.id} requires cooldown above zero.");
+                }
+
+                if (weapon.damage <= 0f)
+                {
+                    result.AddError($"Weapon {weapon.id} requires damage above zero.");
+                }
+
+                if (weapon.range <= 0f && weapon.radius <= 0f)
+                {
+                    result.AddError($"Weapon {weapon.id} requires range or radius above zero.");
+                }
+
+                ValidateColorValue("Weapon " + weapon.id, weapon.tint, result);
+
+                if (archetype == SurvivorsWeaponArchetype.Projectile)
+                {
+                    if (weapon.projectileSpeed < 0f || weapon.projectileLifetimeSeconds < 0f)
+                    {
+                        result.AddError($"Projectile weapon {weapon.id} cannot use negative speed or lifetime overrides.");
+                    }
+
+                    if (!projectilesById.TryGetValue(weapon.projectileId ?? string.Empty, out ProjectileRecordJson projectile))
+                    {
+                        result.AddError($"Weapon {weapon.id} references missing projectile id: {weapon.projectileId}");
+                    }
+                    else
+                    {
+                        float speed = weapon.projectileSpeed > 0f ? weapon.projectileSpeed : projectile.speed;
+                        float lifetime = weapon.projectileLifetimeSeconds > 0f ? weapon.projectileLifetimeSeconds : projectile.lifetimeSeconds;
+                        if (speed <= 0f)
+                        {
+                            result.AddError($"Projectile weapon {weapon.id} requires authored projectile speed above zero.");
+                        }
+
+                        if (lifetime <= 0f)
+                        {
+                            result.AddError($"Projectile weapon {weapon.id} requires authored projectile lifetime above zero.");
+                        }
+                    }
+
+                    if (weapon.projectileRadius <= 0f)
+                    {
+                        result.AddError($"Projectile weapon {weapon.id} requires projectile radius above zero.");
+                    }
+
+                    if (weapon.pierceCount < 0 || weapon.chainCount < 0 || weapon.forkCount < 0 || weapon.returnCount < 0)
+                    {
+                        result.AddError($"Projectile weapon {weapon.id} cannot use negative pierce, chain, fork, or return counts.");
+                    }
+
+                    if (weapon.fanCount < 1)
+                    {
+                        result.AddError($"Projectile weapon {weapon.id} requires fan count at least one.");
+                    }
+
+                    if (weapon.spreadDegrees < 0f)
+                    {
+                        result.AddError($"Projectile weapon {weapon.id} cannot use negative spread.");
+                    }
+                }
+                else if (archetype == SurvivorsWeaponArchetype.Orbit)
+                {
+                    if (weapon.orbitCount < 1 || weapon.orbitRadius <= 0f || weapon.orbitDegreesPerSecond <= 0f || weapon.contactTickIntervalSeconds <= 0f)
+                    {
+                        result.AddError($"Orbit weapon {weapon.id} requires explicit count, orbit radius, rotation speed, and contact interval above zero.");
+                    }
+                }
+                else if (archetype == SurvivorsWeaponArchetype.Melee)
+                {
+                    if (weapon.hitCount < 1 || weapon.arcDegrees <= 0f || weapon.arcDegrees > 360f || weapon.visualDurationSeconds <= 0f)
+                    {
+                        result.AddError($"Melee weapon {weapon.id} requires explicit hit count, arc, and visual duration.");
+                    }
+                }
+                else if (archetype == SurvivorsWeaponArchetype.Burst)
+                {
+                    if (weapon.burstCount < 1 || weapon.repeatIntervalSeconds <= 0f || weapon.visualDurationSeconds <= 0f)
+                    {
+                        result.AddError($"Burst weapon {weapon.id} requires explicit burst count, repeat interval, and visual duration.");
+                    }
+                }
+                else if (archetype == SurvivorsWeaponArchetype.Hitscan)
+                {
+                    if (weapon.hitscanCount < 1 || weapon.beamWidth <= 0f || weapon.visualDurationSeconds <= 0f)
+                    {
+                        result.AddError($"Hitscan weapon {weapon.id} requires explicit beam count, width, and visual duration.");
+                    }
                 }
 
                 if (IsPayloadArchetype(archetype))
@@ -826,6 +1054,10 @@ namespace Deucarian.TemplateGameSurvivors
                         weapon.payloadHazardTickIntervalSeconds,
                         weapon.payloadHazardDamageRatio,
                         result);
+                    if (weapon.payloadPlacementRadius <= 0f)
+                    {
+                        result.AddError($"Payload weapon {weapon.id} requires placement radius above zero.");
+                    }
                 }
             }
 
@@ -1276,6 +1508,11 @@ namespace Deucarian.TemplateGameSurvivors
                         result.AddError($"Currency {currency.id} is not a valid currency id.");
                     }
 
+                    if (string.IsNullOrWhiteSpace(currency.displayName))
+                    {
+                        result.AddError($"Currency {currency.id} is missing a display name.");
+                    }
+
                     if (!currencyIds.Add(currency.id))
                     {
                         result.AddError($"Duplicate currency id: {currency.id}");
@@ -1302,6 +1539,11 @@ namespace Deucarian.TemplateGameSurvivors
                     if (!IsValidTrackId(track.id))
                     {
                         result.AddError($"Progression track {track.id} is not a valid track id.");
+                    }
+
+                    if (string.IsNullOrWhiteSpace(track.displayName))
+                    {
+                        result.AddError($"Progression track {track.id} is missing a display name.");
                     }
 
                     if (!trackIds.Add(track.id))
@@ -1339,6 +1581,11 @@ namespace Deucarian.TemplateGameSurvivors
                         result.AddError($"Persistent upgrade {upgrade.id} is not a valid upgrade id.");
                     }
 
+                    if (string.IsNullOrWhiteSpace(upgrade.displayName))
+                    {
+                        result.AddError($"Persistent upgrade {upgrade.id} is missing a display name.");
+                    }
+
                     if (!persistentUpgradeIds.Add(upgrade.id))
                     {
                         result.AddError($"Duplicate persistent upgrade id: {upgrade.id}");
@@ -1374,8 +1621,7 @@ namespace Deucarian.TemplateGameSurvivors
                         }
                     }
 
-                    float amountPerRank = upgrade.amountPerRank != 0f ? upgrade.amountPerRank : upgrade.damageBonusPerRank;
-                    if (amountPerRank <= 0f)
+                    if (upgrade.amountPerRank <= 0f)
                     {
                         result.AddError($"Persistent upgrade {upgrade.id} amount per rank must be above zero.");
                     }
@@ -1460,6 +1706,11 @@ namespace Deucarian.TemplateGameSurvivors
                     continue;
                 }
 
+                if (string.IsNullOrWhiteSpace(relic.displayName))
+                {
+                    result.AddError($"Relic {relic.id} is missing a display name.");
+                }
+
                 ValidateRelicRecord(relic.id, relic.target, relic.effect, relic.effectKind, relic.amount, relic.weight, knownTargets, result);
                 if (!string.IsNullOrWhiteSpace(relic.id) && !relicIds.Add(relic.id))
                 {
@@ -1485,6 +1736,11 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(library.defaultClassId))
+            {
+                result.AddError("Sample class library must define a default class id.");
+            }
+
             var classIds = new HashSet<string>(StringComparer.Ordinal);
             int defaultUnlockedCount = 0;
             for (int i = 0; i < library.classes.Length; i++)
@@ -1494,6 +1750,11 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError($"Class record at index {i} is null.");
                     continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(classRecord.displayName))
+                {
+                    result.AddError($"Class {classRecord.id} is missing a display name.");
                 }
 
                 ValidateClassRecord(
@@ -1596,6 +1857,11 @@ namespace Deucarian.TemplateGameSurvivors
                     result.AddError($"Duplicate progression track id: {track.id}");
                 }
 
+                if (string.IsNullOrWhiteSpace(track.displayName))
+                {
+                    result.AddError($"Progression track {resolvedTrackId} is missing a display name.");
+                }
+
                 ValidateProgressionTrackOwnership(
                     resolvedTrackId,
                     track.kind,
@@ -1620,6 +1886,11 @@ namespace Deucarian.TemplateGameSurvivors
                     {
                         result.AddError($"Progression track {resolvedTrackId} node at index {nodeIndex} is null.");
                         continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(node.displayName))
+                    {
+                        result.AddError($"Progression node {node.id} is missing a display name.");
                     }
 
                     ValidateProgressionNodeRecord(
@@ -1725,6 +1996,12 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 roles.Add(role);
+                if (string.IsNullOrWhiteSpace(enemy.displayName))
+                {
+                    result.AddError($"Enemy {enemy.id} is missing a display name.");
+                }
+
+                ValidateColorValue("Enemy " + enemy.id, enemy.tint, result);
                 if (role == SurvivorsEnemyRole.Miniboss)
                 {
                     minibossCount++;
@@ -1739,6 +2016,7 @@ namespace Deucarian.TemplateGameSurvivors
                 }
 
                 ValidateEnemyStats(enemy.id, enemy.health, enemy.moveSpeed, enemy.radius, enemy.contactDamage, enemy.contactIntervalSeconds, enemy.experienceDrop, result);
+                ValidateEnemyRangedStats(enemy, role, result);
                 ValidateEnemyLifecycle(enemy, role, result);
                 if (role != SurvivorsEnemyRole.Swarm && enemy.spawnTimeSeconds <= 0f)
                 {
@@ -1761,6 +2039,19 @@ namespace Deucarian.TemplateGameSurvivors
                     {
                         result.AddError($"Enemy {enemy.id} requires splitter behavior text.");
                     }
+                }
+                else if (role == SurvivorsEnemyRole.Summoner && string.IsNullOrWhiteSpace(enemy.behavior))
+                {
+                    result.AddError($"Enemy {enemy.id} requires summoner behavior text.");
+                }
+
+                if (role == SurvivorsEnemyRole.Boss && !enemy.finalBoss)
+                {
+                    result.AddError($"Boss enemy {enemy.id} must be marked as the final boss.");
+                }
+                else if (role != SurvivorsEnemyRole.Boss && enemy.finalBoss)
+                {
+                    result.AddError($"Only the Boss enemy role may be marked as the final boss: {enemy.id}");
                 }
             }
 
@@ -1876,6 +2167,40 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
+        private static void ValidateEnemyRangedStats(
+            EnemyRecordJson enemy,
+            SurvivorsEnemyRole role,
+            SurvivorsContentValidationResult result)
+        {
+            bool requiresRangedAttack = role == SurvivorsEnemyRole.Spitter ||
+                role == SurvivorsEnemyRole.Elite ||
+                role == SurvivorsEnemyRole.DreadElite ||
+                role == SurvivorsEnemyRole.Miniboss ||
+                role == SurvivorsEnemyRole.Boss;
+            if (requiresRangedAttack)
+            {
+                if (enemy.rangedAttackRange <= 0f ||
+                    enemy.rangedAttackDamage <= 0f ||
+                    enemy.rangedAttackIntervalSeconds <= 0f ||
+                    enemy.preferredRange <= 0f)
+                {
+                    result.AddError($"Ranged enemy {enemy.id} requires explicit range, damage, interval, and preferred range above zero.");
+                }
+
+                return;
+            }
+
+            if (enemy.rangedAttackRange < 0f || enemy.rangedAttackDamage < 0f || enemy.rangedAttackIntervalSeconds < 0f || enemy.preferredRange < 0f)
+            {
+                result.AddError($"Enemy {enemy.id} cannot use negative ranged combat values.");
+            }
+
+            if (role == SurvivorsEnemyRole.Summoner && enemy.preferredRange <= 0f)
+            {
+                result.AddError($"Summoner enemy {enemy.id} requires preferred range above zero.");
+            }
+        }
+
         private static void ValidateRequiredEnemyRole(HashSet<SurvivorsEnemyRole> roles, SurvivorsEnemyRole requiredRole, SurvivorsContentValidationResult result)
         {
             if (roles == null || !roles.Contains(requiredRole))
@@ -1910,9 +2235,9 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError($"Enemy {id} requires radius above zero.");
             }
 
-            if (contactDamage < 0f)
+            if (contactDamage <= 0f)
             {
-                result.AddError($"Enemy {id} cannot use negative contact damage.");
+                result.AddError($"Enemy {id} requires contact damage above zero.");
             }
 
             if (contactIntervalSeconds <= 0f)
@@ -1959,29 +2284,7 @@ namespace Deucarian.TemplateGameSurvivors
                     result.AddError($"Pickup {pickup.id} is missing a display name.");
                 }
 
-                if (pickup.attractRange < 0f)
-                {
-                    result.AddError($"Pickup {pickup.id} cannot use negative attract range.");
-                }
-
-                if (pickup.attractionSpeed < 0f)
-                {
-                    result.AddError($"Pickup {pickup.id} cannot use negative attraction speed.");
-                }
-
-                if (pickup.id == BasicSurvivorsGame.ExperiencePickupSpawnableId.Value)
-                {
-                    if (pickup.attractRange <= 0f)
-                    {
-                        result.AddError($"Pickup {pickup.id} requires attract range above zero.");
-                    }
-
-                    if (pickup.attractionSpeed <= 0f)
-                    {
-                        result.AddError($"Pickup {pickup.id} requires attraction speed above zero.");
-                    }
-                }
-                else if (string.IsNullOrWhiteSpace(pickup.behavior))
+                if (string.IsNullOrWhiteSpace(pickup.behavior))
                 {
                     result.AddError($"Pickup {pickup.id} requires behavior text.");
                 }
@@ -1999,6 +2302,12 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 return;
             }
+
+            ValidateGameplayTuningRecord(
+                library.sharedGameplayTuning,
+                "Shared gameplay tuning",
+                requireEveryValue: true,
+                result);
 
             if (library.profiles == null || library.profiles.Length == 0)
             {
@@ -2039,6 +2348,11 @@ namespace Deucarian.TemplateGameSurvivors
 
                 ValidateRunFlowDefinition(CreateRunFlowDefinition(profile), result);
                 ValidateRunFlowPacingRecord(profile, resolvedId, result);
+                ValidateGameplayTuningRecord(
+                    profile.gameplayTuningOverrides,
+                    $"Run flow profile {resolvedId} gameplay tuning overrides",
+                    requireEveryValue: false,
+                    result);
             }
 
             if (!containsHumanPlaytest)
@@ -2049,6 +2363,71 @@ namespace Deucarian.TemplateGameSurvivors
             if (!containsSprintRun)
             {
                 result.AddError("Sample run flow library must include a SprintRun profile.");
+            }
+        }
+
+        private static void ValidateGameplayTuningRecord(
+            SurvivorsGameplayTuningRecordJson record,
+            string label,
+            bool requireEveryValue,
+            SurvivorsContentValidationResult result)
+        {
+            if (record == null)
+            {
+                if (requireEveryValue)
+                {
+                    result.AddError(label + " is required.");
+                }
+
+                return;
+            }
+
+            FieldInfo[] fields = typeof(SurvivorsGameplayTuningRecordJson).GetFields(BindingFlags.Instance | BindingFlags.Public);
+            for (int i = 0; i < fields.Length; i++)
+            {
+                FieldInfo field = fields[i];
+                if (field.FieldType == typeof(float))
+                {
+                    float value = (float)field.GetValue(record);
+                    ValidateGameplayTuningValue(field.Name, value, label, requireEveryValue, result);
+                }
+                else if (field.FieldType == typeof(int))
+                {
+                    int value = (int)field.GetValue(record);
+                    if (value < 0 || (requireEveryValue && value == 0))
+                    {
+                        result.AddError($"{label} requires {field.Name} above zero.");
+                    }
+                }
+            }
+        }
+
+        private static void ValidateGameplayTuningValue(
+            string fieldName,
+            float value,
+            string label,
+            bool requireEveryValue,
+            SurvivorsContentValidationResult result)
+        {
+            if (fieldName.EndsWith("CooldownMultiplierBonus", StringComparison.Ordinal))
+            {
+                if ((requireEveryValue && Mathf.Approximately(value, 0f)) || value <= -1f || value > 0f)
+                {
+                    result.AddError($"{label} requires {fieldName} above -1 and below zero.");
+                }
+
+                return;
+            }
+
+            if (value < 0f || (requireEveryValue && Mathf.Approximately(value, 0f)))
+            {
+                result.AddError($"{label} requires {fieldName} above zero.");
+                return;
+            }
+
+            if (string.Equals(fieldName, "majorThreatEnrageHealthThreshold", StringComparison.Ordinal) && value > 1f)
+            {
+                result.AddError($"{label} requires {fieldName} at or below one.");
             }
         }
 
@@ -2098,19 +2477,26 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "enemy max health", profile.enemyMaxHealth, result);
             ValidatePositive(profileId, "enemy move speed", profile.enemyMoveSpeed, result);
             ValidatePositive(profileId, "enemy radius", profile.enemyRadius, result);
-            ValidateNonNegative(profileId, "enemy contact damage", profile.enemyContactDamage, result);
+            ValidatePositive(profileId, "enemy contact damage", profile.enemyContactDamage, result);
             ValidatePositive(profileId, "enemy contact interval", profile.enemyContactIntervalSeconds, result);
             ValidatePositive(profileId, "enemy XP reward", profile.enemyExperienceReward, result);
+            ValidatePositive(profileId, "summoner support initial delay", profile.summonerSupportInitialDelaySeconds, result);
+            ValidatePositive(profileId, "summoner support interval", profile.summonerSupportIntervalSeconds, result);
+            ValidatePositive(profileId, "summoner support count", profile.summonerSupportCount, result);
+            ValidatePositive(profileId, "summoner support extra alive allowance", profile.summonerSupportExtraAliveAllowance, result);
+            ValidatePositive(profileId, "summoner support radius", profile.summonerSupportRadius, result);
+            ValidatePositive(profileId, "splitter child count", profile.splitterChildCount, result);
+            ValidatePositive(profileId, "splitter child spawn radius", profile.splitterChildSpawnRadius, result);
             ValidatePositive(profileId, "miniboss max health", profile.minibossMaxHealth, result);
             ValidatePositive(profileId, "miniboss move speed", profile.minibossMoveSpeed, result);
             ValidatePositive(profileId, "miniboss radius", profile.minibossRadius, result);
-            ValidateNonNegative(profileId, "miniboss contact damage", profile.minibossContactDamage, result);
+            ValidatePositive(profileId, "miniboss contact damage", profile.minibossContactDamage, result);
             ValidatePositive(profileId, "miniboss contact interval", profile.minibossContactIntervalSeconds, result);
             ValidatePositive(profileId, "miniboss XP reward", profile.minibossExperienceReward, result);
             ValidatePositive(profileId, "boss max health", profile.bossMaxHealth, result);
             ValidatePositive(profileId, "boss move speed", profile.bossMoveSpeed, result);
             ValidatePositive(profileId, "boss radius", profile.bossRadius, result);
-            ValidateNonNegative(profileId, "boss contact damage", profile.bossContactDamage, result);
+            ValidatePositive(profileId, "boss contact damage", profile.bossContactDamage, result);
             ValidatePositive(profileId, "boss contact interval", profile.bossContactIntervalSeconds, result);
             ValidatePositive(profileId, "boss XP reward", profile.bossExperienceReward, result);
             ValidatePositive(profileId, "enemy soft leash radius", profile.enemySoftLeashRadius, result);
@@ -2249,6 +2635,9 @@ namespace Deucarian.TemplateGameSurvivors
             ValidatePositive(profileId, "maximum queued level-ups", profile.maximumQueuedLevelUps, result);
             ValidatePositive(profileId, "pickup magnet pulse base interval", profile.pickupMagnetPulseBaseIntervalSeconds, result);
             ValidatePositive(profileId, "pickup magnet pulse minimum interval", profile.pickupMagnetPulseMinimumIntervalSeconds, result);
+            ValidatePositive(profileId, "pickup attract range", profile.pickupAttractRange, result);
+            ValidatePositive(profileId, "pickup attraction speed", profile.pickupAttractionSpeed, result);
+            ValidatePositive(profileId, "pickup collect radius", profile.pickupCollectRadius, result);
             ValidatePositive(profileId, "max weapon slots", profile.maxWeaponSlots, result);
             ValidatePositive(profileId, "max passive slots", profile.maxPassiveSlots, result);
             ValidatePositive(profileId, "draft mid rarity level", profile.draftMidRarityLevel, result);
@@ -2279,6 +2668,11 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError("SprintRun profile XP requirements are too low for the 5-minute pacing target.");
                 }
+            }
+            else if (string.Equals(profile.id, SurvivorsPacingProfile.HumanPlaytest.ToString(), StringComparison.Ordinal) &&
+                !profile.endlessContinuationEnabled)
+            {
+                result.AddError("HumanPlaytest profile must preserve endless continuation.");
             }
 
             ValidateRunFlowRarityTables(profile.rarityTables, profileId, result);
@@ -2399,8 +2793,127 @@ namespace Deucarian.TemplateGameSurvivors
                 result.AddError($"{label} is missing tutorial title copy.");
             }
 
+            ValidateRequiredThemeText(label, "card background token", theme.cardBackgroundToken, result);
+            ValidateRequiredThemeText(label, "card frame token", theme.cardFrameToken, result);
+            ValidateRequiredThemeText(label, "choose reward title", theme.chooseRewardTitle, result);
+            ValidateRequiredThemeText(label, "level-up title", theme.levelUpTitle, result);
+            ValidateRequiredThemeText(label, "elite reward title", theme.eliteRewardTitle, result);
+            ValidateRequiredThemeText(label, "boss reward title", theme.bossRewardTitle, result);
+            ValidateRequiredThemeText(label, "boss relic title", theme.bossRelicTitle, result);
+            ValidateRequiredThemeText(label, "reroll button label", theme.rerollButtonLabel, result);
+            ValidateRequiredThemeText(label, "skip button label", theme.skipButtonLabel, result);
+            ValidateRequiredThemeText(label, "banish button label", theme.banishButtonLabel, result);
+            ValidateRequiredThemeText(label, "restart button label", theme.restartSameButtonLabel, result);
+            ValidateRequiredThemeText(label, "change mode button label", theme.changeModeButtonLabel, result);
+            ValidateRequiredThemeText(label, "continue button label", theme.continueButtonLabel, result);
+            ValidateRequiredThemeText(label, "build menu title", theme.buildMenuTitle, result);
+            ValidateRequiredThemeText(label, "run summary title", theme.runSummaryTitle, result);
+            ValidateRequiredThemeText(label, "theme selector title", theme.themeSelectorTitle, result);
+            ValidateRequiredThemeText(label, "show tutorial button label", theme.showTutorialButtonLabel, result);
+            ValidateRequiredThemeText(label, "debug toggle label", theme.debugToggleLabel, result);
+            ValidateRequiredThemeText(label, "icon placeholder prefix", theme.iconPlaceholderPrefix, result);
+            ValidateRequiredThemeText(label, "button style token", theme.buttonStyleToken, result);
+            ValidateColorValue(label + " HUD accent", theme.hudAccentColor, result);
+            ValidateRequiredRarityStyles(theme.rarityStyles, label, result);
+            ValidateRequiredCategoryStyles(theme.categoryStyles, label, result);
             ValidateRequiredAudioEvents(theme.audioEvents, label, result);
             ValidateRequiredTutorialSteps(theme.tutorialSteps, label, result);
+        }
+
+        private static void ValidateRequiredThemeText(
+            string themeLabel,
+            string fieldLabel,
+            string value,
+            SurvivorsContentValidationResult result)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                result.AddError($"{themeLabel} is missing {fieldLabel}.");
+            }
+        }
+
+        private static void ValidateRequiredRarityStyles(
+            RarityStyleRecordJson[] styles,
+            string label,
+            SurvivorsContentValidationResult result)
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (styles == null || styles.Length == 0)
+            {
+                result.AddError($"{label} must define rarity styles.");
+                return;
+            }
+
+            for (int i = 0; i < styles.Length; i++)
+            {
+                RarityStyleRecordJson style = styles[i];
+                if (style == null || string.IsNullOrWhiteSpace(style.id))
+                {
+                    result.AddError($"{label} rarity style at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!ids.Add(style.id))
+                {
+                    result.AddError($"{label} has duplicate rarity style id: {style.id}");
+                }
+
+                ValidateRequiredThemeText(label, $"rarity style {style.id} display name", style.displayName, result);
+                ValidateRequiredThemeText(label, $"rarity style {style.id} style token", style.styleToken, result);
+                ValidateRequiredThemeText(label, $"rarity style {style.id} icon id", style.iconId, result);
+                ValidateColorValue(label + " rarity style " + style.id, style.accentColor, result);
+            }
+
+            RequireThemeTokenIds(ids, RequiredThemeRarityStyleIds, label, "rarity style", result);
+        }
+
+        private static void ValidateRequiredCategoryStyles(
+            CategoryStyleRecordJson[] styles,
+            string label,
+            SurvivorsContentValidationResult result)
+        {
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            if (styles == null || styles.Length == 0)
+            {
+                result.AddError($"{label} must define category styles.");
+                return;
+            }
+
+            for (int i = 0; i < styles.Length; i++)
+            {
+                CategoryStyleRecordJson style = styles[i];
+                if (style == null || string.IsNullOrWhiteSpace(style.id))
+                {
+                    result.AddError($"{label} category style at index {i} is missing an id.");
+                    continue;
+                }
+
+                if (!ids.Add(style.id))
+                {
+                    result.AddError($"{label} has duplicate category style id: {style.id}");
+                }
+
+                ValidateRequiredThemeText(label, $"category style {style.id} display name", style.displayName, result);
+                ValidateRequiredThemeText(label, $"category style {style.id} icon id", style.iconId, result);
+            }
+
+            RequireThemeTokenIds(ids, RequiredThemeCategoryStyleIds, label, "category style", result);
+        }
+
+        private static void RequireThemeTokenIds(
+            HashSet<string> actualIds,
+            string[] requiredIds,
+            string label,
+            string tokenLabel,
+            SurvivorsContentValidationResult result)
+        {
+            for (int i = 0; i < requiredIds.Length; i++)
+            {
+                if (!actualIds.Contains(requiredIds[i]))
+                {
+                    result.AddError($"{label} is missing required {tokenLabel} {requiredIds[i]}.");
+                }
+            }
         }
 
         private static void ValidateRequiredAudioEvents(AudioEventRecordJson[] audioEvents, string label, SurvivorsContentValidationResult result)
@@ -2607,6 +3120,14 @@ namespace Deucarian.TemplateGameSurvivors
             if (value < 0f)
             {
                 result.AddError($"Run flow profile {profileId} cannot use negative {label}.");
+            }
+        }
+
+        private static void ValidateColorValue(string label, string value, SurvivorsContentValidationResult result)
+        {
+            if (string.IsNullOrWhiteSpace(value) || !ColorUtility.TryParseHtmlString(value, out _))
+            {
+                result.AddError($"{label} requires an authored HTML color value.");
             }
         }
 
@@ -3373,16 +3894,43 @@ namespace Deucarian.TemplateGameSurvivors
         private sealed class WeaponRecordJson
         {
             public string id;
+            public string displayName;
             public string fireMode;
             public string projectileId;
+            public string tint;
+            public float cooldownSeconds;
+            public float damage;
+            public float range;
+            public float radius;
+            public float projectileSpeed;
+            public float projectileRadius;
+            public float projectileLifetimeSeconds;
+            public int pierceCount;
+            public int chainCount;
+            public int forkCount;
+            public int returnCount;
             public int fanCount;
             public float spreadDegrees;
+            public int orbitCount;
+            public float orbitRadius;
+            public float orbitDegreesPerSecond;
+            public float contactTickIntervalSeconds;
+            public int hitCount;
+            public float arcDegrees;
+            public float visualDurationSeconds;
+            public int burstCount;
+            public float repeatIntervalSeconds;
+            public int hitscanCount;
+            public float beamWidth;
+            public bool pierces;
             public int payloadCount;
             public float payloadTravelSpeed;
             public float payloadArmingSeconds;
             public float payloadLifetimeSeconds;
             public float payloadTriggerRadius;
             public float payloadExplosionRadius;
+            public float payloadPlacementRadius;
+            public bool payloadAutoDetonateAtExpiry;
             public bool payloadLeavesHazard;
             public float payloadHazardDurationSeconds;
             public float payloadHazardTickIntervalSeconds;
@@ -3393,6 +3941,8 @@ namespace Deucarian.TemplateGameSurvivors
         private sealed class ProjectileRecordJson
         {
             public string id;
+            public float speed;
+            public float lifetimeSeconds;
         }
 
         [Serializable]
@@ -3441,6 +3991,7 @@ namespace Deucarian.TemplateGameSurvivors
             public string id;
             public string displayName;
             public string role;
+            public string tint;
             public float health;
             public float moveSpeed;
             public float radius;
@@ -3448,6 +3999,10 @@ namespace Deucarian.TemplateGameSurvivors
             public float contactIntervalSeconds;
             public int experienceDrop;
             public float spawnTimeSeconds;
+            public float rangedAttackRange;
+            public float rangedAttackDamage;
+            public float rangedAttackIntervalSeconds;
+            public float preferredRange;
             public int splitChildCount;
             public float splitChildRadius;
             public string behavior;
@@ -3476,8 +4031,6 @@ namespace Deucarian.TemplateGameSurvivors
         {
             public string id;
             public string displayName;
-            public float attractRange;
-            public float attractionSpeed;
             public string behavior;
         }
 
@@ -3581,11 +4134,52 @@ namespace Deucarian.TemplateGameSurvivors
         private sealed class UiThemeRecordJson
         {
             public string themeName;
+            public string cardBackgroundToken;
+            public string cardFrameToken;
             public string standardModeDisplayName;
             public string sprintModeDisplayName;
+            public string chooseRewardTitle;
+            public string levelUpTitle;
+            public string eliteRewardTitle;
+            public string bossRewardTitle;
+            public string bossRelicTitle;
+            public string rerollButtonLabel;
+            public string skipButtonLabel;
+            public string banishButtonLabel;
+            public string restartSameButtonLabel;
+            public string changeModeButtonLabel;
+            public string continueButtonLabel;
+            public string buildMenuTitle;
+            public string runSummaryTitle;
             public string tutorialTitle;
+            public string themeSelectorTitle;
+            public string showTutorialButtonLabel;
+            public string debugToggleLabel;
+            public string iconPlaceholderPrefix;
+            public string hudAccentColor;
+            public string buttonStyleToken;
+            public RarityStyleRecordJson[] rarityStyles;
+            public CategoryStyleRecordJson[] categoryStyles;
             public AudioEventRecordJson[] audioEvents;
             public TutorialStepRecordJson[] tutorialSteps;
+        }
+
+        [Serializable]
+        private sealed class RarityStyleRecordJson
+        {
+            public string id;
+            public string displayName;
+            public string styleToken;
+            public string accentColor;
+            public string iconId;
+        }
+
+        [Serializable]
+        private sealed class CategoryStyleRecordJson
+        {
+            public string id;
+            public string displayName;
+            public string iconId;
         }
 
         [Serializable]
@@ -3608,6 +4202,7 @@ namespace Deucarian.TemplateGameSurvivors
         [Serializable]
         private sealed class RunFlowLibraryJson
         {
+            public SurvivorsGameplayTuningRecordJson sharedGameplayTuning;
             public RunFlowProfileRecordJson[] profiles;
         }
 
@@ -3632,6 +4227,13 @@ namespace Deucarian.TemplateGameSurvivors
             public float enemyContactDamage;
             public float enemyContactIntervalSeconds;
             public int enemyExperienceReward;
+            public float summonerSupportInitialDelaySeconds;
+            public float summonerSupportIntervalSeconds;
+            public int summonerSupportCount;
+            public int summonerSupportExtraAliveAllowance;
+            public float summonerSupportRadius;
+            public int splitterChildCount;
+            public float splitterChildSpawnRadius;
             public float enemySoftLeashRadius;
             public float enemyHardRecycleRadius;
             public float enemyRecycleDelaySeconds;
@@ -3741,6 +4343,9 @@ namespace Deucarian.TemplateGameSurvivors
             public int maximumQueuedLevelUps;
             public float pickupMagnetPulseBaseIntervalSeconds;
             public float pickupMagnetPulseMinimumIntervalSeconds;
+            public float pickupAttractRange;
+            public float pickupAttractionSpeed;
+            public float pickupCollectRadius;
             public int maxWeaponSlots;
             public int maxPassiveSlots;
             public int draftMidRarityLevel;
@@ -3759,6 +4364,7 @@ namespace Deucarian.TemplateGameSurvivors
             public float endlessSurgePickupRangeBonus;
             public float endlessSurgePulseDamage;
             public float endlessSurgePulseRadius;
+            public SurvivorsGameplayTuningRecordJson gameplayTuningOverrides;
         }
 
         [Serializable]

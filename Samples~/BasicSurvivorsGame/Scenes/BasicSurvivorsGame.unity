@@ -199,6 +199,7 @@ MonoBehaviour:
   classLibrary: {fileID: 4900000, guid: 71e25d10b1094f108be2a788aa16debd, type: 3}
   progressionLibrary: {fileID: 4900000, guid: 01618825803244d2ad45877c34813a24, type: 3}
   enemyLibrary: {fileID: 4900000, guid: 9252b55c5f4b4019a0a80b5cb14d3654, type: 3}
+  pickupLibrary: {fileID: 4900000, guid: 27d54548ed0b4ab9a811e163c0d471cf, type: 3}
   runFlowLibrary: {fileID: 4900000, guid: ffe384a93f9c4415ad18e3859b8cb082, type: 3}
   rewardLibrary: {fileID: 4900000, guid: 69e9189e1bee4ca799e72143e48a60f4, type: 3}
   uiThemeLibrary: {fileID: 4900000, guid: 772a0e4c2de84c8e9a33618f68c830cb, type: 3}

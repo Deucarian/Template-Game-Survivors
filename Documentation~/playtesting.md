@@ -16,6 +16,10 @@ Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCE
 
 `Documentation~/template-contract.md` protects this scene as the default vertical-slice experience. After package extraction or major refactors, confirm the sample still opens, shows mode selection, starts Standard and Sprint from authored run-flow profiles, uses authored weapons/upgrades/enemies/rewards/themes/tutorial copy, hides debug UI by default, resolves at least one draft, and reaches restart/change-mode without manual reconstruction.
 
+Before choosing a mode, confirm the selector reports `Strict authored Survivors sample bound`. This status means all gameplay JSON, the pickup manifest, both themes, audio IDs, and tutorial copy validated before startup. A strict error intentionally disables mode start and leaves the error visible. Run `Tools > Deucarian > Templates > Survivors > Validate Content`, fix the named field/reference, and reimport the copied sample when its imported scene or content is stale. Do not judge gameplay from a `Fallback content active` host; that state is reserved for tests/debug/unbound integrations.
+
+`Content/DefaultRunFlow/run-flow.json` owns both the required `sharedGameplayTuning` baseline and each profile's pacing. Human Playtest inherits the shared values directly. Sprint, Normal, Debug Fast, and Showcase list only their intentional `gameplayTuningOverrides`; an omitted override inherits the authored shared value, not a runtime default. This is the place to inspect player/dash, spawn geometry/crowd spacing, threat warning/slam, pickup/reward feedback, waystone, status, barrier, and surge values during asset-flip testing.
+
 First-time profiles show a short onboarding overlay after mode selection. It pauses gameplay, explains movement, auto-attacks, XP gems, drafts, pickup/magnet builds, elites/bosses, evolutions, and Standard versus Sprint, and can be skipped with Esc/S or finished with Space/Enter/arrow keys. The run-mode selector also has a Show Tutorial button and `T` shortcut for repeat viewing.
 
 The run-mode selector includes a simple theme selector. Default uses `Samples~/BasicSurvivorsGame/Content/DefaultUiTheme/ui-theme.json`; Neon Arcana uses `Samples~/BasicSurvivorsGame/Content/NeonArcanaUiTheme/ui-theme.json`. Theme files can change mode labels, rarity/category display, draft button labels, tutorial and run-summary copy, HUD accent color, placeholder icon IDs, and the audio event palette without retuning gameplay.
@@ -123,6 +127,7 @@ Choose Sprint Run from the selector or start it through the runtime debugger.
 - Restart Same should immediately start another Sprint; Change Mode should return to the selector so Standard can be chosen intentionally.
 - The runtime debugger's run metrics should show the selected mode, first draft, first elite, miniboss/dread, boss, evolution, kill, XP, and damage timings when those events happen.
 - The old player-centered circle and four bar-like arena markers should not appear in normal play; waystone compass guidance and explicit enemy/rush telegraphs should carry the readable navigation and danger information instead.
+- The run-mode selector and F1/debug surfaces must never report fallback content for this imported Basic sample. Deliberately break a required field only in a disposable copy when testing failure behavior; mode start should stay blocked and name that field.
 
 ## Player UI Checks
 
