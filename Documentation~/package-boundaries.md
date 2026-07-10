@@ -1,5 +1,7 @@
 # Package Boundaries
 
+`Documentation~/template-contract.md` governs all package-boundary decisions for this template. The guiding rule is: “Extract only reusable infrastructure, never the playable vertical slice.” Reusable package work must not remove the Basic Survivors sample scene, authored content, tuning, UI, themes, audio palette, tutorial copy, run-mode selection, or playable loop.
+
 ## Existing Package Usage
 
 - `Combat`: health state and damage resolution.
@@ -77,3 +79,5 @@ Do not extract these yet. Revisit only after parity gaps repeat across real temp
 - diagnostics for spawn pressure, pool stats, and draft state
 
 No shared package extraction happened in Phase 2S.
+
+Before any future extraction, update `Documentation~/survivors-package-extraction-candidates.md`, run validation, and prove the imported Basic Survivors sample still opens, lets the player choose Standard or Sprint, and plays without manual reconstruction.

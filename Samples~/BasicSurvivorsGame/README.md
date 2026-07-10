@@ -2,6 +2,8 @@
 
 Playable sample for the Deucarian Survivors template.
 
+This sample is protected by `Documentation~/template-contract.md` as the playable vertical slice. Asset flips should edit authored content/config first; package extraction must not remove this scene, authored content, tuning, UI, themes, audio palette, tutorial copy, or playable loop unless an equivalent replacement is already wired and validated.
+
 For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`. The bootstrap object builds the run-mode selector, arena, player, horde loop, pooled enemies, pickups, projectiles, clean HUD, full-screen draft UI, build menu, relic UI, meta profile service, victory/defeat summary screens, endless continuation, and restart flow at runtime.
 
 - Move with WASD or arrow keys, and use Space for Arc Step when the horde closes in.

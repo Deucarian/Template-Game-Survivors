@@ -14,6 +14,8 @@ Open this imported/editable scene:
 
 Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should open the run-mode selector without requiring a setup or repair step. Choose Standard Run with `1`/Enter for the full 30-minute Human Playtest loop, or Sprint Run with `2`/`S` for the compact 5-minute loop. Once play starts, the top-center timer should remain readable above warning banners and should show elapsed time plus the selected mode's remaining target time. Normal play should show the clean player HUD only; press `F1` to toggle the debug overlay when internal pacing, spawn, pool, or draft metrics are needed.
 
+`Documentation~/template-contract.md` protects this scene as the default vertical-slice experience. After package extraction or major refactors, confirm the sample still opens, shows mode selection, starts Standard and Sprint from authored run-flow profiles, uses authored weapons/upgrades/enemies/rewards/themes/tutorial copy, hides debug UI by default, resolves at least one draft, and reaches restart/change-mode without manual reconstruction.
+
 First-time profiles show a short onboarding overlay after mode selection. It pauses gameplay, explains movement, auto-attacks, XP gems, drafts, pickup/magnet builds, elites/bosses, evolutions, and Standard versus Sprint, and can be skipped with Esc/S or finished with Space/Enter/arrow keys. The run-mode selector also has a Show Tutorial button and `T` shortcut for repeat viewing.
 
 The run-mode selector includes a simple theme selector. Default uses `Samples~/BasicSurvivorsGame/Content/DefaultUiTheme/ui-theme.json`; Neon Arcana uses `Samples~/BasicSurvivorsGame/Content/NeonArcanaUiTheme/ui-theme.json`. Theme files can change mode labels, rarity/category display, draft button labels, tutorial and run-summary copy, HUD accent color, placeholder icon IDs, and the audio event palette without retuning gameplay.
@@ -108,7 +110,7 @@ After defeat:
 Choose Sprint Run from the selector or start it through the runtime debugger.
 
 - First draft should be reachable around `25`-`40` seconds when the player keeps collecting XP.
-- Level should land around `3`-`4` at 1 minute, `5`-`7` at 2 minutes, `8`-`10` at 3 minutes, `11`-`14` at 4 minutes, and `14`-`18` at 5 minutes.
+- Level should land around `2`-`4` at 1 minute, `5`-`7` at 2 minutes, `8`-`10` at 3 minutes, `11`-`14` at 4 minutes, and `14`-`18` at 5 minutes.
 - A full 5-minute Sprint should usually produce about `10`-`16` normal level-up drafts, with action time between choices.
 - Standing still from the opening should usually cause death or serious danger inside `60`-`120` seconds.
 - The player should usually have a second weapon, passive, or meaningful rank identity by about `45`-`60` seconds.

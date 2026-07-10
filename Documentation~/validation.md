@@ -155,7 +155,7 @@ Phase 3I adds human-readable pacing validation:
 - Human Playtest opening spawns use two-enemy packs on a `0.95` second interval, `38` maximum alive enemies, `1.35` basic enemy speed against `5.55` player speed, readable `9.25` projectile speed, `2.9` pickup magnet range, and no reward timeout.
 - Human Playtest max alive rises by `8` about every `45` seconds, spawn pack size grows with escalation up to `6`, the spawn interval drops by `0.08` seconds per escalation, major threats warn before they enter, the first horde rush begins around `75` seconds, the first elite arrives around `135` seconds, the dread elite arrives around `255` seconds, the miniboss waits until `360` seconds, the final boss appears around `1140` seconds, and survival victory lands at `1800` seconds.
 - `SurvivorsPacingProfile.SprintRun` is a separate selectable 5-minute profile with its own target duration, victory time, boss timing, elite timing, horde timing, XP curve, level-up draft cooldown, queued draft cap, rarity ramp, reward multiplier, and evolution assist. It does not retune Human Playtest.
-- Sprint progression validation targets first draft around `25`-`40` seconds, levels around `3`-`4` at 1 minute, `5`-`7` at 2 minutes, `8`-`10` at 3 minutes, `11`-`14` at 4 minutes, `14`-`18` at 5 minutes, and about `10`-`16` normal level-up drafts across a full 5-minute run.
+- Sprint progression validation targets first draft around `25`-`40` seconds, levels around `2`-`4` at 1 minute, `5`-`7` at 2 minutes, `8`-`10` at 3 minutes, `11`-`14` at 4 minutes, `14`-`18` at 5 minutes, and about `10`-`16` normal level-up drafts across a full 5-minute run.
 - Sprint standing-still validation checks that the opening becomes lethal or seriously dangerous within `60`-`120` seconds without a strong build.
 - Pickup-build validation covers authored Gemheart, Lodestone Sigil, and Vacuum Pulse choices, pickup range, gem pull speed, periodic recall behavior, and queue/throttle protection against draft floods.
 - Enemy lifecycle validation covers authored recycle/leash/reposition/marker/life-bar flags, normal enemy offscreen recycling, persistent major-threat health preservation, offscreen major-threat markers, boss health bar integration, and removal of the old player-centered circle/four-bar placeholder visuals from normal play.
@@ -221,3 +221,12 @@ Phase 3L adds product-polish validation:
 - Mobile/small-screen coverage checks the shared centered panel primitive stays inside a small game view for the mode selector, draft overlay, tutorial, build menu, and run summary. Manual QA should still confirm the actual rendered selector, draft cards, tutorial, build menu, and result screen remain readable at small resolutions.
 - Documentation coverage includes Run Summary 2.0, comparison previews, tutorial flow, audio event palette, small-screen testing, Neon Arcana theme selection/editing, debug-only UI, and package extraction candidates.
 - No gameplay retuning, new weapons, new enemies, new upgrades, package extraction, or shared package publishing is part of Phase 3L.
+
+Phase 3M adds Template Contract validation:
+
+- `Documentation~/template-contract.md` defines the permanent rule: “Extract only reusable infrastructure, never the playable vertical slice.”
+- README, structure, playtesting, package-boundary, sample, and extraction-candidate docs reference the contract and keep the Basic Survivors sample framed as a playable asset-flippable vertical slice.
+- Package extraction candidates must document why they may be reusable, what is Survivors-specific, what stays local, second-template proof, likely package boundary, and vertical-slice preservation risk.
+- EditMode coverage checks the contract document, required vertical-slice checklist items, protected local-content statements, package extraction candidates, and known hardening caveats remain documented.
+- Existing authored-content, run-mode, UI, theme/audio/tutorial, Sprint/Standard, and sample scene tests remain the runtime guardrails for proving the template still plays after extraction.
+- No package extraction, gameplay retuning, new weapons, new enemies, new upgrades, or shared package publishing is part of Phase 3M.

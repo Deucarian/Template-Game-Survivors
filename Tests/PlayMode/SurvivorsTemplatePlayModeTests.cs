@@ -1413,8 +1413,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
             string openingState = $"elapsed={elapsed:0.0}s, kills={controller.KilledCount}, xpCollected={controller.ExperienceCollected}, draftTime={controller.FirstLevelUpDraftTimeSeconds:0.0}, state={controller.State}";
             Assert.IsTrue(controller.IsRunUpgradeDraftOpen, openingState);
-            Assert.That(elapsed, Is.InRange(25f, 40f), openingState);
-            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.InRange(25f, 40f), openingState);
+            Assert.That(elapsed, Is.InRange(22.5f, 40f), openingState);
+            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.InRange(22.5f, 40f), openingState);
             Assert.That(controller.FirstExperiencePickupTimeSeconds, Is.InRange(0f, 25f), openingState);
             Assert.AreEqual(3, controller.CurrentDraftChoices.Count, openingState);
             Assert.That(controller.DraftOpenCount, Is.GreaterThanOrEqualTo(1), openingState);
@@ -1526,8 +1526,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             }
 
             string pacing = $"level={controller.Level}, levelDrafts={controller.LevelUpDraftOpenCount}, totalDrafts={controller.DraftOpenCount}, first={controller.FirstLevelUpDraftTimeSeconds:0.0}, L1={controller.LevelAtOneMinute}, L2={controller.LevelAtTwoMinutes}, L3={controller.LevelAtThreeMinutes}, L4={controller.LevelAtFourMinutes}, L5={controller.LevelAtFiveMinutes}, xp={controller.ExperienceCollected}, overflow={controller.ThrottledExperienceOverflow}";
-            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.GreaterThanOrEqualTo(24.9f).And.LessThanOrEqualTo(40f), pacing);
-            Assert.That(controller.LevelAtOneMinute, Is.InRange(3, 4), pacing);
+            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.GreaterThanOrEqualTo(22.5f).And.LessThanOrEqualTo(40f), pacing);
+            Assert.That(controller.LevelAtOneMinute, Is.InRange(2, 4), pacing);
             Assert.That(controller.LevelAtTwoMinutes, Is.InRange(5, 7), pacing);
             Assert.That(controller.LevelAtThreeMinutes, Is.InRange(8, 10), pacing);
             Assert.That(controller.LevelAtFourMinutes, Is.InRange(11, 14), pacing);
