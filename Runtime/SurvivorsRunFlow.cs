@@ -43,8 +43,24 @@ namespace Deucarian.TemplateGameSurvivors
             float rangedAttackRange = 0f,
             float rangedAttackDamage = 0f,
             float rangedAttackIntervalSeconds = 0f,
-            float preferredRange = 0f)
+            float preferredRange = 0f,
+            bool? canRecycle = null,
+            bool? canLeash = null,
+            bool? canReposition = null,
+            bool? showOffscreenMarker = null,
+            bool? showOverheadLifeBar = null,
+            bool? showBossLifeBar = null,
+            string markerStyle = null,
+            float softLeashRadius = 0f,
+            float hardRecycleRadius = 0f,
+            float catchUpSpeedMultiplier = 0f,
+            float repositionTimeoutSeconds = 0f,
+            float spawnTimeSeconds = 0f)
         {
+            bool isMajorRewardRole = role == SurvivorsEnemyRole.Elite ||
+                role == SurvivorsEnemyRole.DreadElite ||
+                role == SurvivorsEnemyRole.Miniboss ||
+                role == SurvivorsEnemyRole.Boss;
             Role = role;
             Id = id;
             DisplayName = displayName;
@@ -59,6 +75,18 @@ namespace Deucarian.TemplateGameSurvivors
             RangedAttackDamage = rangedAttackDamage;
             RangedAttackIntervalSeconds = rangedAttackIntervalSeconds;
             PreferredRange = preferredRange;
+            CanRecycle = canRecycle ?? !isMajorRewardRole;
+            CanLeash = canLeash ?? true;
+            CanReposition = canReposition ?? true;
+            ShowOffscreenMarker = showOffscreenMarker ?? isMajorRewardRole;
+            ShowOverheadLifeBar = showOverheadLifeBar ?? (isMajorRewardRole && role != SurvivorsEnemyRole.Boss);
+            ShowBossLifeBar = showBossLifeBar ?? role == SurvivorsEnemyRole.Boss;
+            MarkerStyle = string.IsNullOrWhiteSpace(markerStyle) ? role.ToString() : markerStyle;
+            SoftLeashRadius = softLeashRadius;
+            HardRecycleRadius = hardRecycleRadius;
+            CatchUpSpeedMultiplier = catchUpSpeedMultiplier;
+            RepositionTimeoutSeconds = repositionTimeoutSeconds;
+            SpawnTimeSeconds = spawnTimeSeconds;
         }
 
         public SurvivorsEnemyRole Role { get; }
@@ -75,6 +103,18 @@ namespace Deucarian.TemplateGameSurvivors
         public float RangedAttackDamage { get; }
         public float RangedAttackIntervalSeconds { get; }
         public float PreferredRange { get; }
+        public bool CanRecycle { get; }
+        public bool CanLeash { get; }
+        public bool CanReposition { get; }
+        public bool ShowOffscreenMarker { get; }
+        public bool ShowOverheadLifeBar { get; }
+        public bool ShowBossLifeBar { get; }
+        public string MarkerStyle { get; }
+        public float SoftLeashRadius { get; }
+        public float HardRecycleRadius { get; }
+        public float CatchUpSpeedMultiplier { get; }
+        public float RepositionTimeoutSeconds { get; }
+        public float SpawnTimeSeconds { get; }
     }
 
     public sealed class SurvivorsRunFlowDefinition
@@ -437,7 +477,19 @@ namespace Deucarian.TemplateGameSurvivors
                 baseProfile.RangedAttackRange,
                 baseProfile.RangedAttackDamage * healthMultiplier,
                 baseProfile.RangedAttackIntervalSeconds,
-                baseProfile.PreferredRange);
+                baseProfile.PreferredRange,
+                baseProfile.CanRecycle,
+                baseProfile.CanLeash,
+                baseProfile.CanReposition,
+                baseProfile.ShowOffscreenMarker,
+                baseProfile.ShowOverheadLifeBar,
+                baseProfile.ShowBossLifeBar,
+                baseProfile.MarkerStyle,
+                baseProfile.SoftLeashRadius,
+                baseProfile.HardRecycleRadius,
+                baseProfile.CatchUpSpeedMultiplier,
+                baseProfile.RepositionTimeoutSeconds,
+                baseProfile.SpawnTimeSeconds);
         }
 
         private SurvivorsEnemyProfile FindSwarmProfile(SurvivorsEnemyRole role)

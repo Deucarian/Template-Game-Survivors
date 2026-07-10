@@ -1110,6 +1110,78 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator TopCenterTimerShowsRunTimeAndRemainingModeTime()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            controller.StartRun();
+            yield return null;
+
+            controller.Simulate(1.2f, Vector2.zero);
+            yield return null;
+
+            Assert.IsTrue(controller.IsTopCenterTimerVisible);
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("Sprint Run"));
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("TIME 00:01"));
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("LEFT 04:58"));
+            Assert.That(controller.TopCenterTimerRectForTest.center.x, Is.EqualTo(Screen.width * 0.5f).Within(0.001f));
+
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.HumanPlaytest, restartRun: true);
+            yield return null;
+
+            controller.Simulate(1.2f, Vector2.zero);
+            yield return null;
+
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("Standard Run"));
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("TIME 00:01"));
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("LEFT 29:58"));
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
+        public IEnumerator SprintRunAtOneFortyTwoStaysNearHumanPlaytestLevelTarget()
+        {
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+            controller.CurrentTuning.EnemyContactDamage = 0f;
+            controller.CurrentTuning.MinibossSpawnTimeSeconds = 999f;
+            controller.CurrentTuning.BossSpawnTimeSeconds = 999f;
+            controller.StartRun();
+            yield return null;
+
+            const float targetSeconds = 102f;
+            const float deltaTime = 0.2f;
+            int guard = 0;
+            while (controller.RunTimeSeconds < targetSeconds && controller.State != SurvivorsRunState.GameOver && guard++ < 900)
+            {
+                if (controller.State == SurvivorsRunState.LevelUp)
+                {
+                    ResolveOpenChoiceForLongRunSmoke(controller);
+                    yield return null;
+                    continue;
+                }
+
+                float elapsed = controller.RunTimeSeconds;
+                Vector2 movement = new Vector2(Mathf.Sin(elapsed * 0.8f), Mathf.Cos(elapsed * 0.63f));
+                controller.Simulate(Mathf.Min(deltaTime, targetSeconds - controller.RunTimeSeconds), movement);
+                if (guard % 10 == 0)
+                {
+                    yield return null;
+                }
+            }
+
+            string pacing = $"time={controller.RunTimeSeconds:0.0}, level={controller.Level}, drafts={controller.LevelUpDraftOpenCount}, kills={controller.KilledCount}, xp={controller.ExperienceCollected}, state={controller.State}";
+            Assert.AreNotEqual(SurvivorsRunState.GameOver, controller.State, pacing);
+            Assert.That(controller.RunTimeSeconds, Is.EqualTo(targetSeconds).Within(0.25f), pacing);
+            Assert.That(controller.Level, Is.InRange(4, 7), pacing);
+            Assert.That(controller.LevelUpDraftOpenCount, Is.InRange(3, 6), pacing);
+            Assert.That(controller.LevelUpDraftCooldownRemainingSeconds, Is.GreaterThanOrEqualTo(0f), pacing);
+
+            Object.Destroy(controller.gameObject);
+        }
+
+        [UnityTest]
         public IEnumerator SprintRunFiveMinuteProgressionStaysInTargetEnvelope()
         {
             SurvivorsTemplateController controller = CreateController(startRun: false);

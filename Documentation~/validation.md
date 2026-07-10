@@ -167,3 +167,38 @@ Phase 3I adds human-readable pacing validation:
 - `Documentation~/playtesting.md` documents the local playtest host project, renamed imported sample scene, Standard and Sprint timing expectations, explicit save reset, and Debug Fast workflow.
 
 The pacing profiles remain local template tuning. No package extraction or shared pacing framework is introduced.
+
+Phase 3J adds audit-gap validation for authored runtime binding and HUD readability:
+
+- The sample scene binds `Samples~/BasicSurvivorsGame/Content/DefaultEnemies/enemies.json`, `Samples~/BasicSurvivorsGame/Content/DefaultRunFlow/run-flow.json`, and `Samples~/BasicSurvivorsGame/Content/DefaultRewards/rewards.json` through `BasicSurvivorsGameBootstrap` before run-mode selection.
+- EditMode coverage checks that authored Human Playtest/Sprint run-flow profiles, authored elite/miniboss/boss IDs, major reward IDs, rarity tables, and lifecycle/life-bar flags are used by runtime definitions, and that invalid authored reward references fail validation.
+- PlayMode coverage checks the dedicated top-center timer, exact Sprint `01:42` level/draft bounds, and concurrent major-threat life-bar state.
+- Manual validation should confirm the top-center timer remains readable with warnings, authored overhead elite/miniboss bars appear onscreen, authored boss bars appear for bosses, offscreen markers still preserve major-threat health, and authored reward caches remain recoverable.
+
+Required local validation for this pass:
+
+```powershell
+python C:/Repositories/Package-Registry/Tools/deucarian_package_validator.py --registry-root C:/Repositories/Package-Registry --repository-root . --config deucarian-package.json
+git diff --check
+```
+
+Run Unity EditMode and PlayMode tests after those checks. Run the editor content validation menu or its equivalent test coverage after editing authored JSON. Record any machine-local XML/log artifact paths in the task handoff rather than committing bulky generated logs.
+
+Latest local validation for Phase 3J on `2026-07-10`:
+
+- Package validator: passed with `Deucarian validation passed: com.deucarian.template.game.survivors`.
+- Content validation: passed through the EditMode sample JSON and authored runtime binding tests.
+- Restricted text scan: no new restricted markers in this pass; the scan still reports the existing editor content-validation console bridge in `Editor/SurvivorsEditorContentValidation.cs`.
+- `git diff --check`: passed.
+- EditMode: passed with `49` passed, `0` failed, durable runner callback completed.
+- PlayMode: initial full run reported one transient Sprint first-draft `ArgumentOutOfRangeException`; the focused test rerun passed, then the full rerun passed with `138` passed, `0` failed, durable runner callback completed.
+- Sample scene smoke: covered by PlayMode tests loading `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
+
+Commands used:
+
+```powershell
+python C:/Repositories/Package-Registry/Tools/deucarian_package_validator.py --registry-root C:/Repositories/Package-Registry --repository-root . --config deucarian-package.json
+git diff --check
+Unity.exe -batchmode -nographics -projectPath <playtest-host-project> -executeMethod Deucarian.TestAutomation.BatchTestRunner.RunEditMode -batchTestResults <temp-results-json> -batchTestTimeoutSeconds 900 -logFile <temp-log>
+Unity.exe -batchmode -nographics -projectPath <playtest-host-project> -executeMethod Deucarian.TestAutomation.BatchTestRunner.RunPlayMode -batchTestResults <temp-results-json> -batchTestTimeoutSeconds 1800 -logFile <temp-log>
+```
