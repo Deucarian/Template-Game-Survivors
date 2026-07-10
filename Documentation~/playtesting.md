@@ -12,7 +12,7 @@ Open this imported/editable scene:
 
 `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`
 
-Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should open the run-mode selector without requiring a setup or repair step. Choose Standard Run with `1`/Enter for the full 30-minute Human Playtest loop, or Sprint Run with `2`/`S` for the compact 5-minute loop.
+Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should open the run-mode selector without requiring a setup or repair step. Choose Standard Run with `1`/Enter for the full 30-minute Human Playtest loop, or Sprint Run with `2`/`S` for the compact 5-minute loop. Once play starts, the top-center timer should remain readable above warning banners and should show elapsed time plus the selected mode's remaining target time.
 
 ## Run Modes
 
@@ -41,6 +41,7 @@ First 30 seconds:
 - When an Arena Trial appears, its enemy ring should be readable, should not immediately replace boss/elite rewards, and should pay a Shrine Surge with XP, shards, a nearby regular-enemy pulse, and temporary combat/pickup momentum when cleared.
 - When wounded, sustained kill streaks or major-enemy kills can leave vital shards; collecting one should restore health and clear the low-health warning if enough health returns.
 - The first damaging hit that crosses into low health should fire a Clutch Pulse, damage nearby regular enemies, leave elites and bosses intact, and briefly ignore immediate follow-up damage.
+- The top-center timer should be visible immediately after the run starts and should not overlap incoming threat or horde warnings.
 - Longer kill streaks can leave blood shards; collecting one should increase the bonus blood shards counted in the run summary.
 - Opening spawns should arrive as small packs, while runners should not appear until about 35 seconds.
 - The first level-up draft should appear within about 30-60 seconds once the player moves through XP gems.
@@ -63,7 +64,7 @@ After 2 minutes:
 After 5 minutes:
 
 - Spitters should have joined the enemy mix, and their ranged attacks should show quick hostile shot cues before damage lands; moving out of range during the cue should avoid the hit.
-- The first elite should have arrived around 2.25 minutes and the dread elite should have arrived around 4.25 minutes; active major threats should show a prioritized health bar, dread elite slam ground discs should warn before any area damage, and killing either elite should open an elite reward draft and scatter a visible XP/special-pickup reward cache that pulls inward after the reward choice resolves.
+- The first elite should have arrived around 2.25 minutes and the dread elite should have arrived around 4.25 minutes; active elites and minibosses should show authored overhead life bars when onscreen, bosses should show a prominent boss bar, dread elite slam ground discs should warn before any area damage, and killing either elite should open an elite reward draft and scatter a visible XP/special-pickup reward cache that pulls inward after the reward choice resolves.
 - Moving far away from an active elite or boss should show an edge marker with direction and distance; the threat should keep its health, catch up or safely re-enter from offscreen, and clear its marker/life bar when killed.
 - Each scheduled elite should show a short incoming warning before it appears.
 - Damaging an elite below its low-health threshold should trigger one visible support call-in, then further damage to that same elite should not repeatedly spawn extra rings.

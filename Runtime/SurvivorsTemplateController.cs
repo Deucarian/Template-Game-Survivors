@@ -190,6 +190,9 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
         private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> _weaponArchetypeDefinitions = Array.Empty<SurvivorsWeaponArchetypeDefinition>();
         private SurvivorsRunFlowRuntime _runFlow;
+        private SurvivorsAuthoredContentDefinition _authoredContent;
+        private string _authoredContentStatus = "Using built-in Survivors fallback content.";
+        private bool _usingAuthoredRunFlow;
         private IReadOnlyList<SurvivorsRelicDefinition> _relicDefinitions;
         private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> _upgradeClassGates;
         private SurvivorsClassLibraryDefinition _classLibrary;
@@ -649,6 +652,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveDreadEliteCount => CountEnemiesByRole(SurvivorsEnemyRole.DreadElite);
         public int ActiveMinibossCount => CountEnemiesByRole(SurvivorsEnemyRole.Miniboss);
         public int ActiveBossCount => CountEnemiesByRole(SurvivorsEnemyRole.Boss);
+        public int ActiveBossLifeBarCount => CountAuthoredThreatLifeBars(showBossLifeBar: true);
+        public int ActiveOverheadLifeBarCount => CountAuthoredThreatLifeBars(showBossLifeBar: false);
+        public int ActiveMajorThreatLifeBarCount => ActiveBossLifeBarCount + ActiveOverheadLifeBarCount;
+        public string ActiveMajorThreatLifeBarSummary => ResolveActiveMajorThreatLifeBarSummary();
         public bool IsMajorThreatHealthVisible => ResolveCurrentMajorThreatForHud() != null;
         public string CurrentMajorThreatHealthLabel
         {
@@ -756,8 +763,14 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsSprintRunMode => CurrentPacingProfile == SurvivorsPacingProfile.SprintRun;
         public bool IsRunModeSelectionOpen => _runModeSelectionOpen;
         public string CurrentRunModeDisplayName => CurrentTuning.RunModeDisplayName;
-        public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = BasicSurvivorsGame.CreateTuning(pacingProfile));
+        public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = CreateConfiguredTuning(pacingProfile));
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
+        public bool IsAuthoredContentBound => _authoredContent != null;
+        public bool IsUsingAuthoredRunFlow => _usingAuthoredRunFlow;
+        public string AuthoredContentStatus => _authoredContentStatus;
+        public string TopCenterTimerHudLabel => _runStarted ? ResolveTopCenterTimerHudLabel() : string.Empty;
+        public bool IsTopCenterTimerVisible => _runStarted;
+        public Rect TopCenterTimerRectForTest => ResolveTopCenterTimerRect();
         public float CurrentEnemySpawnIntervalSeconds => ResolveEnemySpawnIntervalSeconds();
         public int CurrentEnemySpawnPackSize => ResolveEnemySpawnPackSize();
         public int CurrentEnemyMaximumAlive => ResolveEnemyMaximumAlive();
@@ -862,7 +875,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (tuning == null)
             {
-                tuning = BasicSurvivorsGame.CreateTuning(pacingProfile);
+                tuning = CreateConfiguredTuning(pacingProfile);
             }
             else
             {
@@ -987,6 +1000,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureHudStyles();
+            DrawTopCenterTimerHud();
             string evolutionObjectiveHud = ResolveEvolutionObjectiveHudLabel();
             string waystoneCompassHud = ResolveWaystoneCompassHudLabel();
             GUI.Box(new Rect(12, 12, 356, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 424 : 448), string.Empty);
@@ -1101,6 +1115,47 @@ namespace Deucarian.TemplateGameSurvivors
                 _runModeSelectionOpen = enabled;
                 State = SurvivorsRunState.Booting;
             }
+        }
+
+        public bool ConfigureAuthoredContent(TextAsset enemyLibrary, TextAsset runFlowLibrary, TextAsset rewardLibrary)
+        {
+            return ConfigureAuthoredContentJson(
+                enemyLibrary == null ? null : enemyLibrary.text,
+                runFlowLibrary == null ? null : runFlowLibrary.text,
+                rewardLibrary == null ? null : rewardLibrary.text);
+        }
+
+        public bool ConfigureAuthoredContentJson(string enemyJson, string runFlowJson, string rewardJson)
+        {
+            if (!SurvivorsAuthoredContentDefinition.TryCreate(
+                enemyJson,
+                runFlowJson,
+                rewardJson,
+                out SurvivorsAuthoredContentDefinition definition,
+                out string error))
+            {
+                _authoredContent = null;
+                _authoredContentStatus = string.IsNullOrWhiteSpace(error)
+                    ? "Authored Survivors content failed to bind."
+                    : "Authored Survivors content failed to bind: " + error;
+                if (!_runStarted)
+                {
+                    tuning = CreateConfiguredTuning(pacingProfile);
+                }
+
+                ReleaseMetaProgressionService();
+                return false;
+            }
+
+            _authoredContent = definition;
+            _authoredContentStatus = "Using authored Survivors content: " + definition.SourceSummary;
+            if (!_runStarted)
+            {
+                tuning = CreateConfiguredTuning(pacingProfile);
+            }
+
+            ReleaseMetaProgressionService();
+            return true;
         }
 
         public void OpenRunModeSelection()
@@ -1504,7 +1559,7 @@ namespace Deucarian.TemplateGameSurvivors
             ApplySelectedClassBonuses();
             BarrierValue = BarrierCapacity;
             BuildRuntimeWorld();
-            _runFlow = new SurvivorsRunFlowRuntime(BasicSurvivorsGame.CreateRunFlowDefinition(resolved));
+            _runFlow = new SurvivorsRunFlowRuntime(CreateRunFlowDefinition(resolved));
             _weaponArchetypeDefinitions = BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved);
             _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(_weaponArchetypeDefinitions));
             State = SurvivorsRunState.Playing;
@@ -2021,7 +2076,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             EnsureMetaProgressionLoaded();
-            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
             for (int i = 0; i < definition.PersistentUpgrades.Count && _resultMetaUpgradeOptions.Count < limit; i++)
             {
                 SurvivorsPersistentUpgradeDefinition upgrade = definition.PersistentUpgrades[i];
@@ -2241,7 +2296,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void RecordMetaUpgradePurchaseFeedback(string id)
         {
             EnsureMetaProgressionLoaded();
-            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
             string displayName = id;
             if (definition.TryGetPersistentUpgrade(id, out SurvivorsPersistentUpgradeDefinition upgrade))
             {
@@ -3781,6 +3836,50 @@ namespace Deucarian.TemplateGameSurvivors
             return count;
         }
 
+        private int CountAuthoredThreatLifeBars(bool showBossLifeBar)
+        {
+            int count = 0;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy == null || !enemy.IsAlive)
+                {
+                    continue;
+                }
+
+                if (showBossLifeBar && enemy.ShowBossLifeBar)
+                {
+                    count++;
+                }
+                else if (!showBossLifeBar && enemy.ShowOverheadLifeBar)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private string ResolveActiveMajorThreatLifeBarSummary()
+        {
+            var labels = new List<string>(ActiveMajorThreatLifeBarCount);
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy == null || !enemy.IsAlive || !ShouldShowThreatLifeBar(enemy))
+                {
+                    continue;
+                }
+
+                string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
+                    ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
+                    : enemy.DisplayName;
+                labels.Add($"{name} {Mathf.RoundToInt(enemy.HealthFraction * 100f)}%");
+            }
+
+            return string.Join(", ", labels);
+        }
+
         private SurvivorsEnemyActor ResolveCurrentMajorThreatForHud()
         {
             SurvivorsEnemyActor selected = null;
@@ -3789,7 +3888,7 @@ namespace Deucarian.TemplateGameSurvivors
             for (int i = 0; i < _enemies.Count; i++)
             {
                 SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive || !IsMajorRewardRole(enemy.Role))
+                if (enemy == null || !enemy.IsAlive || !ShouldShowThreatLifeBar(enemy))
                 {
                     continue;
                 }
@@ -3806,6 +3905,13 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return selected;
+        }
+
+        private static bool ShouldShowThreatLifeBar(SurvivorsEnemyActor enemy)
+        {
+            return enemy != null &&
+                enemy.IsAlive &&
+                (enemy.ShowBossLifeBar || enemy.ShowOverheadLifeBar);
         }
 
         private static int ResolveMajorThreatHealthPriority(SurvivorsEnemyRole role)
@@ -5258,7 +5364,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _metaProgression = new SurvivorsMetaProgressionService(
                     persistence,
                     _metaSaveSlotId,
-                    BasicSurvivorsGame.CreateMetaProgressionDefinition());
+                    ResolveMetaProgressionDefinition());
                 _metaProfileLoaded = false;
             }
 
@@ -5267,6 +5373,13 @@ namespace Deucarian.TemplateGameSurvivors
                 _metaProgression.Load();
                 _metaProfileLoaded = true;
             }
+        }
+
+        private SurvivorsMetaProgressionDefinition ResolveMetaProgressionDefinition()
+        {
+            return _authoredContent != null && _authoredContent.MetaProgressionDefinition != null
+                ? _authoredContent.MetaProgressionDefinition
+                : BasicSurvivorsGame.CreateMetaProgressionDefinition();
         }
 
         private void EnsureClassLibraryLoaded()
@@ -6747,7 +6860,7 @@ namespace Deucarian.TemplateGameSurvivors
                 rewardId = BasicSurvivorsGame.EliteRewardId;
             }
 
-            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
             if (!definition.TryGetReward(rewardId, out SurvivorsRewardDefinition reward))
             {
                 return;
@@ -6862,7 +6975,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void RecordClassUnlockRewardFeedback()
         {
             LastClassUnlockRewardFeedbackLabel = "Class Unlocked: Ember Vanguard";
-            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
             if (definition.TryGetReward(BasicSurvivorsGame.EmberVanguardUnlockRewardId, out SurvivorsRewardDefinition reward))
             {
                 LastClassUnlockRewardFeedbackLabel += $" +{reward.CurrencyAmount} shards +{reward.TrackAmount} XP";
@@ -6888,7 +7001,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void AddClassUnlockRewardToRunBonus()
         {
-            SurvivorsMetaProgressionDefinition definition = BasicSurvivorsGame.CreateMetaProgressionDefinition();
+            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
             if (!definition.TryGetReward(BasicSurvivorsGame.EmberVanguardUnlockRewardId, out SurvivorsRewardDefinition reward))
             {
                 return;
@@ -8574,6 +8687,18 @@ namespace Deucarian.TemplateGameSurvivors
             return ResolveEndlessSpawnInterval(interval);
         }
 
+        private SurvivorsRunFlowDefinition CreateRunFlowDefinition(SurvivorsTemplateTuning resolved)
+        {
+            if (_authoredContent != null)
+            {
+                _usingAuthoredRunFlow = true;
+                return _authoredContent.CreateRunFlowDefinition(resolved);
+            }
+
+            _usingAuthoredRunFlow = false;
+            return BasicSurvivorsGame.CreateRunFlowDefinition(resolved);
+        }
+
         private int ResolveEnemyMaximumAlive()
         {
             int maximumAlive = _runFlow == null
@@ -8906,7 +9031,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void TryUpdateEnemyLeash(SurvivorsEnemyActor enemy, float deltaTime)
         {
-            if (enemy == null || !enemy.IsAlive)
+            if (enemy == null || !enemy.IsAlive || !enemy.CanLeash)
             {
                 return;
             }
@@ -8927,6 +9052,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void TryUpdateNormalEnemyLeash(SurvivorsEnemyActor enemy, Vector3 playerPosition, float distance, float deltaTime)
         {
+            if (!enemy.CanRecycle)
+            {
+                return;
+            }
+
             float softRadius = Mathf.Max(0f, CurrentTuning.EnemySoftLeashRadius);
             float hardRadius = Mathf.Max(softRadius + 0.1f, CurrentTuning.EnemyHardRecycleRadius);
             if (softRadius <= 0f || distance <= softRadius)
@@ -8954,6 +9084,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void TryUpdateMajorThreatLeash(SurvivorsEnemyActor enemy, Vector3 playerPosition, float distance, float deltaTime)
         {
+            if (!enemy.CanReposition)
+            {
+                return;
+            }
+
             float repositionRadius = Mathf.Max(0f, CurrentTuning.MajorThreatRepositionRadius);
             if (repositionRadius <= 0f || distance <= repositionRadius)
             {
@@ -9062,7 +9197,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private bool ShouldShowOffscreenThreatMarker(SurvivorsEnemyActor enemy)
         {
-            if (enemy == null || !enemy.IsAlive || !IsMajorRewardRole(enemy.Role))
+            if (enemy == null || !enemy.IsAlive || !enemy.ShowOffscreenMarker)
             {
                 return false;
             }
@@ -9404,12 +9539,21 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void ApplyPacingProfile(SurvivorsPacingProfile profile, bool restartRun)
         {
-            tuning = BasicSurvivorsGame.CreateTuning(profile);
+            tuning = CreateConfiguredTuning(profile);
             pacingProfile = tuning.PacingProfile;
             if (restartRun)
             {
                 RestartRun();
             }
+        }
+
+        private SurvivorsTemplateTuning CreateConfiguredTuning(SurvivorsPacingProfile profile)
+        {
+            SurvivorsTemplateTuning configured = _authoredContent == null
+                ? BasicSurvivorsGame.CreateTuning(profile)
+                : _authoredContent.CreateTuning(profile);
+            configured.PacingProfile = profile;
+            return configured;
         }
 
         private bool OpenBossRelicDraft()
@@ -10632,6 +10776,51 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(rect, label + " " + Mathf.RoundToInt(Mathf.Clamp01(value) * 100f).ToString() + "%", _hudSmallStyle);
         }
 
+        private void DrawTopCenterTimerHud()
+        {
+            Rect panel = ResolveTopCenterTimerRect();
+            string label = ResolveTopCenterTimerHudLabel();
+            if (string.IsNullOrWhiteSpace(label))
+            {
+                return;
+            }
+
+            Color oldColor = GUI.color;
+            GUI.color = new Color(0.015f, 0.02f, 0.026f, 0.78f);
+            GUI.DrawTexture(panel, Texture2D.whiteTexture);
+            GUI.color = new Color(0.2f, 0.78f, 1f, 0.92f);
+            GUI.DrawTexture(new Rect(panel.x, panel.yMax - 3f, panel.width, 3f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(panel, label, _majorThreatWarningStyle);
+            GUI.color = oldColor;
+        }
+
+        private Rect ResolveTopCenterTimerRect()
+        {
+            float width = Mathf.Min(360f, Mathf.Max(240f, Screen.width - 32f));
+            return new Rect(Screen.width * 0.5f - width * 0.5f, 12f, width, 36f);
+        }
+
+        private string ResolveTopCenterTimerHudLabel()
+        {
+            if (!_runStarted)
+            {
+                return string.Empty;
+            }
+
+            float target = Mathf.Max(0f, CurrentTuning.SurvivalVictoryTimeSeconds);
+            string elapsed = FormatRunTime(RunTimeSeconds);
+            string mode = string.IsNullOrWhiteSpace(CurrentRunModeDisplayName)
+                ? BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)
+                : CurrentRunModeDisplayName;
+            if (IsEndlessRun || target <= 0f)
+            {
+                return mode + "  TIME " + elapsed + "  ENDLESS";
+            }
+
+            return mode + "  TIME " + elapsed + "  LEFT " + FormatRunTime(Mathf.Max(0f, target - RunTimeSeconds));
+        }
+
         private void DrawLowHealthWarning()
         {
             if (!IsLowHealthWarningActive)
@@ -10659,7 +10848,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 8f) * 0.28f;
-            Rect panel = new Rect(Screen.width * 0.5f - 184f, 24f, 368f, 52f);
+            float y = IsTopCenterTimerVisible ? 58f : 24f;
+            Rect panel = new Rect(Screen.width * 0.5f - 184f, y, 368f, 52f);
             Color oldColor = GUI.color;
             GUI.color = new Color(0.22f, 0.05f, 0.04f, 0.56f + 0.18f * pulse);
             GUI.DrawTexture(panel, Texture2D.whiteTexture);
@@ -10676,7 +10866,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 8.5f) * 0.28f;
-            float y = IsMajorThreatWarningActive ? 84f : 24f;
+            float baseY = IsTopCenterTimerVisible ? 58f : 24f;
+            float y = IsMajorThreatWarningActive ? baseY + 60f : baseY;
             Rect panel = new Rect(Screen.width * 0.5f - 170f, y, 340f, 46f);
             Color oldColor = GUI.color;
             GUI.color = new Color(0.28f, 0.08f, 0.02f, 0.52f + 0.18f * pulse);
@@ -10688,12 +10879,12 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void DrawMajorThreatHealthBar()
         {
-            SurvivorsEnemyActor enemy = ResolveCurrentMajorThreatForHud();
-            if (enemy == null)
-            {
-                return;
-            }
+            DrawBossLifeBars();
+            DrawOverheadThreatLifeBars();
+        }
 
+        private void DrawBossLifeBars()
+        {
             float width = Mathf.Min(420f, Mathf.Max(260f, Screen.width - 48f));
             float x = Mathf.Max(24f, Screen.width - width - 24f);
             float y = 24f;
@@ -10707,13 +10898,60 @@ namespace Deucarian.TemplateGameSurvivors
                 y += 52f;
             }
 
-            Rect panel = new Rect(x, y, width, 46f);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.03f, 0.02f, 0.02f, 0.66f);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = oldColor;
-            string label = (string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName) + " HP";
-            DrawHudBar(new Rect(panel.x + 10f, panel.y + 13f, panel.width - 20f, 20f), label, enemy.HealthFraction, ResolveMajorRewardDropColor(enemy.Role));
+            int drawn = 0;
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy == null || !enemy.IsAlive || !enemy.ShowBossLifeBar)
+                {
+                    continue;
+                }
+
+                Rect panel = new Rect(x, y + drawn * 50f, width, 46f);
+                Color oldColor = GUI.color;
+                GUI.color = new Color(0.03f, 0.02f, 0.02f, 0.66f);
+                GUI.DrawTexture(panel, Texture2D.whiteTexture);
+                GUI.color = oldColor;
+                string label = (string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName) + " HP";
+                DrawHudBar(new Rect(panel.x + 10f, panel.y + 13f, panel.width - 20f, 20f), label, enemy.HealthFraction, ResolveMajorRewardDropColor(enemy.Role));
+                drawn++;
+            }
+        }
+
+        private void DrawOverheadThreatLifeBars()
+        {
+            if (_camera == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _enemies.Count; i++)
+            {
+                SurvivorsEnemyActor enemy = _enemies[i];
+                if (enemy == null || !enemy.IsAlive || !enemy.ShowOverheadLifeBar)
+                {
+                    continue;
+                }
+
+                Vector3 world = enemy.transform.position + Vector3.up * Mathf.Max(1.2f, enemy.Radius + 0.95f);
+                Vector3 screen = _camera.WorldToScreenPoint(world);
+                if (screen.z <= 0f)
+                {
+                    continue;
+                }
+
+                float width = enemy.Role == SurvivorsEnemyRole.Miniboss ? 190f : 156f;
+                float height = 28f;
+                float x = Mathf.Clamp(screen.x - width * 0.5f, 12f, Mathf.Max(12f, Screen.width - width - 12f));
+                float y = Mathf.Clamp(Screen.height - screen.y, 58f, Mathf.Max(58f, Screen.height - height - 12f));
+                Rect panel = new Rect(x, y, width, height);
+                Color oldColor = GUI.color;
+                GUI.color = new Color(0.025f, 0.018f, 0.02f, 0.72f);
+                GUI.DrawTexture(panel, Texture2D.whiteTexture);
+                GUI.color = oldColor;
+                string label = string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName;
+                DrawHudBar(new Rect(panel.x + 6f, panel.y + 6f, panel.width - 12f, 16f), label, enemy.HealthFraction, ResolveMajorRewardDropColor(enemy.Role));
+            }
         }
 
         private void DrawOffscreenThreatMarker()
@@ -11970,6 +12208,13 @@ namespace Deucarian.TemplateGameSurvivors
         public float MaxHealth => _health == null ? 0f : (float)_health.MaximumHealth;
         public float HealthFraction => MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth;
         public float LeashTimerSeconds { get; private set; }
+        public bool CanRecycle { get; private set; } = true;
+        public bool CanLeash { get; private set; } = true;
+        public bool CanReposition { get; private set; } = true;
+        public bool ShowOffscreenMarker { get; private set; }
+        public bool ShowOverheadLifeBar { get; private set; }
+        public bool ShowBossLifeBar { get; private set; }
+        public string MarkerStyle { get; private set; } = string.Empty;
         public bool IsMovementSlowed => _slowRemainingSeconds > 0f && _moveSpeedMultiplier < 1f;
         public float CurrentMoveSpeedMultiplier => IsMovementSlowed ? _moveSpeedMultiplier : 1f;
         public bool IsBurning => _burnRemainingSeconds > 0f && _burnDamagePerSecond > 0f;
@@ -11998,6 +12243,13 @@ namespace Deucarian.TemplateGameSurvivors
             _majorThreatSlamCooldown = ResolveInitialMajorThreatSlamCooldown(profile.Role, controller == null ? null : controller.CurrentTuning);
             _majorThreatSlamTelegraphTimer = 0f;
             _majorThreatSlamTelegraphing = false;
+            CanRecycle = profile.CanRecycle;
+            CanLeash = profile.CanLeash;
+            CanReposition = profile.CanReposition;
+            ShowOffscreenMarker = profile.ShowOffscreenMarker;
+            ShowOverheadLifeBar = profile.ShowOverheadLifeBar;
+            ShowBossLifeBar = profile.ShowBossLifeBar;
+            MarkerStyle = string.IsNullOrWhiteSpace(profile.MarkerStyle) ? profile.Role.ToString() : profile.MarkerStyle;
             _poisonDamagePerSecond = 0f;
             _poisonRemainingSeconds = 0f;
             _bleedDamagePerSecond = 0f;

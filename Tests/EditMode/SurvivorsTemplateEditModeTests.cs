@@ -625,6 +625,93 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void SampleAuthoredContentBuildsRuntimeRunFlowAndRewards()
+        {
+            string sampleRoot = GetSampleRoot();
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+
+            Assert.IsTrue(
+                SurvivorsAuthoredContentDefinition.TryCreate(enemyJson, runFlowJson, rewardJson, out SurvivorsAuthoredContentDefinition authored, out string error),
+                error);
+
+            SurvivorsTemplateTuning sprint = authored.CreateTuning(SurvivorsPacingProfile.SprintRun);
+            SurvivorsRunFlowDefinition flow = authored.CreateRunFlowDefinition(sprint);
+
+            Assert.AreEqual(300f, sprint.SurvivalVictoryTimeSeconds);
+            Assert.AreEqual(260, sprint.ExperienceRequiredBase);
+            Assert.AreEqual(54, sprint.ExperienceRequiredPerLevel);
+            Assert.AreEqual(75, sprint.NormalEarlyCommonWeight);
+            Assert.AreEqual(120, sprint.BossLegendaryWeight);
+            Assert.AreEqual(BasicSurvivorsGame.MinibossEnemySpawnableId.Value, flow.Miniboss.Id);
+            Assert.AreEqual(BasicSurvivorsGame.BossEnemySpawnableId.Value, flow.Boss.Id);
+            Assert.IsTrue(flow.Miniboss.ShowOverheadLifeBar);
+            Assert.IsFalse(flow.Miniboss.ShowBossLifeBar);
+            Assert.IsTrue(flow.Boss.ShowBossLifeBar);
+            Assert.IsFalse(flow.Boss.ShowOverheadLifeBar);
+            Assert.AreEqual(BasicSurvivorsGame.CreateEnemyProfile(SurvivorsEnemyRole.Boss, sprint).MaxHealth, flow.Boss.MaxHealth, 0.001f);
+            Assert.IsTrue(authored.MetaProgressionDefinition.TryGetReward(BasicSurvivorsGame.EliteRewardId, out SurvivorsRewardDefinition eliteReward));
+            Assert.AreEqual(2, eliteReward.CurrencyAmount);
+        }
+
+        [Test]
+        public void InvalidAuthoredRuntimeBindingReportsMissingRewardReferences()
+        {
+            string sampleRoot = GetSampleRoot();
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"))
+                .Replace(BasicSurvivorsGame.BossRewardId, "reward.survivors.missing-final-boss");
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+
+            bool created = SurvivorsAuthoredContentDefinition.TryCreate(enemyJson, runFlowJson, rewardJson, out _, out string error);
+
+            Assert.IsFalse(created);
+            StringAssert.Contains(BasicSurvivorsGame.BossRewardId, error);
+        }
+
+        [Test]
+        public void ControllerUsesAuthoredContentForRunFlowRewardsAndThreatLifeBars()
+        {
+            string sampleRoot = GetSampleRoot();
+            string enemyJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultEnemies", "enemies.json"));
+            string rewardJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRewards", "rewards.json"));
+            string runFlowJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultRunFlow", "run-flow.json"));
+            SurvivorsTemplateController controller = CreateController(startRun: false);
+            try
+            {
+                Assert.IsTrue(controller.ConfigureAuthoredContentJson(enemyJson, runFlowJson, rewardJson), controller.AuthoredContentStatus);
+                controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+                controller.StartRun();
+
+                Assert.IsTrue(controller.IsAuthoredContentBound);
+                Assert.IsTrue(controller.IsUsingAuthoredRunFlow);
+                Assert.That(controller.AuthoredContentStatus, Does.Contain("10 enemies"));
+                Assert.AreEqual(BasicSurvivorsGame.BossEnemySpawnableId.Value, controller.CurrentRunFlowDefinition.Boss.Id);
+                Assert.IsTrue(controller.CurrentRunFlowDefinition.Boss.ShowBossLifeBar);
+                Assert.IsTrue(controller.CurrentRunFlowDefinition.Miniboss.ShowOverheadLifeBar);
+
+                SurvivorsEnemyActor elite = controller.SpawnEnemyForTest(controller.PlayerPosition + new Vector3(3f, 0f, 0f), SurvivorsEnemyRole.Elite, 80f);
+                SurvivorsEnemyActor miniboss = controller.SpawnMinibossForTest(controller.PlayerPosition + new Vector3(4f, 0f, 0f), 120f);
+                SurvivorsEnemyActor boss = controller.SpawnBossForTest(controller.PlayerPosition + new Vector3(5f, 0f, 0f), 180f);
+
+                Assert.NotNull(elite);
+                Assert.NotNull(miniboss);
+                Assert.NotNull(boss);
+                Assert.AreEqual(2, controller.ActiveOverheadLifeBarCount);
+                Assert.AreEqual(1, controller.ActiveBossLifeBarCount);
+                Assert.AreEqual(3, controller.ActiveMajorThreatLifeBarCount);
+                Assert.That(controller.ActiveMajorThreatLifeBarSummary, Does.Contain("Blood Warden Elite"));
+                Assert.That(controller.ActiveMajorThreatLifeBarSummary, Does.Contain("Bloodbound Miniboss"));
+                Assert.That(controller.ActiveMajorThreatLifeBarSummary, Does.Contain("Eclipse Boss"));
+            }
+            finally
+            {
+                DestroyController(controller);
+            }
+        }
+
+        [Test]
         public void SampleEnemyContentDefinesThreatLifecycleAuthoring()
         {
             string sampleRoot = GetSampleRoot();

@@ -11,6 +11,15 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
         [SerializeField]
         private bool showRunModeSelection = true;
 
+        [SerializeField]
+        private TextAsset enemyLibrary;
+
+        [SerializeField]
+        private TextAsset runFlowLibrary;
+
+        [SerializeField]
+        private TextAsset rewardLibrary;
+
         private void Awake()
         {
             if (controller == null)
@@ -23,6 +32,7 @@ namespace Deucarian.TemplateGameSurvivors.BasicSurvivorsGame
                 controller = gameObject.AddComponent<SurvivorsTemplateController>();
             }
 
+            controller.ConfigureAuthoredContent(enemyLibrary, runFlowLibrary, rewardLibrary);
             controller.ConfigureRunModeSelection(showRunModeSelection);
         }
     }

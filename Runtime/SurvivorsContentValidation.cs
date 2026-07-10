@@ -138,7 +138,32 @@ namespace Deucarian.TemplateGameSurvivors
             ValidateClassLibraryJson(classLibrary, BuildKnownRewardIds(rewardLibrary), result);
             ValidateProgressionLibrary(progressionLibrary, upgradeLibrary, classLibrary, result);
             ValidateRunFlowLibrary(runFlowLibrary, result);
+            ValidateAuthoredRuntimeBinding(enemyJson, rewardJson, runFlowJson, result);
             return result;
+        }
+
+        private static void ValidateAuthoredRuntimeBinding(
+            string enemyJson,
+            string rewardJson,
+            string runFlowJson,
+            SurvivorsContentValidationResult result)
+        {
+            if (string.IsNullOrWhiteSpace(enemyJson) ||
+                string.IsNullOrWhiteSpace(rewardJson) ||
+                string.IsNullOrWhiteSpace(runFlowJson))
+            {
+                return;
+            }
+
+            if (!SurvivorsAuthoredContentDefinition.TryCreate(
+                enemyJson,
+                runFlowJson,
+                rewardJson,
+                out _,
+                out string authoredError))
+            {
+                result.AddError("Authored runtime binding is invalid: " + authoredError);
+            }
         }
 
         private static void ValidateRunFlowDefinition(SurvivorsRunFlowDefinition runFlow, SurvivorsContentValidationResult result)
