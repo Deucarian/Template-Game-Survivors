@@ -1,0 +1,38 @@
+{
+  "themeName": "Deucarian Survivors Default",
+  "cardBackgroundToken": "obsidian-panel",
+  "cardFrameToken": "rarity-frame",
+  "standardModeDisplayName": "Standard / Human Playtest",
+  "sprintModeDisplayName": "Sprint Run",
+  "chooseRewardTitle": "Choose Your Reward",
+  "levelUpTitle": "Level Up",
+  "eliteRewardTitle": "Elite Reward",
+  "bossRewardTitle": "Boss Reward",
+  "bossRelicTitle": "Boss Relic",
+  "rerollButtonLabel": "Reroll",
+  "skipButtonLabel": "Skip",
+  "banishButtonLabel": "Banish",
+  "buildMenuTitle": "Build",
+  "debugToggleLabel": "Debug Overlay",
+  "iconPlaceholderPrefix": "Icon",
+  "rarityStyles": [
+    { "id": "Common", "displayName": "Common", "styleToken": "common-frame", "accentColor": "#C8D5DC", "iconId": "dot" },
+    { "id": "Uncommon", "displayName": "Uncommon", "styleToken": "uncommon-frame", "accentColor": "#58F08F", "iconId": "leaf" },
+    { "id": "Rare", "displayName": "Rare", "styleToken": "rare-frame", "accentColor": "#56B3FF", "iconId": "star" },
+    { "id": "Epic", "displayName": "Epic", "styleToken": "epic-frame", "accentColor": "#E875FF", "iconId": "diamond" },
+    { "id": "Legendary", "displayName": "Legendary", "styleToken": "legendary-frame", "accentColor": "#FFC347", "iconId": "crown" },
+    { "id": "Evolution", "displayName": "Evolution", "styleToken": "evolution-banner", "accentColor": "#FF5F8F", "iconId": "sigil" },
+    { "id": "Relic", "displayName": "Relic", "styleToken": "relic-frame", "accentColor": "#FFD56A", "iconId": "relic" }
+  ],
+  "categoryStyles": [
+    { "id": "NewWeapon", "displayName": "New Weapon", "iconId": "weapon-new" },
+    { "id": "WeaponUpgrade", "displayName": "Weapon Upgrade", "iconId": "weapon-rank" },
+    { "id": "Passive", "displayName": "Passive", "iconId": "passive" },
+    { "id": "PassiveUpgrade", "displayName": "Passive Upgrade", "iconId": "passive-rank" },
+    { "id": "Mutation", "displayName": "Mutation", "iconId": "mutation" },
+    { "id": "Evolution", "displayName": "Evolution", "iconId": "evolution" },
+    { "id": "Relic", "displayName": "Relic", "iconId": "relic" },
+    { "id": "PickupMagnet", "displayName": "Pickup/Magnet", "iconId": "magnet" },
+    { "id": "MetaReward", "displayName": "Meta/Reward", "iconId": "reward" }
+  ]
+}

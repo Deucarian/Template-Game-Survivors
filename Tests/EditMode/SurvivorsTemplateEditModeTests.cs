@@ -128,6 +128,21 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsNotNull(BasicSurvivorsGame.CreateEncounterDefinition());
         }
 
+        [Test]
+        public void SampleUiThemeLoadsDraftCardAndModePresentationTokens()
+        {
+            string themePath = Path.Combine(GetSampleRoot(), "Content", "DefaultUiTheme", "ui-theme.json");
+            Assert.IsTrue(File.Exists(themePath), themePath);
+
+            Assert.IsTrue(SurvivorsUiTheme.TryFromJson(File.ReadAllText(themePath), out SurvivorsUiTheme theme, out string error), error);
+            Assert.AreEqual("Deucarian Survivors Default", theme.themeName);
+            Assert.AreEqual("Standard / Human Playtest", theme.GetModeDisplayName(SurvivorsPacingProfile.HumanPlaytest, string.Empty));
+            Assert.AreEqual("Sprint Run", theme.GetModeDisplayName(SurvivorsPacingProfile.SprintRun, string.Empty));
+            Assert.AreEqual("Pickup/Magnet", theme.GetCategoryDisplayName("PickupMagnet", string.Empty));
+            Assert.AreEqual("Evolution", theme.GetRarityDisplayName("Evolution"));
+            Assert.AreEqual("Reroll", theme.rerollButtonLabel);
+        }
+
         private static void AssertProgressionTrackContains(
             IReadOnlyList<SurvivorsProgressionTrackDefinition> tracks,
             string trackId,
