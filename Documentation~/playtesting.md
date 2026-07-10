@@ -14,6 +14,10 @@ Open this imported/editable scene:
 
 Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should open the run-mode selector without requiring a setup or repair step. Choose Standard Run with `1`/Enter for the full 30-minute Human Playtest loop, or Sprint Run with `2`/`S` for the compact 5-minute loop. Once play starts, the top-center timer should remain readable above warning banners and should show elapsed time plus the selected mode's remaining target time. Normal play should show the clean player HUD only; press `F1` to toggle the debug overlay when internal pacing, spawn, pool, or draft metrics are needed.
 
+First-time profiles show a short onboarding overlay after mode selection. It pauses gameplay, explains movement, auto-attacks, XP gems, drafts, pickup/magnet builds, elites/bosses, evolutions, and Standard versus Sprint, and can be skipped with Esc/S or finished with Space/Enter/arrow keys. The run-mode selector also has a Show Tutorial button and `T` shortcut for repeat viewing.
+
+The run-mode selector includes a simple theme selector. Default uses `Samples~/BasicSurvivorsGame/Content/DefaultUiTheme/ui-theme.json`; Neon Arcana uses `Samples~/BasicSurvivorsGame/Content/NeonArcanaUiTheme/ui-theme.json`. Theme files can change mode labels, rarity/category display, draft button labels, tutorial and run-summary copy, HUD accent color, placeholder icon IDs, and the audio event palette without retuning gameplay.
+
 ## Run Modes
 
 Standard Run uses `SurvivorsPacingProfile.HumanPlaytest`.
@@ -46,6 +50,7 @@ First 30 seconds:
 - Opening spawns should arrive as small packs, while runners should not appear until about 35 seconds.
 - The first level-up draft should appear within about 30-60 seconds once the player moves through XP gems.
 - Draft cards should open as a full-screen reward overlay and show name, rarity, category, affected build piece, current-to-next rank such as `Rank 1->2/5`, description, effect preview, requirement/evolution hint, and hotkey.
+- Draft cards should include comparison previews where possible, such as `Damage: 6.4 -> 8.4`, `Cooldown: 0.74s -> 0.67s`, `Pickup Radius: 2.9 -> 4.0`, `Magnet Pull Speed: 6.2 -> 7.4`, `Pulse Interval: inactive -> 39.0s`, `Unlocks Star Beam`, or `Evolves into Arcane Storm`.
 - Selecting a normal level-up card should flash a small Level Pulse that hits nearby regular enemies without deleting elite pressure.
 - Filling the weapon slots should flash an Arsenal Surge banner, hit nearby regular enemies, leave major threats intact, and briefly improve damage, cooldown, movement, and pickup attraction.
 - Filling the passive slots should flash a Harmony Surge banner, hit nearby regular enemies, leave major threats intact, briefly improve damage, cooldown, movement, pickup attraction, and XP gain, and show a Harmony timer in the HUD.
@@ -87,6 +92,7 @@ After victory:
 
 - Press `C` or the Continue button to stay in the same build.
 - The victory panel should summarize time, level, kills, build size, run rewards, meta totals, any class unlock, next-run class choices, and affordable meta upgrades before you continue or restart.
+- Run Summary 2.0 should also include selected mode, result, XP collected, elite/miniboss/boss kills, damage taken, final health, final weapons/passives/evolutions/relics, pickup radius, magnet range, magnet speed, magnet pulse/recall stats, top-weapon placeholders if attribution is not tracked, best moment, Restart Same, Change Mode, and Continue only when Standard endless continuation is available.
 - If Ember Vanguard has just unlocked, select it from the result panel, restart, and confirm the next run starts with the broader Ember loadout and class-gated upgrade pool.
 - Endless escalation should keep increasing horde pressure and should schedule recurring elite, miniboss, and boss threats with incoming warnings.
 - Defeating a recurring elite, miniboss, or boss should trigger Endless Surge with a tiered HUD timer, extra XP gems, a blood-shard drop, a nearby non-major enemy pulse, and temporary damage, cooldown, movement, and pickup-range momentum.
@@ -111,6 +117,7 @@ Choose Sprint Run from the selector or start it through the runtime debugger.
 - A focused build should be able to become evolution-eligible between `180` and `240` seconds without changing Standard evolution requirements.
 - Boss should arrive around `270` seconds and victory should resolve around `300` seconds.
 - The victory summary should say Sprint Run, apply the `0.65` reward multiplier, and show Restart without the endless Continue option.
+- Restart Same should immediately start another Sprint; Change Mode should return to the selector so Standard can be chosen intentionally.
 - The runtime debugger's run metrics should show the selected mode, first draft, first elite, miniboss/dread, boss, evolution, kill, XP, and damage timings when those events happen.
 - The old player-centered circle and four bar-like arena markers should not appear in normal play; waystone compass guidance and explicit enemy/rush telegraphs should carry the readable navigation and danger information instead.
 
@@ -120,6 +127,8 @@ Choose Sprint Run from the selector or start it through the runtime debugger.
 - The Stats tab should show damage, cooldown, move speed, health/barrier, pickup radius, magnet range/speed/pulse, XP gain, area/radius, projectile modifiers, and sustain/status effects.
 - `F1` should show and hide the debug overlay. Debug metrics should not be visible by default after scene start, mode selection, restart, or change-mode.
 - Theme and card presentation copy lives in `Samples~/BasicSurvivorsGame/Content/DefaultUiTheme/ui-theme.json`. Edit that file for rarity labels, style tokens, placeholder icon IDs, mode display names, and draft button labels. Upgrade names/descriptions still come from the authored upgrade metadata in the runtime/sample content.
+- Audio feedback is routed through themeable event IDs such as `ui.select`, `mode.selected`, `draft.opened`, `draft.choice.selected`, `pickup.xp`, `pickup.magnet_pulse`, `combat.hit`, `combat.enemy_death`, `warning.elite`, `warning.boss`, `reward.evolution`, `reward.relic`, `run.victory`, `run.defeat`, and `run.summary.opened`. Repetitive events are throttled by the theme palette.
+- For small-screen checks, test the selector, draft cards, tutorial, build menu, and run summary at a phone-like landscape resolution. The overlays should keep large buttons, safe margins, scrolling content, and readable text without relying on hover-only actions.
 
 ## Reset Save Data
 

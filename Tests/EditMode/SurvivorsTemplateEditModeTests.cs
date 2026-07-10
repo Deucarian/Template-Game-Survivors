@@ -141,6 +141,23 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual("Pickup/Magnet", theme.GetCategoryDisplayName("PickupMagnet", string.Empty));
             Assert.AreEqual("Evolution", theme.GetRarityDisplayName("Evolution"));
             Assert.AreEqual("Reroll", theme.rerollButtonLabel);
+            Assert.AreEqual("Run Summary", theme.runSummaryTitle);
+            Assert.AreEqual("Survivor Primer", theme.tutorialTitle);
+            Assert.AreEqual("Restart Same", theme.restartSameButtonLabel);
+            Assert.AreEqual("Change Mode", theme.changeModeButtonLabel);
+            Assert.AreEqual("Continue", theme.continueButtonLabel);
+            Assert.IsNotNull(theme.GetAudioEvent("run.victory"));
+            Assert.IsNotNull(theme.GetAudioEvent("pickup.xp"));
+
+            string neonPath = Path.Combine(GetSampleRoot(), "Content", "NeonArcanaUiTheme", "ui-theme.json");
+            Assert.IsTrue(File.Exists(neonPath), neonPath);
+            Assert.IsTrue(SurvivorsUiTheme.TryFromJson(File.ReadAllText(neonPath), out SurvivorsUiTheme neon, out error), error);
+            Assert.AreEqual("Neon Arcana", neon.themeName);
+            Assert.AreEqual("Arcane Breakthrough", neon.levelUpTitle);
+            Assert.AreEqual("Collector", neon.GetCategoryDisplayName("PickupMagnet", string.Empty));
+            Assert.AreEqual("Ascended", neon.GetRarityDisplayName("Evolution"));
+            Assert.AreEqual("Run Chronicle", neon.runSummaryTitle);
+            Assert.IsNotNull(neon.GetAudioEvent("reward.evolution"));
         }
 
         private static void AssertProgressionTrackContains(
@@ -1293,6 +1310,30 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Assert.AreEqual(1, service.BossVictories);
                 Assert.AreEqual(1, service.GetPersistentUpgradeRank(BasicSurvivorsGame.ArcaneLegacyMetaUpgradeId.Value));
                 Assert.AreEqual(string.Empty, service.SelectedClassId);
+                Assert.IsTrue(service.TutorialSeen);
+            }
+        }
+
+        [Test]
+        public void TutorialSeenFlagPersistsAndCanBeReset()
+        {
+            var storage = new InMemoryTextStorage();
+            var slotId = new SaveSlotId("tutorial-seen-test");
+
+            using (var service = new SurvivorsMetaProgressionService(new PersistenceService(storage), slotId))
+            {
+                service.Load();
+                Assert.IsFalse(service.TutorialSeen);
+                Assert.IsTrue(service.MarkTutorialSeen().Succeeded);
+                Assert.IsTrue(service.TutorialSeen);
+            }
+
+            using (var service = new SurvivorsMetaProgressionService(new PersistenceService(storage), slotId))
+            {
+                service.Load();
+                Assert.IsTrue(service.TutorialSeen);
+                Assert.IsTrue(service.ResetTutorialSeen().Succeeded);
+                Assert.IsFalse(service.TutorialSeen);
             }
         }
 
@@ -1748,13 +1789,18 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             }
         }
 
-        private static SurvivorsTemplateController CreateController(bool startRun = true)
+        private static SurvivorsTemplateController CreateController(bool startRun = true, bool tutorialSeen = true)
         {
             var root = new GameObject("Survivors Template EditMode Test");
             SurvivorsTemplateController controller = root.AddComponent<SurvivorsTemplateController>();
             controller.ConfigureMetaPersistenceForTest(
                 new PersistenceService(new InMemoryTextStorage()),
                 new SaveSlotId("edit-" + Guid.NewGuid().ToString("N")));
+            if (tutorialSeen)
+            {
+                controller.MarkTutorialSeenForTest();
+            }
+
             if (startRun)
             {
                 controller.StartRun();

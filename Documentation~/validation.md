@@ -209,3 +209,14 @@ git diff --check
 Unity.exe -batchmode -nographics -projectPath <playtest-host-project> -executeMethod Deucarian.TestAutomation.BatchTestRunner.RunEditMode -batchTestResults <temp-results-json> -batchTestTimeoutSeconds 900 -logFile <temp-log>
 Unity.exe -batchmode -nographics -projectPath <playtest-host-project> -executeMethod Deucarian.TestAutomation.BatchTestRunner.RunPlayMode -batchTestResults <temp-results-json> -batchTestTimeoutSeconds 1800 -logFile <temp-log>
 ```
+
+Phase 3L adds product-polish validation:
+
+- Run Summary 2.0 coverage checks victory and defeat summaries expose mode, result, time, level, kills, elite/miniboss/boss kills, XP, rewards, meta bank, reward multiplier, damage taken, final health, weapons, passives, evolutions, relics, pickup/magnet stats, best moment, Restart Same, Change Mode, and Standard endless Continue when available.
+- Draft-card coverage checks comparison previews for numeric stat changes, weapon unlocks, pickup radius, magnet pulse interval, and evolution rewards without exposing internal IDs.
+- Tutorial coverage checks first-time onboarding appears after mode selection, pauses simulation, supports next/back/skip, persists the tutorial-seen flag, and does not reappear after the profile is marked seen.
+- Audio coverage checks themeable event IDs, mute behavior, repetitive-event throttling, mode selection, draft opening, draft choice selection, and missing-clip-safe dispatch.
+- Theme coverage checks the default UI theme and `Neon Arcana` alternate theme load, expose rarity/category/result/tutorial/audio tokens, and can be selected from the mode screen.
+- Mobile/small-screen coverage checks the shared centered panel primitive stays inside a small game view for the mode selector, draft overlay, tutorial, build menu, and run summary. Manual QA should still confirm the actual rendered selector, draft cards, tutorial, build menu, and result screen remain readable at small resolutions.
+- Documentation coverage includes Run Summary 2.0, comparison previews, tutorial flow, audio event palette, small-screen testing, Neon Arcana theme selection/editing, debug-only UI, and package extraction candidates.
+- No gameplay retuning, new weapons, new enemies, new upgrades, package extraction, or shared package publishing is part of Phase 3L.
