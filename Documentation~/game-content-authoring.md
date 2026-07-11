@@ -6,7 +6,7 @@ Import the `Basic Survivors Game` sample, then open:
 
 `Tools > Deucarian > Game Content Authoring`
 
-Select `Survivors Content Packs`. Exactly one Survivors provider exposes two imported manifests:
+Use the global `Content Pack` selector to choose one of two imported manifests:
 
 - `Basic Survivors`, backed by the `Default*` JSON tree and `BasicSurvivorsGame.unity`.
 - `Neon Arcana`, backed by `Content/NeonArcana` and `NeonArcana.unity`.
@@ -15,17 +15,28 @@ The manifests live under `Samples~/BasicSurvivorsGame/ContentPacks`. They contai
 
 ## Browser Model
 
-The Survivors provider parses each selected manifest source into editor-only projections. JSON remains the source of truth used by gameplay. Records have pack-scoped IDs, source locators, player-facing metadata, validation, and inbound/outbound references.
+The Survivors provider parses each selected manifest source into editor-only records. JSON remains the source of truth used by gameplay. Records have canonical `(owningPackageId, packId, sourceId, sourceRecordId)` keys, source locators, typed capabilities, player-facing metadata, validation, and inbound/outbound references.
 
 The browser exposes Weapons, Projectiles, Upgrades, Passives, Pickup / Magnet, Mutations, Evolutions, Relics, Classes, Enemies, Elites, Minibosses, Bosses, Run Profiles, Waves / Milestones, Rewards, Meta Upgrades, Progression, Themes, Audio Events, and Tutorial.
 
-Semantic categories are filtered views, not duplicate JSON records. For example, an elite remains one enemy identity, a pickup passive remains one upgrade identity, and a run profile remains one identity in both Run Profiles and Waves / Milestones. Basic references resolve only inside Basic; Neon references resolve only inside Neon.
+Semantic categories and domain lenses are filtered views, not duplicate JSON records. For example, an elite remains one enemy identity, a pickup passive remains one upgrade identity, and a run profile remains one identity in both Run Profiles and Waves / Milestones. Basic references resolve only inside Basic; Neon references resolve only inside Neon.
+
+## Reusable Lens Mappings
+
+- Each of the 10 weapon records exposes both Weapon and Attack capabilities. The same key and record instance drives the Attacks and Weapon / Tower lenses; Survivors does not create a second attack catalog.
+- The projectile record exposes Projectile. Weapon/Attack references navigate to that canonical record.
+- All 10 enemy records expose Enemy. Elite, Miniboss, Boss, and Major Threat capabilities add semantic views to the same records and expose authored combat, leash, marker, and life-bar values.
+- The five run-flow profiles expose Encounter, Run Profile, Timed Milestone, Horde Event, Elite Event, and Boss Event capabilities. The timeline projection reads Standard at 1800 seconds and Sprint at 300 seconds plus authored escalation and enemy/reward references.
+- Authored run upgrades and meta upgrades expose Upgrade plus Weapon Upgrade, Passive, Pickup / Magnet, Mutation, Evolution, or Meta Upgrade capabilities where applicable. The Upgrades lens filters those capabilities without changing identity.
+- All Content shows the complete selected 251-record pack, or both packs in read-only All Packs mode, with search, capability/source/validation filters, sorting, references, and compatible-lens navigation.
+
+The domain packages own their common projection types and preview UI. This template owns the adapters and Survivors-specific metadata. Game Content Authoring orchestrates selection and identity but does not parse Survivors JSON.
 
 ## Validation And Actions
 
 `Validate` passes the selected manifest's actual weapon, upgrade, enemy, reward, relic, class, progression, pickup, run-flow, primary-theme, and alternate-theme `TextAsset` contents to `SurvivorsContentValidator` through the existing Game Content Authoring validation adapter. It does not validate package-default file paths behind the manifest.
 
-Available pack actions are:
+Available Pack Dashboard actions are:
 
 - `Open Scene`: opens the selected imported scene.
 - `Play Standard`: enters Play Mode and calls the existing strict Standard / Human Playtest selection, targeting 1800 seconds.
@@ -45,6 +56,8 @@ Multiple imported manifests with the same `(owningPackageId, packId)` are blocki
 
 ## Read-Only Scope
 
-Milestone 1 supports discovery, browsing, search, filtering, sorting, metadata, references, validation, reveal, and launch actions. JSON editing, write-back, Undo, record CRUD, pack cloning, sample freshness/sync, typed visual asset authoring, and gameplay changes are deferred.
+The pack backend reports read, validate, and reveal-source capabilities. Edit, create, duplicate, delete, and clone are false, so no lens can show a misleading enabled creation path for Basic or Neon. All Packs is also read-only. Existing standalone ScriptableObject authoring remains separate under the synthetic writable Project Content pack.
+
+This milestone supports discovery, browsing, search, filtering, sorting, metadata, references, validation, reveal, and launch actions. JSON editing, write-back, source hashes, atomic replacement, backups, Undo, record CRUD, pack cloning, sample freshness/sync, typed visual asset assignment, and gameplay changes are deferred.
 
 This follows the Template Contract: "Extract only reusable infrastructure, never the playable vertical slice."

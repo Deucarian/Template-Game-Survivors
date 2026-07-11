@@ -4,6 +4,7 @@
   "references": [
     "Deucarian.TemplateGameSurvivors",
     "Deucarian.TemplateGameSurvivors.Editor",
+    "Deucarian.Attacks.Editor",
     "Deucarian.Combat",
     "Deucarian.Encounters",
     "Deucarian.GameContentAuthoring.Editor",
@@ -12,7 +13,9 @@
     "Deucarian.Progression",
     "Deucarian.Projectiles",
     "Deucarian.RunUpgrades",
+    "Deucarian.RunUpgrades.Editor",
     "Deucarian.WeaponSystems",
+    "Deucarian.WeaponSystems.Editor",
     "Deucarian.WorldSpawning"
   ],
   "includePlatforms": [

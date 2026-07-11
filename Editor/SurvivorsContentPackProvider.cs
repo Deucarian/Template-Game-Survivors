@@ -10,7 +10,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
     public sealed class SurvivorsContentPackProvider :
         IGameContentAuthoringProvider,
         IGameContentAuthoringSurfaceProvider,
-        IGameContentPackProvider
+        IGameContentPackProvider,
+        IGameContentAuthoringProviderVisibility
     {
         public const string StableProviderId = "com.deucarian.template.game.survivors.content-packs";
         public const string OwningPackageId = "com.deucarian.template.game.survivors";
@@ -41,10 +42,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
         public static SurvivorsContentPackProvider Instance => SharedInstance;
         public string ProviderId => StableProviderId;
-        public string DisplayName => "Survivors Content Packs";
+        public string DisplayName => "Content Packs";
         public string Description => "Browse and validate imported Basic Survivors and Neon Arcana authored JSON packs.";
         public int SortOrder => 90;
         public bool Enabled => true;
+        public bool VisibleInNavigation => false;
 
         public static void EnsureRegistered()
         {
@@ -180,7 +182,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     index.Categories,
                     BuildActions(usable, entry.Manifest != null, state),
                     validation,
-                    index.Records.Count));
+                    index.Records.Count,
+                    GameContentPackAccessDescriptor.ReadOnlyJson));
 
                 if (!_indexes.ContainsKey(entry.Manifest.PackId)) _indexes.Add(entry.Manifest.PackId, index);
                 if (!_manifests.ContainsKey(entry.Manifest.PackId)) _manifests.Add(entry.Manifest.PackId, entry.Manifest);
@@ -214,7 +217,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 {
                     GameContentAuthoringValidationIssue.Warning("Sample", reason)
                 }),
-                0);
+                0,
+                new GameContentPackAccessDescriptor(
+                    GameContentPackBackendCapability.None,
+                    "Sample not imported",
+                    reason));
         }
 
         private static IReadOnlyList<GameContentActionDescriptor> BuildActions(

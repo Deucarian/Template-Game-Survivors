@@ -902,6 +902,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(1f, Time.timeScale);
             Assert.That(controller.CurrentEnemySpawnIntervalSeconds, Is.InRange(0.9f, 1.4f));
             Assert.That(controller.CurrentEnemyMaximumAlive, Is.InRange(24, 40));
+            if (controller.IsTutorialOverlayOpen)
+            {
+                Assert.IsTrue(controller.SkipTutorialForTest());
+            }
 
             for (int i = 0; i < 240 && controller.SpawnedCount <= 0; i++)
             {
