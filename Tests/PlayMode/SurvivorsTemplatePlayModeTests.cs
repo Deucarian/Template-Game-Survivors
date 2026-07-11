@@ -23,7 +23,6 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         private const string BossPulseName = "Survivors Boss Cue Pulse";
         private const string FeedbackAudioName = "Survivors Feedback Audio";
         private const string DirectionalLightName = "Survivors Directional Light";
-        private const string ImportedPlayableScenePath = "Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity";
         private const string PlayableSceneMarkerName = "PLAYTEST_THIS_SCENE_OPEN_ME";
 
         [UnityTest]
@@ -66,15 +65,16 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator ImportedPlayableSampleSceneStartsAtRunModeSelectionThenStandardCanStart()
         {
+            string scenePath = SurvivorsImportedSampleSceneResolver.ResolveOrIgnore(SurvivorsImportedSampleSceneKind.Basic);
             AsyncOperation load = EditorSceneManager.LoadSceneAsyncInPlayMode(
-                ImportedPlayableScenePath,
+                scenePath,
                 new LoadSceneParameters(LoadSceneMode.Additive));
             Assert.IsNotNull(load);
             yield return WaitForAsyncOperation(load, 10f);
 
-            Scene scene = SceneManager.GetSceneByPath(ImportedPlayableScenePath);
-            Assert.IsTrue(scene.IsValid(), ImportedPlayableScenePath);
-            Assert.IsTrue(scene.isLoaded, ImportedPlayableScenePath);
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            Assert.IsTrue(scene.IsValid(), scenePath);
+            Assert.IsTrue(scene.isLoaded, scenePath);
             Assert.IsNotNull(FindRootInScene(scene, PlayableSceneMarkerName));
 
             SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
@@ -112,6 +112,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsRunState.Playing, controller.State);
             Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
             Assert.AreEqual(1800f, controller.CurrentTuning.SurvivalVictoryTimeSeconds);
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain(controller.CurrentRunModeDisplayName));
             Assert.That(controller.RunTimeSeconds, Is.GreaterThan(startingRunTime));
             Assert.That(controller.InfiniteArenaTileCountForTest, Is.GreaterThan(0));
             Assert.That(controller.InfiniteArenaLandmarkCountForTest, Is.GreaterThan(0));
@@ -127,24 +128,60 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator ImportedPlayableSampleSceneSelectsFirstDraftAndResumesCombat()
+        public IEnumerator ImportedPlayableSampleSceneStartsStrictSprintProfile()
         {
-#if UNITY_EDITOR
-            string fullScenePath = System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), ImportedPlayableScenePath);
-            if (!System.IO.File.Exists(fullScenePath))
-            {
-                Assert.Ignore("Imported playtest scene is not present in this project.");
-            }
-#endif
+            string scenePath = SurvivorsImportedSampleSceneResolver.ResolveOrIgnore(SurvivorsImportedSampleSceneKind.Basic);
             AsyncOperation load = EditorSceneManager.LoadSceneAsyncInPlayMode(
-                ImportedPlayableScenePath,
+                scenePath,
                 new LoadSceneParameters(LoadSceneMode.Additive));
             Assert.IsNotNull(load);
             yield return WaitForAsyncOperation(load, 10f);
 
-            Scene scene = SceneManager.GetSceneByPath(ImportedPlayableScenePath);
-            Assert.IsTrue(scene.IsValid(), ImportedPlayableScenePath);
-            Assert.IsTrue(scene.isLoaded, ImportedPlayableScenePath);
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            Assert.IsTrue(scene.IsValid(), scenePath);
+            Assert.IsTrue(scene.isLoaded, scenePath);
+            SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
+            Assert.IsNotNull(controller);
+            controller.ConfigureMetaPersistenceForTest(
+                new PersistenceService(new InMemoryTextStorage()),
+                new SaveSlotId("play-imported-sprint-" + Guid.NewGuid().ToString("N")));
+            for (int i = 0; i < 60 && !controller.IsRunModeSelectionOpen && !controller.IsRunStarted; i++) yield return null;
+
+            Assert.IsTrue(controller.IsStrictAuthoredSample, controller.AuthoredContentStatus);
+            Assert.IsFalse(controller.IsFallbackContentActive, controller.AuthoredContentStatus);
+            Assert.IsTrue(controller.SelectSprintRun());
+            yield return null;
+            if (controller.IsTutorialOverlayOpen)
+            {
+                Assert.IsTrue(controller.SkipTutorialForTest());
+                yield return null;
+            }
+
+            for (int i = 0; i < 120 && !controller.IsPlaying; i++) yield return null;
+            Assert.IsTrue(controller.IsPlaying);
+            Assert.AreEqual(SurvivorsPacingProfile.SprintRun, controller.CurrentPacingProfile);
+            Assert.AreEqual(300f, controller.CurrentTuning.TargetDurationSeconds);
+            Assert.AreEqual(300f, controller.CurrentTuning.SurvivalVictoryTimeSeconds);
+            Assert.AreEqual(1, controller.ActiveWeaponCount);
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain(controller.CurrentRunModeDisplayName));
+
+            AsyncOperation unload = SceneManager.UnloadSceneAsync(scene);
+            if (unload != null) yield return WaitForAsyncOperation(unload, 10f);
+        }
+
+        [UnityTest]
+        public IEnumerator ImportedPlayableSampleSceneSelectsFirstDraftAndResumesCombat()
+        {
+            string scenePath = SurvivorsImportedSampleSceneResolver.ResolveOrIgnore(SurvivorsImportedSampleSceneKind.Basic);
+            AsyncOperation load = EditorSceneManager.LoadSceneAsyncInPlayMode(
+                scenePath,
+                new LoadSceneParameters(LoadSceneMode.Additive));
+            Assert.IsNotNull(load);
+            yield return WaitForAsyncOperation(load, 10f);
+
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            Assert.IsTrue(scene.IsValid(), scenePath);
+            Assert.IsTrue(scene.isLoaded, scenePath);
             Assert.IsNotNull(FindRootInScene(scene, PlayableSceneMarkerName));
 
             SurvivorsTemplateController controller = FindComponentInScene<SurvivorsTemplateController>(scene);
@@ -816,12 +853,8 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator ImportedPlaytestSceneStartsControllerInHumanPlaytest()
         {
-            const string scenePath = "Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity";
 #if UNITY_EDITOR
-            if (!System.IO.File.Exists(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), scenePath)))
-            {
-                Assert.Ignore("Imported playtest scene is not present in this project.");
-            }
+            string scenePath = SurvivorsImportedSampleSceneResolver.ResolveOrIgnore(SurvivorsImportedSampleSceneKind.Basic);
 
             AsyncOperation sceneLoad = UnityEditor.SceneManagement.EditorSceneManager.LoadSceneAsyncInPlayMode(
                 scenePath,
@@ -832,7 +865,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
                 yield return null;
             }
 #else
-            const string sceneName = "PLAYTEST_THIS_SCENE_Survivors_Game";
+            const string sceneName = "BasicSurvivorsGame";
             if (!Application.CanStreamedLevelBeLoaded(sceneName))
             {
                 Assert.Ignore("Imported playtest scene is not in this project's build settings.");

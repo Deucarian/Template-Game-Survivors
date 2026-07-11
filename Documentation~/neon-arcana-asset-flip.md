@@ -6,7 +6,7 @@ Neon Arcana is a second complete authored variation inside the `Basic Survivors 
 
 - Basic Survivors source scene: `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`.
 - Neon Arcana source scene: `Samples~/BasicSurvivorsGame/Scenes/NeonArcana.unity`.
-- After importing the sample, open the matching scene under `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes`.
+- After importing the sample, open the matching scene under `Basic Survivors Game/Scenes` in the current Survivors import under `Assets/Samples`.
 - Press Play. Both scenes wait at run-mode selection. Press `1` for the 30-minute Standard / Human Playtest profile or `2` for the 5-minute Sprint profile.
 - The Neon scene identifies itself with `PLAYTEST_THIS_SCENE_NEON_ARCANA`, binds `Neon Arcana` and `Neon Arcana: Afterglow`, and never references a Basic content GUID.
 

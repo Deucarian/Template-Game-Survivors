@@ -141,7 +141,7 @@ This is reusable Survivors template-kit code, not concrete product content.
 
 ## Sample Content
 
-`Samples~/BasicSurvivorsGame` contains the package source for the concrete sample game. Manual branch playtesting should use the imported host scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
+`Samples~/BasicSurvivorsGame` contains the package source for the concrete sample game. Manual branch playtesting should use `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under the current imported Survivors sample in `Assets/Samples`.
 
 - `Scenes/BasicSurvivorsGame.unity`
 - `Scripts/BasicSurvivorsGameBootstrap.cs`

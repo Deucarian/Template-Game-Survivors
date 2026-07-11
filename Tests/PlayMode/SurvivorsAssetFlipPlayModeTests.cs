@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.IO;
 using System.Linq;
 using Deucarian.Persistence;
 using NUnit.Framework;
@@ -13,7 +12,6 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 {
     public sealed class SurvivorsAssetFlipPlayModeTests
     {
-        private const string ImportedScenePath = "Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/NeonArcana.unity";
         private const string SceneMarkerName = "PLAYTEST_THIS_SCENE_NEON_ARCANA";
         private Scene _loadedScene;
 
@@ -69,6 +67,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsPacingProfile.SprintRun, controller.CurrentPacingProfile);
             Assert.AreEqual("Neon Arcana Sprint", controller.CurrentRunModeDisplayName);
             Assert.AreEqual(300f, controller.CurrentTuning.SurvivalVictoryTimeSeconds);
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("Neon Arcana Sprint"));
             Assert.AreEqual(1, controller.ActiveWeaponCount);
             Assert.That(controller.CurrentBuildHudLinesForTest()[1], Does.Contain("Neon Pulse"));
             Assert.AreEqual("Pulse Runner", controller.SelectedClass.DisplayName);
@@ -120,6 +119,7 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
             Assert.AreEqual(SurvivorsPacingProfile.HumanPlaytest, controller.CurrentPacingProfile);
             Assert.AreEqual("Neon Arcana Standard", controller.CurrentRunModeDisplayName);
             Assert.AreEqual(1800f, controller.CurrentTuning.SurvivalVictoryTimeSeconds);
+            Assert.That(controller.TopCenterTimerHudLabel, Does.Contain("Neon Arcana Standard"));
             Assert.AreEqual(1, controller.ActiveWeaponCount);
         }
 
@@ -132,14 +132,10 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
 
         private static IEnumerator LoadScene(Action<Scene> assign)
         {
-            string fullPath = Path.Combine(Directory.GetCurrentDirectory(), ImportedScenePath);
-            if (!File.Exists(fullPath))
-            {
-                Assert.Ignore("Imported Neon Arcana sample scene is not present in this project.");
-            }
+            string scenePath = SurvivorsImportedSampleSceneResolver.ResolveOrIgnore(SurvivorsImportedSampleSceneKind.NeonArcana);
 
             AsyncOperation load = EditorSceneManager.LoadSceneAsyncInPlayMode(
-                ImportedScenePath,
+                scenePath,
                 new LoadSceneParameters(LoadSceneMode.Additive));
             Assert.IsNotNull(load);
             while (!load.isDone)
@@ -147,9 +143,9 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
                 yield return null;
             }
 
-            Scene scene = SceneManager.GetSceneByPath(ImportedScenePath);
-            Assert.IsTrue(scene.IsValid(), ImportedScenePath);
-            Assert.IsTrue(scene.isLoaded, ImportedScenePath);
+            Scene scene = SceneManager.GetSceneByPath(scenePath);
+            Assert.IsTrue(scene.IsValid(), scenePath);
+            Assert.IsTrue(scene.isLoaded, scenePath);
             Assert.IsNotNull(FindGameObjectInScene(scene, SceneMarkerName));
             assign(scene);
         }

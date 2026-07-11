@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d6b45db8ca047fd84a0451d1378783d, type: 3}
+  m_Name: Basic Survivors
+  m_EditorClassIdentifier:
+  packId: basic-survivors
+  owningPackageId: com.deucarian.template.game.survivors
+  providerId: com.deucarian.template.game.survivors.content-packs
+  displayName: Basic Survivors
+  description: The complete strict-authored Survivors reference slice with Standard and Sprint runs.
+  schemaVersion: '1'
+  tags:
+  - survivors
+  - reference
+  - basic
+  playableScene: {fileID: 102900000, guid: 5a6c3f1d8ab4439eaf3f49f0d9a4a16d, type: 3}
+  preview: {fileID: 0}
+  icon: {fileID: 0}
+  defaultTheme: {fileID: 4900000, guid: 772a0e4c2de84c8e9a33618f68c830cb, type: 3}
+  contentSources:
+  - sourceId: weapons
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 187d6c522814452b99f0f219dafe05a9, type: 3}
+    displayLabel: Weapons and Projectiles
+    categoryHint: weapons
+    required: 1
+  - sourceId: upgrades
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 3429c782a95147ceb622a80808ae96a1, type: 3}
+    displayLabel: Upgrades
+    categoryHint: upgrades
+    required: 1
+  - sourceId: progression
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 01618825803244d2ad45877c34813a24, type: 3}
+    displayLabel: Progression
+    categoryHint: progression
+    required: 1
+  - sourceId: classes
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 71e25d10b1094f108be2a788aa16debd, type: 3}
+    displayLabel: Classes
+    categoryHint: classes
+    required: 1
+  - sourceId: enemies
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 9252b55c5f4b4019a0a80b5cb14d3654, type: 3}
+    displayLabel: Enemies
+    categoryHint: enemies
+    required: 1
+  - sourceId: run-flow
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: ffe384a93f9c4415ad18e3859b8cb082, type: 3}
+    displayLabel: Run Flow
+    categoryHint: run-profiles
+    required: 1
+  - sourceId: rewards
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 69e9189e1bee4ca799e72143e48a60f4, type: 3}
+    displayLabel: Rewards and Meta Upgrades
+    categoryHint: rewards
+    required: 1
+  - sourceId: relics
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: de71d061c47e4c4fbb4c8dcc517a0097, type: 3}
+    displayLabel: Relics
+    categoryHint: relics
+    required: 1
+  - sourceId: pickups
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 27d54548ed0b4ab9a811e163c0d471cf, type: 3}
+    displayLabel: Pickups
+    categoryHint: pickup-magnet
+    required: 1
+  - sourceId: theme.primary
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 772a0e4c2de84c8e9a33618f68c830cb, type: 3}
+    displayLabel: Default UI Theme
+    categoryHint: themes
+    required: 1
+  - sourceId: theme.alternate
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 3803b80ec2954fbcb0491fcbdecd11ea, type: 3}
+    displayLabel: Neon Arcana UI Theme
+    categoryHint: themes
+    required: 1
