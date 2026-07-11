@@ -5,8 +5,8 @@ Phase 2L validation should cover:
 - Unity compile in a fresh validation project.
 - EditMode tests for descriptor creation, draft determinism, spawn, weapon damage/death, XP collection, upgrade selection, and magnet recall.
 - PlayMode tests for first playable boot, run continuation after upgrade, player death, and restart.
-- Manual sample scene open/play check from `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity` in `C:\Repositories\Template-Game-Survivors-Playtest`.
-- Strict content validation and imported-scene smoke coverage for `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/NeonArcana.unity`.
+- Manual sample scene open/play check from `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under the current imported sample in `C:\Repositories\Template-Game-Survivors-Playtest`.
+- Strict content validation and imported-scene smoke coverage for `Basic Survivors Game/Scenes/NeonArcana.unity` under that import.
 - Asset-flip tests proving independent libraries, no Basic GUID borrowing, the same runtime/bootstrap, distinct names and palette, one starter, both modes, drafts, authored enemies/rewards/progression/tutorial/audio, and no alternate gameplay scripts.
 
 The reference Vampire clone has local working-tree edits in UI files during this phase and is treated as read-only input.
@@ -202,7 +202,7 @@ Latest local validation for Phase 3J on `2026-07-10`:
 - `git diff --check`: passed.
 - EditMode: passed with `49` passed, `0` failed, durable runner callback completed.
 - PlayMode: initial full run reported one transient Sprint first-draft `ArgumentOutOfRangeException`; the focused test rerun passed, then the full rerun passed with `138` passed, `0` failed, durable runner callback completed.
-- Sample scene smoke: covered by PlayMode tests loading `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
+- Sample scene smoke: covered by PlayMode tests dynamically resolving the current imported `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity`.
 
 Commands used:
 

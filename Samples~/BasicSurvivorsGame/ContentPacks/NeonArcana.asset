@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d6b45db8ca047fd84a0451d1378783d, type: 3}
+  m_Name: Neon Arcana
+  m_EditorClassIdentifier:
+  packId: neon-arcana
+  owningPackageId: com.deucarian.template.game.survivors
+  providerId: com.deucarian.template.game.survivors.content-packs
+  displayName: Neon Arcana
+  description: A complete independent authored asset flip using the same strict Survivors runtime.
+  schemaVersion: '1'
+  tags:
+  - survivors
+  - asset-flip
+  - neon-arcana
+  playableScene: {fileID: 102900000, guid: f50eaaefe1a3409697b57f54740c39df, type: 3}
+  preview: {fileID: 0}
+  icon: {fileID: 0}
+  defaultTheme: {fileID: 4900000, guid: 51ec99e21e9448a1b43aeb8a8ab81140, type: 3}
+  contentSources:
+  - sourceId: weapons
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: f7ca5f6c80e54abc8d0782ccb96bd8e7, type: 3}
+    displayLabel: Neon Weapons and Projectiles
+    categoryHint: weapons
+    required: 1
+  - sourceId: upgrades
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 26e52917c56548158f986ab1c9d51c68, type: 3}
+    displayLabel: Neon Upgrades
+    categoryHint: upgrades
+    required: 1
+  - sourceId: progression
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 788f500c96294d5d9536c86d7b425b80, type: 3}
+    displayLabel: Neon Progression
+    categoryHint: progression
+    required: 1
+  - sourceId: classes
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 0f134f2a156f4ddfa5033d4d5b758ace, type: 3}
+    displayLabel: Neon Classes
+    categoryHint: classes
+    required: 1
+  - sourceId: enemies
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 4edcbbf4cecb4462b097ed81bff7033b, type: 3}
+    displayLabel: Neon Enemies
+    categoryHint: enemies
+    required: 1
+  - sourceId: run-flow
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 90484a0310f8460ca445e832eba71141, type: 3}
+    displayLabel: Neon Run Flow
+    categoryHint: run-profiles
+    required: 1
+  - sourceId: rewards
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 3dfae122d854407c9f851fa854ee0115, type: 3}
+    displayLabel: Neon Rewards and Meta Upgrades
+    categoryHint: rewards
+    required: 1
+  - sourceId: relics
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 64de018571244e7e8ec65271e9712b3f, type: 3}
+    displayLabel: Neon Relics
+    categoryHint: relics
+    required: 1
+  - sourceId: pickups
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 587298a0e84946d4b64fdfa97d85b810, type: 3}
+    displayLabel: Neon Pickups
+    categoryHint: pickup-magnet
+    required: 1
+  - sourceId: theme.primary
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 51ec99e21e9448a1b43aeb8a8ab81140, type: 3}
+    displayLabel: Neon Arcana Theme
+    categoryHint: themes
+    required: 1
+  - sourceId: theme.alternate
+    sourceKind: json
+    textAsset: {fileID: 4900000, guid: 48be1741f5be423782e1dd5095895238, type: 3}
+    displayLabel: Afterglow Theme
+    categoryHint: themes
+    required: 1

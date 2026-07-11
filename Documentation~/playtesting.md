@@ -10,7 +10,7 @@ The host references this package directly:
 
 Open this imported/editable scene:
 
-`Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`
+`Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under the current imported Survivors sample in `Assets/Samples`
 
 Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`, and the sample should open the run-mode selector without requiring a setup or repair step. Choose Standard Run with `1`/Enter for the full 30-minute Human Playtest loop, or Sprint Run with `2`/`S` for the compact 5-minute loop. Once play starts, the top-center timer should remain readable above warning banners and should show elapsed time plus the selected mode's remaining target time. Normal play should show the clean player HUD only; press `F1` to toggle the debug overlay when internal pacing, spawn, pool, or draft metrics are needed.
 
@@ -24,7 +24,7 @@ First-time profiles show a short onboarding overlay after mode selection. It pau
 
 The run-mode selector includes a simple theme selector. Default uses `Samples~/BasicSurvivorsGame/Content/DefaultUiTheme/ui-theme.json`; Neon Arcana uses `Samples~/BasicSurvivorsGame/Content/NeonArcanaUiTheme/ui-theme.json`. Theme files can change mode labels, rarity/category display, draft button labels, tutorial and run-summary copy, HUD accent color, placeholder icon IDs, and the audio event palette without retuning gameplay.
 
-For the complete alternate-content proof, open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/NeonArcana.unity`. This is distinct from selecting the older Neon Arcana UI theme in the Basic scene: the alternate scene binds `Content/NeonArcana` for every gameplay and presentation library. Confirm Neon Arcana Standard with `1`, Neon Arcana Sprint with `2`, one Neon Pulse starter, Pulse Runner, Static Wisp, Blacklight Sovereign, Neon Fragments, Signal Memory, the authored world palette, and no fallback-content status. The full checklist is in `Documentation~/neon-arcana-asset-flip.md`.
+For the complete alternate-content proof, open `Basic Survivors Game/Scenes/NeonArcana.unity` under the same current imported sample. This is distinct from selecting the older Neon Arcana UI theme in the Basic scene: the alternate scene binds `Content/NeonArcana` for every gameplay and presentation library. Confirm Neon Arcana Standard with `1`, Neon Arcana Sprint with `2`, one Neon Pulse starter, Pulse Runner, Static Wisp, Blacklight Sovereign, Neon Fragments, Signal Memory, the authored world palette, and no fallback-content status. The full checklist is in `Documentation~/neon-arcana-asset-flip.md`.
 
 ## Run Modes
 

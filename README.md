@@ -16,6 +16,14 @@ The same imported sample also contains `Scenes/NeonArcana.unity`, a complete alt
 
 Package extraction is governed by `Documentation~/template-contract.md`: “Extract only reusable infrastructure, never the playable vertical slice.” Candidate boundaries are tracked in `Documentation~/survivors-package-extraction-candidates.md`.
 
+## Game Content Authoring
+
+After importing the `Basic Survivors Game` sample, open `Tools > Deucarian > Game Content Authoring` and select `Survivors Content Packs`. The read-only browser discovers `Basic Survivors` and `Neon Arcana` through the manifests under `Samples~/BasicSurvivorsGame/ContentPacks`, then projects each manifest's selected JSON into searchable categories, metadata, references, and validation results.
+
+Pack actions open the selected scene, start its actual strict 30-minute Standard / Human Playtest profile, start its actual strict 5-minute Sprint profile, validate the selected `TextAsset` references, reveal the manifest, or open Package Installer. If the sample is not imported, the provider remains visible and directs sample installation to Package Installer; it does not copy or synchronize sample files.
+
+JSON remains the gameplay source of truth. This milestone does not edit, rewrite, create, duplicate, delete, or clone records. See `Documentation~/game-content-authoring.md` for the category/reference model and deferred scope.
+
 ## When To Use This
 
 Use this package when you want:
@@ -46,13 +54,13 @@ Use `#main` for stable package consumption and `#develop` when testing active pa
 
 1. Add the package through Package Manager.
 2. Import the `Basic Survivors Game` sample.
-3. Open the imported sample scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
+3. Open `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under the current imported Survivors sample in `Assets/Samples`.
 4. Press Play, then choose Standard Run with `1`/Enter or Sprint Run with `2`/`S`.
 5. Move through the horde, collect XP gems, choose level-up options, take elite and miniboss rewards, then build toward a boss evolution reward before defeating the final boss; if no evolution is ready, the boss falls back to a stronger reward draft before victory. Standard Run keeps the 30-minute arc and endless continuation, while Sprint Run compresses the same loop into a 5-minute reward/restart flow. The first clear unlocks Ember Vanguard and pays its authored class-unlock reward into the run summary. Spend earned shards on affordable meta upgrades from the result screen, pick any unlocked next-run class, then continue into endless escalation or restart.
 
-To test the authored flip instead, open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/NeonArcana.unity`. It offers Neon Arcana Standard with `1` and Neon Arcana Sprint with `2`, using only the alternate content tree.
+To test the authored flip instead, open `Basic Survivors Game/Scenes/NeonArcana.unity` under the same current imported sample. It offers Neon Arcana Standard with `1` and Neon Arcana Sprint with `2`, using only the alternate content tree.
 
-For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`. More detail lives in `Documentation~/playtesting.md`.
+For local human playtesting of this branch, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under its current imported Survivors sample. More detail lives in `Documentation~/playtesting.md`.
 
 The scene contains a tiny bootstrap object. Before opening the run-mode selector, it strictly validates and binds the authored weapon, upgrade, relic, class, progression, enemy, run-flow, reward, pickup, default-theme, and alternate-theme JSON assets. A strict binding error keeps the sample in its pre-run state and shows the actionable validation message instead of starting a fallback-balanced game. Once binding succeeds, the bootstrap creates the selector, arena, player, enemy/pickup/projectile pools, camera, top-center run timer, HUD, drafts, relic UI, meta profile service, result summary, endless continuation, and restart flow.
 
@@ -119,7 +127,7 @@ Intentionally not ported wholesale: the clone's twelve-class content-pack ecosys
 
 ## Sample And API Map
 
-- Manual playtest scene: `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`
+- Manual playtest scene: `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under the current imported Survivors sample in `Assets/Samples`
 - Package source scene, not the branch manual-test target: `Samples~/BasicSurvivorsGame/Scenes/BasicSurvivorsGame.unity`
 - Sample bootstrap: `Samples~/BasicSurvivorsGame/Scripts/BasicSurvivorsGameBootstrap.cs`
 - Main runtime catalog: `Runtime/BasicSurvivorsGame.cs`
@@ -190,7 +198,7 @@ No screenshot or GIF assets are committed yet. Add `Documentation~/media/` captu
 
 ## Troubleshooting
 
-- Sample scene is missing: import `Basic Survivors Game` from Package Manager, then open the imported playtest scene at `Assets/Samples/com.deucarian.template.game.survivors/Basic Survivors Game/Scenes/PLAYTEST_THIS_SCENE_Survivors_Game.unity`.
+- Sample scene is missing: import `Basic Survivors Game` through Package Installer or Package Manager, then open `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under the current import in `Assets/Samples`.
 - Mode cards are disabled with an authored-content error: run `Tools > Deucarian > Templates > Survivors > Validate Content`, fix the named JSON field/reference in the imported sample source, and reimport the sample if its copied scene/content is stale. Strict mode intentionally will not substitute `BasicSurvivorsGame` values.
 - Weapons do not fire: enemies must be in range; move near the horde and wait for auto-fire cadence.
 - Combat feedback is hard to read: confirm the imported sample is current, then damage enemies or take a hit; enemies should flash on hit, deaths should leave a short burst, ranged attackers should draw a quick hostile shot cue before damage lands, streak drops should show a short reward banner, major reward kills should pop a colored cache beacon and pull their cache pickups inward, resolved damage should appear as short-lived numbers, and the first low-health crossing should pulse the red screen edge plus fire a Clutch Pulse.
