@@ -130,9 +130,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             AddTheme(manifest, PrimaryThemeSourceId, Parse<UiThemeRecordJson>(manifest, PrimaryThemeSourceId, issues), builders, rawIds, ref order);
             AddTheme(manifest, AlternateThemeSourceId, Parse<UiThemeRecordJson>(manifest, AlternateThemeSourceId, issues), builders, rawIds, ref order);
 
-            ResolveReferences(manifest.PackId, builders, rawIds, issues);
+            ResolveReferences(manifest.OwningPackageId, manifest.PackId, builders, rawIds, issues);
             ApplyValidationToRecords(builders, selectedValidation.Issues);
-            IReadOnlyList<GameContentRecordDescriptor> records = BuildDescriptors(builders);
+            IReadOnlyList<GameContentRecordDescriptor> records = BuildDescriptors(manifest, builders);
             IReadOnlyList<GameContentCategoryDescriptor> categories = BuildCategories(records);
             return new SurvivorsContentPackIndex(
                 manifest,
@@ -221,6 +221,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 record.Metadata.Add(Metadata("Damage", value.damage));
                 record.Metadata.Add(Metadata("Cooldown", value.cooldownSeconds, "0.###s"));
                 record.Metadata.Add(Metadata("Range", value.range));
+                record.Metadata.Add(Metadata("Tint", value.tint));
+                record.Metadata.Add(Metadata("Projectile Radius", value.projectileRadius));
+                record.Metadata.Add(Metadata("Pierce Count", value.pierceCount));
+                record.Metadata.Add(Metadata("Chain Count", value.chainCount));
+                record.Metadata.Add(Metadata("Fork Count", value.forkCount));
+                record.Metadata.Add(Metadata("Return Count", value.returnCount));
+                record.Metadata.Add(Metadata("Fan Count", value.fanCount));
+                record.Metadata.Add(Metadata("Spread", value.spreadDegrees, "0.### degrees"));
                 AddPending(record, value.projectileId, "projectile", false);
             }
 
@@ -276,9 +284,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     ref order);
                 record.Metadata.Add(Metadata("Category", value.category));
                 record.Metadata.Add(Metadata("Rarity", value.rarity));
+                record.Metadata.Add(Metadata("Weight", value.weight));
                 record.Metadata.Add(Metadata("Max Rank", value.maxRank));
                 record.Metadata.Add(Metadata("Effect", value.effect));
                 record.Metadata.Add(Metadata("Amount", value.amount));
+                record.Metadata.Add(Metadata("Target", value.target));
                 AddPending(record, value.requiredUpgradeId, "requires upgrade rank " + value.requiredUpgradeRank, true);
                 AddPending(record, value.requiredPassiveUpgradeId, "requires passive", true);
                 AddPending(record, value.requiredOwnedWeaponId, "requires owned weapon", true);
@@ -318,13 +328,25 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     rawIds,
                     ref order);
                 record.Metadata.Add(Metadata("Role", value.role));
+                record.Metadata.Add(Metadata("Role Behavior", DescribeEnemyRoleBehavior(value.role)));
                 record.Metadata.Add(Metadata("Health", value.health));
                 record.Metadata.Add(Metadata("Move Speed", value.moveSpeed));
+                record.Metadata.Add(Metadata("Radius", value.radius));
                 record.Metadata.Add(Metadata("Contact Damage", value.contactDamage));
+                record.Metadata.Add(Metadata("Contact Interval", value.contactIntervalSeconds, "0.###s"));
                 record.Metadata.Add(Metadata("XP Drop", value.experienceDrop));
+                record.Metadata.Add(Metadata("Tint", value.tint));
+                record.Metadata.Add(Metadata("Can Recycle", value.canRecycle));
+                record.Metadata.Add(Metadata("Can Leash", value.canLeash));
+                record.Metadata.Add(Metadata("Can Reposition", value.canReposition));
                 record.Metadata.Add(Metadata("Offscreen Marker", value.showOffscreenMarker));
                 record.Metadata.Add(Metadata("Overhead Life Bar", value.showOverheadLifeBar));
                 record.Metadata.Add(Metadata("Boss Life Bar", value.showBossLifeBar));
+                record.Metadata.Add(Metadata("Marker Style", value.markerStyle));
+                record.Metadata.Add(Metadata("Soft Leash", value.softLeashRadius));
+                record.Metadata.Add(Metadata("Hard Recycle", value.hardRecycleRadius));
+                record.Metadata.Add(Metadata("Catch-up Speed", value.catchUpSpeedMultiplier));
+                record.Metadata.Add(Metadata("Reposition Timeout", value.repositionTimeoutSeconds, "0.###s"));
             }
         }
 
@@ -503,7 +525,26 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     nodeRecord.Metadata.Add(Metadata("Max Rank", node.maxRank));
                     AddPending(nodeRecord, value.id, "belongs to track", true);
                     AddPending(nodeRecord, node.upgradeId, "unlocks upgrade", true);
+                    AddUpgradeClassGate(rawIds, node.upgradeId, value.classId);
                 }
+            }
+        }
+
+        private static void AddUpgradeClassGate(
+            IDictionary<string, List<RecordBuilder>> rawIds,
+            string upgradeId,
+            string classId)
+        {
+            if (string.IsNullOrWhiteSpace(upgradeId) || string.IsNullOrWhiteSpace(classId) ||
+                rawIds == null || !rawIds.TryGetValue(upgradeId.Trim(), out List<RecordBuilder> candidates))
+                return;
+            foreach (RecordBuilder candidate in candidates)
+            {
+                if (!string.Equals(candidate.SourceId, UpgradesSourceId, StringComparison.OrdinalIgnoreCase)) continue;
+                if (candidate.Metadata.Any(value =>
+                        string.Equals(value.Label, "Class Gate", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(value.Value, classId, StringComparison.OrdinalIgnoreCase))) continue;
+                candidate.Metadata.Add(Metadata("Class Gate", classId));
             }
         }
 
@@ -539,8 +580,20 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 record.Metadata.Add(Metadata("Miniboss", value.minibossSpawnTimeSeconds, "0.###s"));
                 record.Metadata.Add(Metadata("Boss", value.bossSpawnTimeSeconds, "0.###s"));
                 record.Metadata.Add(Metadata("Endless", value.endlessContinuationEnabled));
+                record.Metadata.Add(Metadata("Reward Multiplier", value.runRewardMultiplier));
+                record.Metadata.Add(Metadata("Spawn Interval", value.enemySpawnIntervalSeconds, "0.###s"));
+                record.Metadata.Add(Metadata("Maximum Alive", value.enemyMaximumAlive));
+                record.Metadata.Add(Metadata("Escalation Interval", value.escalationIntervalSeconds, "0.###s"));
+                record.Metadata.Add(Metadata("Minimum Spawn Interval", value.minimumEnemySpawnIntervalSeconds, "0.###s"));
+                record.Metadata.Add(Metadata("Spawn Interval Reduction", value.enemySpawnIntervalReductionPerEscalation, "0.###s"));
+                record.Metadata.Add(Metadata("Horde First", value.hordeRushFirstTimeSeconds, "0.###s"));
+                record.Metadata.Add(Metadata("Horde Interval", value.hordeRushIntervalSeconds, "0.###s"));
                 foreach (RecordBuilder enemy in records.Where(candidate => candidate.SourceId == EnemiesSourceId))
                     AddPending(record, enemy.SourceRecordId, "uses authored enemy role", false);
+                foreach (RecordBuilder reward in records.Where(candidate =>
+                             candidate.SourceId == RewardsSourceId &&
+                             string.Equals(candidate.PrimaryCategory, "rewards", StringComparison.OrdinalIgnoreCase)))
+                    AddPending(record, reward.SourceRecordId, "uses authored pack reward", false);
             }
         }
 
@@ -584,6 +637,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         }
 
         private static void ResolveReferences(
+            string owningPackageId,
             string packId,
             IReadOnlyList<RecordBuilder> records,
             IReadOnlyDictionary<string, List<RecordBuilder>> rawIds,
@@ -627,7 +681,16 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         packId,
                         pending.Relationship,
                         pending.Required,
-                        target != null));
+                        target != null,
+                        owningPackageId,
+                        target == null
+                            ? null
+                            : new GameContentRecordKey(
+                                owningPackageId,
+                                packId,
+                                target.SourceRecordId,
+                                target.SourceId,
+                                target.SourceLocator)));
 
                     if (target != null)
                     {
@@ -637,7 +700,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                             packId,
                             pending.Relationship + " from " + source.DisplayName,
                             pending.Required,
-                            true));
+                            true,
+                            owningPackageId,
+                            new GameContentRecordKey(
+                                owningPackageId,
+                                packId,
+                                source.SourceRecordId,
+                                source.SourceId,
+                                source.SourceLocator)));
                         continue;
                     }
 
@@ -648,7 +718,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             }
         }
 
-        private static IReadOnlyList<GameContentRecordDescriptor> BuildDescriptors(IEnumerable<RecordBuilder> builders)
+        private static IReadOnlyList<GameContentRecordDescriptor> BuildDescriptors(
+            GameContentPackManifest manifest,
+            IEnumerable<RecordBuilder> builders)
         {
             return builders
                 .OrderBy(builder => builder.Order)
@@ -670,8 +742,108 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     new GameContentAuthoringValidationResult(builder.Issues),
                     builder.Order,
                     null,
-                    builder.PrimaryCategory))
+                    builder.PrimaryCategory,
+                    new GameContentRecordKey(
+                        manifest.OwningPackageId,
+                        manifest.PackId,
+                        builder.SourceRecordId,
+                        builder.SourceId,
+                        builder.SourceLocator),
+                    BuildCapabilities(builder)))
                 .ToArray();
+        }
+
+        private static IReadOnlyList<GameContentRecordCapability> BuildCapabilities(RecordBuilder builder)
+        {
+            var values = new List<GameContentRecordCapability>();
+            if (builder == null) return values;
+            if (string.Equals(builder.SourceId, WeaponsSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                if (string.Equals(builder.PrimaryCategory, "weapons", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddCapability(values, GameContentRecordCapabilities.Weapon);
+                    AddCapability(values, GameContentRecordCapabilities.Attack);
+                }
+                else if (string.Equals(builder.PrimaryCategory, "projectiles", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddCapability(values, GameContentRecordCapabilities.Projectile);
+                }
+            }
+            else if (string.Equals(builder.SourceId, EnemiesSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                AddCapability(values, GameContentRecordCapabilities.Enemy);
+            }
+            else if (string.Equals(builder.SourceId, UpgradesSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                AddCapability(values, GameContentRecordCapabilities.Upgrade);
+                string category = GetMetadata(builder, "Category");
+                if (Contains(category, "weapon")) AddCapability(values, GameContentRecordCapabilities.WeaponUpgrade);
+            }
+            else if (string.Equals(builder.SourceId, RunFlowSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                AddCapability(values, GameContentRecordCapabilities.Encounter);
+                AddCapability(values, GameContentRecordCapabilities.RunProfile);
+                AddCapability(values, GameContentRecordCapabilities.TimedMilestone);
+                AddCapability(values, GameContentRecordCapabilities.HordeEvent);
+                AddCapability(values, GameContentRecordCapabilities.EliteEvent);
+                AddCapability(values, GameContentRecordCapabilities.BossEvent);
+            }
+            else if (string.Equals(builder.SourceId, PickupsSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                AddCapability(values, GameContentRecordCapabilities.PickupMagnet);
+            }
+            else if (string.Equals(builder.SourceId, RewardsSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                AddCapability(values, string.Equals(builder.PrimaryCategory, "meta-upgrades", StringComparison.OrdinalIgnoreCase)
+                    ? GameContentRecordCapabilities.Upgrade
+                    : GameContentRecordCapabilities.Reward);
+                if (string.Equals(builder.PrimaryCategory, "meta-upgrades", StringComparison.OrdinalIgnoreCase))
+                    AddCapability(values, GameContentRecordCapabilities.MetaUpgrade);
+            }
+            else if (string.Equals(builder.PrimaryCategory, "themes", StringComparison.OrdinalIgnoreCase))
+            {
+                AddCapability(values, GameContentRecordCapabilities.Theme);
+            }
+
+            if (builder.Categories.Any(category => string.Equals(category, "passives", StringComparison.OrdinalIgnoreCase)))
+                AddCapability(values, GameContentRecordCapabilities.Passive);
+            if (builder.Categories.Any(category => string.Equals(category, "pickup-magnet", StringComparison.OrdinalIgnoreCase)) &&
+                string.Equals(builder.SourceId, UpgradesSourceId, StringComparison.OrdinalIgnoreCase))
+                AddCapability(values, GameContentRecordCapabilities.PickupMagnet);
+            if (builder.Categories.Any(category => string.Equals(category, "mutations", StringComparison.OrdinalIgnoreCase)))
+                AddCapability(values, GameContentRecordCapabilities.Mutation);
+            if (builder.Categories.Any(category => string.Equals(category, "evolutions", StringComparison.OrdinalIgnoreCase)))
+                AddCapability(values, GameContentRecordCapabilities.Evolution);
+            if (builder.Categories.Any(category => string.Equals(category, "elites", StringComparison.OrdinalIgnoreCase)))
+            {
+                AddCapability(values, GameContentRecordCapabilities.Elite);
+                AddCapability(values, GameContentRecordCapabilities.MajorThreat);
+            }
+            if (builder.Categories.Any(category => string.Equals(category, "minibosses", StringComparison.OrdinalIgnoreCase)))
+            {
+                AddCapability(values, GameContentRecordCapabilities.Miniboss);
+                AddCapability(values, GameContentRecordCapabilities.MajorThreat);
+            }
+            if (builder.Categories.Any(category => string.Equals(category, "bosses", StringComparison.OrdinalIgnoreCase)))
+            {
+                AddCapability(values, GameContentRecordCapabilities.Boss);
+                AddCapability(values, GameContentRecordCapabilities.MajorThreat);
+            }
+
+            return values;
+        }
+
+        private static void AddCapability(
+            ICollection<GameContentRecordCapability> values,
+            GameContentRecordCapability capability)
+        {
+            if (!values.Contains(capability)) values.Add(capability);
+        }
+
+        private static string GetMetadata(RecordBuilder builder, string label)
+        {
+            return builder.Metadata.FirstOrDefault(value =>
+                string.Equals(value.Label, label, StringComparison.OrdinalIgnoreCase))?.Value ?? string.Empty;
         }
 
         private static void ApplyValidationToRecords(
@@ -879,6 +1051,15 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             return !string.IsNullOrWhiteSpace(value) && value.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        private static string DescribeEnemyRoleBehavior(string role)
+        {
+            if (string.Equals(role, "Splitter", StringComparison.OrdinalIgnoreCase))
+                return "Splits into child enemies on death.";
+            if (string.Equals(role, "Summoner", StringComparison.OrdinalIgnoreCase))
+                return "Calls support enemies while active.";
+            return "No splitter or summoner role behavior.";
+        }
+
         private static string Display(string value, string fallback)
         {
             return string.IsNullOrWhiteSpace(value) ? Normalize(fallback) : value.Trim();
@@ -942,13 +1123,13 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         }
 
         [Serializable] private sealed class WeaponLibraryJson { public WeaponRecordJson[] weapons; public ProjectileRecordJson[] projectiles; }
-        [Serializable] private sealed class WeaponRecordJson { public string id; public string displayName; public string fireMode; public string projectileId; public float cooldownSeconds; public float damage; public float range; }
+        [Serializable] private sealed class WeaponRecordJson { public string id; public string displayName; public string fireMode; public string tint; public string projectileId; public float cooldownSeconds; public float damage; public float range; public float projectileRadius; public int pierceCount; public int chainCount; public int forkCount; public int returnCount; public int fanCount; public float spreadDegrees; }
         [Serializable] private sealed class ProjectileRecordJson { public string id; public float speed; public float lifetimeSeconds; }
         [Serializable] private sealed class UpgradeLibraryJson { public UpgradeRecordJson[] upgrades; }
         [Serializable] private sealed class UpgradeRecordJson { public string id; public string displayName; public string category; public string rarity; public double weight; public int maxRank; public string effect; public string target; public double amount; public UpgradeEffectRecordJson[] effects; public string description; public string requiredUpgradeId; public int requiredUpgradeRank; public string requiredPassiveUpgradeId; public string requiredOwnedWeaponId; public string affectedContentId; }
         [Serializable] private sealed class UpgradeEffectRecordJson { public string effect; public string target; public double amount; }
         [Serializable] private sealed class EnemyLibraryJson { public EnemyRecordJson[] enemies; }
-        [Serializable] private sealed class EnemyRecordJson { public string id; public string displayName; public string role; public float health; public float moveSpeed; public float contactDamage; public int experienceDrop; public bool showOffscreenMarker; public bool showOverheadLifeBar; public bool showBossLifeBar; }
+        [Serializable] private sealed class EnemyRecordJson { public string id; public string displayName; public string role; public string tint; public float health; public float moveSpeed; public float radius; public float contactDamage; public float contactIntervalSeconds; public int experienceDrop; public bool canRecycle; public bool canLeash; public bool canReposition; public bool showOffscreenMarker; public bool showOverheadLifeBar; public bool showBossLifeBar; public string markerStyle; public float softLeashRadius; public float hardRecycleRadius; public float catchUpSpeedMultiplier; public float repositionTimeoutSeconds; }
         [Serializable] private sealed class PickupLibraryJson { public PickupRecordJson[] pickups; }
         [Serializable] private sealed class PickupRecordJson { public string id; public string displayName; public string behavior; }
         [Serializable] private sealed class RelicLibraryJson { public RelicRecordJson[] relics; }
@@ -964,7 +1145,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         [Serializable] private sealed class ProgressionTrackRecordJson { public string id; public string displayName; public string kind; public string classId; public string targetWeaponId; public ProgressionNodeRecordJson[] nodes; }
         [Serializable] private sealed class ProgressionNodeRecordJson { public string id; public string displayName; public string upgradeId; public string kind; public int tier; public int pointCost; public int maxRank; }
         [Serializable] private sealed class RunFlowLibraryJson { public RunFlowProfileRecordJson[] profiles; }
-        [Serializable] private sealed class RunFlowProfileRecordJson { public string id; public string displayName; public string description; public float targetDurationSeconds; public bool endlessContinuationEnabled; public float firstEliteSpawnTimeSeconds; public float firstDreadEliteSpawnTimeSeconds; public float minibossSpawnTimeSeconds; public float bossSpawnTimeSeconds; public float survivalVictoryTimeSeconds; }
+        [Serializable] private sealed class RunFlowProfileRecordJson { public string id; public string displayName; public string description; public float targetDurationSeconds; public float runRewardMultiplier; public bool endlessContinuationEnabled; public float enemySpawnIntervalSeconds; public int enemyMaximumAlive; public float escalationIntervalSeconds; public float minimumEnemySpawnIntervalSeconds; public float enemySpawnIntervalReductionPerEscalation; public float firstEliteSpawnTimeSeconds; public float firstDreadEliteSpawnTimeSeconds; public float minibossSpawnTimeSeconds; public float bossSpawnTimeSeconds; public float survivalVictoryTimeSeconds; public float hordeRushFirstTimeSeconds; public float hordeRushIntervalSeconds; }
         [Serializable] private sealed class UiThemeRecordJson { public string themeName; public string standardModeDisplayName; public string sprintModeDisplayName; public string hudAccentColor; public WorldPresentationRecordJson worldPresentation; public AudioEventRecordJson[] audioEvents; public TutorialStepRecordJson[] tutorialSteps; }
         [Serializable] private sealed class WorldPresentationRecordJson { public bool authored; }
         [Serializable] private sealed class AudioEventRecordJson { public string id; public string category; public float volume; public float throttleSeconds; }

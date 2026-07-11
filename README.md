@@ -18,11 +18,13 @@ Package extraction is governed by `Documentation~/template-contract.md`: “Extr
 
 ## Game Content Authoring
 
-After importing the `Basic Survivors Game` sample, open `Tools > Deucarian > Game Content Authoring` and select `Survivors Content Packs`. The read-only browser discovers `Basic Survivors` and `Neon Arcana` through the manifests under `Samples~/BasicSurvivorsGame/ContentPacks`, then projects each manifest's selected JSON into searchable categories, metadata, references, and validation results.
+After importing the `Basic Survivors Game` sample, open `Tools > Deucarian > Game Content Authoring` and choose `Basic Survivors` or `Neon Arcana` from the global Content Pack selector. Pack Dashboard and All Content expose all 251 records in that selected pack. The reusable Attacks, Enemies, Wave / Encounter, Weapon / Tower, and Upgrades lenses then show the same canonical records through typed, editor-only projections.
 
-Pack actions open the selected scene, start its actual strict 30-minute Standard / Human Playtest profile, start its actual strict 5-minute Sprint profile, validate the selected `TextAsset` references, reveal the manifest, or open Package Installer. If the sample is not imported, the provider remains visible and directs sample installation to Package Installer; it does not copy or synchronize sample files.
+Each authored weapon appears as one record in both Attacks and Weapon / Tower; enemy role categories such as Elite and Boss remain semantic views of one Enemy record; run profiles project into Wave / Encounter; and upgrade capabilities drive Weapon Upgrade, Passive, Pickup / Magnet, Mutation, Evolution, and Meta Upgrade filters. Basic and Neon retain separate owner/pack/source/record keys, so references cannot silently cross between them.
 
-JSON remains the gameplay source of truth. This milestone does not edit, rewrite, create, duplicate, delete, or clone records. See `Documentation~/game-content-authoring.md` for the category/reference model and deferred scope.
+Pack Dashboard actions open the selected scene, start its actual strict 30-minute Standard / Human Playtest profile, start its actual strict 5-minute Sprint profile, validate selected `TextAsset` references, reveal the manifest, or open Package Installer. If the sample is missing, the pack reports a missing source and directs installation to Package Installer; Game Content Authoring does not copy or synchronize samples.
+
+JSON remains the only gameplay source of truth. The lenses do not create ScriptableObject copies and do not edit, rewrite, create, duplicate, delete, or clone JSON records. See `Documentation~/game-content-authoring.md` for mappings, ownership, and deferred safe editing.
 
 ## When To Use This
 
