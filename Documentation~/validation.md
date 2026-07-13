@@ -256,3 +256,26 @@ Latest local validation for Phase 3N on `2026-07-10`:
 - PlayMode: the first full run passed `149` and exposed the known manual-simulation/frame-update Sprint race plus an obsolete generic-damage assertion. The test was made deterministic and the assertion was changed to the selected starter definition; the full rerun passed with `151` passed, `0` failed at `C:\Repositories\_survivors_validation_tmp\authored-hardening-playmode-rerun.json`.
 - Imported sample smoke: covered by the full PlayMode rerun after refreshing the disposable validation project's imported sample from the current `Samples~/BasicSurvivorsGame` source. The source repository did not receive generated/imported files.
 - Game Content Authoring package: inspected read-only; no generic package gap or package change was required.
+
+Milestone 2B adds safe existing-record JSON edit validation:
+
+- The existing Survivors content-pack provider implements the optional Game Content Authoring edit-provider contract for imported Basic Survivors and Neon Arcana packs.
+- Only direct scalar fields on existing weapon, projectile, and enemy records are exposed. Stable IDs, references, roles, fire modes, arrays, structural fields, other categories, package sources, and All Packs remain read-only.
+- A strict UTF-8 tokenizer and deterministic ID-based locator preserve BOM state, line endings, whitespace, ordering, unknown fields, unrelated numeric tokens, and every byte outside edited scalar spans. Full-file `JsonUtility` round trips are not used for gameplay JSON.
+- Source revisions include the exact-byte hash, AssetDatabase GUID/path, pack key, ordered manifest source-list fingerprint, canonical record key, and backend schema token. Preview, commit, reimport verification, and rollback fail closed on stale state.
+- Commit validates the complete proposed pack in memory, writes exact recovery bytes under `Library/Deucarian/GameContentAuthoring/Recovery/Survivors`, atomically replaces the existing file without delete-then-move, synchronously reimports, verifies bytes/tokens/revision, validates again, and reindexes. Resolved backups are bounded to five per source; unresolved recovery records are retained.
+- Cancel changes zero bytes. Rollback restores exact pre-commit bytes only while the committed revision remains current, so later external edits are never overwritten.
+- Editing is limited to project-owned imported copies under `Assets/Samples`. Package assets, PackageCache-backed content, arbitrary paths, traversal, reparse-point escapes, missing files, and read-only files are rejected. The first edit in an editor session warns that sample refresh may conflict with local edits.
+- JSON remains the sole runtime source of truth. No ScriptableObject mirror, shipped content mutation, balance change, runtime gameplay change, record creation, deletion, duplication, or pack cloning is part of this milestone.
+
+Latest local validation for Milestone 2B on `2026-07-13`:
+
+- Required Game Content Authoring baseline: clean `develop` at `c6b45bee6d6bba7fb6a96b5dcc278d0f01750e01`.
+- Package validator: passed with `Deucarian validation passed: com.deucarian.template.game.survivors`.
+- `git diff --check`: passed.
+- Survivors EditMode: final full rerun passed `134` passed, `0` failed. The focused tokenizer/locator/patch set passed `21`; the focused provider/session/transaction set passed `15`.
+- Game Content Authoring compatibility: all `83` GCA EditMode tests passed in the disposable integration project; the combined GCA plus Survivors run passed `217` passed, `0` failed.
+- Survivors PlayMode: full run passed `154` passed, `0` failed. Focused Basic Standard, Basic Sprint, Neon Standard, and Neon Sprint smokes each passed `1` passed, `0` failed.
+- Runtime mutation proof: Basic and Neon each committed an enemy-health scalar through the provider/session API, launched the matching strict-authored scene, observed the committed authored profile at runtime without fallback, and restored the exact original bytes and hash.
+- Source preservation: all `22` tracked sample content JSON files matched their `HEAD` blob hashes after validation; the imported Basic and Neon enemy JSON copies matched the package SHA-256 values after runtime proof cleanup.
+- One initial full EditMode attempt encountered transient Windows file contention during a Neon atomic-replacement test (`133` passed, `1` failed). The destination remained recoverable and exact, the focused transaction rerun passed `15/15`, and the clean full rerun passed `134/134`.

@@ -97,7 +97,7 @@ Runtime fallback content is allowed for tests, unbound hosts, and debug safety. 
 
 `DefaultRewards/rewards.json` owns currencies, run reward grants, elite/miniboss/boss/class-unlock reward amounts, legacy-XP grants, and the current persistent meta-upgrade definitions/costs/effects. It does not own class gates, weapon tracks, or evolution-node structure.
 
-No Game Content Authoring package change is required for this policy. Survivors-specific required-field and cross-reference rules remain local; the existing package report adapter is sufficient.
+Game Content Authoring owns the reusable edit-session lifecycle, source locking, workbench, stale/conflict presentation, and commit/rollback orchestration. Survivors owns its strict UTF-8 token locator, approved scalar field catalog, path policy, proposed-pack validation adapter, atomic JSON backend, and recovery bytes. JSON remains the sole runtime source of truth; safe editing never creates a ScriptableObject mirror or moves playable content into the generic authoring package.
 
 ## Vertical-Slice Preservation Checklist
 

@@ -11,6 +11,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         IGameContentAuthoringProvider,
         IGameContentAuthoringSurfaceProvider,
         IGameContentPackProvider,
+        IGameContentPackEditProvider,
         IGameContentAuthoringProviderVisibility
     {
         public const string StableProviderId = "com.deucarian.template.game.survivors.content-packs";
@@ -43,7 +44,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public static SurvivorsContentPackProvider Instance => SharedInstance;
         public string ProviderId => StableProviderId;
         public string DisplayName => "Content Packs";
-        public string Description => "Browse and validate imported Basic Survivors and Neon Arcana authored JSON packs.";
+        public string Description => "Browse, validate, and safely edit approved scalar fields in imported Basic Survivors and Neon Arcana JSON packs.";
         public int SortOrder => 90;
         public bool Enabled => true;
         public bool VisibleInNavigation => false;
@@ -142,6 +143,27 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             return GameContentActionResult.Failure("Unknown Survivors content-pack action '" + actionId + "'.");
         }
 
+        public GameContentEditAvailability CanEdit(GameContentEditRequest request)
+        {
+            if (!TryResolveEditRequest(request, out SurvivorsEditableSource source, out string reason))
+                return GameContentEditAvailability.ReadOnly(reason, StableProviderId);
+            return GameContentEditAvailability.Editable(
+                StableProviderId,
+                source.Definition.EditableFieldCount,
+                source.SourceTarget);
+        }
+
+        public IGameContentEditSession BeginEdit(GameContentEditRequest request)
+        {
+            if (!TryResolveEditRequest(request, out SurvivorsEditableSource source, out string reason))
+                throw new InvalidOperationException(reason);
+            if (!SurvivorsImportedSampleEditConsent.EnsureGranted())
+                throw new InvalidOperationException("Editing was cancelled before changing the imported sample copy.");
+            if (!TryResolveEditRequest(request, out source, out reason))
+                throw new InvalidOperationException("The source changed while edit consent was shown: " + reason);
+            return new SurvivorsContentEditSession(source, RefreshAfterEdit);
+        }
+
         private void RefreshPacks()
         {
             _indexes.Clear();
@@ -183,13 +205,117 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     BuildActions(usable, entry.Manifest != null, state),
                     validation,
                     index.Records.Count,
-                    GameContentPackAccessDescriptor.ReadOnlyJson));
+                    BuildAccess(entry.Manifest, entry.SourceKind, state)));
 
                 if (!_indexes.ContainsKey(entry.Manifest.PackId)) _indexes.Add(entry.Manifest.PackId, index);
                 if (!_manifests.ContainsKey(entry.Manifest.PackId)) _manifests.Add(entry.Manifest.PackId, entry.Manifest);
             }
 
             _packs = packs;
+        }
+
+        private bool TryResolveEditRequest(
+            GameContentEditRequest request,
+            out SurvivorsEditableSource source,
+            out string reason)
+        {
+            source = null;
+            reason = string.Empty;
+            if (request == null || !request.IsValid)
+            {
+                reason = "Select one existing record from an imported Survivors content pack.";
+                return false;
+            }
+            if (string.Equals(request.SelectedPackKey, GameContentPackContext.AllPacksSelectionKey, StringComparison.Ordinal))
+            {
+                reason = "All Packs is a read-only browsing context. Select Basic Survivors or Neon Arcana.";
+                return false;
+            }
+            if (!string.Equals(request.ProviderId, StableProviderId, StringComparison.OrdinalIgnoreCase))
+            {
+                reason = "The edit request does not target the registered Survivors provider.";
+                return false;
+            }
+
+            RefreshPacks();
+            GameContentPackDescriptor[] packMatches = _packs
+                .Where(pack => string.Equals(pack.StableKey, request.SelectedPackKey, StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            if (packMatches.Length == 0)
+            {
+                reason = "The selected Survivors pack is unavailable. Import one current Basic Survivors Game sample.";
+                return false;
+            }
+            if (packMatches.Length > 1 || packMatches[0].SourceState == GameContentPackSourceState.DuplicateConflict)
+            {
+                reason = "Resolve duplicate imported pack manifests before editing.";
+                return false;
+            }
+            GameContentPackDescriptor pack = packMatches[0];
+            if (pack.SourceState != GameContentPackSourceState.Available)
+            {
+                reason = "Fix the selected pack's missing-source or strict validation errors before editing.";
+                return false;
+            }
+            if (!pack.Access.CanEditExisting)
+            {
+                reason = string.IsNullOrWhiteSpace(pack.Access.DisabledReason)
+                    ? "This pack source is read-only."
+                    : pack.Access.DisabledReason;
+                return false;
+            }
+            if (!_manifests.TryGetValue(request.RecordKey.PackId, out GameContentPackManifest manifest) ||
+                !_indexes.TryGetValue(request.RecordKey.PackId, out SurvivorsContentPackIndex index))
+            {
+                reason = "The selected pack's manifest or content index is unavailable.";
+                return false;
+            }
+            if (!string.Equals(manifest.StableKey, request.SelectedPackKey, StringComparison.OrdinalIgnoreCase))
+            {
+                reason = "The canonical record does not belong to the selected pack context.";
+                return false;
+            }
+            GameContentRecordDescriptor record = index.Records.FirstOrDefault(candidate =>
+                candidate.CanonicalKey.Equals(request.RecordKey));
+            if (record == null)
+            {
+                reason = "Select a record owned by the current Basic Survivors or Neon Arcana index.";
+                return false;
+            }
+            return SurvivorsEditableSource.TryCreate(manifest, record, true, out source, out reason);
+        }
+
+        private void RefreshAfterEdit()
+        {
+            RefreshPacks();
+            _browserState.Refresh(this);
+        }
+
+        private static GameContentPackAccessDescriptor BuildAccess(
+            GameContentPackManifest manifest,
+            GameContentPackSourceKind sourceKind,
+            GameContentPackSourceState state)
+        {
+            if (state == GameContentPackSourceState.Available &&
+                SurvivorsEditableSource.CanAdvertiseEditing(manifest, sourceKind, out string reason))
+            {
+                return new GameContentPackAccessDescriptor(
+                    GameContentPackBackendCapability.Read |
+                    GameContentPackBackendCapability.Validate |
+                    GameContentPackBackendCapability.RevealSource |
+                    GameContentPackBackendCapability.EditExisting,
+                    "Project-owned imported JSON with lossless scalar editing");
+            }
+
+            SurvivorsEditableSource.CanAdvertiseEditing(manifest, sourceKind, out string disabledReason);
+            return new GameContentPackAccessDescriptor(
+                GameContentPackBackendCapability.Read |
+                GameContentPackBackendCapability.Validate |
+                GameContentPackBackendCapability.RevealSource,
+                "Read-only JSON source",
+                string.IsNullOrWhiteSpace(disabledReason)
+                    ? "Fix pack availability and import a project-owned sample before editing."
+                    : disabledReason);
         }
 
         public static GameContentPackDescriptor CreateSampleNotImportedDescriptor()

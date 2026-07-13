@@ -54,10 +54,32 @@ When the sample is not imported, the provider still registers and shows `Survivo
 
 Multiple imported manifests with the same `(owningPackageId, packId)` are blocking conflicts. Every conflicting source location remains inspectable; no copy is selected silently.
 
-## Read-Only Scope
+## Existing-Record Editing
 
-The pack backend reports read, validate, and reveal-source capabilities. Edit, create, duplicate, delete, and clone are false, so no lens can show a misleading enabled creation path for Basic or Neon. All Packs is also read-only. Existing standalone ScriptableObject authoring remains separate under the synthetic writable Project Content pack.
+Basic Survivors and Neon Arcana enable `Edit Existing` only for project-owned imported copies under `Assets/Samples`. Package `Samples~`, `Packages`, `PackageCache`, `Library`, `Temp`, paths outside `Assets`, path traversal, reparse-point escapes, missing files, and read-only files are rejected. All Packs, Project Content, conflicted manifests, invalid packs, unsupported records, and platforms/filesystems without verified atomic replacement remain read-only with an actionable reason.
 
-This milestone supports discovery, browsing, search, filtering, sorting, metadata, references, validation, reveal, and launch actions. JSON editing, write-back, source hashes, atomic replacement, backups, Undo, record CRUD, pack cloning, sample freshness/sync, typed visual asset assignment, and gameplay changes are deferred.
+The first edit session in an editor session warns that this is an imported copy. A future package sample update or reimport may replace or conflict with local edits; Package Installer owns sample refresh and synchronization. Game Content Authoring does not synchronize samples.
+
+Supported direct properties are determined from each actual record object:
+
+| Record | Editable direct scalar fields | Visible read-only fields |
+|---|---|---|
+| Weapon | `displayName`, `cooldownSeconds`, `damage`, and direct `range`, `radius`, or `projectileRadius` where present | `id`, `fireMode`, direct `projectileId` where present |
+| Projectile | `speed`, `lifetimeSeconds` | `id` |
+| Enemy | `displayName`, `health`, `contactDamage`, `contactIntervalSeconds`, `moveSpeed`, `radius`, `experienceDrop` | `id`, `role` |
+
+Upgrades, passives, mutations, evolutions, relics, classes, run flow, rewards, progression, pickups, themes, audio, tutorial, lists, references, asset fields, stable IDs, create, duplicate, delete, bulk edits, multi-file transactions, cross-pack copy/move, and pack cloning remain deferred.
+
+## Lossless Save And Recovery
+
+The template owns an editor-only strict UTF-8 tokenizer and ID-based record locator. It preserves BOM state, property/record order, unknown fields, whitespace, mixed line endings, and every unrelated scalar token. It does not use `JsonUtility` or another DTO serializer for full-file write-back. One source session targets one canonical record; another record in the same physical JSON file reports a source-lock conflict, while the same canonical record reached through another lens attaches to the existing session.
+
+Apply, Undo, Redo, and Preview are in-memory. Preview rejects stale bytes/path/GUID/manifest-source-list revisions and validates the proposed complete pack by substituting the proposed source text into the existing strict Survivors validator without writing it. Errors block save and warnings require explicit confirmation. Cancel before commit restores nothing because it changes exactly zero source bytes.
+
+Commit writes a flushed temporary file beside the destination and uses platform `File.Replace`; it never deletes the destination first. Exact original bytes and transaction metadata are prepared under `Library/Deucarian/GameContentAuthoring/Recovery/Survivors` before replacement. The backend then synchronously reimports, verifies the exact new hash and edited tokens, reruns strict pack validation, and reindexes the selected pack. Basic and Neon use different GUIDs, paths, lock keys, and pack-scoped record keys even where logical record IDs match.
+
+Rollback after a successful commit first requires the current source to match the committed revision, then atomically restores and verifies the exact previous bytes. It refuses to overwrite a later external edit. Up to five resolved backups per physical source are retained; unresolved recovery records are retained for explicit review. In-session Undo/Redo does not promise cross-session Unity Undo.
+
+Existing standalone ScriptableObject authoring remains separate under the synthetic Project Content pack. JSON remains the only gameplay source of truth and no ScriptableObject mirror is created.
 
 This follows the Template Contract: "Extract only reusable infrastructure, never the playable vertical slice."
