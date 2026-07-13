@@ -44,7 +44,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public static SurvivorsContentPackProvider Instance => SharedInstance;
         public string ProviderId => StableProviderId;
         public string DisplayName => "Content Packs";
-        public string Description => "Browse, validate, and safely edit approved scalar fields in imported Basic Survivors and Neon Arcana JSON packs.";
+        public string Description => "Browse, validate, and safely edit approved fields in imported Basic Survivors and Neon Arcana JSON packs.";
         public int SortOrder => 90;
         public bool Enabled => true;
         public bool VisibleInNavigation => false;
@@ -304,7 +304,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     GameContentPackBackendCapability.Validate |
                     GameContentPackBackendCapability.RevealSource |
                     GameContentPackBackendCapability.EditExisting,
-                    "Project-owned imported JSON with lossless scalar editing");
+                    "Project-owned imported JSON with lossless field editing");
             }
 
             SurvivorsEditableSource.CanAdvertiseEditing(manifest, sourceKind, out string disabledReason);

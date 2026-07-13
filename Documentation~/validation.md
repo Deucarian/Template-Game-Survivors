@@ -279,3 +279,19 @@ Latest local validation for Milestone 2B on `2026-07-13`:
 - Runtime mutation proof: Basic and Neon each committed an enemy-health scalar through the provider/session API, launched the matching strict-authored scene, observed the committed authored profile at runtime without fallback, and restored the exact original bytes and hash.
 - Source preservation: all `22` tracked sample content JSON files matched their `HEAD` blob hashes after validation; the imported Basic and Neon enemy JSON copies matched the package SHA-256 values after runtime proof cleanup.
 - One initial full EditMode attempt encountered transient Windows file contention during a Neon atomic-replacement test (`133` passed, `1` failed). The destination remained recoverable and exact, the focused transaction rerun passed `15/15`, and the clean full rerun passed `134/134`.
+
+Milestone 2D1 extends the same transaction backend with one canonical reference field:
+
+- Evolution records expose only required `requiredPassiveUpgradeId` plus read-only `id`; no other upgrade or reference field is writable.
+- The shared selector supplies canonical same-pack candidates with Upgrade and Passive capabilities. Survivors authoritatively rejects cross-pack, crafted, missing, invalid, non-Passive, and stale targets before converting the approved key to its existing JSON ID.
+- Preview and Commit run complete selected-pack validation. Runtime validation independently requires every authored passive prerequisite to resolve to a Passive record.
+- Mutation coverage compares the committed file to an exact one-token lossless patch for Basic and Neon, verifies strict runtime evolution metadata consumes the new prerequisite without fallback, and restores the original bytes.
+
+Latest local validation for Milestone 2D1 on `2026-07-13`:
+
+- Focused editing/reference/transaction suite: `21` passed, `0` failed.
+- Complete Survivors EditMode suite: `140` passed, `0` failed, including strict Basic and Neon content validation.
+- Complete Survivors PlayMode suite: `154` passed, `0` failed.
+- Dedicated imported-scene smokes: Basic Standard, Basic Sprint, Neon Standard, and Neon Sprint each passed `1`, failed `0`.
+- Shared package validator and `git diff --check`: passed.
+- Package metadata, dependency versions, asmdefs, authored sample content, content-pack manifests, and scenes: no diff.

@@ -7,9 +7,10 @@ using UnityEditor;
 
 namespace Deucarian.TemplateGameSurvivors.Editor
 {
-    internal sealed class SurvivorsContentEditSession : IGameContentEditSession
+    internal sealed class SurvivorsContentEditSession : IGameContentEditSession, IGameContentRecordReferenceEditSession
     {
         private readonly SurvivorsEditableSource _source;
+        private readonly SurvivorsContentPackIndex _referenceIndex;
         private readonly byte[] _originalBytes;
         private readonly List<Dictionary<string, GameContentFieldValue>> _history =
             new List<Dictionary<string, GameContentFieldValue>>();
@@ -27,6 +28,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             SurvivorsEditTransactionHooks hooks = null)
         {
             _source = source ?? throw new ArgumentNullException(nameof(source));
+            _referenceIndex = SurvivorsContentPackIndex.Build(source.Manifest);
             _originalBytes = (byte[])source.ExactBytes.Clone();
             _refreshProvider = refreshProvider;
             _hooks = hooks;
@@ -74,6 +76,15 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 string.Equals(candidate.FieldId, fieldId, StringComparison.Ordinal));
             if (field == null) return GameContentEditOperationResult.Failure("Field '" + fieldId + "' is not exposed by this record.");
             if (!field.Accepts(value, out string reason)) return GameContentEditOperationResult.Failure(reason);
+            if (field.FieldType == GameContentFieldType.RecordReference)
+            {
+                GameContentStaleCheckResult stale = CheckStale();
+                if (stale.IsStale) return GameContentEditOperationResult.Failure(stale.Message);
+                GameContentReferenceEvaluation evaluation = EvaluateReferenceTargetCore(
+                    field.FieldId,
+                    value.RecordReferenceValue.TargetKey);
+                if (!evaluation.IsValid) return GameContentEditOperationResult.Failure(evaluation.Reason);
+            }
             if (Current[field.FieldId].Equals(value)) return GameContentEditOperationResult.Success("The proposed value is unchanged.");
 
             if (_historyIndex < _history.Count - 1)
@@ -91,15 +102,20 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             if (!CanUndo) return GameContentEditOperationResult.Failure("There is no staged change to undo.");
             _historyIndex--;
             RefreshDirtyState();
-            return GameContentEditOperationResult.Success("Undid the latest staged scalar change.");
+            return GameContentEditOperationResult.Success("Undid the latest staged field change.");
         }
 
         public GameContentEditOperationResult Redo()
         {
             if (!CanRedo) return GameContentEditOperationResult.Failure("There is no staged change to redo.");
+            Dictionary<string, GameContentFieldValue> next = _history[_historyIndex + 1];
+            GameContentStaleCheckResult stale = CheckStale();
+            if (stale.IsStale) return GameContentEditOperationResult.Failure(stale.Message);
+            if (!TryValidateReferenceValues(next, out string referenceError))
+                return GameContentEditOperationResult.Failure(referenceError);
             _historyIndex++;
             RefreshDirtyState();
-            return GameContentEditOperationResult.Success("Restored the latest staged scalar change.");
+            return GameContentEditOperationResult.Success("Restored the latest staged field change.");
         }
 
         public GameContentValidationPreview Preview()
@@ -115,6 +131,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 if (!field.Accepts(Current[field.FieldId], out string reason))
                     issues.Add(GameContentAuthoringValidationIssue.Error(field.DisplayName, reason));
             }
+            if (!TryValidateReferenceValues(Current, out string referenceError))
+                issues.Add(GameContentAuthoringValidationIssue.Error("Reference", referenceError));
             if (issues.Any(issue => issue.Severity == GameContentAuthoringValidationSeverity.Error))
                 return new GameContentValidationPreview(issues, false);
 
@@ -162,6 +180,15 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
             if (State == GameContentEditSessionState.Stale) RefreshDirtyState();
             return GameContentStaleCheckResult.Current(current.Revision);
+        }
+
+        public GameContentReferenceEvaluation EvaluateReferenceTarget(
+            string fieldId,
+            GameContentRecordKey targetKey)
+        {
+            if (_disposed)
+                return GameContentReferenceEvaluation.Rejected(targetKey, "The edit session is disposed.");
+            return EvaluateReferenceTargetCore(fieldId, targetKey);
         }
 
         public GameContentCommitResult Commit(bool confirmWarnings)
@@ -221,7 +248,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             State = GameContentEditSessionState.Committed;
             return new GameContentCommitResult(
                 true,
-                "Committed the selected scalar tokens and reindexed " + _source.Manifest.DisplayName + ".",
+                "Committed the selected JSON tokens and reindexed " + _source.Manifest.DisplayName + ".",
                 OriginalRevision,
                 _committedRevision,
                 true,
@@ -450,7 +477,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 if (!current.Definition.Values.TryGetValue(expected.Key, out GameContentFieldValue actual) ||
                     !actual.Equals(expected.Value))
                 {
-                    error = "Edited scalar token verification failed for field '" + expected.Key + "'.";
+                    error = "Edited JSON token verification failed for field '" + expected.Key + "'.";
                     return false;
                 }
             }
@@ -483,10 +510,32 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
         private bool TryBuildProposed(out string proposedText, out byte[] proposedBytes, out string error)
         {
-            var changedValues = BuildChanges().ToDictionary(
-                change => change.FieldId,
-                change => change.ProposedValue,
-                StringComparer.Ordinal);
+            var changedValues = new Dictionary<string, GameContentFieldValue>(StringComparer.Ordinal);
+            foreach (GameContentProposedChange change in BuildChanges())
+            {
+                GameContentFieldDescriptor field = Fields.First(candidate =>
+                    string.Equals(candidate.FieldId, change.FieldId, StringComparison.Ordinal));
+                if (field.FieldType != GameContentFieldType.RecordReference)
+                {
+                    changedValues.Add(change.FieldId, change.ProposedValue);
+                    continue;
+                }
+
+                GameContentRecordReferenceValue reference = change.ProposedValue.RecordReferenceValue;
+                GameContentReferenceEvaluation evaluation = EvaluateReferenceTargetCore(
+                    field.FieldId,
+                    reference?.TargetKey);
+                if (!evaluation.IsValid)
+                {
+                    proposedText = null;
+                    proposedBytes = null;
+                    error = evaluation.Reason;
+                    return false;
+                }
+                changedValues.Add(
+                    change.FieldId,
+                    GameContentFieldValue.FromString(evaluation.ResolvedTargetKey.SourceRecordId));
+            }
             return SurvivorsLosslessJsonPatcher.TryPatch(
                 _source.Document,
                 _source.Definition.Tokens,
@@ -494,6 +543,105 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 out proposedText,
                 out proposedBytes,
                 out error);
+        }
+
+        private bool TryValidateReferenceValues(
+            IReadOnlyDictionary<string, GameContentFieldValue> values,
+            out string error)
+        {
+            foreach (GameContentFieldDescriptor field in Fields.Where(candidate =>
+                         !candidate.IsReadOnly && candidate.FieldType == GameContentFieldType.RecordReference))
+            {
+                if (!values.TryGetValue(field.FieldId, out GameContentFieldValue value))
+                {
+                    error = "The staged reference value is missing.";
+                    return false;
+                }
+                if (!field.Accepts(value, out error))
+                    return false;
+                GameContentReferenceEvaluation evaluation = EvaluateReferenceTargetCore(
+                    field.FieldId,
+                    value.RecordReferenceValue.TargetKey);
+                if (!evaluation.IsValid)
+                {
+                    error = evaluation.Reason;
+                    return false;
+                }
+            }
+
+            error = string.Empty;
+            return true;
+        }
+
+        private GameContentReferenceEvaluation EvaluateReferenceTargetCore(
+            string fieldId,
+            GameContentRecordKey targetKey)
+        {
+            GameContentFieldDescriptor field = Fields.FirstOrDefault(candidate =>
+                string.Equals(candidate.FieldId, fieldId, StringComparison.Ordinal));
+            if (field == null || field.FieldType != GameContentFieldType.RecordReference || field.RecordReference == null)
+                return GameContentReferenceEvaluation.Rejected(targetKey, "The field is not an editable Survivors record reference.");
+            if (_source.Definition.RecordKind != SurvivorsEditableRecordKind.Evolution)
+                return GameContentReferenceEvaluation.Rejected(targetKey, "Only an evolution Passive prerequisite is editable.");
+            if (targetKey == null || !targetKey.IsValid)
+                return GameContentReferenceEvaluation.Rejected(targetKey, "A valid canonical Passive target is required.");
+
+            bool sameOwner = string.Equals(
+                targetKey.OwningPackageId,
+                RecordKey.OwningPackageId,
+                StringComparison.OrdinalIgnoreCase);
+            bool samePack = string.Equals(
+                targetKey.PackId,
+                RecordKey.PackId,
+                StringComparison.OrdinalIgnoreCase);
+            if (!sameOwner || !samePack)
+            {
+                return GameContentReferenceEvaluation.Rejected(
+                    targetKey,
+                    "The Passive target must belong to the currently selected Survivors pack.",
+                    samePackPolicySatisfied: false);
+            }
+            if (!string.Equals(targetKey.SourceId, SurvivorsContentPackIndex.UpgradesSourceId, StringComparison.OrdinalIgnoreCase))
+            {
+                return GameContentReferenceEvaluation.Rejected(
+                    targetKey,
+                    "The target is not claimed by this pack's authored upgrades source.",
+                    sourceClaimValid: false);
+            }
+
+            GameContentRecordDescriptor target = _referenceIndex.Records.FirstOrDefault(candidate =>
+                candidate?.CanonicalKey != null && candidate.CanonicalKey.Equals(targetKey));
+            if (target == null)
+            {
+                return GameContentReferenceEvaluation.Rejected(
+                    targetKey,
+                    "The Passive target is absent from the selected pack's authored index.",
+                    sourceClaimValid: false);
+            }
+
+            bool capabilitiesSatisfied = field.RecordReference.RequiredCapabilities.All(target.HasCapability);
+            if (!capabilitiesSatisfied)
+            {
+                return GameContentReferenceEvaluation.Rejected(
+                    targetKey,
+                    "The selected upgrade is not a Passive upgrade.",
+                    requiredCapabilitiesSatisfied: false);
+            }
+            if (target.Validation == null || !target.Validation.IsValid || target.HasBrokenReferences)
+            {
+                return GameContentReferenceEvaluation.Rejected(
+                    targetKey,
+                    "The selected Passive has blocking validation errors or broken references.",
+                    validationState: GameContentEditValidationState.Invalid);
+            }
+
+            GameContentEditValidationState validationState = target.Validation.WarningCount > 0
+                ? GameContentEditValidationState.Warning
+                : GameContentEditValidationState.Valid;
+            return GameContentReferenceEvaluation.Approved(
+                target.CanonicalKey,
+                GameContentReferenceRuntimeImpact.Refresh | GameContentReferenceRuntimeImpact.Rebind,
+                validationState);
         }
 
         private bool TryReadCurrentHash(out string hash, out string error)

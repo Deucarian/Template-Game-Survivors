@@ -1242,6 +1242,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             HashSet<string> knownClassIds = BuildKnownClassIds(classLibrary);
             var upgradeIds = new HashSet<string>(StringComparer.Ordinal);
+            var upgradeCategories = new Dictionary<string, SurvivorsRunUpgradeCategory>(StringComparer.Ordinal);
             for (int i = 0; i < library.upgrades.Length; i++)
             {
                 UpgradeRecordJson upgrade = library.upgrades[i];
@@ -1254,6 +1255,11 @@ namespace Deucarian.TemplateGameSurvivors
                 if (!upgradeIds.Add(upgrade.id))
                 {
                     result.AddError($"Duplicate upgrade id: {upgrade.id}");
+                }
+                else if (Enum.TryParse(upgrade.category, ignoreCase: true, out SurvivorsRunUpgradeCategory category) &&
+                         Enum.IsDefined(typeof(SurvivorsRunUpgradeCategory), category))
+                {
+                    upgradeCategories.Add(upgrade.id, category);
                 }
 
                 bool hasInlineEffect = !string.IsNullOrWhiteSpace(upgrade.effect) && !string.IsNullOrWhiteSpace(upgrade.target);
@@ -1286,7 +1292,7 @@ namespace Deucarian.TemplateGameSurvivors
                 UpgradeRecordJson upgrade = library.upgrades[i];
                 if (upgrade != null && !string.IsNullOrWhiteSpace(upgrade.id))
                 {
-                    ValidateUpgradeRecordMetadata(upgrade, upgradeIds, result);
+                    ValidateUpgradeRecordMetadata(upgrade, upgradeIds, upgradeCategories, result);
                 }
             }
 
@@ -1297,6 +1303,7 @@ namespace Deucarian.TemplateGameSurvivors
         private static void ValidateUpgradeRecordMetadata(
             UpgradeRecordJson upgrade,
             HashSet<string> knownUpgradeIds,
+            IReadOnlyDictionary<string, SurvivorsRunUpgradeCategory> knownUpgradeCategories,
             SurvivorsContentValidationResult result)
         {
             RunUpgradeRarity parsedRarity = default;
@@ -1348,6 +1355,11 @@ namespace Deucarian.TemplateGameSurvivors
 
             ValidateOptionalUpgradeReference(upgrade.id, "required upgrade", upgrade.requiredUpgradeId, knownUpgradeIds, result);
             ValidateOptionalUpgradeReference(upgrade.id, "required passive upgrade", upgrade.requiredPassiveUpgradeId, knownUpgradeIds, result);
+            ValidatePassiveUpgradeReference(
+                upgrade.id,
+                upgrade.requiredPassiveUpgradeId,
+                knownUpgradeCategories,
+                result);
             if (upgrade.requiredUpgradeRank < 0)
             {
                 result.AddError($"Upgrade {upgrade.id} cannot require a negative upgrade rank.");
@@ -1430,6 +1442,28 @@ namespace Deucarian.TemplateGameSurvivors
             if (knownUpgradeIds == null || !knownUpgradeIds.Contains(referencedUpgradeId))
             {
                 result.AddError($"Upgrade {upgradeId} references unknown {label}: {referencedUpgradeId}");
+            }
+        }
+
+        private static void ValidatePassiveUpgradeReference(
+            string upgradeId,
+            string referencedUpgradeId,
+            IReadOnlyDictionary<string, SurvivorsRunUpgradeCategory> knownUpgradeCategories,
+            SurvivorsContentValidationResult result)
+        {
+            if (string.IsNullOrWhiteSpace(referencedUpgradeId) ||
+                knownUpgradeCategories == null ||
+                !knownUpgradeCategories.TryGetValue(referencedUpgradeId, out SurvivorsRunUpgradeCategory category))
+                return;
+            if (string.Equals(upgradeId, referencedUpgradeId, StringComparison.Ordinal))
+            {
+                result.AddError($"Upgrade {upgradeId} cannot use itself as its required passive upgrade.");
+                return;
+            }
+            if (category != SurvivorsRunUpgradeCategory.Passive)
+            {
+                result.AddError(
+                    $"Upgrade {upgradeId} required passive upgrade {referencedUpgradeId} must reference a Passive upgrade record.");
             }
         }
 

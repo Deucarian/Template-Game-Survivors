@@ -15,21 +15,27 @@ namespace Deucarian.TemplateGameSurvivors.Editor
     {
         Weapon,
         Projectile,
-        Enemy
+        Enemy,
+        Evolution
     }
 
     internal sealed class SurvivorsContentEditDefinition
     {
         private sealed class FieldSpec
         {
-            public FieldSpec(GameContentFieldDescriptor descriptor, bool propertyRequired)
+            public FieldSpec(
+                GameContentFieldDescriptor descriptor,
+                bool propertyRequired,
+                GameContentFieldType? storageFieldType = null)
             {
                 Descriptor = descriptor;
                 PropertyRequired = propertyRequired;
+                StorageFieldType = storageFieldType ?? descriptor.FieldType;
             }
 
             public GameContentFieldDescriptor Descriptor { get; }
             public bool PropertyRequired { get; }
+            public GameContentFieldType StorageFieldType { get; }
         }
 
         private SurvivorsContentEditDefinition(
@@ -75,7 +81,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         document,
                         recordNode,
                         field.FieldId,
-                        field.FieldType,
+                        spec.StorageFieldType,
                         spec.PropertyRequired,
                         out SurvivorsJsonScalarToken token,
                         out error))
@@ -83,7 +89,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 if (token == null) continue;
                 fields.Add(field);
                 tokens.Add(field.FieldId, token);
-                values.Add(field.FieldId, token.Value);
+                values.Add(
+                    field.FieldId,
+                    field.FieldType == GameContentFieldType.RecordReference
+                        ? ResolveEvolutionPassiveReference(record, document, token.Value.StringValue)
+                        : token.Value);
             }
 
             if (fields.All(field => field.IsReadOnly))
@@ -131,9 +141,15 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 collection = "enemies";
                 kind = SurvivorsEditableRecordKind.Enemy;
             }
+            else if (string.Equals(sourceId, SurvivorsContentPackIndex.UpgradesSourceId, StringComparison.OrdinalIgnoreCase) &&
+                     string.Equals(record.CategoryId, "evolutions", StringComparison.OrdinalIgnoreCase))
+            {
+                collection = "upgrades";
+                kind = SurvivorsEditableRecordKind.Evolution;
+            }
             else
             {
-                error = "Only existing weapon, projectile, and enemy records are editable in this milestone.";
+                error = "Only existing weapon, projectile, enemy, and evolution prerequisite records are editable in this milestone.";
                 return false;
             }
 
@@ -169,7 +185,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         PositiveNumber("speed", "survivors.projectile.speed", "Speed", "Authored projectile travel speed.", 10, "Motion", true),
                         PositiveNumber("lifetimeSeconds", "survivors.projectile.lifetime", "Lifetime", "Authored projectile lifetime in seconds.", 20, "Motion", true)
                     };
-                default:
+                case SurvivorsEditableRecordKind.Enemy:
                     return new[]
                     {
                         ReadOnly("id", "survivors.identity.id", "Stable ID", "Stable enemy identity used by authored waves and rewards.", 0, "Identity", true),
@@ -182,7 +198,85 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         PositiveNumber("radius", "survivors.enemy.radius", "Radius", "Authored enemy collision radius.", 60, "Movement", true),
                         PositiveInteger("experienceDrop", "survivors.enemy.experience-drop", "Experience Drop", "XP awarded when this enemy dies.", 70, "Reward", true)
                     };
+                case SurvivorsEditableRecordKind.Evolution:
+                    return new[]
+                    {
+                        ReadOnly("id", "survivors.identity.id", "Stable ID", "Stable evolution identity used by authored progression and runtime metadata.", 0, "Identity", true),
+                        RecordReference(
+                            "requiredPassiveUpgradeId",
+                            "survivors.evolution.required-passive",
+                            "Required Passive",
+                            "Same-pack Passive upgrade required before this evolution can be drafted.",
+                            10,
+                            "Prerequisites",
+                            true)
+                    };
+                default:
+                    return Array.Empty<FieldSpec>();
             }
+        }
+
+        private static GameContentFieldValue ResolveEvolutionPassiveReference(
+            GameContentRecordDescriptor sourceRecord,
+            SurvivorsLosslessJsonDocument document,
+            string targetId)
+        {
+            string originalReference = string.IsNullOrWhiteSpace(targetId) ? "<empty JSON reference>" : targetId;
+            GameContentRecordKey targetKey = string.IsNullOrWhiteSpace(targetId)
+                ? null
+                : new GameContentRecordKey(
+                    sourceRecord.CanonicalKey.OwningPackageId,
+                    sourceRecord.CanonicalKey.PackId,
+                    targetId,
+                    SurvivorsContentPackIndex.UpgradesSourceId);
+            var locator = new SurvivorsJsonRecordLocator(
+                SurvivorsContentPackIndex.UpgradesSourceId,
+                "upgrades",
+                targetId,
+                "Passive");
+            if (!SurvivorsJsonRecordNavigator.TryLocateRecord(document, locator, out SurvivorsJsonNode target, out string locateError))
+            {
+                return GameContentFieldValue.FromRecordReference(
+                    GameContentRecordReferenceValue.Broken(originalReference, locateError, targetKey));
+            }
+
+            if (!SurvivorsJsonRecordNavigator.TryReadDirectScalar(
+                    document,
+                    target,
+                    "category",
+                    GameContentFieldType.String,
+                    true,
+                    out SurvivorsJsonScalarToken category,
+                    out string categoryError))
+            {
+                return GameContentFieldValue.FromRecordReference(
+                    GameContentRecordReferenceValue.Broken(originalReference, categoryError, targetKey));
+            }
+            if (!string.Equals(category.Value.StringValue, "Passive", StringComparison.OrdinalIgnoreCase))
+            {
+                return GameContentFieldValue.FromRecordReference(
+                    GameContentRecordReferenceValue.Broken(
+                        originalReference,
+                        "The authored target exists but is not a Passive upgrade.",
+                        targetKey));
+            }
+
+            string displayName = targetId;
+            if (SurvivorsJsonRecordNavigator.TryReadDirectScalar(
+                    document,
+                    target,
+                    "displayName",
+                    GameContentFieldType.String,
+                    false,
+                    out SurvivorsJsonScalarToken displayNameToken,
+                    out _) &&
+                displayNameToken != null)
+                displayName = displayNameToken.Value.StringValue;
+            return GameContentFieldValue.FromRecordReference(
+                GameContentRecordReferenceValue.Resolved(
+                    targetKey,
+                    displayName,
+                    SurvivorsContentPackIndex.UpgradesSourceId));
         }
 
         private static FieldSpec ReadOnly(
@@ -231,6 +325,39 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     minimumLength: 1,
                     maximumLength: 128),
                 propertyRequired);
+        }
+
+        private static FieldSpec RecordReference(
+            string fieldId,
+            string semanticId,
+            string displayName,
+            string description,
+            int order,
+            string group,
+            bool propertyRequired)
+        {
+            return new FieldSpec(
+                new GameContentFieldDescriptor(
+                    fieldId,
+                    semanticId,
+                    displayName,
+                    description,
+                    GameContentFieldType.RecordReference,
+                    order: order,
+                    group: group,
+                    required: true,
+                    recordReference: new GameContentRecordReferenceFieldDescriptor(
+                        "Passive Upgrade",
+                        new[]
+                        {
+                            GameContentRecordCapabilities.Upgrade,
+                            GameContentRecordCapabilities.Passive
+                        },
+                        GameContentReferencePackPolicy.SameSelectedPack,
+                        GameContentReferenceRuntimeImpact.Refresh | GameContentReferenceRuntimeImpact.Rebind,
+                        allowClear: false)),
+                propertyRequired,
+                GameContentFieldType.String);
         }
 
         private static FieldSpec PositiveNumber(
@@ -591,7 +718,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             error = string.Empty;
             if (!IsSupportedPack(manifest))
             {
-                error = "Only the imported Basic Survivors and Neon Arcana packs support scalar JSON editing.";
+                error = "Only the imported Basic Survivors and Neon Arcana packs support approved JSON field editing.";
                 return false;
             }
             if (record?.CanonicalKey == null ||
@@ -604,9 +731,10 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
             string sourceId = record.CanonicalKey.SourceId;
             if (!string.Equals(sourceId, SurvivorsContentPackIndex.WeaponsSourceId, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(sourceId, SurvivorsContentPackIndex.EnemiesSourceId, StringComparison.OrdinalIgnoreCase))
+                !string.Equals(sourceId, SurvivorsContentPackIndex.EnemiesSourceId, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(sourceId, SurvivorsContentPackIndex.UpgradesSourceId, StringComparison.OrdinalIgnoreCase))
             {
-                error = "Only the weapons and enemies JSON sources are editable in this milestone.";
+                error = "Only the weapons, enemies, and approved evolution prerequisite JSON sources are editable in this milestone.";
                 return false;
             }
             if (!manifest.TryGetSource(sourceId, out GameContentPackSourceReference sourceReference) || sourceReference?.TextAsset == null)
