@@ -143,6 +143,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
         public static GameContentAuthoringValidationResult ValidateSelectedSources(GameContentPackManifest manifest)
         {
+            return ValidateSelectedSources(manifest, null, null);
+        }
+
+        internal static GameContentAuthoringValidationResult ValidateSelectedSources(
+            GameContentPackManifest manifest,
+            string proposedSourceId,
+            string proposedSourceText)
+        {
             var issues = new List<GameContentAuthoringValidationIssue>();
             if (manifest == null)
             {
@@ -150,7 +158,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return new GameContentAuthoringValidationResult(issues);
             }
 
-            var sources = new Dictionary<string, TextAsset>(StringComparer.OrdinalIgnoreCase);
+            var sources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < RequiredSourceIdsInternal.Length; i++)
             {
                 string sourceId = RequiredSourceIdsInternal[i];
@@ -162,23 +170,40 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     continue;
                 }
 
-                sources[sourceId] = source.TextAsset;
+                sources[sourceId] = string.Equals(sourceId, proposedSourceId, StringComparison.OrdinalIgnoreCase)
+                    ? proposedSourceText
+                    : source.TextAsset.text;
             }
 
             if (issues.Count > 0) return new GameContentAuthoringValidationResult(issues);
+            if (!string.IsNullOrWhiteSpace(proposedSourceId) &&
+                !sources.ContainsKey(proposedSourceId))
+            {
+                issues.Add(GameContentAuthoringValidationIssue.Error(
+                    manifest.name + "." + proposedSourceId,
+                    "The proposed in-memory source does not belong to the selected manifest."));
+                return new GameContentAuthoringValidationResult(issues);
+            }
+            if (!string.IsNullOrWhiteSpace(proposedSourceId) && proposedSourceText == null)
+            {
+                issues.Add(GameContentAuthoringValidationIssue.Error(
+                    manifest.name + "." + proposedSourceId,
+                    "The proposed in-memory source text is missing."));
+                return new GameContentAuthoringValidationResult(issues);
+            }
 
             ContentValidationReport report = SurvivorsEditorContentValidation.ValidateJsonContent(
-                sources[WeaponsSourceId].text,
-                sources[UpgradesSourceId].text,
-                sources[EnemiesSourceId].text,
-                sources[RewardsSourceId].text,
-                sources[RelicsSourceId].text,
-                sources[ClassesSourceId].text,
-                sources[ProgressionSourceId].text,
-                sources[PickupsSourceId].text,
-                sources[RunFlowSourceId].text,
-                sources[PrimaryThemeSourceId].text,
-                sources[AlternateThemeSourceId].text);
+                sources[WeaponsSourceId],
+                sources[UpgradesSourceId],
+                sources[EnemiesSourceId],
+                sources[RewardsSourceId],
+                sources[RelicsSourceId],
+                sources[ClassesSourceId],
+                sources[ProgressionSourceId],
+                sources[PickupsSourceId],
+                sources[RunFlowSourceId],
+                sources[PrimaryThemeSourceId],
+                sources[AlternateThemeSourceId]);
             return GameContentAuthoringValidationReports.ToAuthoringResult(report);
         }
 

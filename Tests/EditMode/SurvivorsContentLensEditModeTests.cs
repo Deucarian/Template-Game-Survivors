@@ -163,14 +163,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
-        public void PackBackends_AreReadOnlyAndBasicNeverResolvesAgainstNeon()
+        public void PackBackends_EditExistingOnlyAndBasicNeverResolvesAgainstNeon()
         {
             SurvivorsContentPackProvider provider = SurvivorsContentPackProvider.Instance;
             IReadOnlyList<GameContentPackDescriptor> packs = provider.GetContentPacks();
             Assert.That(packs, Has.Count.EqualTo(2));
             Assert.That(packs.All(pack => pack.Access.CanRead), Is.True);
             Assert.That(packs.All(pack => pack.Access.CanValidate), Is.True);
-            Assert.That(packs.All(pack => !pack.Access.CanCreate && !pack.Access.CanEditExisting && !pack.Access.CanDelete), Is.True);
+            Assert.That(packs.All(pack => pack.Access.CanEditExisting), Is.True);
+            Assert.That(packs.All(pack => !pack.Access.CanCreate && !pack.Access.CanDuplicate && !pack.Access.CanDelete && !pack.Access.CanClonePack), Is.True);
 
             GameContentPackCatalog catalog = GameContentPackCatalog.Build(new[] { provider });
             GameContentPackDescriptor basicPack = packs.Single(pack => pack.PackId == "basic-survivors");

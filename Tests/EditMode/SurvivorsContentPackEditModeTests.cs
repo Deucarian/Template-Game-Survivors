@@ -52,6 +52,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(matches, Has.Length.EqualTo(1));
             Assert.That(matches[0], Is.SameAs(SurvivorsContentPackProvider.Instance));
             Assert.That(matches[0], Is.InstanceOf<IGameContentPackProvider>());
+            Assert.That(matches[0], Is.InstanceOf<IGameContentPackEditProvider>());
             Assert.That(matches[0], Is.InstanceOf<IGameContentAuthoringSurfaceProvider>());
         }
 

@@ -24,7 +24,7 @@ Each authored weapon appears as one record in both Attacks and Weapon / Tower; e
 
 Pack Dashboard actions open the selected scene, start its actual strict 30-minute Standard / Human Playtest profile, start its actual strict 5-minute Sprint profile, validate selected `TextAsset` references, reveal the manifest, or open Package Installer. If the sample is missing, the pack reports a missing source and directs installation to Package Installer; Game Content Authoring does not copy or synchronize samples.
 
-JSON remains the only gameplay source of truth. The lenses do not create ScriptableObject copies and do not edit, rewrite, create, duplicate, delete, or clone JSON records. See `Documentation~/game-content-authoring.md` for mappings, ownership, and deferred safe editing.
+JSON remains the only gameplay source of truth. For project-owned imported copies under `Assets/Samples`, the shared edit workbench can safely patch an approved set of existing direct scalar fields on weapon, projectile, and enemy records. Stable IDs, references, archetypes/roles, arrays, every other category, record creation/duplication/deletion, and pack cloning remain read-only. The backend replaces only selected scalar tokens, validates the complete strict pack before save, refuses stale sources, writes atomically, and retains exact recovery bytes under `Library/Deucarian/GameContentAuthoring/Recovery/Survivors`. It never creates a ScriptableObject mirror or round-trips a full JSON DTO. See `Documentation~/game-content-authoring.md` for the exact fields, imported-copy warning, cancellation, rollback, and recovery behavior.
 
 ## When To Use This
 
