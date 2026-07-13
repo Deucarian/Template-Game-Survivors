@@ -62,21 +62,24 @@ The first edit session in an editor session warns that this is an imported copy.
 
 Supported direct properties are determined from each actual record object:
 
-| Record | Editable direct scalar fields | Visible read-only fields |
+| Record | Editable direct fields | Visible read-only fields |
 |---|---|---|
 | Weapon | `displayName`, `cooldownSeconds`, `damage`, and direct `range`, `radius`, or `projectileRadius` where present | `id`, `fireMode`, direct `projectileId` where present |
 | Projectile | `speed`, `lifetimeSeconds` | `id` |
 | Enemy | `displayName`, `health`, `contactDamage`, `contactIntervalSeconds`, `moveSpeed`, `radius`, `experienceDrop` | `id`, `role` |
+| Evolution | required `requiredPassiveUpgradeId` canonical record reference | `id` |
 
-Upgrades, passives, mutations, evolutions, relics, classes, run flow, rewards, progression, pickups, themes, audio, tutorial, lists, references, asset fields, stable IDs, create, duplicate, delete, bulk edits, multi-file transactions, cross-pack copy/move, and pack cloning remain deferred.
+The evolution prerequisite selector is supplied by the shared Game Content Authoring workbench. It derives candidates from the current selected pack, requires both Upgrade and Passive capabilities, and asks the Survivors session to approve the canonical target. Basic cannot select Neon, Neon cannot select Basic, the required field cannot be cleared, and no raw ID text box is exposed. The provider converts the approved canonical key to the target's existing JSON record ID only when building the proposed transaction.
+
+Other upgrade fields, passives, mutations, non-prerequisite evolution fields, relics, classes, run flow, rewards, progression, pickups, themes, audio, tutorial, lists, all other references, asset fields, stable IDs, create, duplicate, delete, bulk edits, multi-file transactions, cross-pack copy/move, and pack cloning remain deferred.
 
 ## Lossless Save And Recovery
 
 The template owns an editor-only strict UTF-8 tokenizer and ID-based record locator. It preserves BOM state, property/record order, unknown fields, whitespace, mixed line endings, and every unrelated scalar token. It does not use `JsonUtility` or another DTO serializer for full-file write-back. One source session targets one canonical record; another record in the same physical JSON file reports a source-lock conflict, while the same canonical record reached through another lens attaches to the existing session.
 
-Apply, Undo, Redo, and Preview are in-memory. Preview rejects stale bytes/path/GUID/manifest-source-list revisions and validates the proposed complete pack by substituting the proposed source text into the existing strict Survivors validator without writing it. Errors block save and warnings require explicit confirmation. Cancel before commit restores nothing because it changes exactly zero source bytes.
+Apply, Undo, Redo, and Preview are in-memory. Reference targets are re-resolved against the selected pack and revalidated during Apply, Preview, and Commit. A missing target, changed source claim, cross-pack key, non-Passive upgrade, invalid target, or stale shared `upgrades.json` blocks the transaction without substituting a fallback. Preview rejects stale bytes/path/GUID/manifest-source-list revisions and validates the proposed complete pack by substituting the proposed source text into the existing strict Survivors validator without writing it. Runtime validation also requires `requiredPassiveUpgradeId` to resolve to a Passive record. Errors block save and warnings require explicit confirmation. Cancel before commit restores nothing because it changes exactly zero source bytes.
 
-Commit writes a flushed temporary file beside the destination and uses platform `File.Replace`; it never deletes the destination first. Exact original bytes and transaction metadata are prepared under `Library/Deucarian/GameContentAuthoring/Recovery/Survivors` before replacement. The backend then synchronously reimports, verifies the exact new hash and edited tokens, reruns strict pack validation, and reindexes the selected pack. Basic and Neon use different GUIDs, paths, lock keys, and pack-scoped record keys even where logical record IDs match.
+Commit writes a flushed temporary file beside the destination and uses platform `File.Replace`; it never deletes the destination first. Exact original bytes and transaction metadata are prepared under `Library/Deucarian/GameContentAuthoring/Recovery/Survivors` before replacement. The backend then synchronously reimports, verifies the exact new hash and edited tokens, reruns strict pack validation, and reindexes the selected pack. An evolution edit replaces only the selected prerequisite string token; target records remain read-only and no inbound references are rewritten. Basic and Neon use different GUIDs, paths, lock keys, and pack-scoped record keys even where logical record IDs match.
 
 Rollback after a successful commit first requires the current source to match the committed revision, then atomically restores and verifies the exact previous bytes. It refuses to overwrite a later external edit. Up to five resolved backups per physical source are retained; unresolved recovery records are retained for explicit review. In-session Undo/Redo does not promise cross-session Unity Undo.
 

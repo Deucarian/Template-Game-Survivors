@@ -68,13 +68,110 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 new[] { "id", "role" });
         }
 
+        [TestCase("basic-survivors")]
+        [TestCase("neon-arcana")]
+        public void Provider_ExposesOnlyEvolutionPassiveReferenceWithCanonicalConstraints(string packId)
+        {
+            Fixture fixture = Resolve(packId, "upgrade.survivors.evolution.arcane-storm");
+            using (IGameContentEditSession session = fixture.Provider.BeginEdit(fixture.Request))
+            {
+                Assert.That(session, Is.InstanceOf<IGameContentRecordReferenceEditSession>());
+                Assert.That(session.Fields.Where(field => !field.IsReadOnly).Select(field => field.FieldId),
+                    Is.EqualTo(new[] { "requiredPassiveUpgradeId" }));
+                Assert.That(session.Fields.Where(field => field.IsReadOnly).Select(field => field.FieldId),
+                    Is.EqualTo(new[] { "id" }));
+
+                GameContentFieldDescriptor field = session.Fields.Single(candidate => !candidate.IsReadOnly);
+                Assert.That(field.FieldType, Is.EqualTo(GameContentFieldType.RecordReference));
+                Assert.That(field.Required, Is.True);
+                Assert.That(field.RecordReference.AllowClear, Is.False);
+                Assert.That(field.RecordReference.PackPolicy, Is.EqualTo(GameContentReferencePackPolicy.SameSelectedPack));
+                Assert.That(field.RecordReference.RequiredCapabilities,
+                    Is.EqualTo(new[] { GameContentRecordCapabilities.Upgrade, GameContentRecordCapabilities.Passive }));
+                Assert.That(field.RecordReference.RuntimeImpact,
+                    Is.EqualTo(GameContentReferenceRuntimeImpact.Refresh | GameContentReferenceRuntimeImpact.Rebind));
+
+                GameContentRecordReferenceValue current = session.Snapshot
+                    .FieldValues["requiredPassiveUpgradeId"]
+                    .RecordReferenceValue;
+                Assert.That(current.IsResolved, Is.True);
+                Assert.That(current.TargetKey.SourceRecordId, Is.EqualTo("upgrade.survivors.arcane-thesis"));
+                Assert.That(current.TargetKey.PackId, Is.EqualTo(packId));
+                Assert.That(session.Rollback().Succeeded, Is.True);
+            }
+        }
+
+        [Test]
+        public void ReferenceCandidates_AreSamePackPassiveOnlyAndRejectCraftedTargetsAndNone()
+        {
+            Fixture fixture = Resolve("basic-survivors", "upgrade.survivors.evolution.arcane-storm");
+            Fixture neon = Resolve("neon-arcana", "upgrade.survivors.swift-steps");
+            var coordinator = new GameContentEditSessionCoordinator();
+            try
+            {
+                GameContentPackContext context = Context(fixture.Pack.StableKey);
+                GameContentRecordDescriptor record = context.ResolveRecord(fixture.Record.CanonicalKey);
+                GameContentEditBeginResult begin = coordinator.BeginEdit(context, record, "upgrade-lens");
+                Assert.That(begin.Succeeded, Is.True, begin.Message);
+
+                GameContentReferenceCandidateSet candidates = coordinator.GetReferenceCandidates(
+                    begin.Session,
+                    "requiredPassiveUpgradeId");
+                Assert.That(candidates.Candidates, Is.Not.Empty);
+                Assert.That(candidates.Candidates.All(candidate =>
+                    candidate.Record.CanonicalKey.PackId == "basic-survivors" &&
+                    candidate.Record.HasCapability(GameContentRecordCapabilities.Upgrade) &&
+                    candidate.Record.HasCapability(GameContentRecordCapabilities.Passive)), Is.True);
+                Assert.That(candidates.Candidates.Select(candidate => candidate.Record.SourceRecordId),
+                    Does.Contain("upgrade.survivors.swift-steps"));
+
+                GameContentRecordDescriptor nonPassive = fixture.Index.Records.Single(candidate =>
+                    candidate.SourceRecordId == "upgrade.survivors.arcane-damage");
+                GameContentReferenceEvaluation wrongCategory = coordinator.EvaluateReferenceTarget(
+                    begin.Session,
+                    "requiredPassiveUpgradeId",
+                    nonPassive.CanonicalKey);
+                GameContentReferenceEvaluation crossPack = coordinator.EvaluateReferenceTarget(
+                    begin.Session,
+                    "requiredPassiveUpgradeId",
+                    neon.Record.CanonicalKey);
+                var missingKey = new GameContentRecordKey(
+                    fixture.Record.CanonicalKey.OwningPackageId,
+                    fixture.Record.CanonicalKey.PackId,
+                    "upgrade.survivors.missing-passive",
+                    SurvivorsContentPackIndex.UpgradesSourceId);
+                GameContentReferenceEvaluation missing = coordinator.EvaluateReferenceTarget(
+                    begin.Session,
+                    "requiredPassiveUpgradeId",
+                    missingKey);
+                GameContentEditOperationResult none = coordinator.Apply(
+                    begin.Session,
+                    "requiredPassiveUpgradeId",
+                    GameContentFieldValue.FromRecordReference(GameContentRecordReferenceValue.None()));
+
+                Assert.That(wrongCategory.IsValid, Is.False);
+                Assert.That(wrongCategory.RequiredCapabilitiesSatisfied, Is.False);
+                Assert.That(crossPack.IsValid, Is.False);
+                Assert.That(crossPack.SamePackPolicySatisfied, Is.False);
+                Assert.That(missing.IsValid, Is.False);
+                Assert.That(missing.SourceClaimValid, Is.False);
+                Assert.That(none.Succeeded, Is.False);
+                Assert.That(begin.Session.State, Is.EqualTo(GameContentEditSessionState.Clean));
+                Assert.That(coordinator.Cancel(begin.Session).Succeeded, Is.True);
+            }
+            finally
+            {
+                coordinator.Dispose();
+            }
+        }
+
         [Test]
         public void Provider_DisablesAllPacksUnsupportedCategoriesAndArbitrarySources()
         {
             Fixture upgrade = Resolve("basic-survivors", "upgrade.survivors.arcane-damage");
             GameContentEditAvailability unsupported = upgrade.Provider.CanEdit(upgrade.Request);
             Assert.That(unsupported.IsEditable, Is.False);
-            Assert.That(unsupported.DisabledReason, Does.Contain("weapons and enemies").Or.Contain("weapon, projectile, and enemy"));
+            Assert.That(unsupported.DisabledReason, Does.Contain("evolution prerequisite"));
 
             var allPacksRequest = new GameContentEditRequest(
                 GameContentPackContext.AllPacksSelectionKey,
@@ -454,6 +551,155 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(basic.Source.SourceTarget.LockKey, Is.Not.EqualTo(neon.Source.SourceTarget.LockKey));
         }
 
+        [TestCase("basic-survivors", "neon-arcana")]
+        [TestCase("neon-arcana", "basic-survivors")]
+        public void Commit_EvolutionPassiveChangesOneStringTokenDrivesStrictRuntimeAndRollsBackExactly(
+            string editedPackId,
+            string otherPackId)
+        {
+            Fixture edited = Resolve(editedPackId, "upgrade.survivors.evolution.arcane-storm");
+            Fixture other = Resolve(otherPackId, "upgrade.survivors.evolution.arcane-storm");
+            GameContentRecordDescriptor target = edited.Index.Records.Single(candidate =>
+                candidate.SourceRecordId == "upgrade.survivors.swift-steps");
+            byte[] original = File.ReadAllBytes(edited.Source.SourcePath.FullPath);
+            byte[] otherOriginal = File.ReadAllBytes(other.Source.SourcePath.FullPath);
+            var storageChange = new Dictionary<string, GameContentFieldValue>(StringComparer.Ordinal)
+            {
+                ["requiredPassiveUpgradeId"] = GameContentFieldValue.FromString(target.SourceRecordId)
+            };
+            Assert.That(SurvivorsLosslessJsonPatcher.TryPatch(
+                edited.Source.Document,
+                edited.Source.Definition.Tokens,
+                storageChange,
+                out _,
+                out byte[] expectedBytes,
+                out string expectedError), Is.True, expectedError);
+
+            IGameContentEditSession session = edited.Provider.BeginEdit(edited.Request);
+            try
+            {
+                var reference = GameContentRecordReferenceValue.Resolved(
+                    target.CanonicalKey,
+                    target.DisplayName,
+                    SurvivorsContentPackIndex.UpgradesSourceId);
+                Assert.That(session.Apply(
+                    "requiredPassiveUpgradeId",
+                    GameContentFieldValue.FromRecordReference(reference)).Succeeded, Is.True);
+                Assert.That(session.Preview().CanCommit, Is.True);
+
+                GameContentCommitResult commit = session.Commit(true);
+                Assert.That(commit.Succeeded, Is.True, commit.Message);
+                Assert.That(commit.RequiresRefresh, Is.True);
+                Assert.That(commit.RequiresRebind, Is.True);
+                Assert.That(File.ReadAllBytes(edited.Source.SourcePath.FullPath), Is.EqualTo(expectedBytes));
+                Assert.That(File.ReadAllBytes(other.Source.SourcePath.FullPath), Is.EqualTo(otherOriginal));
+                Assert.That(SurvivorsContentPackIndex.ValidateSelectedSources(edited.Manifest).ErrorCount, Is.Zero);
+
+                Assert.That(TryBindStrict(edited.Manifest, out SurvivorsAuthoredContentDefinition authored, out string bindError),
+                    Is.True,
+                    bindError);
+                SurvivorsRunUpgradeMetadata evolution = authored.RunUpgradeMetadata.Single(candidate =>
+                    candidate.UpgradeId == edited.Record.SourceRecordId);
+                Assert.That(evolution.RequiredPassiveUpgradeId, Is.EqualTo(target.SourceRecordId));
+                Assert.That(authored.IsStrictSample, Is.True);
+                Assert.That(authored.UsesBuiltInFallbacks, Is.False);
+
+                GameContentRollbackResult rollback = session.Rollback();
+                Assert.That(rollback.Succeeded, Is.True, rollback.Message);
+                Assert.That(File.ReadAllBytes(edited.Source.SourcePath.FullPath), Is.EqualTo(original));
+                Assert.That(File.ReadAllBytes(other.Source.SourcePath.FullPath), Is.EqualTo(otherOriginal));
+            }
+            finally
+            {
+                session.Dispose();
+                RestoreExact(edited, original);
+                RestoreExact(other, otherOriginal);
+            }
+        }
+
+        [Test]
+        public void ProposedEvolutionReference_RejectsNonPassiveAndExternalTargetDisappearanceBlocksCommit()
+        {
+            Fixture fixture = Resolve("basic-survivors", "upgrade.survivors.evolution.arcane-storm");
+            GameContentRecordDescriptor validTarget = fixture.Index.Records.Single(candidate =>
+                candidate.SourceRecordId == "upgrade.survivors.swift-steps");
+            byte[] original = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
+            var nonPassiveChange = new Dictionary<string, GameContentFieldValue>(StringComparer.Ordinal)
+            {
+                ["requiredPassiveUpgradeId"] = GameContentFieldValue.FromString("upgrade.survivors.arcane-damage")
+            };
+            Assert.That(SurvivorsLosslessJsonPatcher.TryPatch(
+                fixture.Source.Document,
+                fixture.Source.Definition.Tokens,
+                nonPassiveChange,
+                out string invalidText,
+                out _,
+                out string patchError), Is.True, patchError);
+            GameContentAuthoringValidationResult invalid = SurvivorsContentPackIndex.ValidateSelectedSources(
+                fixture.Manifest,
+                SurvivorsContentPackIndex.UpgradesSourceId,
+                invalidText);
+            Assert.That(invalid.ErrorCount, Is.GreaterThan(0));
+            Assert.That(invalid.Issues.Any(issue => issue.Message.Contains("must reference a Passive upgrade record")), Is.True);
+
+            IGameContentEditSession session = fixture.Provider.BeginEdit(fixture.Request);
+            try
+            {
+                Assert.That(session.Apply(
+                    "requiredPassiveUpgradeId",
+                    GameContentFieldValue.FromRecordReference(GameContentRecordReferenceValue.Resolved(validTarget.CanonicalKey))).Succeeded,
+                    Is.True);
+
+                var targetLocator = new SurvivorsJsonRecordLocator(
+                    SurvivorsContentPackIndex.UpgradesSourceId,
+                    "upgrades",
+                    validTarget.SourceRecordId,
+                    "Passive");
+                Assert.That(SurvivorsJsonRecordNavigator.TryLocateRecord(
+                    fixture.Source.Document,
+                    targetLocator,
+                    out SurvivorsJsonNode targetNode,
+                    out string locateError), Is.True, locateError);
+                Assert.That(SurvivorsJsonRecordNavigator.TryReadDirectScalar(
+                    fixture.Source.Document,
+                    targetNode,
+                    "id",
+                    GameContentFieldType.String,
+                    true,
+                    out SurvivorsJsonScalarToken idToken,
+                    out string tokenError), Is.True, tokenError);
+                var idTokens = new Dictionary<string, SurvivorsJsonScalarToken>(StringComparer.Ordinal)
+                {
+                    ["id"] = idToken
+                };
+                var disappeared = new Dictionary<string, GameContentFieldValue>(StringComparer.Ordinal)
+                {
+                    ["id"] = GameContentFieldValue.FromString("upgrade.survivors.disappeared-passive")
+                };
+                Assert.That(SurvivorsLosslessJsonPatcher.TryPatch(
+                    fixture.Source.Document,
+                    idTokens,
+                    disappeared,
+                    out _,
+                    out byte[] externalBytes,
+                    out string disappearError), Is.True, disappearError);
+                File.WriteAllBytes(fixture.Source.SourcePath.FullPath, externalBytes);
+                AssetDatabase.ImportAsset(
+                    fixture.Source.SourcePath.AssetPath,
+                    ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+
+                GameContentCommitResult blocked = session.Commit(true);
+                Assert.That(blocked.Succeeded, Is.False);
+                Assert.That(session.State, Is.EqualTo(GameContentEditSessionState.Stale));
+                Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(externalBytes));
+            }
+            finally
+            {
+                session.Dispose();
+                RestoreExact(fixture, original);
+            }
+        }
+
         private static void AssertFields(Fixture fixture, IEnumerable<string> editable, IEnumerable<string> readOnly)
         {
             using (IGameContentEditSession session = fixture.Provider.BeginEdit(fixture.Request))
@@ -477,7 +723,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             bool supported = (record.CategoryId == "weapons" || record.CategoryId == "projectiles") &&
                              record.CanonicalKey.SourceId == SurvivorsContentPackIndex.WeaponsSourceId ||
                              record.CategoryId == "enemies" &&
-                             record.CanonicalKey.SourceId == SurvivorsContentPackIndex.EnemiesSourceId;
+                             record.CanonicalKey.SourceId == SurvivorsContentPackIndex.EnemiesSourceId ||
+                             record.CategoryId == "evolutions" &&
+                             record.CanonicalKey.SourceId == SurvivorsContentPackIndex.UpgradesSourceId;
             if (supported)
                 Assert.That(SurvivorsEditableSource.TryCreate(manifest, record, true, out source, out string error), Is.True, error);
             return new Fixture
