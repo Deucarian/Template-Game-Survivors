@@ -318,3 +318,24 @@ Latest local validation for Milestone 2D2C on `2026-07-14`:
 - Package validator and `git diff --check`: passed.
 - All `22` shipped content JSON files match their `HEAD` Git blob hashes; all `22` disposable imported copies match package-source SHA-256 hashes after tests. The package's `106` Unity metadata GUIDs have no duplicates.
 - Package metadata, dependency versions, asmdefs, authored JSON, content-pack manifests, scenes, gameplay tuning, weapons, enemies, upgrades, and rewards: no diff.
+
+Transactional file-replacement hardening adds bounded handling for known transient Windows replacement contention without changing authored content or the transaction's fail-closed state model:
+
+- Atomic replacement records the operation stage, safe destination, exception type, full `HResult`, available Windows code, attempt number, and retry disposition. A direct locked-handle probe on the validation machine produced `System.IO.IOException`, `HResult 0x80070020`, and low-word code `32`, proving the managed exception path retains the classification needed here; it does not identify the process responsible for earlier intermittent contention.
+- Only replacement-stage `IOException` codes `32`, `33`, and `1175` retry. Access denial, `UnauthorizedAccessException`, codes `1176`/`1177`, unknown codes, and every non-replacement failure stop immediately.
+- The initial attempt plus at most three retries use `25`, `75`, and `200` millisecond delays. Before retry, exact destination and immutable prepared-file hashes plus the complete session source target/revision are rechecked. Import remains after successful replacement only.
+- Commit, explicit rollback, and automatic recovery restoration share the same rule. Existing original/proposed/unknown-hash classification remains authoritative after failure.
+- The atomic support probe caches success and permanent failure. Exhausted transient failures use a one-second cooldown and can be probed again instead of making editing permanently unavailable for the editor session.
+
+Latest local validation for transactional file-replacement hardening on `2026-07-14`:
+
+- Focused atomic classification/retry/probe tests: `17` passed, `0` failed.
+- Focused Survivors provider/session/transaction tests: `37` passed, `0` failed.
+- Complete Survivors EditMode suite with one job worker: `186` passed, `0` failed.
+- Complete Game Content Authoring compatibility: `93` core tests and `10` generic editor tests passed; the combined GCA plus Survivors inventory passed `289`, failed `0`.
+- Complete Survivors PlayMode suite: `154` passed, `0` failed.
+- Basic and Neon authored content validation: `0` errors, `0` warnings.
+- Package validator: passed with `Deucarian validation passed: com.deucarian.template.game.survivors`.
+- `git diff --check`: passed.
+- All `22` shipped sample JSON files remained outside the source diff. Transaction tests restored every edited imported file to its exact pretest bytes; a final line-ending-normalized comparison matched all `22` imported files to the shipped source content. The disposable Windows host keeps CRLF working copies, so package-to-import raw hashes are not claimed.
+- Validation artifacts: `C:\Repositories\_survivors_validation_tmp\transaction-hardening\atomic-focused-final.json`, `editing-focused.json`, `editmode-full.json`, `editmode-combined.json`, `gca-editmode.json`, `gca-editor-editmode.json`, `playmode-full.json`, and `content-validation.log`.

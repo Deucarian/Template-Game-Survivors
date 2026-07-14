@@ -251,8 +251,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return GameContentCommitResult.Failure(recoveryError, OriginalRevision);
 
             State = GameContentEditSessionState.Committing;
-            if (!SurvivorsAtomicFile.TryReplace(current.SourcePath.FullPath, proposedBytes, _hooks, out string writeError))
-                return HandleCommitFailure(writeError, expectedRevision);
+            SurvivorsAtomicReplaceRequest replaceRequest = CreateAtomicReplaceRequest(
+                current,
+                proposedBytes,
+                current.ExactHash,
+                OriginalRevision,
+                "Commit");
+            if (!SurvivorsAtomicFile.TryReplace(replaceRequest, out SurvivorsAtomicReplaceResult replaceResult))
+                return HandleCommitFailure(replaceResult.Message, expectedRevision);
 
             if (!TryImportAndVerify(
                     proposedBytes,
@@ -261,7 +267,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     proposedText,
                     out SurvivorsEditableSource committed,
                     out string verifyError))
-                return HandleCommitFailure(verifyError, expectedRevision);
+                return HandleCommitFailure(AppendAtomicDiagnostics(verifyError, replaceResult), expectedRevision);
 
             _committedRevision = committed.Revision;
             SurvivorsRecoveryStore.Update(
@@ -272,7 +278,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             State = GameContentEditSessionState.Committed;
             return new GameContentCommitResult(
                 true,
-                "Committed the selected JSON tokens and reindexed " + _source.Manifest.DisplayName + ".",
+                AppendAtomicDiagnostics(
+                    "Committed the selected JSON tokens and reindexed " + _source.Manifest.DisplayName + ".",
+                    replaceResult),
                 OriginalRevision,
                 _committedRevision,
                 true,
@@ -339,16 +347,24 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             }
 
             SurvivorsRecoveryStore.Update(_recovery, "RollbackPrepared", "Restoring exact pre-commit bytes after a revision check.");
-            if (!SurvivorsAtomicFile.TryReplace(current.SourcePath.FullPath, _originalBytes, _hooks, out string replaceError))
+            SurvivorsAtomicReplaceRequest replaceRequest = CreateAtomicReplaceRequest(
+                current,
+                _originalBytes,
+                current.ExactHash,
+                _committedRevision ?? current.Revision,
+                "Rollback");
+            if (!SurvivorsAtomicFile.TryReplace(replaceRequest, out SurvivorsAtomicReplaceResult replaceResult))
             {
-                if (TryReadCurrentHash(out string hashAfterFailure, out _) &&
+                string replaceError = replaceResult.Message;
+                bool readAfterFailure = TryReadCurrentHash(out string hashAfterFailure, out _);
+                if (readAfterFailure &&
                     string.Equals(hashAfterFailure, _proposedHash, StringComparison.Ordinal))
                 {
                     State = GameContentEditSessionState.Committed;
                     SurvivorsRecoveryStore.Update(_recovery, "Verified", "Rollback replacement failed before changing the committed source: " + replaceError);
                     return GameContentRollbackResult.Failure(replaceError, _committedRevision);
                 }
-                if (!string.Equals(hashAfterFailure, originalHash, StringComparison.Ordinal))
+                if (!readAfterFailure || !string.Equals(hashAfterFailure, originalHash, StringComparison.Ordinal))
                     return RollbackRecoveryRequired(replaceError, _committedRevision);
             }
 
@@ -360,7 +376,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     out _,
                     out string verifyError))
                 return RollbackRecoveryRequired(verifyError, OriginalRevision);
-            return CompleteRollback("Restored the exact pre-commit JSON bytes and reindexed the pack.");
+            return CompleteRollback(AppendAtomicDiagnostics(
+                "Restored the exact pre-commit JSON bytes and reindexed the pack.",
+                replaceResult));
         }
 
         public void Dispose()
@@ -386,8 +404,32 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             if (!string.Equals(currentHash, _proposedHash, StringComparison.Ordinal))
                 return CommitRecoveryRequired(failure + " The final source hash is neither the original nor the proposed hash.", proposedRevision);
 
-            if (!SurvivorsAtomicFile.TryReplace(_source.SourcePath.FullPath, _originalBytes, _hooks, out string restoreError))
-                return CommitRecoveryRequired(failure + " Automatic restoration failed: " + restoreError, proposedRevision);
+            if (!SurvivorsEditableSource.TryCreate(
+                    _source.Manifest,
+                    _source.Record,
+                    false,
+                    out SurvivorsEditableSource current,
+                    out string sourceError))
+            {
+                return CommitRecoveryRequired(
+                    failure + " Automatic restoration could not resolve the proposed source safely: " + sourceError,
+                    proposedRevision);
+            }
+            if (!current.SourceTarget.Equals(SourceTarget) || !current.Revision.Equals(proposedRevision))
+            {
+                return CommitRecoveryRequired(
+                    failure + " Automatic restoration refused because the proposed source identity or revision changed.",
+                    current.Revision);
+            }
+
+            SurvivorsAtomicReplaceRequest restoreRequest = CreateAtomicReplaceRequest(
+                current,
+                _originalBytes,
+                _proposedHash,
+                proposedRevision,
+                "RecoveryRestore");
+            if (!SurvivorsAtomicFile.TryReplace(restoreRequest, out SurvivorsAtomicReplaceResult restoreResult))
+                return CommitRecoveryRequired(failure + " Automatic restoration failed: " + restoreResult.Message, proposedRevision);
             if (!TryImportAndVerify(
                     _originalBytes,
                     OriginalRevision,
@@ -395,7 +437,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     _source.Document.Text,
                     out _,
                     out string verifyError))
-                return CommitRecoveryRequired(failure + " Original bytes were written but restoration verification failed: " + verifyError, proposedRevision);
+                return CommitRecoveryRequired(
+                    AppendAtomicDiagnostics(
+                        failure + " Original bytes were written but restoration verification failed: " + verifyError,
+                        restoreResult),
+                    proposedRevision);
 
             SurvivorsRecoveryStore.Update(
                 _recovery,
@@ -404,7 +450,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             SurvivorsRecoveryStore.PruneResolved(_recovery);
             State = GameContentEditSessionState.RolledBack;
             return GameContentCommitResult.Failure(
-                failure + " The transaction restored and verified the exact original bytes.",
+                AppendAtomicDiagnostics(
+                    failure + " The transaction restored and verified the exact original bytes.",
+                    restoreResult),
                 OriginalRevision);
         }
 
@@ -667,6 +715,64 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 target.CanonicalKey,
                 GameContentReferenceRuntimeImpact.Refresh | GameContentReferenceRuntimeImpact.Rebind,
                 validationState);
+        }
+
+        private SurvivorsAtomicReplaceRequest CreateAtomicReplaceRequest(
+            SurvivorsEditableSource current,
+            byte[] exactBytes,
+            string expectedDestinationHash,
+            GameContentSourceRevision expectedRevision,
+            string operationName)
+        {
+            return new SurvivorsAtomicReplaceRequest(
+                current.SourcePath.FullPath,
+                current.SourcePath.AssetPath,
+                exactBytes,
+                expectedDestinationHash,
+                operationName,
+                _hooks,
+                () => ValidateAtomicRetryPrecondition(expectedRevision),
+                () => _disposed);
+        }
+
+        private SurvivorsAtomicRetryPreconditionResult ValidateAtomicRetryPrecondition(
+            GameContentSourceRevision expectedRevision)
+        {
+            if (_disposed)
+            {
+                return SurvivorsAtomicRetryPreconditionResult.Failure(
+                    "The edit session was disposed before the retry.");
+            }
+            if (!SurvivorsEditableSource.TryCreate(
+                    _source.Manifest,
+                    _source.Record,
+                    false,
+                    out SurvivorsEditableSource current,
+                    out string sourceError))
+            {
+                return SurvivorsAtomicRetryPreconditionResult.Failure(
+                    "The authored source can no longer be resolved safely: " + sourceError);
+            }
+            if (!current.SourceTarget.Equals(SourceTarget))
+            {
+                return SurvivorsAtomicRetryPreconditionResult.Failure(
+                    "The source target, path, GUID, or claimed source identity changed before retry.");
+            }
+            if (expectedRevision == null || !current.Revision.Equals(expectedRevision))
+            {
+                return SurvivorsAtomicRetryPreconditionResult.Failure(
+                    "The JSON bytes, source path/GUID, manifest source list, pack, or canonical record revision changed before retry.");
+            }
+            return SurvivorsAtomicRetryPreconditionResult.Current();
+        }
+
+        private static string AppendAtomicDiagnostics(
+            string message,
+            SurvivorsAtomicReplaceResult replacementResult)
+        {
+            if (replacementResult == null || !replacementResult.HadReplacementFailures)
+                return message ?? string.Empty;
+            return (message ?? string.Empty) + " " + replacementResult.Message;
         }
 
         private bool TryReadCurrentHash(out string hash, out string error)

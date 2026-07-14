@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
 using Deucarian.GameContentAuthoring.Editor;
 using UnityEditor;
 using UnityEngine;
@@ -896,14 +897,256 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public Action AfterAtomicReplace;
         public Action BeforeImport;
         public Action AfterImport;
+        public SurvivorsAtomicFileOperations AtomicFileOperations;
+    }
+
+    internal enum SurvivorsAtomicReplaceFailureDisposition
+    {
+        RetryScheduled,
+        RetryExhausted,
+        NonRetryable
+    }
+
+    internal enum SurvivorsAtomicReplaceFinalDisposition
+    {
+        Succeeded,
+        SucceededAfterRetry,
+        NonRetryableFailure,
+        RetryExhausted,
+        RetryPreconditionFailed,
+        Aborted
+    }
+
+    internal sealed class SurvivorsAtomicReplaceFailure
+    {
+        public SurvivorsAtomicReplaceFailure(
+            string operationStage,
+            string destinationPath,
+            int attempt,
+            int maximumAttempts,
+            Exception exception,
+            int? win32ErrorCode,
+            bool retryable,
+            SurvivorsAtomicReplaceFailureDisposition disposition)
+        {
+            OperationStage = operationStage ?? string.Empty;
+            DestinationPath = destinationPath ?? string.Empty;
+            Attempt = attempt;
+            MaximumAttempts = maximumAttempts;
+            ExceptionType = exception?.GetType().FullName ?? "Unavailable";
+            ExceptionMessage = exception?.GetBaseException().Message ?? string.Empty;
+            HResult = exception?.HResult ?? 0;
+            Win32ErrorCode = win32ErrorCode;
+            Retryable = retryable;
+            Disposition = disposition;
+        }
+
+        public string OperationStage { get; }
+        public string DestinationPath { get; }
+        public int Attempt { get; }
+        public int MaximumAttempts { get; }
+        public string ExceptionType { get; }
+        public string ExceptionMessage { get; }
+        public int HResult { get; }
+        public int? Win32ErrorCode { get; }
+        public bool Retryable { get; }
+        public SurvivorsAtomicReplaceFailureDisposition Disposition { get; }
+
+        public string ToDiagnosticText()
+        {
+            string win32 = Win32ErrorCode.HasValue
+                ? Win32ErrorCode.Value.ToString(CultureInfo.InvariantCulture)
+                : "unavailable";
+            return "[stage=" + OperationStage +
+                   "; destination='" + DestinationPath +
+                   "'; attempt=" + Attempt.ToString(CultureInfo.InvariantCulture) +
+                   "/" + MaximumAttempts.ToString(CultureInfo.InvariantCulture) +
+                   "; exception=" + ExceptionType +
+                   "; HResult=0x" + unchecked((uint)HResult).ToString("X8", CultureInfo.InvariantCulture) +
+                   "; Win32=" + win32 +
+                   "; disposition=" + Disposition +
+                   "] " + ExceptionMessage;
+        }
+    }
+
+    internal sealed class SurvivorsAtomicReplaceResult
+    {
+        private SurvivorsAtomicReplaceResult(
+            bool succeeded,
+            int attemptCount,
+            SurvivorsAtomicReplaceFinalDisposition finalDisposition,
+            string finalReason,
+            IEnumerable<SurvivorsAtomicReplaceFailure> failures)
+        {
+            Succeeded = succeeded;
+            AttemptCount = attemptCount;
+            FinalDisposition = finalDisposition;
+            FinalReason = finalReason ?? string.Empty;
+            Failures = (failures ?? Array.Empty<SurvivorsAtomicReplaceFailure>()).ToArray();
+            Message = BuildMessage();
+        }
+
+        public bool Succeeded { get; }
+        public int AttemptCount { get; }
+        public SurvivorsAtomicReplaceFinalDisposition FinalDisposition { get; }
+        public string FinalReason { get; }
+        public IReadOnlyList<SurvivorsAtomicReplaceFailure> Failures { get; }
+        public string Message { get; }
+        public bool HadReplacementFailures => Failures.Count > 0;
+        public bool IsTransientAvailabilityFailure =>
+            !Succeeded && Failures.Count > 0 && Failures.All(failure => failure.Retryable);
+
+        public static SurvivorsAtomicReplaceResult Success(
+            int attemptCount,
+            IEnumerable<SurvivorsAtomicReplaceFailure> failures)
+        {
+            SurvivorsAtomicReplaceFailure[] captured =
+                (failures ?? Array.Empty<SurvivorsAtomicReplaceFailure>()).ToArray();
+            return new SurvivorsAtomicReplaceResult(
+                true,
+                attemptCount,
+                captured.Length == 0
+                    ? SurvivorsAtomicReplaceFinalDisposition.Succeeded
+                    : SurvivorsAtomicReplaceFinalDisposition.SucceededAfterRetry,
+                string.Empty,
+                captured);
+        }
+
+        public static SurvivorsAtomicReplaceResult Failure(
+            int attemptCount,
+            SurvivorsAtomicReplaceFinalDisposition finalDisposition,
+            string finalReason,
+            IEnumerable<SurvivorsAtomicReplaceFailure> failures = null)
+        {
+            return new SurvivorsAtomicReplaceResult(
+                false,
+                attemptCount,
+                finalDisposition,
+                finalReason,
+                failures);
+        }
+
+        private string BuildMessage()
+        {
+            string headline = Succeeded
+                ? "Atomic replacement succeeded after " + AttemptCount.ToString(CultureInfo.InvariantCulture) +
+                  " of " + SurvivorsAtomicFile.MaximumAttempts.ToString(CultureInfo.InvariantCulture) + " attempts."
+                : "Atomic replacement stopped with disposition " + FinalDisposition + ": " + FinalReason;
+            if (Failures.Count == 0) return headline;
+            return headline + " Replacement evidence: " + string.Join(
+                " | ",
+                Failures.Select(failure => failure.ToDiagnosticText()));
+        }
+    }
+
+    internal sealed class SurvivorsAtomicRetryPreconditionResult
+    {
+        private SurvivorsAtomicRetryPreconditionResult(bool succeeded, string message)
+        {
+            Succeeded = succeeded;
+            Message = message ?? string.Empty;
+        }
+
+        public bool Succeeded { get; }
+        public string Message { get; }
+
+        public static SurvivorsAtomicRetryPreconditionResult Current()
+        {
+            return new SurvivorsAtomicRetryPreconditionResult(true, string.Empty);
+        }
+
+        public static SurvivorsAtomicRetryPreconditionResult Failure(string message)
+        {
+            return new SurvivorsAtomicRetryPreconditionResult(false, message);
+        }
+    }
+
+    internal sealed class SurvivorsAtomicFileOperations
+    {
+        public Action<string, string> ReplacementOperation;
+        public Action<int> DelayMilliseconds;
+        public Func<DateTime> UtcNow;
+        public string ProbeDirectory;
+
+        public void Replace(string replacement, string destination)
+        {
+            if (ReplacementOperation != null)
+            {
+                ReplacementOperation(replacement, destination);
+                return;
+            }
+            File.Replace(replacement, destination, null);
+        }
+
+        public void Delay(int milliseconds)
+        {
+            if (DelayMilliseconds != null)
+            {
+                DelayMilliseconds(milliseconds);
+                return;
+            }
+            Thread.Sleep(milliseconds);
+        }
+
+        public DateTime GetUtcNow()
+        {
+            return UtcNow != null ? UtcNow() : DateTime.UtcNow;
+        }
+    }
+
+    internal sealed class SurvivorsAtomicReplaceRequest
+    {
+        public SurvivorsAtomicReplaceRequest(
+            string destinationPath,
+            string diagnosticDestinationPath,
+            byte[] exactBytes,
+            string expectedDestinationHash,
+            string operationName,
+            SurvivorsEditTransactionHooks hooks = null,
+            Func<SurvivorsAtomicRetryPreconditionResult> retryPrecondition = null,
+            Func<bool> isAborted = null,
+            SurvivorsAtomicFileOperations operations = null)
+        {
+            DestinationPath = destinationPath ?? string.Empty;
+            DiagnosticDestinationPath = diagnosticDestinationPath ?? string.Empty;
+            ExactBytes = (byte[])(exactBytes ?? Array.Empty<byte>()).Clone();
+            ExpectedDestinationHash = expectedDestinationHash ?? string.Empty;
+            OperationName = string.IsNullOrWhiteSpace(operationName) ? "AtomicReplace" : operationName;
+            Hooks = hooks;
+            RetryPrecondition = retryPrecondition;
+            IsAborted = isAborted;
+            Operations = operations ?? hooks?.AtomicFileOperations ?? new SurvivorsAtomicFileOperations();
+        }
+
+        public string DestinationPath { get; }
+        public string DiagnosticDestinationPath { get; }
+        public byte[] ExactBytes { get; }
+        public string ExpectedDestinationHash { get; }
+        public string OperationName { get; }
+        public SurvivorsEditTransactionHooks Hooks { get; }
+        public Func<SurvivorsAtomicRetryPreconditionResult> RetryPrecondition { get; }
+        public Func<bool> IsAborted { get; }
+        public SurvivorsAtomicFileOperations Operations { get; }
     }
 
     internal static class SurvivorsAtomicFile
     {
+        public const int MaximumAttempts = 4;
+        public const int ProbeTransientCooldownMilliseconds = 1000;
+        private static readonly int[] RetryDelayMilliseconds = { 25, 75, 200 };
         private static bool? support;
         private static string supportReason = string.Empty;
+        private static string transientSupportReason = string.Empty;
+        private static DateTime transientSupportRetryUtc = DateTime.MinValue;
 
         public static bool TryConfirmSupport(out string reason)
+        {
+            return TryConfirmSupport(null, out reason);
+        }
+
+        internal static bool TryConfirmSupport(
+            SurvivorsAtomicFileOperations operations,
+            out string reason)
         {
             if (support.HasValue)
             {
@@ -911,23 +1154,59 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return support.Value;
             }
 
-            string directory = Path.GetFullPath(Path.Combine(
-                Application.dataPath,
-                "..",
-                "Library",
-                "Deucarian",
-                "GameContentAuthoring",
-                "AtomicProbe"));
+            var activeOperations = operations ?? new SurvivorsAtomicFileOperations();
+            DateTime now = activeOperations.GetUtcNow();
+            if (!string.IsNullOrWhiteSpace(transientSupportReason) && now < transientSupportRetryUtc)
+            {
+                reason = transientSupportReason + " A fresh support probe is available after the one-second transient cooldown.";
+                return false;
+            }
+            transientSupportReason = string.Empty;
+            transientSupportRetryUtc = DateTime.MinValue;
+
+            string directory = string.IsNullOrWhiteSpace(activeOperations.ProbeDirectory)
+                ? Path.GetFullPath(Path.Combine(
+                    Application.dataPath,
+                    "..",
+                    "Library",
+                    "Deucarian",
+                    "GameContentAuthoring",
+                    "AtomicProbe"))
+                : Path.GetFullPath(activeOperations.ProbeDirectory);
             string id = Guid.NewGuid().ToString("N");
             string destination = Path.Combine(directory, id + ".destination");
-            string replacement = Path.Combine(directory, id + ".replacement");
             try
             {
                 Directory.CreateDirectory(directory);
-                WriteNew(destination, new byte[] { 1, 2, 3 });
-                WriteNew(replacement, new byte[] { 4, 5, 6 });
-                File.Replace(replacement, destination, null);
-                support = File.ReadAllBytes(destination).SequenceEqual(new byte[] { 4, 5, 6 });
+                byte[] originalBytes = { 1, 2, 3 };
+                byte[] replacementBytes = { 4, 5, 6 };
+                WriteNew(destination, originalBytes);
+                var request = new SurvivorsAtomicReplaceRequest(
+                    destination,
+                    ToDiagnosticPath(destination),
+                    replacementBytes,
+                    SurvivorsContentEditHash.Sha256(originalBytes),
+                    "SupportProbe",
+                    operations: activeOperations);
+                if (!TryReplace(request, out SurvivorsAtomicReplaceResult replacementResult))
+                {
+                    string failure = "Safe atomic file replacement is unavailable on the active editor platform/filesystem: " +
+                                     replacementResult.Message;
+                    if (replacementResult.IsTransientAvailabilityFailure)
+                    {
+                        support = null;
+                        transientSupportReason = failure;
+                        transientSupportRetryUtc = now.AddMilliseconds(ProbeTransientCooldownMilliseconds);
+                        reason = transientSupportReason;
+                        return false;
+                    }
+                    support = false;
+                    supportReason = failure;
+                    reason = supportReason;
+                    return false;
+                }
+
+                support = File.ReadAllBytes(destination).SequenceEqual(replacementBytes);
                 supportReason = support.Value
                     ? string.Empty
                     : "The active filesystem did not preserve the expected atomic replacement result.";
@@ -936,12 +1215,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             {
                 support = false;
                 supportReason = "Safe atomic file replacement is unavailable on the active editor platform/filesystem: " +
-                                exception.GetBaseException().Message;
+                                FormatExceptionEvidence(exception);
             }
             finally
             {
                 DeleteIfPresent(destination);
-                DeleteIfPresent(replacement);
             }
 
             reason = supportReason;
@@ -949,32 +1227,228 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         }
 
         public static bool TryReplace(
-            string destination,
-            byte[] exactBytes,
-            SurvivorsEditTransactionHooks hooks,
-            out string error)
+            SurvivorsAtomicReplaceRequest request,
+            out SurvivorsAtomicReplaceResult result)
         {
-            error = string.Empty;
+            if (request == null)
+            {
+                result = SurvivorsAtomicReplaceResult.Failure(
+                    0,
+                    SurvivorsAtomicReplaceFinalDisposition.NonRetryableFailure,
+                    "An atomic replacement request is required.");
+                return false;
+            }
+
+            string destination = request.DestinationPath;
+            string diagnosticDestination = string.IsNullOrWhiteSpace(request.DiagnosticDestinationPath)
+                ? ToDiagnosticPath(destination)
+                : request.DiagnosticDestinationPath;
             string directory = Path.GetDirectoryName(destination);
             if (string.IsNullOrWhiteSpace(directory) || !File.Exists(destination))
             {
-                error = "Atomic replacement requires an existing destination file.";
+                result = SurvivorsAtomicReplaceResult.Failure(
+                    0,
+                    SurvivorsAtomicReplaceFinalDisposition.NonRetryableFailure,
+                    "Atomic replacement requires an existing destination file at '" + diagnosticDestination + "'.");
                 return false;
             }
+            if (string.IsNullOrWhiteSpace(request.ExpectedDestinationHash))
+            {
+                result = SurvivorsAtomicReplaceResult.Failure(
+                    0,
+                    SurvivorsAtomicReplaceFinalDisposition.NonRetryableFailure,
+                    "Atomic replacement requires an expected destination hash.");
+                return false;
+            }
+            if (!TryReadHash(destination, out string initialHash, out string initialReadError) ||
+                !string.Equals(initialHash, request.ExpectedDestinationHash, StringComparison.Ordinal))
+            {
+                string detail = string.IsNullOrWhiteSpace(initialReadError)
+                    ? "The destination hash no longer matches the expected transaction bytes."
+                    : "The destination hash could not be verified: " + initialReadError;
+                result = SurvivorsAtomicReplaceResult.Failure(
+                    0,
+                    SurvivorsAtomicReplaceFinalDisposition.RetryPreconditionFailed,
+                    detail);
+                return false;
+            }
+
             string temporary = Path.Combine(
                 directory,
                 "." + Path.GetFileName(destination) + "." + Guid.NewGuid().ToString("N") + ".deucarian-tmp");
+            string proposedHash = SurvivorsContentEditHash.Sha256(request.ExactBytes);
+            var failures = new List<SurvivorsAtomicReplaceFailure>();
+            int attempt = 1;
             try
             {
-                WriteNew(temporary, exactBytes);
-                hooks?.BeforeAtomicReplace?.Invoke();
-                File.Replace(temporary, destination, null);
-                hooks?.AfterAtomicReplace?.Invoke();
-                return true;
-            }
-            catch (Exception exception)
-            {
-                error = "Atomic replacement failed: " + exception.GetBaseException().Message;
+                try
+                {
+                    WriteNew(temporary, request.ExactBytes);
+                }
+                catch (Exception exception)
+                {
+                    failures.Add(CaptureFailure(
+                        request.OperationName + ".PrepareTemporary",
+                        diagnosticDestination,
+                        attempt,
+                        exception,
+                        false,
+                        SurvivorsAtomicReplaceFailureDisposition.NonRetryable));
+                    result = SurvivorsAtomicReplaceResult.Failure(
+                        0,
+                        SurvivorsAtomicReplaceFinalDisposition.NonRetryableFailure,
+                        "The durable replacement file could not be prepared.",
+                        failures);
+                    return false;
+                }
+
+                while (attempt <= MaximumAttempts)
+                {
+                    try
+                    {
+                        request.Hooks?.BeforeAtomicReplace?.Invoke();
+                    }
+                    catch (Exception exception)
+                    {
+                        failures.Add(CaptureFailure(
+                            request.OperationName + ".BeforeReplaceHook",
+                            diagnosticDestination,
+                            attempt,
+                            exception,
+                            false,
+                            SurvivorsAtomicReplaceFailureDisposition.NonRetryable));
+                        result = SurvivorsAtomicReplaceResult.Failure(
+                            attempt - 1,
+                            SurvivorsAtomicReplaceFinalDisposition.NonRetryableFailure,
+                            "The pre-replacement operation failed before File.Replace was called.",
+                            failures);
+                        return false;
+                    }
+
+                    try
+                    {
+                        request.Operations.Replace(temporary, destination);
+                    }
+                    catch (Exception exception)
+                    {
+                        bool retryable = IsRetryableReplacementException(exception, out int? win32ErrorCode);
+                        bool exhausted = retryable && attempt >= MaximumAttempts;
+                        SurvivorsAtomicReplaceFailureDisposition failureDisposition = retryable
+                            ? exhausted
+                                ? SurvivorsAtomicReplaceFailureDisposition.RetryExhausted
+                                : SurvivorsAtomicReplaceFailureDisposition.RetryScheduled
+                            : SurvivorsAtomicReplaceFailureDisposition.NonRetryable;
+                        failures.Add(new SurvivorsAtomicReplaceFailure(
+                            request.OperationName + ".Replace",
+                            diagnosticDestination,
+                            attempt,
+                            MaximumAttempts,
+                            exception,
+                            win32ErrorCode,
+                            retryable,
+                            failureDisposition));
+
+                        if (!retryable)
+                        {
+                            result = SurvivorsAtomicReplaceResult.Failure(
+                                attempt,
+                                SurvivorsAtomicReplaceFinalDisposition.NonRetryableFailure,
+                                "File.Replace reported a nonretryable exception or error code.",
+                                failures);
+                            return false;
+                        }
+                        if (exhausted)
+                        {
+                            result = SurvivorsAtomicReplaceResult.Failure(
+                                attempt,
+                                SurvivorsAtomicReplaceFinalDisposition.RetryExhausted,
+                                "The bounded retry budget was exhausted after known transient replacement failures.",
+                                failures);
+                            return false;
+                        }
+
+                        if (IsAborted(request, out string abortReason))
+                        {
+                            result = SurvivorsAtomicReplaceResult.Failure(
+                                attempt,
+                                SurvivorsAtomicReplaceFinalDisposition.Aborted,
+                                abortReason,
+                                failures);
+                            return false;
+                        }
+
+                        int delay = RetryDelayMilliseconds[attempt - 1];
+                        try
+                        {
+                            request.Operations.Delay(delay);
+                        }
+                        catch (Exception delayException)
+                        {
+                            failures.Add(CaptureFailure(
+                                request.OperationName + ".RetryDelay",
+                                diagnosticDestination,
+                                attempt,
+                                delayException,
+                                false,
+                                SurvivorsAtomicReplaceFailureDisposition.NonRetryable));
+                            result = SurvivorsAtomicReplaceResult.Failure(
+                                attempt,
+                                SurvivorsAtomicReplaceFinalDisposition.NonRetryableFailure,
+                                "The bounded retry delay failed.",
+                                failures);
+                            return false;
+                        }
+
+                        if (!TryValidateRetryPreconditions(
+                                request,
+                                temporary,
+                                proposedHash,
+                                out string preconditionError))
+                        {
+                            result = SurvivorsAtomicReplaceResult.Failure(
+                                attempt,
+                                IsAborted(request, out _)
+                                    ? SurvivorsAtomicReplaceFinalDisposition.Aborted
+                                    : SurvivorsAtomicReplaceFinalDisposition.RetryPreconditionFailed,
+                                preconditionError,
+                                failures);
+                            return false;
+                        }
+
+                        attempt++;
+                        continue;
+                    }
+
+                    try
+                    {
+                        request.Hooks?.AfterAtomicReplace?.Invoke();
+                    }
+                    catch (Exception exception)
+                    {
+                        failures.Add(CaptureFailure(
+                            request.OperationName + ".AfterReplaceHook",
+                            diagnosticDestination,
+                            attempt,
+                            exception,
+                            false,
+                            SurvivorsAtomicReplaceFailureDisposition.NonRetryable));
+                        result = SurvivorsAtomicReplaceResult.Failure(
+                            attempt,
+                            SurvivorsAtomicReplaceFinalDisposition.NonRetryableFailure,
+                            "The post-replacement operation failed after File.Replace completed.",
+                            failures);
+                        return false;
+                    }
+
+                    result = SurvivorsAtomicReplaceResult.Success(attempt, failures);
+                    return true;
+                }
+
+                result = SurvivorsAtomicReplaceResult.Failure(
+                    MaximumAttempts,
+                    SurvivorsAtomicReplaceFinalDisposition.RetryExhausted,
+                    "The bounded retry loop ended without a replacement result.",
+                    failures);
                 return false;
             }
             finally
@@ -1003,6 +1477,174 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         {
             support = null;
             supportReason = string.Empty;
+            transientSupportReason = string.Empty;
+            transientSupportRetryUtc = DateTime.MinValue;
+        }
+
+        private static bool TryValidateRetryPreconditions(
+            SurvivorsAtomicReplaceRequest request,
+            string temporary,
+            string proposedHash,
+            out string error)
+        {
+            if (IsAborted(request, out error)) return false;
+            if (!File.Exists(request.DestinationPath))
+            {
+                error = "Retry refused because the destination file no longer exists.";
+                return false;
+            }
+            if (!File.Exists(temporary))
+            {
+                error = "Retry refused because the immutable prepared replacement file no longer exists.";
+                return false;
+            }
+            if (!TryReadHash(request.DestinationPath, out string destinationHash, out string destinationError))
+            {
+                error = "Retry refused because the destination hash could not be verified: " + destinationError;
+                return false;
+            }
+            if (!string.Equals(destinationHash, request.ExpectedDestinationHash, StringComparison.Ordinal))
+            {
+                error = "Retry refused because the destination hash changed after the previous replacement attempt.";
+                return false;
+            }
+            if (!TryReadHash(temporary, out string temporaryHash, out string temporaryError))
+            {
+                error = "Retry refused because the immutable prepared replacement hash could not be verified: " + temporaryError;
+                return false;
+            }
+            if (!string.Equals(temporaryHash, proposedHash, StringComparison.Ordinal))
+            {
+                error = "Retry refused because the immutable prepared replacement bytes changed.";
+                return false;
+            }
+
+            if (request.RetryPrecondition != null)
+            {
+                SurvivorsAtomicRetryPreconditionResult precondition;
+                try
+                {
+                    precondition = request.RetryPrecondition();
+                }
+                catch (Exception exception)
+                {
+                    error = "Retry refused because the session precondition threw: " + FormatExceptionEvidence(exception);
+                    return false;
+                }
+                if (precondition == null || !precondition.Succeeded)
+                {
+                    error = "Retry refused because the session source/revision precondition failed: " +
+                            (precondition?.Message ?? "No precondition result was returned.");
+                    return false;
+                }
+            }
+
+            return !IsAborted(request, out error);
+        }
+
+        private static bool IsAborted(SurvivorsAtomicReplaceRequest request, out string reason)
+        {
+            reason = string.Empty;
+            if (request?.IsAborted == null) return false;
+            try
+            {
+                if (!request.IsAborted()) return false;
+                reason = "Retry aborted because the edit session is disposed or no longer accepting the transaction.";
+                return true;
+            }
+            catch (Exception exception)
+            {
+                reason = "Retry aborted because the transaction abort check failed: " + FormatExceptionEvidence(exception);
+                return true;
+            }
+        }
+
+        private static SurvivorsAtomicReplaceFailure CaptureFailure(
+            string stage,
+            string destination,
+            int attempt,
+            Exception exception,
+            bool retryable,
+            SurvivorsAtomicReplaceFailureDisposition disposition)
+        {
+            return new SurvivorsAtomicReplaceFailure(
+                stage,
+                destination,
+                attempt,
+                MaximumAttempts,
+                exception,
+                TryGetWin32ErrorCode(exception),
+                retryable,
+                disposition);
+        }
+
+        private static bool IsRetryableReplacementException(Exception exception, out int? win32ErrorCode)
+        {
+            win32ErrorCode = TryGetWin32ErrorCode(exception);
+            if (!(exception is IOException) || exception is UnauthorizedAccessException || !win32ErrorCode.HasValue)
+                return false;
+            return win32ErrorCode.Value == 32 ||
+                   win32ErrorCode.Value == 33 ||
+                   win32ErrorCode.Value == 1175;
+        }
+
+        internal static int? TryGetWin32ErrorCode(Exception exception)
+        {
+            if (exception == null) return null;
+            int hresult = exception.HResult;
+            int facility = (hresult >> 16) & 0x1fff;
+            if (facility == 7) return hresult & 0xffff;
+            if (hresult > 0 && hresult <= 0xffff) return hresult;
+            return null;
+        }
+
+        private static bool TryReadHash(string path, out string hash, out string error)
+        {
+            hash = string.Empty;
+            error = string.Empty;
+            try
+            {
+                hash = SurvivorsContentEditHash.Sha256(File.ReadAllBytes(path));
+                return true;
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                error = FormatExceptionEvidence(exception);
+                return false;
+            }
+        }
+
+        private static string FormatExceptionEvidence(Exception exception)
+        {
+            if (exception == null) return "No exception evidence was captured.";
+            int? win32 = TryGetWin32ErrorCode(exception);
+            return exception.GetType().FullName +
+                   " (HResult=0x" + unchecked((uint)exception.HResult).ToString("X8", CultureInfo.InvariantCulture) +
+                   ", Win32=" + (win32.HasValue
+                       ? win32.Value.ToString(CultureInfo.InvariantCulture)
+                       : "unavailable") +
+                   "): " + exception.GetBaseException().Message;
+        }
+
+        private static string ToDiagnosticPath(string path)
+        {
+            try
+            {
+                string fullPath = Path.GetFullPath(path ?? string.Empty);
+                string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+                StringComparison comparison = Path.DirectorySeparatorChar == '\\'
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal;
+                string rootWithSeparator = projectRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) +
+                                           Path.DirectorySeparatorChar;
+                if (fullPath.StartsWith(rootWithSeparator, comparison))
+                    return fullPath.Substring(rootWithSeparator.Length).Replace('\\', '/');
+                return Path.GetFileName(fullPath);
+            }
+            catch
+            {
+                return Path.GetFileName(path ?? string.Empty);
+            }
         }
 
         private static void DeleteIfPresent(string path)
@@ -1132,7 +1774,22 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             handle.Metadata.actionableMessage = actionableMessage ?? string.Empty;
             byte[] bytes = Utf8.GetBytes(JsonUtility.ToJson(handle.Metadata, true));
             if (!File.Exists(handle.MetadataPath)) return;
-            SurvivorsAtomicFile.TryReplace(handle.MetadataPath, bytes, null, out _);
+            byte[] currentBytes;
+            try
+            {
+                currentBytes = File.ReadAllBytes(handle.MetadataPath);
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                return;
+            }
+            var request = new SurvivorsAtomicReplaceRequest(
+                handle.MetadataPath,
+                Path.GetFileName(handle.MetadataPath),
+                bytes,
+                SurvivorsContentEditHash.Sha256(currentBytes),
+                "RecoveryMetadata");
+            SurvivorsAtomicFile.TryReplace(request, out _);
         }
 
         public static void DeletePrepared(SurvivorsRecoveryHandle handle)

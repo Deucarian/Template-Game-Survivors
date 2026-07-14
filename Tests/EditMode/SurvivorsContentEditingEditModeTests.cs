@@ -23,6 +23,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             public GameContentEditRequest Request;
         }
 
+        private sealed class Win32IOException : IOException
+        {
+            public Win32IOException(int win32ErrorCode, string message = null)
+                : base(message ?? ("Simulated Win32 error " + win32ErrorCode + "."))
+            {
+                HResult = unchecked((int)(0x80070000u | (uint)win32ErrorCode));
+            }
+        }
+
         [OneTimeSetUp]
         public void GrantImportedCopyConsent()
         {
@@ -423,13 +432,243 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void TransientReplacement_RetriesBeforeOneImportAndKeepsPacksIsolated()
+        {
+            Fixture fixture = Resolve("basic-survivors", "enemy.survivors.swarm");
+            Fixture other = Resolve("neon-arcana", "enemy.survivors.swarm");
+            byte[] before = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
+            byte[] otherBefore = File.ReadAllBytes(other.Source.SourcePath.FullPath);
+            int replacementAttempts = 0;
+            int importAttempts = 0;
+            var delays = new List<int>();
+            var events = new List<string>();
+            var hooks = new SurvivorsEditTransactionHooks
+            {
+                AtomicFileOperations = new SurvivorsAtomicFileOperations
+                {
+                    ReplacementOperation = (replacement, destination) =>
+                    {
+                        replacementAttempts++;
+                        events.Add("replace-" + replacementAttempts);
+                        if (replacementAttempts == 1) throw new Win32IOException(32);
+                        if (replacementAttempts == 2) throw new Win32IOException(33);
+                        File.Replace(replacement, destination, null);
+                    },
+                    DelayMilliseconds = delays.Add
+                },
+                BeforeImport = () =>
+                {
+                    importAttempts++;
+                    events.Add("import-" + importAttempts);
+                }
+            };
+            var session = new SurvivorsContentEditSession(fixture.Source, () => fixture.Provider.GetContentPacks(), hooks);
+            try
+            {
+                double health = session.Snapshot.FieldValues["health"].NumberValue;
+                Assert.That(session.Apply("health", GameContentFieldValue.FromNumber(health + 1d)).Succeeded, Is.True);
+
+                GameContentCommitResult result = session.Commit(true);
+
+                Assert.That(result.Succeeded, Is.True, result.Message);
+                Assert.That(replacementAttempts, Is.EqualTo(3));
+                Assert.That(importAttempts, Is.EqualTo(1));
+                Assert.That(delays, Is.EqualTo(new[] { 25, 75 }));
+                Assert.That(events, Is.EqualTo(new[] { "replace-1", "replace-2", "replace-3", "import-1" }));
+                Assert.That(result.Message, Does.Contain("Commit.Replace"));
+                Assert.That(result.Message, Does.Contain("Win32=32"));
+                Assert.That(result.Message, Does.Contain("Win32=33"));
+                Assert.That(result.Message, Does.Contain("HResult=0x"));
+                Assert.That(File.ReadAllBytes(other.Source.SourcePath.FullPath), Is.EqualTo(otherBefore));
+
+                GameContentRollbackResult rollback = session.Rollback();
+                Assert.That(rollback.Succeeded, Is.True, rollback.Message);
+                Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(before));
+                Assert.That(File.ReadAllBytes(other.Source.SourcePath.FullPath), Is.EqualTo(otherBefore));
+            }
+            finally
+            {
+                session.Dispose();
+                RestoreExact(fixture, before);
+                RestoreExact(other, otherBefore);
+            }
+        }
+
+        [Test]
+        public void TransientReplacementExhaustion_DoesNotImportAndPreservesExactOriginalBytes()
+        {
+            Fixture fixture = Resolve("basic-survivors", "enemy.survivors.swarm");
+            byte[] before = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
+            int replacementAttempts = 0;
+            int importAttempts = 0;
+            var delays = new List<int>();
+            var hooks = new SurvivorsEditTransactionHooks
+            {
+                AtomicFileOperations = new SurvivorsAtomicFileOperations
+                {
+                    ReplacementOperation = (_, __) =>
+                    {
+                        replacementAttempts++;
+                        throw new Win32IOException(1175);
+                    },
+                    DelayMilliseconds = delays.Add
+                },
+                BeforeImport = () => importAttempts++
+            };
+            var session = new SurvivorsContentEditSession(fixture.Source, () => fixture.Provider.GetContentPacks(), hooks);
+            try
+            {
+                double health = session.Snapshot.FieldValues["health"].NumberValue;
+                Assert.That(session.Apply("health", GameContentFieldValue.FromNumber(health + 1d)).Succeeded, Is.True);
+
+                GameContentCommitResult result = session.Commit(true);
+
+                Assert.That(result.Succeeded, Is.False);
+                Assert.That(result.Recovery, Is.Null);
+                Assert.That(session.State, Is.EqualTo(GameContentEditSessionState.Dirty));
+                Assert.That(replacementAttempts, Is.EqualTo(4));
+                Assert.That(importAttempts, Is.Zero);
+                Assert.That(delays, Is.EqualTo(new[] { 25, 75, 200 }));
+                Assert.That(result.Message, Does.Contain("RetryExhausted"));
+                Assert.That(result.Message, Does.Contain("Win32=1175"));
+                Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(before));
+                Assert.That(session.Rollback().Succeeded, Is.True);
+            }
+            finally
+            {
+                session.Dispose();
+                RestoreExact(fixture, before);
+            }
+        }
+
+        [Test]
+        public void TransientReplacementRetry_RefusesChangedManifestSourceRevision()
+        {
+            Fixture fixture = Resolve("basic-survivors", "enemy.survivors.swarm");
+            byte[] before = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
+            GameContentPackSourceReference[] originalSources = fixture.Manifest.ContentSources.ToArray();
+            int replacementAttempts = 0;
+            int importAttempts = 0;
+            bool manifestChanged = false;
+            var delays = new List<int>();
+            var hooks = new SurvivorsEditTransactionHooks
+            {
+                AtomicFileOperations = new SurvivorsAtomicFileOperations
+                {
+                    ReplacementOperation = (replacement, destination) =>
+                    {
+                        replacementAttempts++;
+                        if (replacementAttempts == 1) throw new Win32IOException(32);
+                        File.Replace(replacement, destination, null);
+                    },
+                    DelayMilliseconds = delay =>
+                    {
+                        delays.Add(delay);
+                        ConfigureManifestSources(fixture.Manifest, originalSources.Reverse().ToArray());
+                        manifestChanged = true;
+                    }
+                },
+                BeforeImport = () => importAttempts++
+            };
+            var session = new SurvivorsContentEditSession(fixture.Source, () => fixture.Provider.GetContentPacks(), hooks);
+            try
+            {
+                double health = session.Snapshot.FieldValues["health"].NumberValue;
+                Assert.That(session.Apply("health", GameContentFieldValue.FromNumber(health + 1d)).Succeeded, Is.True);
+
+                GameContentCommitResult result = session.Commit(true);
+
+                Assert.That(result.Succeeded, Is.False);
+                Assert.That(result.Recovery, Is.Null);
+                Assert.That(session.State, Is.EqualTo(GameContentEditSessionState.Dirty));
+                Assert.That(manifestChanged, Is.True);
+                Assert.That(replacementAttempts, Is.EqualTo(1));
+                Assert.That(importAttempts, Is.Zero);
+                Assert.That(delays, Is.EqualTo(new[] { 25 }));
+                Assert.That(result.Message, Does.Contain("manifest source list"));
+                Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(before));
+            }
+            finally
+            {
+                ConfigureManifestSources(fixture.Manifest, originalSources);
+                session.Rollback();
+                session.Dispose();
+                RestoreExact(fixture, before);
+            }
+        }
+
+        [Test]
+        public void Rollback_RetriesTransientReplacementAndRestoresExactOriginalBytes()
+        {
+            Fixture fixture = Resolve("basic-survivors", "enemy.survivors.swarm");
+            byte[] before = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
+            bool failNextReplacement = false;
+            int replacementAttempts = 0;
+            int importAttempts = 0;
+            var delays = new List<int>();
+            var hooks = new SurvivorsEditTransactionHooks
+            {
+                AtomicFileOperations = new SurvivorsAtomicFileOperations
+                {
+                    ReplacementOperation = (replacement, destination) =>
+                    {
+                        replacementAttempts++;
+                        if (failNextReplacement)
+                        {
+                            failNextReplacement = false;
+                            throw new Win32IOException(33);
+                        }
+                        File.Replace(replacement, destination, null);
+                    },
+                    DelayMilliseconds = delays.Add
+                },
+                BeforeImport = () => importAttempts++
+            };
+            var session = new SurvivorsContentEditSession(fixture.Source, () => fixture.Provider.GetContentPacks(), hooks);
+            try
+            {
+                double health = session.Snapshot.FieldValues["health"].NumberValue;
+                Assert.That(session.Apply("health", GameContentFieldValue.FromNumber(health + 1d)).Succeeded, Is.True);
+                Assert.That(session.Commit(true).Succeeded, Is.True);
+
+                failNextReplacement = true;
+                GameContentRollbackResult rollback = session.Rollback();
+
+                Assert.That(rollback.Succeeded, Is.True, rollback.Message);
+                Assert.That(replacementAttempts, Is.EqualTo(3));
+                Assert.That(importAttempts, Is.EqualTo(2));
+                Assert.That(delays, Is.EqualTo(new[] { 25 }));
+                Assert.That(rollback.Message, Does.Contain("Rollback.Replace"));
+                Assert.That(rollback.Message, Does.Contain("Win32=33"));
+                Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(before));
+            }
+            finally
+            {
+                session.Dispose();
+                RestoreExact(fixture, before);
+            }
+        }
+
+        [Test]
         public void ImportFailure_AutomaticallyRestoresAndVerifiesExactOriginalBytes()
         {
             Fixture fixture = Resolve("basic-survivors", "enemy.survivors.swarm");
             byte[] before = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
             int importAttempts = 0;
+            int replacementAttempts = 0;
+            var delays = new List<int>();
             var hooks = new SurvivorsEditTransactionHooks
             {
+                AtomicFileOperations = new SurvivorsAtomicFileOperations
+                {
+                    ReplacementOperation = (replacement, destination) =>
+                    {
+                        replacementAttempts++;
+                        if (replacementAttempts == 2) throw new Win32IOException(1175);
+                        File.Replace(replacement, destination, null);
+                    },
+                    DelayMilliseconds = delays.Add
+                },
                 BeforeImport = () =>
                 {
                     if (importAttempts++ == 0) throw new IOException("simulated import failure");
@@ -445,6 +684,10 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Assert.That(result.Recovery, Is.Null);
                 Assert.That(session.State, Is.EqualTo(GameContentEditSessionState.RolledBack));
                 Assert.That(importAttempts, Is.EqualTo(2));
+                Assert.That(replacementAttempts, Is.EqualTo(3));
+                Assert.That(delays, Is.EqualTo(new[] { 25 }));
+                Assert.That(result.Message, Does.Contain("RecoveryRestore.Replace"));
+                Assert.That(result.Message, Does.Contain("Win32=1175"));
                 Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(before));
             }
             finally
@@ -1134,6 +1377,25 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                     GameContentCollectionItemKey.Create(),
                     index,
                     GameContentFieldValue.FromString(value))));
+        }
+
+        private static void ConfigureManifestSources(
+            GameContentPackManifest manifest,
+            IReadOnlyList<GameContentPackSourceReference> sources)
+        {
+            manifest.Configure(
+                manifest.PackId,
+                manifest.OwningPackageId,
+                manifest.ProviderId,
+                manifest.DisplayName,
+                manifest.Description,
+                manifest.SchemaVersion,
+                manifest.Tags,
+                manifest.PlayableScene,
+                manifest.DefaultTheme,
+                sources,
+                manifest.Preview,
+                manifest.Icon);
         }
 
         private static void RestoreExact(Fixture fixture, byte[] bytes)
