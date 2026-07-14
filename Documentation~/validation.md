@@ -295,3 +295,26 @@ Latest local validation for Milestone 2D1 on `2026-07-13`:
 - Dedicated imported-scene smokes: Basic Standard, Basic Sprint, Neon Standard, and Neon Sprint each passed `1`, failed `0`.
 - Shared package validator and `git diff --check`: passed.
 - Package metadata, dependency versions, asmdefs, authored sample content, content-pack manifests, and scenes: no diff.
+
+Milestone 2D2C adds one safe ordered scalar collection field:
+
+- Existing tutorial-step records in the Basic and Neon UI-theme sources expose only `Lines` plus the read-only step ID. Other arrays, tutorial-step creation/deletion, IDs, and structure remain read-only.
+- `Lines` uses the shared `OrderedScalarCollection<string>` contract with stable item keys, Add, Remove, Move Up, Move Down, Replace, Restore Original Order, Undo, Redo, and Cancel support. Duplicate text is allowed and item identity does not depend on the text value.
+- The authoritative panel capacity is `1` to `3` nonblank lines. The upper bound matches the existing fixed three-row small-screen tutorial panel; this milestone does not redesign or scroll the runtime UI.
+- The template-owned tokenizer replaces only the unique direct `lines` array span. It preserves UTF-8 BOM state, line endings, indentation, compact or multiline layout, property ordering, unknown fields, unrelated arrays, and every byte outside that span.
+- Preview and Commit validate the complete selected pack. Collection operations, Undo, Redo, preview, commit, and rollback retain the existing stale-revision, atomic-write, backup, recovery, reimport, and strict-runtime verification rules.
+- Strict Basic and Neon runtime binding consumes committed line text and order directly from authored JSON without fallback or a ScriptableObject mirror. Sample reimport can overwrite edits to the project-owned imported copy, so authors should review or commit those changes first.
+
+Latest local validation for Milestone 2D2C on `2026-07-14`:
+
+- Focused lossless tokenizer/locator/patch suite: `33` passed, `0` failed.
+- Focused provider/session/transaction suite: `33` passed, `0` failed, including repair of both blank and zero-line invalid tutorial copy; dedicated Basic and Neon commit/runtime/rollback rerun: `2` passed, `0` failed.
+- Tutorial panel-capacity validation: `1` passed, `0` failed.
+- Complete Survivors EditMode suite with one job worker: `165` passed, `0` failed. Earlier broad attempts intermittently reported fail-closed Windows `File.Replace` contention in unchanged transaction tests; the exact tests reran cleanly and the final low-worker full run passed.
+- Complete Game Content Authoring EditMode suite: `103` passed, `0` failed (`93` core/pack tests and `10` generic ordered-collection editor tests).
+- Complete Survivors PlayMode suite: `154` passed, `0` failed.
+- Strict independent Basic and Neon content-set validation: `1` passed, `0` failed.
+- Dedicated imported-scene smokes: Basic Standard, Basic Sprint, Neon Standard, and Neon Sprint each passed `1`, failed `0`.
+- Package validator and `git diff --check`: passed.
+- All `22` shipped content JSON files match their `HEAD` Git blob hashes; all `22` disposable imported copies match package-source SHA-256 hashes after tests. The package's `106` Unity metadata GUIDs have no duplicates.
+- Package metadata, dependency versions, asmdefs, authored JSON, content-pack manifests, scenes, gameplay tuning, weapons, enemies, upgrades, and rewards: no diff.

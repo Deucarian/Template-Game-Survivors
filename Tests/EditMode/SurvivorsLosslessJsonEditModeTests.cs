@@ -241,6 +241,140 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(typeError, Does.Contain("does not match"));
         }
 
+        [Test]
+        public void CollectionLocator_UsesStableStepIdAndPreservesDuplicateItemIdentity()
+        {
+            SurvivorsLosslessJsonDocument document = Parse(
+                "{\"tutorialSteps\":[{\"id\":\"movement\",\"nested\":{\"lines\":[\"wrong\"]},\"lines\":[\"same\",\"same\"]}]}" );
+            SurvivorsJsonCollectionToken token = LocateCollection(document, "tutorialSteps", "movement", "lines");
+            GameContentOrderedCollectionValue value = token.Value.OrderedCollectionValue;
+
+            Assert.That(value.ItemType, Is.EqualTo(GameContentFieldType.String));
+            Assert.That(value.Items.Select(item => item.Value.StringValue), Is.EqualTo(new[] { "same", "same" }));
+            Assert.That(value.Items.Select(item => item.OriginalIndex), Is.EqualTo(new[] { 0, 1 }));
+            Assert.That(value.Items[0].ItemKey, Is.Not.EqualTo(value.Items[1].ItemKey));
+        }
+
+        [TestCase("{\"tutorialSteps\":[{\"id\":\"movement\"}]}", "missing")]
+        [TestCase("{\"tutorialSteps\":[{\"id\":\"movement\",\"lines\":{},\"future\":true}]}", "must be an array")]
+        [TestCase("{\"tutorialSteps\":[{\"id\":\"movement\",\"lines\":[\"ok\",7]}]}", "must be a string")]
+        [TestCase("{\"tutorialSteps\":[{\"id\":\"movement\",\"lines\":[\"one\"],\"\\u006cines\":[\"two\"]}]}", "more than once")]
+        [TestCase("{\"tutorialSteps\":[{\"id\":\"movement\",\"nested\":{\"lines\":[\"wrong\"]}}]}", "direct property")]
+        public void CollectionLocator_RejectsUnsafeDirectArrayShapes(string json, string expectedError)
+        {
+            SurvivorsLosslessJsonDocument document = Parse(json);
+            var locator = new SurvivorsJsonRecordLocator("theme.primary", "tutorialSteps", "movement", "TutorialStep");
+            Assert.That(SurvivorsJsonRecordNavigator.TryLocateRecord(
+                document,
+                locator,
+                out SurvivorsJsonNode record,
+                out string locateError), Is.True, locateError);
+
+            Assert.That(SurvivorsJsonRecordNavigator.TryReadDirectStringCollection(
+                record,
+                "lines",
+                true,
+                out _,
+                out string error), Is.False);
+            Assert.That(error, Does.Contain(expectedError));
+        }
+
+        [Test]
+        public void CollectionLocator_RejectsDuplicateStableStepIds()
+        {
+            SurvivorsLosslessJsonDocument document = Parse(
+                "{\"tutorialSteps\":[{\"id\":\"movement\",\"lines\":[\"one\"]},{\"id\":\"movement\",\"lines\":[\"two\"]}]}" );
+            var locator = new SurvivorsJsonRecordLocator("theme.primary", "tutorialSteps", "movement", "TutorialStep");
+
+            Assert.That(SurvivorsJsonRecordNavigator.TryLocateRecord(document, locator, out _, out string error), Is.False);
+            Assert.That(error, Does.Contain("duplicate record id"));
+        }
+
+        [Test]
+        public void CollectionPatcher_PreservesCompactStyleBomAndEscapesStrings()
+        {
+            const string json = "{\"future\":1.2300,\"tutorialSteps\":[{\"id\":\"movement\",\"lines\":[\"old\",\"two\"],\"unknown\":true}]}";
+            SurvivorsLosslessJsonDocument document = Parse(json, true);
+            SurvivorsJsonCollectionToken token = LocateCollection(document, "tutorialSteps", "movement", "lines");
+            GameContentFieldValue value = CollectionValue("quote \" slash \\", "line\ncontrol\t", "unicode \u03a9");
+
+            byte[] bytes = PatchCollection(document, token, value, out string proposed);
+
+            Assert.That(bytes.Take(3), Is.EqualTo(new byte[] { 0xEF, 0xBB, 0xBF }));
+            Assert.That(proposed.Substring(0, token.Node.Start), Is.EqualTo(json.Substring(0, token.Node.Start)));
+            SurvivorsLosslessJsonDocument reparsed = Parse(proposed);
+            SurvivorsJsonCollectionToken proposedToken = LocateCollection(reparsed, "tutorialSteps", "movement", "lines");
+            Assert.That(proposed.Substring(proposedToken.Node.End), Is.EqualTo(json.Substring(token.Node.End)));
+            Assert.That(proposedToken.Value.OrderedCollectionValue.Items.Select(item => item.Value.StringValue),
+                Is.EqualTo(new[] { "quote \" slash \\", "line\ncontrol\t", "unicode \u03a9" }));
+            string arrayText = proposed.Substring(proposedToken.Node.Start, proposedToken.Node.Length);
+            Assert.That(arrayText, Does.Not.Contain("\n"));
+            Assert.That(arrayText, Does.Contain("\\\"").And.Contain("\\\\").And.Contain("\\n").And.Contain("\\t"));
+        }
+
+        [TestCase("\n")]
+        [TestCase("\r\n")]
+        public void CollectionPatcher_PreservesMultilineNewlinesIndentationAndOutsideBytes(string newline)
+        {
+            string originalArray = "[" + newline +
+                                   "        \"First\"," + newline +
+                                   "        \"Second\"," + newline +
+                                   "        \"Third\"" + newline +
+                                   "      ]";
+            string json = "{" + newline +
+                          "  \"tutorialSteps\": [" + newline +
+                          "    {" + newline +
+                          "      \"id\": \"movement\"," + newline +
+                          "      \"lines\": " + originalArray + "," + newline +
+                          "      \"unknown\": 1.2300" + newline +
+                          "    }" + newline +
+                          "  ]" + newline +
+                          "}" + newline;
+            SurvivorsLosslessJsonDocument document = Parse(json);
+            SurvivorsJsonCollectionToken token = LocateCollection(document, "tutorialSteps", "movement", "lines");
+            string replacementArray = "[" + newline +
+                                      "        \"Third\"," + newline +
+                                      "        \"Changed\"," + newline +
+                                      "        \"First\"" + newline +
+                                      "      ]";
+
+            PatchCollection(document, token, CollectionValue("Third", "Changed", "First"), out string proposed);
+
+            Assert.That(proposed, Is.EqualTo(json.Replace(originalArray, replacementArray)));
+            Assert.That(proposed, Does.Contain("\"unknown\": 1.2300"));
+        }
+
+        [Test]
+        public void CollectionPatcher_PreservesMixedLineEndingsOutsideArraySpan()
+        {
+            const string originalArray = "[\r\n          \"First\",\r\n          \"Second\"\r\n        ]";
+            const string json = "{\r\n  \"future\": 8e0,\n  \"tutorialSteps\": [\r\n" +
+                                "    {\"id\":\"movement\", \"lines\": " + originalArray + ", \"tail\":false}\n  ]\r\n}\n";
+            SurvivorsLosslessJsonDocument document = Parse(json);
+            SurvivorsJsonCollectionToken token = LocateCollection(document, "tutorialSteps", "movement", "lines");
+            const string replacementArray = "[\r\n          \"Second\",\r\n          \"First\"\r\n        ]";
+
+            PatchCollection(document, token, CollectionValue("Second", "First"), out string proposed);
+
+            Assert.That(proposed, Is.EqualTo(json.Replace(originalArray, replacementArray)));
+        }
+
+        [Test]
+        public void CollectionPatcher_DerivesFormattingForOriginallyEmptyArrays()
+        {
+            const string compactJson = "{\"tutorialSteps\":[{\"id\":\"movement\",\"lines\":[]}]}";
+            SurvivorsLosslessJsonDocument compact = Parse(compactJson);
+            SurvivorsJsonCollectionToken compactToken = LocateCollection(compact, "tutorialSteps", "movement", "lines");
+            PatchCollection(compact, compactToken, CollectionValue("One", "Two"), out string compactProposed);
+            Assert.That(compactProposed, Is.EqualTo(compactJson.Replace("[]", "[\"One\", \"Two\"]")));
+
+            const string multilineJson = "{\r\n  \"tutorialSteps\": [{\r\n    \"id\": \"movement\",\r\n    \"lines\": [\r\n    ]\r\n  }]\r\n}";
+            SurvivorsLosslessJsonDocument multiline = Parse(multilineJson);
+            SurvivorsJsonCollectionToken multilineToken = LocateCollection(multiline, "tutorialSteps", "movement", "lines");
+            PatchCollection(multiline, multilineToken, CollectionValue("One", "Two"), out string multilineProposed);
+            Assert.That(multilineProposed, Does.Contain("\"lines\": [\r\n      \"One\",\r\n      \"Two\"\r\n    ]"));
+        }
+
         private static SurvivorsLosslessJsonDocument Parse(string json, bool bom = false)
         {
             byte[] payload = Utf8.GetBytes(json);
@@ -275,6 +409,52 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 out SurvivorsJsonScalarToken token,
                 out error), Is.True, error);
             return token;
+        }
+
+        private static SurvivorsJsonCollectionToken LocateCollection(
+            SurvivorsLosslessJsonDocument document,
+            string collection,
+            string recordId,
+            string fieldId)
+        {
+            var locator = new SurvivorsJsonRecordLocator("source", collection, recordId, "fixture");
+            Assert.That(SurvivorsJsonRecordNavigator.TryLocateRecord(document, locator, out SurvivorsJsonNode record, out string error), Is.True, error);
+            Assert.That(SurvivorsJsonRecordNavigator.TryReadDirectStringCollection(
+                record,
+                fieldId,
+                true,
+                out SurvivorsJsonCollectionToken token,
+                out error), Is.True, error);
+            return token;
+        }
+
+        private static GameContentFieldValue CollectionValue(params string[] values)
+        {
+            var collection = new GameContentOrderedCollectionValue(
+                GameContentFieldType.String,
+                (values ?? Array.Empty<string>())
+                .Select((value, index) => new GameContentCollectionItem(
+                    GameContentCollectionItemKey.Create(),
+                    index,
+                    GameContentFieldValue.FromString(value))));
+            return GameContentFieldValue.FromOrderedScalarCollection(collection);
+        }
+
+        private static byte[] PatchCollection(
+            SurvivorsLosslessJsonDocument document,
+            SurvivorsJsonCollectionToken token,
+            GameContentFieldValue value,
+            out string proposed)
+        {
+            Assert.That(SurvivorsLosslessJsonPatcher.TryPatch(
+                document,
+                new Dictionary<string, SurvivorsJsonScalarToken>(StringComparer.Ordinal),
+                new Dictionary<string, SurvivorsJsonCollectionToken>(StringComparer.Ordinal) { [token.FieldId] = token },
+                new Dictionary<string, GameContentFieldValue>(StringComparer.Ordinal) { [token.FieldId] = value },
+                out proposed,
+                out byte[] bytes,
+                out string error), Is.True, error);
+            return bytes;
         }
 
         private static byte[] Patch(

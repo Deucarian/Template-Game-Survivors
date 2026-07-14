@@ -26,6 +26,8 @@ namespace Deucarian.TemplateGameSurvivors
 
     public static class SurvivorsContentValidator
     {
+        public const int MaximumTutorialLineCount = 3;
+
         private const int MinimumVerticalSliceWeaponCount = 6;
         private const int MinimumVerticalSlicePassiveCount = 8;
         private const int MinimumVerticalSliceCompleteWeaponTrackCount = 6;
@@ -3054,6 +3056,11 @@ namespace Deucarian.TemplateGameSurvivors
                 {
                     result.AddError($"{label} tutorial step {step.id} must include at least one line.");
                     continue;
+                }
+
+                if (step.lines.Length > MaximumTutorialLineCount)
+                {
+                    result.AddError($"{label} tutorial step {step.id} supports at most {MaximumTutorialLineCount} lines in the current tutorial panel.");
                 }
 
                 for (int lineIndex = 0; lineIndex < step.lines.Length; lineIndex++)

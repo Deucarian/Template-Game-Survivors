@@ -252,7 +252,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return false;
             }
             GameContentPackDescriptor pack = packMatches[0];
-            if (pack.SourceState != GameContentPackSourceState.Available)
+            if (pack.SourceState != GameContentPackSourceState.Available &&
+                pack.SourceState != GameContentPackSourceState.ValidationFailed)
             {
                 reason = "Fix the selected pack's missing-source or strict validation errors before editing.";
                 return false;
@@ -282,6 +283,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 reason = "Select a record owned by the current Basic Survivors or Neon Arcana index.";
                 return false;
             }
+            if (pack.SourceState == GameContentPackSourceState.ValidationFailed && !IsTutorialRecord(record))
+            {
+                reason = "This pack has strict validation errors. Only an existing tutorial Lines collection can be opened to repair tutorial copy.";
+                return false;
+            }
             return SurvivorsEditableSource.TryCreate(manifest, record, true, out source, out reason);
         }
 
@@ -296,7 +302,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             GameContentPackSourceKind sourceKind,
             GameContentPackSourceState state)
         {
-            if (state == GameContentPackSourceState.Available &&
+            if ((state == GameContentPackSourceState.Available || state == GameContentPackSourceState.ValidationFailed) &&
                 SurvivorsEditableSource.CanAdvertiseEditing(manifest, sourceKind, out string reason))
             {
                 return new GameContentPackAccessDescriptor(
@@ -304,7 +310,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     GameContentPackBackendCapability.Validate |
                     GameContentPackBackendCapability.RevealSource |
                     GameContentPackBackendCapability.EditExisting,
-                    "Project-owned imported JSON with lossless field editing");
+                    state == GameContentPackSourceState.ValidationFailed
+                        ? "Project-owned imported JSON with tutorial Lines repair editing"
+                        : "Project-owned imported JSON with lossless field editing");
             }
 
             SurvivorsEditableSource.CanAdvertiseEditing(manifest, sourceKind, out string disabledReason);
@@ -316,6 +324,15 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 string.IsNullOrWhiteSpace(disabledReason)
                     ? "Fix pack availability and import a project-owned sample before editing."
                     : disabledReason);
+        }
+
+        private static bool IsTutorialRecord(GameContentRecordDescriptor record)
+        {
+            if (record?.CanonicalKey == null ||
+                !string.Equals(record.CategoryId, "tutorial", StringComparison.OrdinalIgnoreCase))
+                return false;
+            return string.Equals(record.CanonicalKey.SourceId, SurvivorsContentPackIndex.PrimaryThemeSourceId, StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(record.CanonicalKey.SourceId, SurvivorsContentPackIndex.AlternateThemeSourceId, StringComparison.OrdinalIgnoreCase);
         }
 
         public static GameContentPackDescriptor CreateSampleNotImportedDescriptor()

@@ -152,6 +152,7 @@ Idle Auto Defense can be used as the second-template proof for reusable infrastr
 ## Known Contract Risks / Future Hardening
 
 - Keep the strict schema and authored tuning-parity mutation tests current when adding new gameplay fields.
+- Keep the generic ordered-collection workbench in Game Content Authoring while tutorial copy, the 1-3 row layout limit, JSON mapping, validation, and runtime display remain owned by this template.
 - Do not let copied/imported sample scenes become stale when bootstrap content references change.
 - Keep offscreen spawn resolver package candidacy separate from Survivors enemy content, tuning, and reward rules.
 - Prove extraction with Idle Auto Defense before moving shared systems broadly.

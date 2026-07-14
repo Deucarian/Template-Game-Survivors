@@ -617,6 +617,20 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public GameContentFieldValue Value { get; }
     }
 
+    internal sealed class SurvivorsJsonCollectionToken
+    {
+        public SurvivorsJsonCollectionToken(string fieldId, SurvivorsJsonNode node, GameContentFieldValue value)
+        {
+            FieldId = fieldId ?? string.Empty;
+            Node = node;
+            Value = value;
+        }
+
+        public string FieldId { get; }
+        public SurvivorsJsonNode Node { get; }
+        public GameContentFieldValue Value { get; }
+    }
+
     internal static class SurvivorsJsonRecordNavigator
     {
         public static bool TryLocateRecord(
@@ -739,6 +753,48 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             return true;
         }
 
+        public static bool TryReadDirectStringCollection(
+            SurvivorsJsonNode record,
+            string fieldId,
+            bool required,
+            out SurvivorsJsonCollectionToken token,
+            out string error)
+        {
+            token = null;
+            if (!TryGetUniqueProperty(record, fieldId, out SurvivorsJsonProperty property, out error)) return false;
+            if (property == null)
+            {
+                if (!required) return true;
+                error = "Required direct property '" + fieldId + "' is missing.";
+                return false;
+            }
+            if (property.Value.Kind != SurvivorsJsonValueKind.Array)
+            {
+                error = "Direct property '" + fieldId + "' must be an array.";
+                return false;
+            }
+
+            var items = new List<GameContentCollectionItem>(property.Value.Elements.Count);
+            for (int index = 0; index < property.Value.Elements.Count; index++)
+            {
+                SurvivorsJsonNode item = property.Value.Elements[index];
+                if (item.Kind != SurvivorsJsonValueKind.String)
+                {
+                    error = "Direct property '" + fieldId + "' item " + index + " must be a string.";
+                    return false;
+                }
+                items.Add(new GameContentCollectionItem(
+                    GameContentCollectionItemKey.Create(),
+                    index,
+                    GameContentFieldValue.FromString(item.StringValue)));
+            }
+
+            var collection = new GameContentOrderedCollectionValue(GameContentFieldType.String, items);
+            GameContentFieldValue value = GameContentFieldValue.FromOrderedScalarCollection(collection);
+            token = new SurvivorsJsonCollectionToken(fieldId, property.Value, value);
+            return true;
+        }
+
         private static bool TryReadValue(
             SurvivorsLosslessJsonDocument document,
             SurvivorsJsonNode node,
@@ -813,6 +869,25 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             out byte[] proposedBytes,
             out string error)
         {
+            return TryPatch(
+                document,
+                tokens,
+                null,
+                changes,
+                out proposedText,
+                out proposedBytes,
+                out error);
+        }
+
+        public static bool TryPatch(
+            SurvivorsLosslessJsonDocument document,
+            IReadOnlyDictionary<string, SurvivorsJsonScalarToken> scalarTokens,
+            IReadOnlyDictionary<string, SurvivorsJsonCollectionToken> collectionTokens,
+            IReadOnlyDictionary<string, GameContentFieldValue> changes,
+            out string proposedText,
+            out byte[] proposedBytes,
+            out string error)
+        {
             proposedText = null;
             proposedBytes = null;
             error = string.Empty;
@@ -832,20 +907,44 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             var replacements = new List<Replacement>(changes.Count);
             foreach (KeyValuePair<string, GameContentFieldValue> change in changes)
             {
-                if (tokens == null || !tokens.TryGetValue(change.Key, out SurvivorsJsonScalarToken token) || token?.Node == null)
+                SurvivorsJsonScalarToken scalarToken = null;
+                SurvivorsJsonCollectionToken collectionToken = null;
+                bool hasScalar = scalarTokens != null &&
+                                 scalarTokens.TryGetValue(change.Key, out scalarToken) &&
+                                 scalarToken?.Node != null;
+                bool hasCollection = collectionTokens != null &&
+                                     collectionTokens.TryGetValue(change.Key, out collectionToken) &&
+                                     collectionToken?.Node != null;
+                if (hasScalar == hasCollection)
                 {
-                    error = "No unambiguous scalar token exists for field '" + change.Key + "'.";
+                    error = "No unambiguous editable JSON token exists for field '" + change.Key + "'.";
                     return false;
                 }
-                if (!TryEncodeValue(change.Value, token.Node.Kind, out string replacement, out error))
+
+                string replacement;
+                SurvivorsJsonNode node;
+                if (hasScalar)
                 {
-                    error = "Field '" + change.Key + "': " + error;
-                    return false;
+                    node = scalarToken.Node;
+                    if (!TryEncodeValue(change.Value, node.Kind, out replacement, out error))
+                    {
+                        error = "Field '" + change.Key + "': " + error;
+                        return false;
+                    }
+                }
+                else
+                {
+                    node = collectionToken.Node;
+                    if (!TryEncodeStringCollection(document, collectionToken, change.Value, out replacement, out error))
+                    {
+                        error = "Field '" + change.Key + "': " + error;
+                        return false;
+                    }
                 }
                 replacements.Add(new Replacement
                 {
-                    Start = token.Node.Start,
-                    Length = token.Node.Length,
+                    Start = node.Start,
+                    Length = node.Length,
                     Text = replacement
                 });
             }
@@ -855,7 +954,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             {
                 if (ordered[index - 1].Start < ordered[index].Start + ordered[index].Length)
                 {
-                    error = "Scalar replacement spans overlap.";
+                    error = "JSON replacement spans overlap.";
                     return false;
                 }
             }
@@ -871,6 +970,136 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             proposedText = builder.ToString();
             proposedBytes = document.Encode(proposedText);
             return true;
+        }
+
+        private static bool TryEncodeStringCollection(
+            SurvivorsLosslessJsonDocument document,
+            SurvivorsJsonCollectionToken token,
+            GameContentFieldValue value,
+            out string encoded,
+            out string error)
+        {
+            encoded = null;
+            error = string.Empty;
+            GameContentOrderedCollectionValue collection = value?.OrderedCollectionValue;
+            if (value == null || value.FieldType != GameContentFieldType.OrderedScalarCollection ||
+                collection == null || collection.ItemType != GameContentFieldType.String)
+            {
+                error = "A string ordered collection is required.";
+                return false;
+            }
+            if (token?.Node == null || token.Node.Kind != SurvivorsJsonValueKind.Array)
+            {
+                error = "The original JSON token is not an array.";
+                return false;
+            }
+            if (collection.Items.Any(item => item?.Value == null || item.Value.FieldType != GameContentFieldType.String))
+            {
+                error = "Every collection item must be a string.";
+                return false;
+            }
+
+            string[] items = collection.Items.Select(item => EncodeString(item.Value.StringValue)).ToArray();
+            encoded = FormatArray(document.Text, token.Node, items);
+            return true;
+        }
+
+        private static string FormatArray(string source, SurvivorsJsonNode array, IReadOnlyList<string> items)
+        {
+            int contentStart = array.Start + 1;
+            int contentEnd = array.End - 1;
+            if (array.Elements.Count == 0)
+                return FormatOriginallyEmptyArray(source, array, items);
+
+            SurvivorsJsonNode first = array.Elements[0];
+            SurvivorsJsonNode last = array.Elements[array.Elements.Count - 1];
+            string prefix = source.Substring(contentStart, first.Start - contentStart);
+            string suffix = source.Substring(last.End, contentEnd - last.End);
+            var gaps = new List<string>(Math.Max(0, array.Elements.Count - 1));
+            for (int index = 1; index < array.Elements.Count; index++)
+            {
+                SurvivorsJsonNode previous = array.Elements[index - 1];
+                SurvivorsJsonNode current = array.Elements[index];
+                gaps.Add(source.Substring(previous.End, current.Start - previous.End));
+            }
+
+            if (items.Count == 0) return "[" + prefix + suffix + "]";
+            string fallbackGap = ResolveFallbackGap(source, array, prefix, gaps);
+            var builder = new StringBuilder();
+            builder.Append('[').Append(prefix).Append(items[0]);
+            for (int index = 1; index < items.Count; index++)
+            {
+                string gap = index - 1 < gaps.Count ? gaps[index - 1] : fallbackGap;
+                builder.Append(gap).Append(items[index]);
+            }
+            builder.Append(suffix).Append(']');
+            return builder.ToString();
+        }
+
+        private static string FormatOriginallyEmptyArray(
+            string source,
+            SurvivorsJsonNode array,
+            IReadOnlyList<string> items)
+        {
+            if (items.Count == 0) return source.Substring(array.Start, array.Length);
+            string whitespace = source.Substring(array.Start + 1, array.Length - 2);
+            string newline = FindFirstNewline(whitespace);
+            if (string.IsNullOrEmpty(newline))
+            {
+                string padding = whitespace.Length == 0 ? string.Empty : whitespace;
+                return "[" + padding + string.Join(", ", items) + padding + "]";
+            }
+
+            int lastLineBreak = whitespace.LastIndexOf('\n');
+            string closingIndent = lastLineBreak < 0
+                ? string.Empty
+                : whitespace.Substring(lastLineBreak + 1);
+            string itemIndent = closingIndent + InferIndentUnit(source, array.Start, closingIndent);
+            string separator = "," + newline + itemIndent;
+            return "[" + newline + itemIndent + string.Join(separator, items) + newline + closingIndent + "]";
+        }
+
+        private static string ResolveFallbackGap(
+            string source,
+            SurvivorsJsonNode array,
+            string prefix,
+            IReadOnlyList<string> gaps)
+        {
+            if (gaps.Count > 0) return gaps[gaps.Count - 1];
+            if (prefix.IndexOf('\n') >= 0 || prefix.IndexOf('\r') >= 0) return "," + prefix;
+
+            string original = source.Substring(array.Start, array.Length);
+            if (original.IndexOf('\n') < 0 && original.IndexOf('\r') < 0) return ", ";
+
+            string newline = FindFirstNewline(original);
+            string itemIndent = IndentationBefore(source, array.Elements[0].Start);
+            return "," + (string.IsNullOrEmpty(newline) ? " " : newline + itemIndent);
+        }
+
+        private static string FindFirstNewline(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            int lineFeed = value.IndexOf('\n');
+            if (lineFeed >= 0) return lineFeed > 0 && value[lineFeed - 1] == '\r' ? "\r\n" : "\n";
+            return value.IndexOf('\r') >= 0 ? "\r" : string.Empty;
+        }
+
+        private static string IndentationBefore(string source, int position)
+        {
+            int lineStart = position;
+            while (lineStart > 0 && source[lineStart - 1] != '\n' && source[lineStart - 1] != '\r') lineStart--;
+            int cursor = lineStart;
+            while (cursor < position && (source[cursor] == ' ' || source[cursor] == '\t')) cursor++;
+            return source.Substring(lineStart, cursor - lineStart);
+        }
+
+        private static string InferIndentUnit(string source, int arrayStart, string closingIndent)
+        {
+            string propertyIndent = IndentationBefore(source, arrayStart);
+            if (propertyIndent.StartsWith(closingIndent, StringComparison.Ordinal) &&
+                propertyIndent.Length > closingIndent.Length)
+                return propertyIndent.Substring(closingIndent.Length);
+            return closingIndent.IndexOf('\t') >= 0 ? "\t" : "  ";
         }
 
         private static bool TryEncodeValue(
