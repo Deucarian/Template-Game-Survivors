@@ -339,3 +339,23 @@ Latest local validation for transactional file-replacement hardening on `2026-07
 - `git diff --check`: passed.
 - All `22` shipped sample JSON files remained outside the source diff. Transaction tests restored every edited imported file to its exact pretest bytes; a final line-ending-normalized comparison matched all `22` imported files to the shipped source content. The disposable Windows host keeps CRLF working copies, so package-to-import raw hashes are not claimed.
 - Validation artifacts: `C:\Repositories\_survivors_validation_tmp\transaction-hardening\atomic-focused-final.json`, `editing-focused.json`, `editmode-full.json`, `editmode-combined.json`, `gca-editmode.json`, `gca-editor-editmode.json`, `playmode-full.json`, and `content-validation.log`.
+
+The first production structured-row backend exposes only existing Upgrade `Effects` arrays in imported Basic Survivors and Neon Arcana packs:
+
+- Effect rows remain anonymous values owned by the parent Upgrade. They have session-only keys and original indexes, but no authored ID, canonical record, inbound reference, save identity, source record, or top-level CRUD lifecycle.
+- The row schema exposes closed `effect` and `target` enums plus a finite non-zero numeric `amount`. Add requires all three explicit values; no hidden gameplay default is generated. Remove, Move, field replacement, Restore Original Order, Undo, and Redo remain staged until Commit.
+- The locator resolves one parent Upgrade by stable ID, one unique direct `effects` array, direct row objects, and exact mapped child tokens. Unsupported nested/ambiguous rows fail closed; unknown direct scalar properties retain their parsed spans and exact raw bytes without becoming writable.
+- Unchanged and moved rows reuse exact raw object text. Existing-row edits replace only changed direct child tokens. Added rows use deterministic field order and source-local compact/multiline formatting. The transaction replaces only the direct array span and retains every byte outside it.
+- Preview and Commit reuse complete strict selected-pack validation, stale/source locks, the hardened `File.Replace` retry/recovery path, synchronous reimport/reindex, committed-value verification, and revision-checked exact rollback. JSON remains the sole source of truth.
+
+Latest local validation for Upgrade Effects structured-row editing on `2026-07-14`:
+
+- Required baselines: Game Content Authoring `df2908fb870cdae193bc5b1df4d276180419c86e`; Survivors `5c9077286d51ffc2b972a933a79c49005df42c63`; both clean and synchronized before implementation.
+- Focused Effects provider/session/transaction/runtime suite: `12` passed, `0` failed. Focused lossless locator/row-span/format suite: `23` passed, `0` failed. Existing editing/reference/transaction compatibility fixture: `37` passed, `0` failed.
+- Strict independent Basic and Neon content-set validation: `1` passed, `0` failed. Complete Survivors EditMode: `221` passed, `0` failed. Complete Survivors PlayMode: `154` passed, `0` failed.
+- Dedicated imported-scene smokes: Basic Standard, Basic Sprint, Neon Standard, and Neon Sprint each passed `1`, failed `0`.
+- Complete unchanged Game Content Authoring EditMode dependency suite: `119` passed, `0` failed.
+- Runtime mutation proof committed an amount edit plus row move for `Keen Edge` independently in Basic and Neon, verified catalog order/values and controller application under strict binding with fallback false, then restored exact original bytes. Each proof also staged and removed a complete added row; the other pack hash remained unchanged.
+- Package validator: passed with `Deucarian validation passed: com.deucarian.template.game.survivors`. `git diff --check`: passed. Metadata scan: `110` GUIDs with no duplicates.
+- All `22` shipped sample JSON files match their `HEAD` Git blobs after clean filters. Imported Basic and Neon upgrade copies exactly match package SHA-256 values `6A5FA6B64CD19AA1ECDABAB2A22CA14302418F6CA51656C5D9A99EA57DF1B6BA` and `6C92F11A1CAA0F395E79A0D61A0BD43F47BA2B1FA0017E5CF8F780EC2D32C034` after testing.
+- Runtime files, gameplay tuning, authored values, sample JSON, scenes, package/dependency versions, and asmdefs have no diff. Game Content Authoring and every other repository remained unchanged.

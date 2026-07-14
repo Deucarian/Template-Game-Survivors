@@ -10,7 +10,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
     internal sealed class SurvivorsContentEditSession :
         IGameContentEditSession,
         IGameContentRecordReferenceEditSession,
-        IGameContentOrderedCollectionEditSession
+        IGameContentOrderedCollectionEditSession,
+        IGameContentStructuredCollectionEditSession
     {
         private readonly SurvivorsEditableSource _source;
         private readonly SurvivorsContentPackIndex _referenceIndex;
@@ -78,7 +79,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             GameContentFieldDescriptor field = Fields.FirstOrDefault(candidate =>
                 string.Equals(candidate.FieldId, fieldId, StringComparison.Ordinal));
             if (field == null) return GameContentEditOperationResult.Failure("Field '" + fieldId + "' is not exposed by this record.");
-            if (field.FieldType.IsOrderedCollection())
+            if (field.FieldType.IsOrderedCollection() ||
+                field.FieldType == GameContentFieldType.OrderedStructuredCollection)
                 return GameContentEditOperationResult.Failure("Use ordered collection operations to edit " + field.DisplayName + ".");
             if (!field.Accepts(value, out string reason)) return GameContentEditOperationResult.Failure(reason);
             if (field.FieldType == GameContentFieldType.RecordReference)
@@ -119,11 +121,78 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 "Staged " + field.DisplayName + " collection change.");
         }
 
+        public GameContentStructuredCollectionOperationResult ApplyStructuredOperation(
+            string fieldId,
+            GameContentStructuredCollectionOperation operation)
+        {
+            if (_disposed)
+                return GameContentStructuredCollectionOperationResult.Failure("The edit session is disposed.");
+            if (!IsStagingState)
+            {
+                return GameContentStructuredCollectionOperationResult.Failure(
+                    "The edit session is not accepting staged changes in its current state.");
+            }
+            GameContentFieldDescriptor field = Fields.FirstOrDefault(candidate =>
+                string.Equals(candidate.FieldId, fieldId, StringComparison.Ordinal));
+            if (field?.FieldType != GameContentFieldType.OrderedStructuredCollection ||
+                field.StructuredCollection == null)
+            {
+                return GameContentStructuredCollectionOperationResult.Failure(
+                    "Field '" + fieldId + "' is not an editable ordered structured collection.");
+            }
+
+            GameContentStaleCheckResult stale = CheckStale();
+            if (stale.IsStale) return GameContentStructuredCollectionOperationResult.Failure(stale.Message);
+            GameContentOrderedStructuredCollectionValue current =
+                Current[field.FieldId].OrderedStructuredCollectionValue;
+            if (!GameContentStructuredCollectionMutation.TryApply(
+                    field,
+                    current,
+                    operation,
+                    out GameContentOrderedStructuredCollectionValue proposed,
+                    out GameContentStructuredRowKey affectedRowKey,
+                    out string reason))
+                return GameContentStructuredCollectionOperationResult.Failure(reason);
+            if (!SurvivorsUpgradeEffectEditing.TryValidate(proposed, out reason))
+                return GameContentStructuredCollectionOperationResult.Failure(reason);
+            if (current.Equals(proposed))
+            {
+                return GameContentStructuredCollectionOperationResult.Success(
+                    "The proposed Effects collection is unchanged.",
+                    affectedRowKey);
+            }
+
+            GameContentEditOperationResult staged = StageValue(
+                field,
+                GameContentFieldValue.FromOrderedStructuredCollection(proposed),
+                "Staged Effects row change.");
+            return new GameContentStructuredCollectionOperationResult(
+                staged.Succeeded,
+                staged.Message,
+                affectedRowKey);
+        }
+
+        public GameContentReferenceEvaluation EvaluateStructuredRowReference(
+            string fieldId,
+            GameContentStructuredRowKey rowKey,
+            string rowFieldId,
+            GameContentRecordKey targetKey)
+        {
+            return GameContentReferenceEvaluation.Rejected(
+                targetKey,
+                "Survivors Upgrade Effects use closed gameplay target tokens; no effect-row field is a canonical record reference.");
+        }
+
         public GameContentEditOperationResult Undo()
         {
             if (!CanUndo) return GameContentEditOperationResult.Failure("There is no staged change to undo.");
             GameContentStaleCheckResult stale = CheckStale();
             if (stale.IsStale) return GameContentEditOperationResult.Failure(stale.Message);
+            Dictionary<string, GameContentFieldValue> previous = _history[_historyIndex - 1];
+            if (!TryValidateReferenceValues(previous, out string referenceError))
+                return GameContentEditOperationResult.Failure(referenceError);
+            if (!TryValidateStructuredValues(previous, out string structuredError))
+                return GameContentEditOperationResult.Failure(structuredError);
             _historyIndex--;
             RefreshDirtyState();
             return GameContentEditOperationResult.Success("Undid the latest staged field change.");
@@ -137,6 +206,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             if (stale.IsStale) return GameContentEditOperationResult.Failure(stale.Message);
             if (!TryValidateReferenceValues(next, out string referenceError))
                 return GameContentEditOperationResult.Failure(referenceError);
+            if (!TryValidateStructuredValues(next, out string structuredError))
+                return GameContentEditOperationResult.Failure(structuredError);
             _historyIndex++;
             RefreshDirtyState();
             return GameContentEditOperationResult.Success("Restored the latest staged field change.");
@@ -157,6 +228,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             }
             if (!TryValidateReferenceValues(Current, out string referenceError))
                 issues.Add(GameContentAuthoringValidationIssue.Error("Reference", referenceError));
+            if (!TryValidateStructuredValues(Current, out string structuredError))
+                issues.Add(GameContentAuthoringValidationIssue.Error("Effects", structuredError));
             if (issues.Any(issue => issue.Severity == GameContentAuthoringValidationSeverity.Error))
                 return new GameContentValidationPreview(issues, false);
 
@@ -612,6 +685,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 _source.Document,
                 _source.Definition.Tokens,
                 _source.Definition.CollectionTokens,
+                _source.Definition.StructuredCollectionTokens,
                 changedValues,
                 out proposedText,
                 out proposedBytes,
@@ -640,6 +714,30 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     error = evaluation.Reason;
                     return false;
                 }
+            }
+
+            error = string.Empty;
+            return true;
+        }
+
+        private bool TryValidateStructuredValues(
+            IReadOnlyDictionary<string, GameContentFieldValue> values,
+            out string error)
+        {
+            foreach (GameContentFieldDescriptor field in Fields.Where(candidate =>
+                         !candidate.IsReadOnly &&
+                         candidate.FieldType == GameContentFieldType.OrderedStructuredCollection))
+            {
+                if (!values.TryGetValue(field.FieldId, out GameContentFieldValue value))
+                {
+                    error = "The staged structured Effects value is missing.";
+                    return false;
+                }
+                if (!field.Accepts(value, out error)) return false;
+                if (!SurvivorsUpgradeEffectEditing.TryValidate(
+                        value.OrderedStructuredCollectionValue,
+                        out error))
+                    return false;
             }
 
             error = string.Empty;

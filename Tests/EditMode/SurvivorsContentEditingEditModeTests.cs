@@ -79,18 +79,19 @@ namespace Deucarian.TemplateGameSurvivors.Tests
 
         [TestCase("basic-survivors")]
         [TestCase("neon-arcana")]
-        public void Provider_ExposesOnlyEvolutionPassiveReferenceWithCanonicalConstraints(string packId)
+        public void Provider_ExposesEvolutionPassiveReferenceAndEmbeddedEffectsWithCanonicalConstraints(string packId)
         {
             Fixture fixture = Resolve(packId, "upgrade.survivors.evolution.arcane-storm");
             using (IGameContentEditSession session = fixture.Provider.BeginEdit(fixture.Request))
             {
                 Assert.That(session, Is.InstanceOf<IGameContentRecordReferenceEditSession>());
                 Assert.That(session.Fields.Where(field => !field.IsReadOnly).Select(field => field.FieldId),
-                    Is.EqualTo(new[] { "requiredPassiveUpgradeId" }));
+                    Is.EqualTo(new[] { "requiredPassiveUpgradeId", "effects" }));
                 Assert.That(session.Fields.Where(field => field.IsReadOnly).Select(field => field.FieldId),
                     Is.EqualTo(new[] { "id" }));
 
-                GameContentFieldDescriptor field = session.Fields.Single(candidate => !candidate.IsReadOnly);
+                GameContentFieldDescriptor field = session.Fields.Single(candidate =>
+                    candidate.FieldId == "requiredPassiveUpgradeId");
                 Assert.That(field.FieldType, Is.EqualTo(GameContentFieldType.RecordReference));
                 Assert.That(field.Required, Is.True);
                 Assert.That(field.RecordReference.AllowClear, Is.False);
@@ -180,7 +181,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Fixture upgrade = Resolve("basic-survivors", "upgrade.survivors.arcane-damage");
             GameContentEditAvailability unsupported = upgrade.Provider.CanEdit(upgrade.Request);
             Assert.That(unsupported.IsEditable, Is.False);
-            Assert.That(unsupported.DisabledReason, Does.Contain("evolution prerequisite"));
+            Assert.That(unsupported.DisabledReason, Does.Contain("Effects array"));
 
             var allPacksRequest = new GameContentEditRequest(
                 GameContentPackContext.AllPacksSelectionKey,

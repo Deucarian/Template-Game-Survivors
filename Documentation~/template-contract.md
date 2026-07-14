@@ -97,7 +97,7 @@ Runtime fallback content is allowed for tests, unbound hosts, and debug safety. 
 
 `DefaultRewards/rewards.json` owns currencies, run reward grants, elite/miniboss/boss/class-unlock reward amounts, legacy-XP grants, and the current persistent meta-upgrade definitions/costs/effects. It does not own class gates, weapon tracks, or evolution-node structure.
 
-Game Content Authoring owns the reusable edit-session lifecycle, source locking, canonical record-reference selector, same-pack candidate orchestration, workbench, stale/conflict presentation, and commit/rollback orchestration. Survivors owns its strict UTF-8 token locator, approved field catalog, canonical-key-to-JSON-ID mapping, Passive prerequisite compatibility, path policy, proposed-pack validation adapter, atomic JSON backend, and recovery bytes. Only an evolution's required Passive prerequisite is reference-editable; every stable ID and other reference remains read-only. JSON remains the sole runtime source of truth; safe editing never creates a ScriptableObject mirror or moves playable content into the generic authoring package.
+Game Content Authoring owns the reusable edit-session lifecycle, source locking, canonical record-reference selector, ordered/structured workbench, same-pack candidate orchestration, stale/conflict presentation, and commit/rollback orchestration. Survivors owns its strict UTF-8 token/row-span locator, approved field and effect-row schemas, canonical-key-to-JSON-ID mapping, closed gameplay token sets, Passive prerequisite compatibility, path policy, proposed-pack validation adapter, atomic JSON backend, and recovery bytes. An evolution's required Passive prerequisite is the only editable canonical reference. An Upgrade's direct `Effects` rows are editable only as anonymous embedded values with `effect`, `target`, and `amount`; they never become canonical records or top-level CRUD. Every stable ID and other reference remains read-only. JSON remains the sole runtime source of truth; safe editing never creates a ScriptableObject mirror or moves playable content into the generic authoring package.
 
 ## Vertical-Slice Preservation Checklist
 
@@ -153,6 +153,7 @@ Idle Auto Defense can be used as the second-template proof for reusable infrastr
 
 - Keep the strict schema and authored tuning-parity mutation tests current when adding new gameplay fields.
 - Keep the generic ordered-collection workbench in Game Content Authoring while tutorial copy, the 1-3 row layout limit, JSON mapping, validation, and runtime display remain owned by this template.
+- Keep the generic structured-row workbench in Game Content Authoring while the Survivors Upgrade Effects schema, closed effect/target tokens, lossless JSON mapping, strict validation, and gameplay consumption remain owned by this template. Do not turn embedded rows into canonical records to avoid implementing CRUD.
 - Do not let copied/imported sample scenes become stale when bootstrap content references change.
 - Keep offscreen spawn resolver package candidacy separate from Survivors enemy content, tuning, and reward rules.
 - Prove extraction with Idle Auto Defense before moving shared systems broadly.
