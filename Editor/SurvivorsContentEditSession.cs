@@ -7,7 +7,10 @@ using UnityEditor;
 
 namespace Deucarian.TemplateGameSurvivors.Editor
 {
-    internal sealed class SurvivorsContentEditSession : IGameContentEditSession, IGameContentRecordReferenceEditSession
+    internal sealed class SurvivorsContentEditSession :
+        IGameContentEditSession,
+        IGameContentRecordReferenceEditSession,
+        IGameContentOrderedCollectionEditSession
     {
         private readonly SurvivorsEditableSource _source;
         private readonly SurvivorsContentPackIndex _referenceIndex;
@@ -75,6 +78,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             GameContentFieldDescriptor field = Fields.FirstOrDefault(candidate =>
                 string.Equals(candidate.FieldId, fieldId, StringComparison.Ordinal));
             if (field == null) return GameContentEditOperationResult.Failure("Field '" + fieldId + "' is not exposed by this record.");
+            if (field.FieldType.IsOrderedCollection())
+                return GameContentEditOperationResult.Failure("Use ordered collection operations to edit " + field.DisplayName + ".");
             if (!field.Accepts(value, out string reason)) return GameContentEditOperationResult.Failure(reason);
             if (field.FieldType == GameContentFieldType.RecordReference)
             {
@@ -87,19 +92,38 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             }
             if (Current[field.FieldId].Equals(value)) return GameContentEditOperationResult.Success("The proposed value is unchanged.");
 
-            if (_historyIndex < _history.Count - 1)
-                _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
-            var next = Copy(Current);
-            next[field.FieldId] = value;
-            _history.Add(next);
-            _historyIndex++;
-            RefreshDirtyState();
-            return GameContentEditOperationResult.Success("Staged " + field.DisplayName + ".");
+            return StageValue(field, value, "Staged " + field.DisplayName + ".");
+        }
+
+        public GameContentEditOperationResult ApplyCollectionOperation(
+            string fieldId,
+            GameContentCollectionOperation operation)
+        {
+            if (_disposed) return GameContentEditOperationResult.Failure("The edit session is disposed.");
+            if (!IsStagingState) return GameContentEditOperationResult.Failure("The edit session is not accepting staged changes in its current state.");
+            GameContentFieldDescriptor field = Fields.FirstOrDefault(candidate =>
+                string.Equals(candidate.FieldId, fieldId, StringComparison.Ordinal));
+            if (field == null) return GameContentEditOperationResult.Failure("Field '" + fieldId + "' is not exposed by this record.");
+            if (!field.FieldType.IsOrderedCollection() || field.Collection == null)
+                return GameContentEditOperationResult.Failure("Field '" + fieldId + "' is not an editable ordered collection.");
+
+            GameContentStaleCheckResult stale = CheckStale();
+            if (stale.IsStale) return GameContentEditOperationResult.Failure(stale.Message);
+            GameContentOrderedCollectionValue current = Current[field.FieldId].OrderedCollectionValue;
+            if (!GameContentCollectionMutation.TryApply(field, current, operation, out GameContentOrderedCollectionValue proposed, out string reason))
+                return GameContentEditOperationResult.Failure(reason);
+            if (current.Equals(proposed)) return GameContentEditOperationResult.Success("The proposed collection is unchanged.");
+            return StageValue(
+                field,
+                GameContentFieldValue.FromOrderedCollection(proposed),
+                "Staged " + field.DisplayName + " collection change.");
         }
 
         public GameContentEditOperationResult Undo()
         {
             if (!CanUndo) return GameContentEditOperationResult.Failure("There is no staged change to undo.");
+            GameContentStaleCheckResult stale = CheckStale();
+            if (stale.IsStale) return GameContentEditOperationResult.Failure(stale.Message);
             _historyIndex--;
             RefreshDirtyState();
             return GameContentEditOperationResult.Success("Undid the latest staged field change.");
@@ -539,6 +563,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             return SurvivorsLosslessJsonPatcher.TryPatch(
                 _source.Document,
                 _source.Definition.Tokens,
+                _source.Definition.CollectionTokens,
                 changedValues,
                 out proposedText,
                 out proposedBytes,
@@ -686,6 +711,21 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             State = BuildChanges().Count == 0
                 ? GameContentEditSessionState.Clean
                 : GameContentEditSessionState.Dirty;
+        }
+
+        private GameContentEditOperationResult StageValue(
+            GameContentFieldDescriptor field,
+            GameContentFieldValue value,
+            string message)
+        {
+            if (_historyIndex < _history.Count - 1)
+                _history.RemoveRange(_historyIndex + 1, _history.Count - _historyIndex - 1);
+            var next = Copy(Current);
+            next[field.FieldId] = value;
+            _history.Add(next);
+            _historyIndex++;
+            RefreshDirtyState();
+            return GameContentEditOperationResult.Success(message);
         }
 
         private static Dictionary<string, GameContentFieldValue> Copy(

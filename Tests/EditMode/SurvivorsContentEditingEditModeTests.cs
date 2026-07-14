@@ -700,6 +700,324 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             }
         }
 
+        [TestCase("basic-survivors", SurvivorsContentPackIndex.PrimaryThemeSourceId)]
+        [TestCase("basic-survivors", SurvivorsContentPackIndex.AlternateThemeSourceId)]
+        [TestCase("neon-arcana", SurvivorsContentPackIndex.PrimaryThemeSourceId)]
+        [TestCase("neon-arcana", SurvivorsContentPackIndex.AlternateThemeSourceId)]
+        public void Provider_ExposesOnlyOrderedTutorialLinesWithLayoutSafeContract(string packId, string sourceId)
+        {
+            Fixture fixture = Resolve(packId, "combat", sourceId);
+            using (IGameContentEditSession session = fixture.Provider.BeginEdit(fixture.Request))
+            {
+                Assert.That(session, Is.InstanceOf<IGameContentOrderedCollectionEditSession>());
+                Assert.That(session.Fields.Where(field => !field.IsReadOnly).Select(field => field.FieldId),
+                    Is.EqualTo(new[] { "lines" }));
+                Assert.That(session.Fields.Where(field => field.IsReadOnly).Select(field => field.FieldId),
+                    Is.EqualTo(new[] { "id" }));
+
+                GameContentFieldDescriptor lines = session.Fields.Single(field => field.FieldId == "lines");
+                Assert.That(lines.FieldType, Is.EqualTo(GameContentFieldType.OrderedScalarCollection));
+                Assert.That(lines.Required, Is.True);
+                Assert.That(lines.Collection.ItemDescriptor.FieldType, Is.EqualTo(GameContentFieldType.String));
+                Assert.That(lines.Collection.ItemDescriptor.Required, Is.True);
+                Assert.That(lines.Collection.MinimumCount, Is.EqualTo(1));
+                Assert.That(lines.Collection.MaximumCount, Is.EqualTo(SurvivorsContentValidator.MaximumTutorialLineCount));
+                Assert.That(lines.Collection.AllowDuplicates, Is.True);
+                Assert.That(lines.Collection.OrderingDescription, Does.Contain("exact order"));
+                Assert.That(lines.Collection.RuntimeImpact,
+                    Is.EqualTo(GameContentReferenceRuntimeImpact.Refresh |
+                               GameContentReferenceRuntimeImpact.Rebind |
+                               GameContentReferenceRuntimeImpact.Restart));
+
+                GameContentOrderedCollectionValue value = session.Snapshot.FieldValues["lines"].OrderedCollectionValue;
+                Assert.That(value.Count, Is.EqualTo(3));
+                Assert.That(value.Items.Select(item => item.OriginalIndex), Is.EqualTo(new[] { 0, 1, 2 }));
+                Assert.That(value.Items.Select(item => item.ItemKey).Distinct().Count(), Is.EqualTo(3));
+                Assert.That(session.Rollback().Succeeded, Is.True);
+            }
+        }
+
+        [Test]
+        public void TutorialCollections_ArePackAndThemeSourceScopedByStableAuthoredId()
+        {
+            Fixture basicPrimary = Resolve("basic-survivors", "combat", SurvivorsContentPackIndex.PrimaryThemeSourceId);
+            Fixture basicAlternate = Resolve("basic-survivors", "combat", SurvivorsContentPackIndex.AlternateThemeSourceId);
+            Fixture neonPrimary = Resolve("neon-arcana", "combat", SurvivorsContentPackIndex.PrimaryThemeSourceId);
+
+            Assert.That(basicPrimary.Record.CanonicalKey, Is.Not.EqualTo(basicAlternate.Record.CanonicalKey));
+            Assert.That(basicPrimary.Record.CanonicalKey, Is.Not.EqualTo(neonPrimary.Record.CanonicalKey));
+            Assert.That(basicPrimary.Record.SourceRecordId, Is.EqualTo("combat"));
+            Assert.That(basicAlternate.Record.SourceRecordId, Is.EqualTo("combat"));
+            Assert.That(neonPrimary.Record.SourceRecordId, Is.EqualTo("combat"));
+            Assert.That(basicPrimary.Source.SourcePath.FullPath, Is.Not.EqualTo(basicAlternate.Source.SourcePath.FullPath));
+            Assert.That(basicPrimary.Source.SourcePath.FullPath, Is.Not.EqualTo(neonPrimary.Source.SourcePath.FullPath));
+        }
+
+        [Test]
+        public void TutorialCollectionOperations_StageOnlyEnforceBoundsAndPreserveSessionItemKeys()
+        {
+            Fixture fixture = Resolve("basic-survivors", "combat", SurvivorsContentPackIndex.PrimaryThemeSourceId);
+            byte[] original = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
+            using (IGameContentEditSession session = fixture.Provider.BeginEdit(fixture.Request))
+            {
+                var collectionSession = (IGameContentOrderedCollectionEditSession)session;
+                GameContentOrderedCollectionValue baseline = EffectiveCollection(session);
+                GameContentCollectionItemKey first = baseline.Items[0].ItemKey;
+                GameContentCollectionItemKey second = baseline.Items[1].ItemKey;
+                GameContentCollectionItemKey third = baseline.Items[2].ItemKey;
+
+                Assert.That(session.Apply("lines", session.Snapshot.FieldValues["lines"]).Succeeded, Is.False);
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Replace(first, GameContentFieldValue.FromString("   "))).Succeeded, Is.False);
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Remove(GameContentCollectionItemKey.Create())).Succeeded, Is.False);
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Add(GameContentFieldValue.FromString("Above maximum"))).Succeeded, Is.False);
+
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Move(third, 0)).Succeeded, Is.True);
+                Assert.That(EffectiveCollection(session).Items.Select(item => item.ItemKey),
+                    Is.EqualTo(new[] { third, first, second }));
+                Assert.That(session.Undo().Succeeded, Is.True);
+                Assert.That(EffectiveCollection(session).Items.Select(item => item.ItemKey),
+                    Is.EqualTo(new[] { first, second, third }));
+                Assert.That(session.Redo().Succeeded, Is.True);
+                Assert.That(EffectiveCollection(session).Items.Select(item => item.ItemKey),
+                    Is.EqualTo(new[] { third, first, second }));
+
+                IReadOnlyList<GameContentCollectionOperation> restore =
+                    GameContentCollectionMutation.BuildRestoreOriginalOrderOperations(EffectiveCollection(session));
+                foreach (GameContentCollectionOperation operation in restore)
+                    Assert.That(collectionSession.ApplyCollectionOperation("lines", operation).Succeeded, Is.True);
+                Assert.That(EffectiveCollection(session).Items.Select(item => item.ItemKey),
+                    Is.EqualTo(new[] { first, second, third }));
+
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Replace(first, baseline.Items[1].Value)).Succeeded, Is.True);
+                Assert.That(EffectiveCollection(session).Items[0].Value,
+                    Is.EqualTo(EffectiveCollection(session).Items[1].Value));
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Remove(second)).Succeeded, Is.True);
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Add(GameContentFieldValue.FromString("Added line"))).Succeeded, Is.True);
+                GameContentOrderedCollectionValue beforeMinimumCheck = EffectiveCollection(session);
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Remove(beforeMinimumCheck.Items[1].ItemKey)).Succeeded, Is.True);
+                GameContentOrderedCollectionValue twoLines = EffectiveCollection(session);
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Remove(twoLines.Items[1].ItemKey)).Succeeded, Is.True);
+                GameContentOrderedCollectionValue oneLine = EffectiveCollection(session);
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Remove(oneLine.Items[0].ItemKey)).Succeeded, Is.False);
+                Assert.That(session.Preview().CanCommit, Is.True);
+                Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(original));
+                Assert.That(session.Rollback().Succeeded, Is.True);
+                Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(original));
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TutorialCollectionOperationAndUndo_RejectRefreshedExternalBytes(bool stageBeforeExternalEdit)
+        {
+            Fixture fixture = Resolve("basic-survivors", "combat", SurvivorsContentPackIndex.PrimaryThemeSourceId);
+            byte[] original = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
+            IGameContentEditSession session = fixture.Provider.BeginEdit(fixture.Request);
+            try
+            {
+                var collectionSession = (IGameContentOrderedCollectionEditSession)session;
+                GameContentOrderedCollectionValue baseline = EffectiveCollection(session);
+                if (stageBeforeExternalEdit)
+                {
+                    Assert.That(collectionSession.ApplyCollectionOperation(
+                        "lines",
+                        GameContentCollectionOperation.Move(baseline.Items[2].ItemKey, 0)).Succeeded, Is.True);
+                }
+
+                byte[] external = original.Concat(new byte[] { (byte)' ' }).ToArray();
+                File.WriteAllBytes(fixture.Source.SourcePath.FullPath, external);
+                AssetDatabase.ImportAsset(
+                    fixture.Source.SourcePath.AssetPath,
+                    ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+
+                GameContentEditOperationResult result = stageBeforeExternalEdit
+                    ? session.Undo()
+                    : collectionSession.ApplyCollectionOperation(
+                        "lines",
+                        GameContentCollectionOperation.Move(baseline.Items[2].ItemKey, 0));
+                Assert.That(result.Succeeded, Is.False);
+                Assert.That(session.State, Is.EqualTo(GameContentEditSessionState.Stale));
+                Assert.That(File.ReadAllBytes(fixture.Source.SourcePath.FullPath), Is.EqualTo(external));
+            }
+            finally
+            {
+                session.Dispose();
+                RestoreExact(fixture, original);
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ValidationFailedTutorialCopy_RemainsDiscoverableAndRepairableOnlyThroughLines(bool emptyCollection)
+        {
+            Fixture fixture = Resolve("basic-survivors", "combat", SurvivorsContentPackIndex.PrimaryThemeSourceId);
+            byte[] original = File.ReadAllBytes(fixture.Source.SourcePath.FullPath);
+            GameContentOrderedCollectionValue invalid = emptyCollection
+                ? CollectionWithValues()
+                : CollectionWithValues("", "Still valid", "Also valid");
+            var changes = new Dictionary<string, GameContentFieldValue>(StringComparer.Ordinal)
+            {
+                ["lines"] = GameContentFieldValue.FromOrderedScalarCollection(invalid)
+            };
+            Assert.That(SurvivorsLosslessJsonPatcher.TryPatch(
+                fixture.Source.Document,
+                fixture.Source.Definition.Tokens,
+                fixture.Source.Definition.CollectionTokens,
+                changes,
+                out _,
+                out byte[] invalidBytes,
+                out string patchError), Is.True, patchError);
+
+            try
+            {
+                File.WriteAllBytes(fixture.Source.SourcePath.FullPath, invalidBytes);
+                AssetDatabase.ImportAsset(
+                    fixture.Source.SourcePath.AssetPath,
+                    ImportAssetOptions.ForceUpdate | ImportAssetOptions.ForceSynchronousImport);
+
+                GameContentPackDescriptor pack = fixture.Provider.GetContentPacks().Single(candidate =>
+                    candidate.PackId == "basic-survivors");
+                Assert.That(pack.SourceState, Is.EqualTo(GameContentPackSourceState.ValidationFailed));
+                Assert.That(pack.Access.CanEditExisting, Is.True);
+                SurvivorsContentPackIndex index = SurvivorsContentPackIndex.Build(pack.Manifest);
+                GameContentRecordDescriptor tutorial = index.Records.Single(candidate =>
+                    candidate.SourceRecordId == "combat" &&
+                    candidate.CanonicalKey.SourceId == SurvivorsContentPackIndex.PrimaryThemeSourceId);
+                var request = new GameContentEditRequest(pack.StableKey, tutorial.CanonicalKey, fixture.Provider.ProviderId);
+                Assert.That(fixture.Provider.CanEdit(request).IsEditable, Is.True);
+
+                using (IGameContentEditSession session = fixture.Provider.BeginEdit(request))
+                {
+                    var collectionSession = (IGameContentOrderedCollectionEditSession)session;
+                    GameContentOrderedCollectionValue current = session.Snapshot.FieldValues["lines"].OrderedCollectionValue;
+                    GameContentCollectionOperation repair = emptyCollection
+                        ? GameContentCollectionOperation.Add(GameContentFieldValue.FromString("Repaired line"))
+                        : GameContentCollectionOperation.Replace(
+                            current.Items[0].ItemKey,
+                            GameContentFieldValue.FromString("Repaired line"));
+                    Assert.That(collectionSession.ApplyCollectionOperation("lines", repair).Succeeded, Is.True);
+                    Assert.That(session.Preview().CanCommit, Is.True);
+                    Assert.That(session.Rollback().Succeeded, Is.True);
+                }
+
+                GameContentRecordDescriptor enemy = index.Records.Single(candidate =>
+                    candidate.SourceRecordId == "enemy.survivors.swarm");
+                var enemyRequest = new GameContentEditRequest(pack.StableKey, enemy.CanonicalKey, fixture.Provider.ProviderId);
+                GameContentEditAvailability enemyAvailability = fixture.Provider.CanEdit(enemyRequest);
+                Assert.That(enemyAvailability.IsEditable, Is.False);
+                Assert.That(enemyAvailability.DisabledReason, Does.Contain("Only an existing tutorial Lines collection"));
+            }
+            finally
+            {
+                RestoreExact(fixture, original);
+            }
+        }
+
+        [TestCase("basic-survivors", "neon-arcana")]
+        [TestCase("neon-arcana", "basic-survivors")]
+        public void Commit_TutorialLinesChangesOnlyDirectArrayDrivesStrictRuntimeAndRollsBackExactly(
+            string editedPackId,
+            string otherPackId)
+        {
+            Fixture edited = Resolve(editedPackId, "combat", SurvivorsContentPackIndex.PrimaryThemeSourceId);
+            Fixture other = Resolve(otherPackId, "combat", SurvivorsContentPackIndex.PrimaryThemeSourceId);
+            byte[] original = File.ReadAllBytes(edited.Source.SourcePath.FullPath);
+            byte[] otherOriginal = File.ReadAllBytes(other.Source.SourcePath.FullPath);
+            SurvivorsJsonCollectionToken originalToken = edited.Source.Definition.CollectionTokens["lines"];
+            SurvivorsTemplateController controller = null;
+            IGameContentEditSession session = edited.Provider.BeginEdit(edited.Request);
+            try
+            {
+                var collectionSession = (IGameContentOrderedCollectionEditSession)session;
+                GameContentOrderedCollectionValue baseline = EffectiveCollection(session);
+                string changedLine = "Committed " + editedPackId + " tutorial line";
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Replace(
+                        baseline.Items[0].ItemKey,
+                        GameContentFieldValue.FromString(changedLine))).Succeeded, Is.True);
+                Assert.That(collectionSession.ApplyCollectionOperation(
+                    "lines",
+                    GameContentCollectionOperation.Move(baseline.Items[2].ItemKey, 0)).Succeeded, Is.True);
+                string[] expected = EffectiveCollection(session).Items
+                    .Select(item => item.Value.StringValue)
+                    .ToArray();
+                Assert.That(session.Preview().CanCommit, Is.True);
+
+                GameContentCommitResult commit = session.Commit(true);
+                Assert.That(commit.Succeeded, Is.True, commit.Message);
+                Assert.That(commit.RequiresRefresh, Is.True);
+                Assert.That(commit.RequiresRebind, Is.True);
+                Assert.That(File.ReadAllBytes(other.Source.SourcePath.FullPath), Is.EqualTo(otherOriginal));
+                Assert.That(SurvivorsContentPackIndex.ValidateSelectedSources(edited.Manifest).ErrorCount, Is.Zero);
+
+                byte[] committedBytes = File.ReadAllBytes(edited.Source.SourcePath.FullPath);
+                Assert.That(SurvivorsLosslessJsonDocument.TryParse(
+                    committedBytes,
+                    out SurvivorsLosslessJsonDocument committedDocument,
+                    out string parseError), Is.True, parseError);
+                Assert.That(SurvivorsJsonRecordNavigator.TryLocateRecord(
+                    committedDocument,
+                    edited.Source.Definition.Locator,
+                    out SurvivorsJsonNode committedRecord,
+                    out string locateError), Is.True, locateError);
+                Assert.That(SurvivorsJsonRecordNavigator.TryReadDirectStringCollection(
+                    committedRecord,
+                    "lines",
+                    true,
+                    out SurvivorsJsonCollectionToken committedToken,
+                    out string tokenError), Is.True, tokenError);
+                Assert.That(committedDocument.Text.Substring(0, committedToken.Node.Start),
+                    Is.EqualTo(edited.Source.Document.Text.Substring(0, originalToken.Node.Start)));
+                Assert.That(committedDocument.Text.Substring(committedToken.Node.End),
+                    Is.EqualTo(edited.Source.Document.Text.Substring(originalToken.Node.End)));
+                Assert.That(committedToken.Value.OrderedCollectionValue.Items.Select(item => item.Value.StringValue),
+                    Is.EqualTo(expected));
+
+                var root = new GameObject("Survivors Tutorial Collection Runtime Proof");
+                controller = root.AddComponent<SurvivorsTemplateController>();
+                Assert.That(ConfigureStrict(controller, edited.Manifest), Is.True, controller.AuthoredContentStatus);
+                Assert.That(controller.IsStrictAuthoredSample, Is.True);
+                Assert.That(controller.IsFallbackContentActive, Is.False);
+                Assert.That(controller.CanStartConfiguredRun, Is.True);
+                Assert.That(controller.OpenTutorialForTest(), Is.True);
+                Assert.That(controller.CurrentTutorialStepIndex, Is.Zero);
+                Assert.That(controller.CurrentTutorialLinesForTest(), Is.EqualTo(expected));
+
+                GameContentRollbackResult rollback = session.Rollback();
+                Assert.That(rollback.Succeeded, Is.True, rollback.Message);
+                Assert.That(File.ReadAllBytes(edited.Source.SourcePath.FullPath), Is.EqualTo(original));
+                Assert.That(File.ReadAllBytes(other.Source.SourcePath.FullPath), Is.EqualTo(otherOriginal));
+            }
+            finally
+            {
+                if (controller != null) UnityEngine.Object.DestroyImmediate(controller.gameObject);
+                session.Dispose();
+                RestoreExact(edited, original);
+                RestoreExact(other, otherOriginal);
+            }
+        }
+
         private static void AssertFields(Fixture fixture, IEnumerable<string> editable, IEnumerable<string> readOnly)
         {
             using (IGameContentEditSession session = fixture.Provider.BeginEdit(fixture.Request))
@@ -711,21 +1029,27 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             }
         }
 
-        private static Fixture Resolve(string packId, string recordId)
+        private static Fixture Resolve(string packId, string recordId, string sourceId = null)
         {
             SurvivorsContentPackProvider provider = SurvivorsContentPackProvider.Instance;
             GameContentPackDescriptor pack = provider.GetContentPacks().Single(candidate => candidate.PackId == packId);
             GameContentPackManifest manifest = pack.Manifest;
             SurvivorsContentPackIndex index = SurvivorsContentPackIndex.Build(manifest);
             Assert.That(index.Validation.ErrorCount, Is.Zero, FormatIssues(index.Validation));
-            GameContentRecordDescriptor record = index.Records.Single(candidate => candidate.SourceRecordId == recordId);
+            GameContentRecordDescriptor record = index.Records.Single(candidate =>
+                candidate.SourceRecordId == recordId &&
+                (string.IsNullOrWhiteSpace(sourceId) ||
+                 string.Equals(candidate.CanonicalKey.SourceId, sourceId, StringComparison.OrdinalIgnoreCase)));
             SurvivorsEditableSource source = null;
             bool supported = (record.CategoryId == "weapons" || record.CategoryId == "projectiles") &&
                              record.CanonicalKey.SourceId == SurvivorsContentPackIndex.WeaponsSourceId ||
                              record.CategoryId == "enemies" &&
                              record.CanonicalKey.SourceId == SurvivorsContentPackIndex.EnemiesSourceId ||
                              record.CategoryId == "evolutions" &&
-                             record.CanonicalKey.SourceId == SurvivorsContentPackIndex.UpgradesSourceId;
+                             record.CanonicalKey.SourceId == SurvivorsContentPackIndex.UpgradesSourceId ||
+                             record.CategoryId == "tutorial" &&
+                             (record.CanonicalKey.SourceId == SurvivorsContentPackIndex.PrimaryThemeSourceId ||
+                              record.CanonicalKey.SourceId == SurvivorsContentPackIndex.AlternateThemeSourceId);
             if (supported)
                 Assert.That(SurvivorsEditableSource.TryCreate(manifest, record, true, out source, out string error), Is.True, error);
             return new Fixture
@@ -771,6 +1095,45 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(manifest.TryGetSource(sourceId, out GameContentPackSourceReference source), Is.True, sourceId);
             Assert.That(source.TextAsset, Is.Not.Null, sourceId);
             return source.TextAsset.text;
+        }
+
+        private static TextAsset SourceAsset(GameContentPackManifest manifest, string sourceId)
+        {
+            Assert.That(manifest.TryGetSource(sourceId, out GameContentPackSourceReference source), Is.True, sourceId);
+            Assert.That(source.TextAsset, Is.Not.Null, sourceId);
+            return source.TextAsset;
+        }
+
+        private static bool ConfigureStrict(SurvivorsTemplateController controller, GameContentPackManifest manifest)
+        {
+            return controller.ConfigureStrictSampleContent(
+                SourceAsset(manifest, SurvivorsContentPackIndex.WeaponsSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.UpgradesSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.RelicsSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.ClassesSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.ProgressionSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.EnemiesSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.PickupsSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.RunFlowSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.RewardsSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.PrimaryThemeSourceId),
+                SourceAsset(manifest, SurvivorsContentPackIndex.AlternateThemeSourceId));
+        }
+
+        private static GameContentOrderedCollectionValue EffectiveCollection(IGameContentEditSession session)
+        {
+            GameContentProposedChange change = session.Changes.FirstOrDefault(candidate => candidate.FieldId == "lines");
+            return (change == null ? session.Snapshot.FieldValues["lines"] : change.ProposedValue).OrderedCollectionValue;
+        }
+
+        private static GameContentOrderedCollectionValue CollectionWithValues(params string[] values)
+        {
+            return new GameContentOrderedCollectionValue(
+                GameContentFieldType.String,
+                (values ?? Array.Empty<string>()).Select((value, index) => new GameContentCollectionItem(
+                    GameContentCollectionItemKey.Create(),
+                    index,
+                    GameContentFieldValue.FromString(value))));
         }
 
         private static void RestoreExact(Fixture fixture, byte[] bytes)

@@ -1697,6 +1697,30 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void TutorialValidationMatchesThreeLinePanelCapacity()
+        {
+            string sampleRoot = GetSampleRoot();
+            string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
+            string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
+            string themeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUiTheme", "ui-theme.json"));
+            string overCapacity = ReplaceFirst(
+                themeJson,
+                "        \"The goal is not to stand still. Kite, collect, and keep the horde just barely under control.\"\n      ]",
+                "        \"The goal is not to stand still. Kite, collect, and keep the horde just barely under control.\",\n" +
+                "        \"A fourth row would overlap the current small-screen controls.\"\n      ]");
+
+            SurvivorsContentValidationResult result = SurvivorsContentValidator.ValidateSampleJson(
+                weaponJson,
+                upgradeJson,
+                uiThemeJson: overCapacity);
+            string errors = string.Join(Environment.NewLine, result.Errors);
+
+            Assert.That(SurvivorsContentValidator.MaximumTutorialLineCount, Is.EqualTo(3));
+            Assert.That(result.Succeeded, Is.False);
+            StringAssert.Contains("supports at most 3 lines in the current tutorial panel", errors);
+        }
+
+        [Test]
         public void SampleUpgradeContentRequiresEvolutionRecords()
         {
             string weaponJson = "{\"weapons\":[{\"id\":\"weapon.valid\",\"fireMode\":\"Hitscan\"}],\"projectiles\":[]}";

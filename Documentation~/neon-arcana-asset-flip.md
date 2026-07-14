@@ -40,6 +40,8 @@ The alternate files intentionally keep the template's stable internal behavior I
 - Replace UI copy, rarity/category labels, icon IDs, tutorial, audio event volume/throttle values, and `worldPresentation` colors in a theme file.
 - Duplicate the Neon scene, generate new asset GUIDs, and bind every bootstrap TextAsset slot to one content tree. Do not copy the controller or weapon execution code.
 
+For an imported project-owned copy, Game Content Authoring can edit exactly one theme collection safely: an existing tutorial step's ordered `Lines`. Neon Arcana and Afterglow remain source-distinct, even when they use the same stable step ID. Lines support Add, Remove, Move, Replace, and Restore Original Order with one to three nonblank strings; the editor replaces only the direct JSON array span and strict validation gates save. Tutorial IDs, step creation/deletion, focus targets, audio-event arrays, and all other theme structure remain read-only. A Package Installer sample refresh may replace or conflict with edits made to the imported copy.
+
 ## Runtime And Authored Boundaries
 
 | Presentation area | Classification | Current boundary |

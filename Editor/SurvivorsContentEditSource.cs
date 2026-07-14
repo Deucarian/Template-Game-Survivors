@@ -16,7 +16,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         Weapon,
         Projectile,
         Enemy,
-        Evolution
+        Evolution,
+        TutorialStep
     }
 
     internal sealed class SurvivorsContentEditDefinition
@@ -43,12 +44,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             SurvivorsEditableRecordKind recordKind,
             IReadOnlyList<GameContentFieldDescriptor> fields,
             IReadOnlyDictionary<string, SurvivorsJsonScalarToken> tokens,
+            IReadOnlyDictionary<string, SurvivorsJsonCollectionToken> collectionTokens,
             IReadOnlyDictionary<string, GameContentFieldValue> values)
         {
             Locator = locator;
             RecordKind = recordKind;
             Fields = fields;
             Tokens = tokens;
+            CollectionTokens = collectionTokens;
             Values = values;
         }
 
@@ -56,6 +59,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public SurvivorsEditableRecordKind RecordKind { get; }
         public IReadOnlyList<GameContentFieldDescriptor> Fields { get; }
         public IReadOnlyDictionary<string, SurvivorsJsonScalarToken> Tokens { get; }
+        public IReadOnlyDictionary<string, SurvivorsJsonCollectionToken> CollectionTokens { get; }
         public IReadOnlyDictionary<string, GameContentFieldValue> Values { get; }
         public int EditableFieldCount => Fields.Count(field => !field.IsReadOnly);
 
@@ -73,10 +77,27 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
             var fields = new List<GameContentFieldDescriptor>();
             var tokens = new Dictionary<string, SurvivorsJsonScalarToken>(StringComparer.Ordinal);
+            var collectionTokens = new Dictionary<string, SurvivorsJsonCollectionToken>(StringComparer.Ordinal);
             var values = new Dictionary<string, GameContentFieldValue>(StringComparer.Ordinal);
             foreach (FieldSpec spec in BuildFieldSpecs(kind))
             {
                 GameContentFieldDescriptor field = spec.Descriptor;
+                if (field.FieldType == GameContentFieldType.OrderedScalarCollection)
+                {
+                    if (!SurvivorsJsonRecordNavigator.TryReadDirectStringCollection(
+                            recordNode,
+                            field.FieldId,
+                            spec.PropertyRequired,
+                            out SurvivorsJsonCollectionToken collectionToken,
+                            out error))
+                        return false;
+                    if (collectionToken == null) continue;
+                    fields.Add(field);
+                    collectionTokens.Add(field.FieldId, collectionToken);
+                    values.Add(field.FieldId, collectionToken.Value);
+                    continue;
+                }
+
                 if (!SurvivorsJsonRecordNavigator.TryReadDirectScalar(
                         document,
                         recordNode,
@@ -98,11 +119,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
             if (fields.All(field => field.IsReadOnly))
             {
-                error = "The selected record has no supported direct scalar fields.";
+                error = "The selected record has no supported direct editable fields.";
                 return false;
             }
 
-            definition = new SurvivorsContentEditDefinition(locator, kind, fields, tokens, values);
+            definition = new SurvivorsContentEditDefinition(locator, kind, fields, tokens, collectionTokens, values);
             return true;
         }
 
@@ -147,9 +168,16 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 collection = "upgrades";
                 kind = SurvivorsEditableRecordKind.Evolution;
             }
+            else if ((string.Equals(sourceId, SurvivorsContentPackIndex.PrimaryThemeSourceId, StringComparison.OrdinalIgnoreCase) ||
+                      string.Equals(sourceId, SurvivorsContentPackIndex.AlternateThemeSourceId, StringComparison.OrdinalIgnoreCase)) &&
+                     string.Equals(record.CategoryId, "tutorial", StringComparison.OrdinalIgnoreCase))
+            {
+                collection = "tutorialSteps";
+                kind = SurvivorsEditableRecordKind.TutorialStep;
+            }
             else
             {
-                error = "Only existing weapon, projectile, enemy, and evolution prerequisite records are editable in this milestone.";
+                error = "Only existing weapon, projectile, enemy, evolution prerequisite, and tutorial Lines records are editable in this milestone.";
                 return false;
             }
 
@@ -210,6 +238,12 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                             10,
                             "Prerequisites",
                             true)
+                    };
+                case SurvivorsEditableRecordKind.TutorialStep:
+                    return new[]
+                    {
+                        ReadOnly("id", "survivors.identity.id", "Stable ID", "Stable tutorial-step identity used by authored themes and runtime lookup.", 0, "Identity", true),
+                        TutorialLines()
                     };
                 default:
                     return Array.Empty<FieldSpec>();
@@ -358,6 +392,38 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         allowClear: false)),
                 propertyRequired,
                 GameContentFieldType.String);
+        }
+
+        private static FieldSpec TutorialLines()
+        {
+            var item = new GameContentFieldDescriptor(
+                "lines.item",
+                "survivors.tutorial.lines.item",
+                "Line",
+                "One player-facing tutorial line. Blank or whitespace-only lines are invalid.",
+                GameContentFieldType.String,
+                required: true,
+                minimumLength: 1);
+            return new FieldSpec(
+                new GameContentFieldDescriptor(
+                    "lines",
+                    "survivors.tutorial.lines",
+                    "Lines",
+                    "Player-facing tutorial copy in displayed order. Adding or removing a line does not create or delete the tutorial step; IDs and other structure remain read-only. Imported-sample refresh may replace project-owned edits.",
+                    GameContentFieldType.OrderedScalarCollection,
+                    order: 10,
+                    group: "Tutorial",
+                    required: true,
+                    collection: new GameContentCollectionFieldDescriptor(
+                        item,
+                        1,
+                        SurvivorsContentValidator.MaximumTutorialLineCount,
+                        true,
+                        "The tutorial panel displays lines in this exact order.",
+                        GameContentReferenceRuntimeImpact.Refresh |
+                        GameContentReferenceRuntimeImpact.Rebind |
+                        GameContentReferenceRuntimeImpact.Restart)),
+                true);
         }
 
         private static FieldSpec PositiveNumber(
@@ -621,7 +687,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 
     internal static class SurvivorsContentSourceRevision
     {
-        public const string BackendSchemaVersion = "survivors-lossless-json-v1";
+        public const string BackendSchemaVersion = "survivors-lossless-json-v2";
 
         public static GameContentSourceRevision Create(
             GameContentPackManifest manifest,
@@ -732,9 +798,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             string sourceId = record.CanonicalKey.SourceId;
             if (!string.Equals(sourceId, SurvivorsContentPackIndex.WeaponsSourceId, StringComparison.OrdinalIgnoreCase) &&
                 !string.Equals(sourceId, SurvivorsContentPackIndex.EnemiesSourceId, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(sourceId, SurvivorsContentPackIndex.UpgradesSourceId, StringComparison.OrdinalIgnoreCase))
+                !string.Equals(sourceId, SurvivorsContentPackIndex.UpgradesSourceId, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(sourceId, SurvivorsContentPackIndex.PrimaryThemeSourceId, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(sourceId, SurvivorsContentPackIndex.AlternateThemeSourceId, StringComparison.OrdinalIgnoreCase))
             {
-                error = "Only the weapons, enemies, and approved evolution prerequisite JSON sources are editable in this milestone.";
+                error = "Only the weapons, enemies, approved evolution prerequisite, and authored tutorial theme JSON sources are editable in this milestone.";
                 return false;
             }
             if (!manifest.TryGetSource(sourceId, out GameContentPackSourceReference sourceReference) || sourceReference?.TextAsset == null)
