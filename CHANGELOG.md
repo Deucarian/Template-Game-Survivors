@@ -9,6 +9,7 @@
 - Enabled canonical same-pack editing of an evolution's required Passive prerequisite through the shared record selector, lossless one-token JSON replacement, target revalidation, strict Passive-category validation, and Basic/Neon isolation.
 - Enabled ordered editing of existing Basic and Neon tutorial `Lines` collections with 1-3 nonblank rows, session item identity, localized lossless array replacement, strict proposed-pack validation, atomic recovery, exact rollback, and runtime order/text verification.
 - Hardened Survivors JSON transactions with structured `File.Replace` failure evidence, four-attempt retries limited to Windows sharing/lock errors `32`, `33`, and `1175`, exact destination/temp plus source-revision checks before retry, bounded `25`/`75`/`200` ms delays, and a recoverable one-second support-probe cooldown.
+- Enabled safe Basic Survivors and Neon Arcana Upgrade `Effects` row editing through the shared structured workbench: closed effect/target tokens, finite non-zero amounts, session-only child identity, Add/Remove/Move/field replacement, lossless direct-array patching, strict selected-pack validation, atomic commit, runtime consumption proof, and exact rollback without top-level Upgrade CRUD or authored-value changes.
 
 ## [0.1.0] - 2026-07-01
 

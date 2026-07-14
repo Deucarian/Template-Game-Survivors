@@ -42,6 +42,8 @@ The alternate files intentionally keep the template's stable internal behavior I
 
 For an imported project-owned copy, Game Content Authoring can edit exactly one theme collection safely: an existing tutorial step's ordered `Lines`. Neon Arcana and Afterglow remain source-distinct, even when they use the same stable step ID. Lines support Add, Remove, Move, Replace, and Restore Original Order with one to three nonblank strings; the editor replaces only the direct JSON array span and strict validation gates save. Tutorial IDs, step creation/deletion, focus targets, audio-event arrays, and all other theme structure remain read-only. A Package Installer sample refresh may replace or conflict with edits made to the imported copy.
 
+The same imported-copy backend exposes Upgrade `Effects` for Neon records that already own a unique direct `effects` array. Rows remain anonymous children of their Neon parent Upgrade and expose only closed `effect`/`target` tokens plus a finite non-zero `amount`; Add, Remove, Move, and field replacement never create or delete a canonical record. The transaction replaces only that direct array span, validates the complete Neon pack, and cannot resolve or write through the Basic pack even when the parent Upgrade ID is identical. Exact rollback restores the original Neon bytes, while Basic retains a separate path, GUID, lock key, and source hash.
+
 ## Runtime And Authored Boundaries
 
 | Presentation area | Classification | Current boundary |

@@ -17,6 +17,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         Weapon,
         Projectile,
         Enemy,
+        Upgrade,
         Evolution,
         TutorialStep
     }
@@ -46,6 +47,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             IReadOnlyList<GameContentFieldDescriptor> fields,
             IReadOnlyDictionary<string, SurvivorsJsonScalarToken> tokens,
             IReadOnlyDictionary<string, SurvivorsJsonCollectionToken> collectionTokens,
+            IReadOnlyDictionary<string, SurvivorsJsonStructuredCollectionToken> structuredCollectionTokens,
             IReadOnlyDictionary<string, GameContentFieldValue> values)
         {
             Locator = locator;
@@ -53,6 +55,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             Fields = fields;
             Tokens = tokens;
             CollectionTokens = collectionTokens;
+            StructuredCollectionTokens = structuredCollectionTokens;
             Values = values;
         }
 
@@ -61,6 +64,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public IReadOnlyList<GameContentFieldDescriptor> Fields { get; }
         public IReadOnlyDictionary<string, SurvivorsJsonScalarToken> Tokens { get; }
         public IReadOnlyDictionary<string, SurvivorsJsonCollectionToken> CollectionTokens { get; }
+        public IReadOnlyDictionary<string, SurvivorsJsonStructuredCollectionToken> StructuredCollectionTokens { get; }
         public IReadOnlyDictionary<string, GameContentFieldValue> Values { get; }
         public int EditableFieldCount => Fields.Count(field => !field.IsReadOnly);
 
@@ -79,10 +83,28 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             var fields = new List<GameContentFieldDescriptor>();
             var tokens = new Dictionary<string, SurvivorsJsonScalarToken>(StringComparer.Ordinal);
             var collectionTokens = new Dictionary<string, SurvivorsJsonCollectionToken>(StringComparer.Ordinal);
+            var structuredCollectionTokens =
+                new Dictionary<string, SurvivorsJsonStructuredCollectionToken>(StringComparer.Ordinal);
             var values = new Dictionary<string, GameContentFieldValue>(StringComparer.Ordinal);
             foreach (FieldSpec spec in BuildFieldSpecs(kind))
             {
                 GameContentFieldDescriptor field = spec.Descriptor;
+                if (field.FieldType == GameContentFieldType.OrderedStructuredCollection)
+                {
+                    if (!SurvivorsJsonRecordNavigator.TryReadDirectStructuredCollection(
+                            document,
+                            recordNode,
+                            field,
+                            spec.PropertyRequired,
+                            out SurvivorsJsonStructuredCollectionToken structuredToken,
+                            out error))
+                        return false;
+                    if (structuredToken == null) continue;
+                    fields.Add(field);
+                    structuredCollectionTokens.Add(field.FieldId, structuredToken);
+                    values.Add(field.FieldId, structuredToken.Value);
+                    continue;
+                }
                 if (field.FieldType == GameContentFieldType.OrderedScalarCollection)
                 {
                     if (!SurvivorsJsonRecordNavigator.TryReadDirectStringCollection(
@@ -124,7 +146,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return false;
             }
 
-            definition = new SurvivorsContentEditDefinition(locator, kind, fields, tokens, collectionTokens, values);
+            definition = new SurvivorsContentEditDefinition(
+                locator,
+                kind,
+                fields,
+                tokens,
+                collectionTokens,
+                structuredCollectionTokens,
+                values);
             return true;
         }
 
@@ -164,10 +193,16 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 kind = SurvivorsEditableRecordKind.Enemy;
             }
             else if (string.Equals(sourceId, SurvivorsContentPackIndex.UpgradesSourceId, StringComparison.OrdinalIgnoreCase) &&
-                     string.Equals(record.CategoryId, "evolutions", StringComparison.OrdinalIgnoreCase))
+                      string.Equals(record.CategoryId, "evolutions", StringComparison.OrdinalIgnoreCase))
             {
                 collection = "upgrades";
                 kind = SurvivorsEditableRecordKind.Evolution;
+            }
+            else if (string.Equals(sourceId, SurvivorsContentPackIndex.UpgradesSourceId, StringComparison.OrdinalIgnoreCase) &&
+                     record.HasCapability(GameContentRecordCapabilities.Upgrade))
+            {
+                collection = "upgrades";
+                kind = SurvivorsEditableRecordKind.Upgrade;
             }
             else if ((string.Equals(sourceId, SurvivorsContentPackIndex.PrimaryThemeSourceId, StringComparison.OrdinalIgnoreCase) ||
                       string.Equals(sourceId, SurvivorsContentPackIndex.AlternateThemeSourceId, StringComparison.OrdinalIgnoreCase)) &&
@@ -178,7 +213,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             }
             else
             {
-                error = "Only existing weapon, projectile, enemy, evolution prerequisite, and tutorial Lines records are editable in this milestone.";
+                error = "Only existing weapon, projectile, enemy, Upgrade Effects, evolution prerequisite, and tutorial Lines records are editable.";
                 return false;
             }
 
@@ -227,6 +262,12 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         PositiveNumber("radius", "survivors.enemy.radius", "Radius", "Authored enemy collision radius.", 60, "Movement", true),
                         PositiveInteger("experienceDrop", "survivors.enemy.experience-drop", "Experience Drop", "XP awarded when this enemy dies.", 70, "Reward", true)
                     };
+                case SurvivorsEditableRecordKind.Upgrade:
+                    return new[]
+                    {
+                        ReadOnly("id", "survivors.identity.id", "Stable ID", "Stable Upgrade identity used by authored references.", 0, "Identity", true),
+                        new FieldSpec(SurvivorsUpgradeEffectEditing.Field, true)
+                    };
                 case SurvivorsEditableRecordKind.Evolution:
                     return new[]
                     {
@@ -238,7 +279,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                             "Same-pack Passive upgrade required before this evolution can be drafted.",
                             10,
                             "Prerequisites",
-                            true)
+                            true),
+                        new FieldSpec(SurvivorsUpgradeEffectEditing.Field, true)
                     };
                 case SurvivorsEditableRecordKind.TutorialStep:
                     return new[]

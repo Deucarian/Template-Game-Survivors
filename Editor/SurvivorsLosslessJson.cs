@@ -631,6 +631,65 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public GameContentFieldValue Value { get; }
     }
 
+    internal sealed class SurvivorsJsonStructuredRowToken
+    {
+        public SurvivorsJsonStructuredRowToken(
+            GameContentStructuredRowValue row,
+            SurvivorsJsonNode node,
+            IReadOnlyDictionary<string, SurvivorsJsonScalarToken> fieldTokens,
+            IEnumerable<SurvivorsJsonProperty> preservationOnlyProperties)
+        {
+            Row = row ?? throw new ArgumentNullException(nameof(row));
+            Node = node ?? throw new ArgumentNullException(nameof(node));
+            FieldTokens = fieldTokens ?? throw new ArgumentNullException(nameof(fieldTokens));
+            PreservationOnlyPropertyTokens = (preservationOnlyProperties ?? Array.Empty<SurvivorsJsonProperty>())
+                .Where(value => value != null && !string.IsNullOrWhiteSpace(value.Name))
+                .OrderBy(value => value.Value.Start)
+                .ToArray();
+            PreservationOnlyProperties = PreservationOnlyPropertyTokens.Select(value => value.Name).ToArray();
+        }
+
+        public GameContentStructuredRowValue Row { get; }
+        public SurvivorsJsonNode Node { get; }
+        public IReadOnlyDictionary<string, SurvivorsJsonScalarToken> FieldTokens { get; }
+        public IReadOnlyList<SurvivorsJsonProperty> PreservationOnlyPropertyTokens { get; }
+        public IReadOnlyList<string> PreservationOnlyProperties { get; }
+    }
+
+    internal sealed class SurvivorsJsonStructuredCollectionToken
+    {
+        private readonly IReadOnlyDictionary<GameContentStructuredRowKey, SurvivorsJsonStructuredRowToken> _rowsByKey;
+
+        public SurvivorsJsonStructuredCollectionToken(
+            string fieldId,
+            SurvivorsJsonNode node,
+            GameContentFieldDescriptor descriptor,
+            GameContentFieldValue value,
+            IEnumerable<SurvivorsJsonStructuredRowToken> rows)
+        {
+            FieldId = fieldId ?? string.Empty;
+            Node = node ?? throw new ArgumentNullException(nameof(node));
+            Descriptor = descriptor ?? throw new ArgumentNullException(nameof(descriptor));
+            Value = value ?? throw new ArgumentNullException(nameof(value));
+            Rows = (rows ?? Array.Empty<SurvivorsJsonStructuredRowToken>()).ToArray();
+            _rowsByKey = Rows.ToDictionary(row => row.Row.RowKey, row => row);
+        }
+
+        public string FieldId { get; }
+        public SurvivorsJsonNode Node { get; }
+        public GameContentFieldDescriptor Descriptor { get; }
+        public GameContentFieldValue Value { get; }
+        public IReadOnlyList<SurvivorsJsonStructuredRowToken> Rows { get; }
+
+        public bool TryGetOriginalRow(
+            GameContentStructuredRowKey rowKey,
+            out SurvivorsJsonStructuredRowToken row)
+        {
+            row = null;
+            return rowKey != null && _rowsByKey.TryGetValue(rowKey, out row);
+        }
+    }
+
     internal static class SurvivorsJsonRecordNavigator
     {
         public static bool TryLocateRecord(
@@ -795,6 +854,153 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             return true;
         }
 
+        public static bool TryReadDirectStructuredCollection(
+            SurvivorsLosslessJsonDocument document,
+            SurvivorsJsonNode record,
+            GameContentFieldDescriptor field,
+            bool required,
+            out SurvivorsJsonStructuredCollectionToken token,
+            out string error)
+        {
+            token = null;
+            error = string.Empty;
+            if (document == null)
+            {
+                error = "A parsed JSON document is required.";
+                return false;
+            }
+            if (field?.FieldType != GameContentFieldType.OrderedStructuredCollection ||
+                field.StructuredCollection == null ||
+                !field.StructuredCollection.IsValidFor(field))
+            {
+                error = "A valid structured collection field descriptor is required.";
+                return false;
+            }
+            if (!string.Equals(field.FieldId, SurvivorsUpgradeEffectEditing.CollectionFieldId, StringComparison.Ordinal))
+            {
+                error = "Only the provider-owned Upgrade Effects structured collection is supported.";
+                return false;
+            }
+            if (!TryGetUniqueProperty(record, field.FieldId, out SurvivorsJsonProperty property, out error))
+                return false;
+            if (property == null)
+            {
+                if (!required) return true;
+                error = "Required direct property '" + field.FieldId + "' is missing. Only Upgrades with an authored Effects array are editable.";
+                return false;
+            }
+            if (property.Value.Kind != SurvivorsJsonValueKind.Array)
+            {
+                error = "Direct property '" + field.FieldId + "' must be an array.";
+                return false;
+            }
+
+            GameContentStructuredRowDescriptor rowDescriptor = field.StructuredCollection.RowDescriptor;
+            var rowTokens = new List<SurvivorsJsonStructuredRowToken>(property.Value.Elements.Count);
+            var rowValues = new List<GameContentStructuredRowValue>(property.Value.Elements.Count);
+            for (int index = 0; index < property.Value.Elements.Count; index++)
+            {
+                SurvivorsJsonNode rowNode = property.Value.Elements[index];
+                if (rowNode.Kind != SurvivorsJsonValueKind.Object)
+                {
+                    error = "Upgrade Effects row " + index + " must be an object.";
+                    return false;
+                }
+
+                IGrouping<string, SurvivorsJsonProperty> duplicate = rowNode.Properties
+                    .GroupBy(value => value.Name, StringComparer.Ordinal)
+                    .FirstOrDefault(group => group.Count() > 1);
+                if (duplicate != null)
+                {
+                    error = "Upgrade Effects row " + index + " contains duplicate direct property '" +
+                            duplicate.Key + "' and is unsafe to edit.";
+                    return false;
+                }
+
+                var fieldTokens = new Dictionary<string, SurvivorsJsonScalarToken>(StringComparer.Ordinal);
+                var fieldValues = new List<GameContentStructuredRowFieldValue>(rowDescriptor.Fields.Count);
+                for (int fieldIndex = 0; fieldIndex < rowDescriptor.Fields.Count; fieldIndex++)
+                {
+                    GameContentFieldDescriptor rowField = rowDescriptor.Fields[fieldIndex];
+                    GameContentFieldType storageType = rowField.FieldType == GameContentFieldType.Enum
+                        ? GameContentFieldType.Enum
+                        : rowField.FieldType;
+                    if (!TryReadDirectScalar(
+                            document,
+                            rowNode,
+                            rowField.FieldId,
+                            storageType,
+                            rowField.Required,
+                            out SurvivorsJsonScalarToken fieldToken,
+                            out error))
+                    {
+                        error = "Upgrade Effects row " + index + ": " + error;
+                        return false;
+                    }
+                    if (fieldToken == null) continue;
+                    fieldTokens.Add(rowField.FieldId, fieldToken);
+                    fieldValues.Add(new GameContentStructuredRowFieldValue(rowField.FieldId, fieldToken.Value));
+                }
+
+                HashSet<string> supported = new HashSet<string>(
+                    rowDescriptor.Fields.Select(value => value.FieldId),
+                    StringComparer.Ordinal);
+                SurvivorsJsonProperty[] preservationOnly = rowNode.Properties
+                    .Where(value => !supported.Contains(value.Name))
+                    .ToArray();
+                SurvivorsJsonProperty unsupportedNested = rowNode.Properties.FirstOrDefault(value =>
+                    !supported.Contains(value.Name) &&
+                    (value.Value.Kind == SurvivorsJsonValueKind.Array || value.Value.Kind == SurvivorsJsonValueKind.Object));
+                if (unsupportedNested != null)
+                {
+                    error = "Upgrade Effects row " + index + " contains unsupported nested property '" +
+                            unsupportedNested.Name + "'. The row remains read-only until that structure has an explicit provider mapping.";
+                    return false;
+                }
+
+                GameContentStructuredRowKey rowKey = GameContentStructuredRowKey.CreateSessionKey();
+                var row = new GameContentStructuredRowValue(
+                    rowKey,
+                    index,
+                    rowDescriptor.RowSchemaId,
+                    fieldValues,
+                    GameContentEditValidationState.Valid,
+                    rowDescriptor.BuildSummary(fieldValues));
+                if (!rowDescriptor.AcceptsRow(row, out string rowReason))
+                {
+                    error = "Upgrade Effects row " + index + " is outside the supported safe schema: " + rowReason;
+                    return false;
+                }
+                rowValues.Add(row);
+                rowTokens.Add(new SurvivorsJsonStructuredRowToken(
+                    row,
+                    rowNode,
+                    fieldTokens,
+                    preservationOnly));
+            }
+
+            var collection = new GameContentOrderedStructuredCollectionValue(rowDescriptor.RowSchemaId, rowValues);
+            if (!field.StructuredCollection.Accepts(collection, out string collectionReason))
+            {
+                error = "Upgrade Effects collection is invalid: " + collectionReason;
+                return false;
+            }
+            if (!SurvivorsUpgradeEffectEditing.TryValidate(collection, out string domainReason))
+            {
+                error = "Upgrade Effects collection is outside the supported domain: " + domainReason;
+                return false;
+            }
+
+            GameContentFieldValue value = GameContentFieldValue.FromOrderedStructuredCollection(collection);
+            token = new SurvivorsJsonStructuredCollectionToken(
+                field.FieldId,
+                property.Value,
+                field,
+                value,
+                rowTokens);
+            return true;
+        }
+
         private static bool TryReadValue(
             SurvivorsLosslessJsonDocument document,
             SurvivorsJsonNode node,
@@ -873,6 +1079,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 document,
                 tokens,
                 null,
+                null,
                 changes,
                 out proposedText,
                 out proposedBytes,
@@ -883,6 +1090,27 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             SurvivorsLosslessJsonDocument document,
             IReadOnlyDictionary<string, SurvivorsJsonScalarToken> scalarTokens,
             IReadOnlyDictionary<string, SurvivorsJsonCollectionToken> collectionTokens,
+            IReadOnlyDictionary<string, GameContentFieldValue> changes,
+            out string proposedText,
+            out byte[] proposedBytes,
+            out string error)
+        {
+            return TryPatch(
+                document,
+                scalarTokens,
+                collectionTokens,
+                null,
+                changes,
+                out proposedText,
+                out proposedBytes,
+                out error);
+        }
+
+        public static bool TryPatch(
+            SurvivorsLosslessJsonDocument document,
+            IReadOnlyDictionary<string, SurvivorsJsonScalarToken> scalarTokens,
+            IReadOnlyDictionary<string, SurvivorsJsonCollectionToken> collectionTokens,
+            IReadOnlyDictionary<string, SurvivorsJsonStructuredCollectionToken> structuredCollectionTokens,
             IReadOnlyDictionary<string, GameContentFieldValue> changes,
             out string proposedText,
             out byte[] proposedBytes,
@@ -909,13 +1137,22 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             {
                 SurvivorsJsonScalarToken scalarToken = null;
                 SurvivorsJsonCollectionToken collectionToken = null;
+                SurvivorsJsonStructuredCollectionToken structuredCollectionToken = null;
                 bool hasScalar = scalarTokens != null &&
                                  scalarTokens.TryGetValue(change.Key, out scalarToken) &&
                                  scalarToken?.Node != null;
                 bool hasCollection = collectionTokens != null &&
                                      collectionTokens.TryGetValue(change.Key, out collectionToken) &&
                                      collectionToken?.Node != null;
-                if (hasScalar == hasCollection)
+                bool hasStructuredCollection = structuredCollectionTokens != null &&
+                                               structuredCollectionTokens.TryGetValue(
+                                                   change.Key,
+                                                   out structuredCollectionToken) &&
+                                               structuredCollectionToken?.Node != null;
+                int tokenMatchCount = (hasScalar ? 1 : 0) +
+                                      (hasCollection ? 1 : 0) +
+                                      (hasStructuredCollection ? 1 : 0);
+                if (tokenMatchCount != 1)
                 {
                     error = "No unambiguous editable JSON token exists for field '" + change.Key + "'.";
                     return false;
@@ -932,10 +1169,24 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         return false;
                     }
                 }
-                else
+                else if (hasCollection)
                 {
                     node = collectionToken.Node;
                     if (!TryEncodeStringCollection(document, collectionToken, change.Value, out replacement, out error))
+                    {
+                        error = "Field '" + change.Key + "': " + error;
+                        return false;
+                    }
+                }
+                else
+                {
+                    node = structuredCollectionToken.Node;
+                    if (!TryEncodeStructuredCollection(
+                            document,
+                            structuredCollectionToken,
+                            change.Value,
+                            out replacement,
+                            out error))
                     {
                         error = "Field '" + change.Key + "': " + error;
                         return false;
@@ -970,6 +1221,219 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             proposedText = builder.ToString();
             proposedBytes = document.Encode(proposedText);
             return true;
+        }
+
+        private static bool TryEncodeStructuredCollection(
+            SurvivorsLosslessJsonDocument document,
+            SurvivorsJsonStructuredCollectionToken token,
+            GameContentFieldValue value,
+            out string encoded,
+            out string error)
+        {
+            encoded = null;
+            error = string.Empty;
+            GameContentOrderedStructuredCollectionValue collection = value?.OrderedStructuredCollectionValue;
+            if (value == null || value.FieldType != GameContentFieldType.OrderedStructuredCollection ||
+                collection == null)
+            {
+                error = "An ordered structured-row value is required.";
+                return false;
+            }
+            if (token?.Node == null || token.Node.Kind != SurvivorsJsonValueKind.Array ||
+                token.Descriptor?.StructuredCollection == null)
+            {
+                error = "The original structured JSON token is not a valid array mapping.";
+                return false;
+            }
+            if (!token.Descriptor.StructuredCollection.Accepts(collection, out error)) return false;
+            if (!SurvivorsUpgradeEffectEditing.TryValidate(collection, out error)) return false;
+
+            var rows = new List<string>(collection.Rows.Count);
+            for (int index = 0; index < collection.Rows.Count; index++)
+            {
+                GameContentStructuredRowValue row = collection.Rows[index];
+                if (token.TryGetOriginalRow(row.RowKey, out SurvivorsJsonStructuredRowToken original))
+                {
+                    if (row.OriginalIndex != original.Row.OriginalIndex)
+                    {
+                        error = "An original effect row supplied inconsistent session identity metadata.";
+                        return false;
+                    }
+                    if (!TryEncodeExistingStructuredRow(
+                            document,
+                            token.Descriptor.StructuredCollection.RowDescriptor,
+                            original,
+                            row,
+                            out string rowText,
+                            out error))
+                        return false;
+                    rows.Add(rowText);
+                }
+                else
+                {
+                    if (!row.IsAdded)
+                    {
+                        error = "A structured row uses an unknown or crafted session key.";
+                        return false;
+                    }
+                    if (!TryEncodeAddedStructuredRow(document, token, row, out string rowText, out error))
+                        return false;
+                    rows.Add(rowText);
+                }
+            }
+
+            encoded = FormatStructuredArray(document.Text, token.Node, rows);
+            return true;
+        }
+
+        private static bool TryEncodeExistingStructuredRow(
+            SurvivorsLosslessJsonDocument document,
+            GameContentStructuredRowDescriptor descriptor,
+            SurvivorsJsonStructuredRowToken original,
+            GameContentStructuredRowValue proposed,
+            out string encoded,
+            out string error)
+        {
+            encoded = null;
+            error = string.Empty;
+            if (!descriptor.AcceptsRow(proposed, out error)) return false;
+            string raw = document.Text.Substring(original.Node.Start, original.Node.Length);
+            var replacements = new List<Replacement>();
+            for (int index = 0; index < descriptor.Fields.Count; index++)
+            {
+                GameContentFieldDescriptor field = descriptor.Fields[index];
+                if (!original.Row.TryGetFieldValue(field.FieldId, out GameContentFieldValue originalValue) ||
+                    !proposed.TryGetFieldValue(field.FieldId, out GameContentFieldValue proposedValue) ||
+                    !original.FieldTokens.TryGetValue(field.FieldId, out SurvivorsJsonScalarToken fieldToken))
+                {
+                    error = "Mapped field '" + field.FieldId + "' is missing from an original effect row.";
+                    return false;
+                }
+                if (originalValue.Equals(proposedValue)) continue;
+                if (!TryEncodeValue(proposedValue, fieldToken.Node.Kind, out string replacement, out error))
+                {
+                    error = field.DisplayName + ": " + error;
+                    return false;
+                }
+                replacements.Add(new Replacement
+                {
+                    Start = fieldToken.Node.Start - original.Node.Start,
+                    Length = fieldToken.Node.Length,
+                    Text = replacement
+                });
+            }
+
+            var builder = new StringBuilder(raw);
+            foreach (Replacement replacement in replacements.OrderByDescending(value => value.Start))
+            {
+                if (replacement.Start < 0 || replacement.Start + replacement.Length > raw.Length)
+                {
+                    error = "A mapped effect-row token escaped its direct row span.";
+                    return false;
+                }
+                builder.Remove(replacement.Start, replacement.Length);
+                builder.Insert(replacement.Start, replacement.Text);
+            }
+            encoded = builder.ToString();
+            return true;
+        }
+
+        private static bool TryEncodeAddedStructuredRow(
+            SurvivorsLosslessJsonDocument document,
+            SurvivorsJsonStructuredCollectionToken token,
+            GameContentStructuredRowValue row,
+            out string encoded,
+            out string error)
+        {
+            encoded = null;
+            error = string.Empty;
+            GameContentStructuredRowDescriptor descriptor = token.Descriptor.StructuredCollection.RowDescriptor;
+            if (!descriptor.AcceptsRow(row, out error)) return false;
+
+            var fields = new List<KeyValuePair<string, string>>(descriptor.Fields.Count);
+            for (int index = 0; index < descriptor.Fields.Count; index++)
+            {
+                GameContentFieldDescriptor field = descriptor.Fields[index];
+                if (!row.TryGetFieldValue(field.FieldId, out GameContentFieldValue fieldValue))
+                {
+                    if (!field.Required) continue;
+                    error = "Added effect row is missing required field '" + field.FieldId + "'.";
+                    return false;
+                }
+                SurvivorsJsonValueKind expectedKind = field.FieldType == GameContentFieldType.Number ||
+                                                        field.FieldType == GameContentFieldType.Integer
+                    ? SurvivorsJsonValueKind.Number
+                    : field.FieldType == GameContentFieldType.Boolean
+                        ? SurvivorsJsonValueKind.Boolean
+                        : SurvivorsJsonValueKind.String;
+                if (!TryEncodeValue(fieldValue, expectedKind, out string fieldText, out error))
+                {
+                    error = field.DisplayName + ": " + error;
+                    return false;
+                }
+                fields.Add(new KeyValuePair<string, string>(field.FieldId, fieldText));
+            }
+
+            SurvivorsJsonStructuredRowToken style = token.Rows.FirstOrDefault();
+            string styleText = style == null
+                ? document.Text.Substring(token.Node.Start, token.Node.Length)
+                : document.Text.Substring(style.Node.Start, style.Node.Length);
+            string newline = FindFirstNewline(styleText);
+            string colonPadding = ResolveColonPadding(document.Text, style);
+            if (string.IsNullOrEmpty(newline))
+            {
+                encoded = "{" + string.Join(", ", fields.Select(pair =>
+                    EncodeString(pair.Key) + ":" + colonPadding + pair.Value)) + "}";
+                return true;
+            }
+
+            string rowIndent;
+            string childIndent;
+            if (style != null)
+            {
+                rowIndent = IndentationBefore(document.Text, style.Node.Start);
+                SurvivorsJsonScalarToken first = style.FieldTokens.Values
+                    .OrderBy(value => value.Node.Start)
+                    .First();
+                childIndent = IndentationBefore(document.Text, first.Node.Start);
+            }
+            else
+            {
+                string closingIndent = IndentationBefore(document.Text, token.Node.End - 1);
+                string indentUnit = InferIndentUnit(document.Text, token.Node.Start, closingIndent);
+                rowIndent = closingIndent + indentUnit;
+                childIndent = rowIndent + indentUnit;
+            }
+
+            string separator = "," + newline + childIndent;
+            encoded = "{" + newline + childIndent + string.Join(separator, fields.Select(pair =>
+                EncodeString(pair.Key) + ":" + colonPadding + pair.Value)) + newline + rowIndent + "}";
+            return true;
+        }
+
+        private static string FormatStructuredArray(
+            string source,
+            SurvivorsJsonNode array,
+            IReadOnlyList<string> rows)
+        {
+            if (rows.Count > 0 || array.Elements.Count == 0) return FormatArray(source, array, rows);
+            string original = source.Substring(array.Start, array.Length);
+            string newline = FindFirstNewline(original);
+            if (string.IsNullOrEmpty(newline)) return "[]";
+            string closingIndent = IndentationBefore(source, array.End - 1);
+            return "[" + newline + closingIndent + "]";
+        }
+
+        private static string ResolveColonPadding(
+            string source,
+            SurvivorsJsonStructuredRowToken style)
+        {
+            if (style == null || style.FieldTokens.Count == 0) return " ";
+            SurvivorsJsonNode value = style.FieldTokens.Values.OrderBy(token => token.Node.Start).First().Node;
+            int cursor = value.Start - 1;
+            while (cursor >= style.Node.Start && char.IsWhiteSpace(source[cursor])) cursor--;
+            if (cursor < style.Node.Start || source[cursor] != ':') return " ";
+            return source.Substring(cursor + 1, value.Start - cursor - 1);
         }
 
         private static bool TryEncodeStringCollection(
