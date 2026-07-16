@@ -32,7 +32,12 @@
     "com.deucarian.projectiles": "0.2.0",
     "com.deucarian.run-upgrades": "0.1.0",
     "com.deucarian.weapon-systems": "0.1.0",
-    "com.deucarian.world-spawning": "0.2.0"
+    "com.deucarian.world-spawning": "0.2.0",
+    "com.unity.modules.audio": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.particlesystem": "1.0.0",
+    "com.unity.modules.physics": "1.0.0"
   },
   "samples": [
     {
