@@ -1,6 +1,7 @@
 {
   "packageId": "com.deucarian.template.game.survivors",
   "displayName": "Deucarian Template Game - Survivors",
+  "samplePolicy": "template",
   "ownedCapabilities": [],
   "runtimeAssemblies": [
     "Deucarian.TemplateGameSurvivors"
