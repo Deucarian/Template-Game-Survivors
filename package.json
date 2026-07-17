@@ -1,6 +1,6 @@
 {
   "name": "com.deucarian.template.game.survivors",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "displayName": "Deucarian Template Game - Survivors",
   "description": "Playable Unity game template for a Survivors-style horde roguelite loop with package-based genre-kit adapters, pressure enemies, build mutations, and a 30-minute sample arc.",
   "unity": "6000.3",
@@ -21,18 +21,19 @@
     "roguelite"
   ],
   "dependencies": {
-    "com.deucarian.attacks": "0.1.0",
-    "com.deucarian.common": "0.2.0",
-    "com.deucarian.combat": "0.1.0",
-    "com.deucarian.encounters": "0.1.0",
-    "com.deucarian.game-content-authoring": "0.1.0",
-    "com.deucarian.gameplay-foundation": "0.1.0",
-    "com.deucarian.persistence": "0.1.0",
-    "com.deucarian.progression": "0.1.0",
-    "com.deucarian.projectiles": "0.2.0",
-    "com.deucarian.run-upgrades": "0.1.0",
-    "com.deucarian.weapon-systems": "0.1.0",
-    "com.deucarian.world-spawning": "0.2.0"
+    "com.deucarian.attacks": "0.1.1",
+    "com.deucarian.common": "0.2.1",
+    "com.deucarian.combat": "0.1.1",
+    "com.deucarian.encounters": "0.1.1",
+    "com.deucarian.game-content-authoring": "0.1.1",
+    "com.deucarian.gameplay-foundation": "0.1.1",
+    "com.deucarian.persistence": "0.1.1",
+    "com.deucarian.progression": "0.1.1",
+    "com.deucarian.projectiles": "0.2.1",
+    "com.deucarian.run-upgrades": "0.1.1",
+    "com.deucarian.weapon-systems": "0.1.1",
+    "com.deucarian.world-spawning": "0.2.1",
+    "com.unity.modules.particlesystem": "1.0.0"
   },
   "samples": [
     {

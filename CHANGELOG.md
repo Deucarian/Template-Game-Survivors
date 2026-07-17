@@ -1,7 +1,9 @@
 # Changelog
 
-## Unreleased
+## [0.1.1] - 2026-07-17
 
+- Declared the built-in Particle System module required by runtime feedback effects in minimal Unity hosts.
+- Aligned template metadata and exact Deucarian dependencies with the coordinated portfolio release.
 - Bridged Basic Survivors and Neon Arcana JSON records into reusable Attacks, Enemies, Wave / Encounter, Weapon / Tower, Upgrade subtype, and All Content lenses while preserving one canonical identity per source record.
 - Added editor-only typed projections for authored weapon, enemy, run-flow, and upgrade values; both 251-record packs remain isolated and JSON-backed, with unsupported fields and categories read-only.
 - Added read-only Game Content Authoring manifests, pack-scoped JSON projections, reference navigation, selected-source validation, Standard/Sprint launch actions, and dynamic imported-scene test resolution for Basic Survivors and Neon Arcana.

@@ -101,6 +101,54 @@ namespace Deucarian.TemplateGameSurvivors.Tests
         }
 
         [Test]
+        public void RecoveryAndAtomicPathsStayBelowPortableLimitAtHundredCharacterProjectRoot()
+        {
+            string projectRoot = "C:\\" + new string('p', 97);
+            string recoveryRoot = Path.Combine(
+                projectRoot,
+                "Library",
+                "Deucarian",
+                "GameContentAuthoring",
+                "Recovery",
+                "Survivors");
+            string atomicTemporaryRoot = Path.Combine(
+                projectRoot,
+                "Library",
+                "Deucarian",
+                "GameContentAuthoring",
+                "AtomicTransactions");
+            string sourcePath = Path.Combine(
+                projectRoot,
+                "Assets",
+                "Samples",
+                "Deucarian Template Game - Survivors",
+                "Basic Survivors Game",
+                "Content",
+                "DefaultUiTheme",
+                "ui-theme.json");
+            Guid transactionNonce = Guid.ParseExact("00112233445566778899aabbccddeeff", "N");
+
+            SurvivorsRecoveryStore.BuildPaths(
+                recoveryRoot,
+                sourcePath,
+                new DateTime(2026, 7, 17, 13, 30, 0, 123, DateTimeKind.Utc),
+                transactionNonce,
+                out string sourceDirectory,
+                out string backupPath,
+                out string metadataPath);
+            string temporaryPath = SurvivorsAtomicFile.BuildTemporaryPath(atomicTemporaryRoot, transactionNonce);
+
+            Assert.That(projectRoot.Length, Is.EqualTo(100));
+            Assert.That(Path.GetFileName(sourceDirectory).Length,
+                Is.EqualTo(SurvivorsRecoveryStore.SourceDirectoryHashLength));
+            Assert.That(Path.GetFileName(backupPath),
+                Is.EqualTo("20260717T133000123Z-0011223344556677.backup"));
+            Assert.That(backupPath.Length, Is.LessThan(SurvivorsRecoveryStore.PortablePathLimit), backupPath);
+            Assert.That(metadataPath.Length, Is.LessThan(SurvivorsRecoveryStore.PortablePathLimit), metadataPath);
+            Assert.That(temporaryPath.Length, Is.LessThan(SurvivorsRecoveryStore.PortablePathLimit), temporaryPath);
+        }
+
+        [Test]
         public void TryReplace_UsesExactBackoffBeforeFourthAttemptSuccess()
         {
             byte[] original = { 10 };
@@ -455,6 +503,9 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Func<SurvivorsAtomicRetryPreconditionResult> retryPrecondition = null,
             Func<bool> isAborted = null)
         {
+            operations = operations ?? new SurvivorsAtomicFileOperations();
+            if (string.IsNullOrWhiteSpace(operations.TemporaryDirectory))
+                operations.TemporaryDirectory = Path.GetDirectoryName(destination);
             return new SurvivorsAtomicReplaceRequest(
                 destination,
                 "AtomicTests/destination.json",
