@@ -38,6 +38,7 @@ Required dependencies and why:
 - `com.deucarian.run-upgrades`: level-up draft and upgrade effect adapters.
 - `com.deucarian.weapon-systems`: weapon slot and fire cadence foundations.
 - `com.deucarian.world-spawning`: horde spawn/presentation adapters.
+- `com.unity.modules.particlesystem`: built-in Particle System module used by runtime feedback effects.
 
 Optional/version-defined dependencies:
 

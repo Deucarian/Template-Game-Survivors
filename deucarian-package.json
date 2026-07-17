@@ -28,7 +28,8 @@
     "com.deucarian.projectiles",
     "com.deucarian.run-upgrades",
     "com.deucarian.weapon-systems",
-    "com.deucarian.world-spawning"
+    "com.deucarian.world-spawning",
+    "com.unity.modules.particlesystem"
   ],
   "optionalVersionDefinedDependencies": [],
   "allowedDirectDebugCalls": [
