@@ -762,9 +762,8 @@ namespace Deucarian.TemplateGameSurvivors.Tests
                 Assert.That(authored.TryGetEnemyProfile(SurvivorsEnemyRole.Swarm, out SurvivorsEnemyProfile swarm), Is.True);
                 Assert.That(swarm.MaxHealth, Is.EqualTo((float)proposed).Within(0.001f));
 
-                string sourceRecoveryDirectory = Path.Combine(
-                    SurvivorsRecoveryStore.RootPath,
-                    SurvivorsContentEditHash.Sha256(edited.Source.SourcePath.FullPath));
+                string sourceRecoveryDirectory = SurvivorsRecoveryStore.GetSourceDirectory(
+                    edited.Source.SourcePath.FullPath);
                 Assert.That(Directory.Exists(sourceRecoveryDirectory), Is.True);
                 Assert.That(Directory.GetFiles(sourceRecoveryDirectory, "*.backup")
                     .Any(path => File.GetLastWriteTimeUtc(path) >= transactionStart.AddSeconds(-1)), Is.True);

@@ -1109,6 +1109,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public Action<int> DelayMilliseconds;
         public Func<DateTime> UtcNow;
         public string ProbeDirectory;
+        public string TemporaryDirectory;
 
         public void Replace(string replacement, string destination)
         {
@@ -1180,6 +1181,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         private static string supportReason = string.Empty;
         private static string transientSupportReason = string.Empty;
         private static DateTime transientSupportRetryUtc = DateTime.MinValue;
+
+        internal static string DefaultTemporaryDirectory => Path.GetFullPath(Path.Combine(
+            Application.dataPath,
+            "..",
+            "Library",
+            "Deucarian",
+            "GameContentAuthoring",
+            "AtomicTransactions"));
 
         public static bool TryConfirmSupport(out string reason)
         {
@@ -1315,9 +1324,10 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return false;
             }
 
-            string temporary = Path.Combine(
-                directory,
-                "." + Path.GetFileName(destination) + "." + Guid.NewGuid().ToString("N") + ".deucarian-tmp");
+            string temporaryDirectory = string.IsNullOrWhiteSpace(request.Operations.TemporaryDirectory)
+                ? DefaultTemporaryDirectory
+                : Path.GetFullPath(request.Operations.TemporaryDirectory);
+            string temporary = BuildTemporaryPath(temporaryDirectory, Guid.NewGuid());
             string proposedHash = SurvivorsContentEditHash.Sha256(request.ExactBytes);
             var failures = new List<SurvivorsAtomicReplaceFailure>();
             int attempt = 1;
@@ -1325,6 +1335,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
             {
                 try
                 {
+                    Directory.CreateDirectory(temporaryDirectory);
                     WriteNew(temporary, request.ExactBytes);
                 }
                 catch (Exception exception)
@@ -1513,6 +1524,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 stream.Write(safe, 0, safe.Length);
                 stream.Flush(true);
             }
+        }
+
+        internal static string BuildTemporaryPath(string temporaryDirectory, Guid transactionId)
+        {
+            return Path.Combine(temporaryDirectory, "." + transactionId.ToString("N") + ".deucarian-tmp");
         }
 
         internal static void ResetProbeForTests()
@@ -1741,6 +1757,9 @@ namespace Deucarian.TemplateGameSurvivors.Editor
     internal static class SurvivorsRecoveryStore
     {
         public const int SuccessfulBackupsPerSource = 5;
+        internal const int PortablePathLimit = 240;
+        internal const int SourceDirectoryHashLength = 32;
+        internal const int TransactionNonceLength = 16;
         private static readonly UTF8Encoding Utf8 = new UTF8Encoding(false, true);
 
         public static string RootPath => Path.GetFullPath(Path.Combine(
@@ -1766,12 +1785,15 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 return false;
             }
 
-            string sourceKey = SurvivorsContentEditHash.Sha256(source.SourcePath.FullPath);
-            string sourceDirectory = Path.Combine(RootPath, sourceKey);
-            string transactionId = DateTime.UtcNow.ToString("yyyyMMddTHHmmssfffffffZ", CultureInfo.InvariantCulture) +
-                                   "-" + Guid.NewGuid().ToString("N");
-            string backupPath = Path.Combine(sourceDirectory, transactionId + ".backup");
-            string metadataPath = Path.Combine(sourceDirectory, transactionId + ".json");
+            DateTime timestampUtc = DateTime.UtcNow;
+            BuildPaths(
+                RootPath,
+                source.SourcePath.FullPath,
+                timestampUtc,
+                Guid.NewGuid(),
+                out string sourceDirectory,
+                out string backupPath,
+                out string metadataPath);
             var metadata = new SurvivorsRecoveryMetadata
             {
                 backendId = SurvivorsContentPackProvider.StableProviderId,
@@ -1780,7 +1802,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 sourceLockKey = source.SourceTarget.LockKey,
                 originalHash = source.ExactHash,
                 proposedHash = proposedHash ?? string.Empty,
-                timestampUtc = DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+                timestampUtc = timestampUtc.ToString("O", CultureInfo.InvariantCulture),
                 phase = "Prepared",
                 packKey = source.Manifest.StableKey,
                 recordKey = source.Record.CanonicalKey.StableKey,
@@ -1804,6 +1826,36 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         exception.GetBaseException().Message;
                 return false;
             }
+        }
+
+        internal static string GetSourceDirectory(string sourceFullPath)
+        {
+            return GetSourceDirectory(RootPath, sourceFullPath);
+        }
+
+        internal static void BuildPaths(
+            string rootPath,
+            string sourceFullPath,
+            DateTime timestampUtc,
+            Guid transactionNonce,
+            out string sourceDirectory,
+            out string backupPath,
+            out string metadataPath)
+        {
+            sourceDirectory = GetSourceDirectory(rootPath, sourceFullPath);
+            DateTime utc = timestampUtc.Kind == DateTimeKind.Utc
+                ? timestampUtc
+                : timestampUtc.ToUniversalTime();
+            string nonce = transactionNonce.ToString("N").Substring(0, TransactionNonceLength);
+            string transactionId = utc.ToString("yyyyMMddTHHmmssfffZ", CultureInfo.InvariantCulture) + "-" + nonce;
+            backupPath = Path.Combine(sourceDirectory, transactionId + ".backup");
+            metadataPath = Path.Combine(sourceDirectory, transactionId + ".json");
+        }
+
+        private static string GetSourceDirectory(string rootPath, string sourceFullPath)
+        {
+            string sourceHash = SurvivorsContentEditHash.Sha256(sourceFullPath ?? string.Empty);
+            return Path.Combine(rootPath, sourceHash.Substring(0, SourceDirectoryHashLength));
         }
 
         public static void Update(
