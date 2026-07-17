@@ -1703,7 +1703,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             string weaponJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultWeapons", "weapons.json"));
             string upgradeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUpgrades", "upgrades.json"));
             string themeJson = File.ReadAllText(Path.Combine(sampleRoot, "Content", "DefaultUiTheme", "ui-theme.json"));
-            string overCapacity = ReplaceFirst(
+            string overCapacity = ReplaceFirstAcrossLineEndings(
                 themeJson,
                 "        \"The goal is not to stand still. Kite, collect, and keep the horde just barely under control.\"\n      ]",
                 "        \"The goal is not to stand still. Kite, collect, and keep the horde just barely under control.\",\n" +
@@ -1718,6 +1718,22 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.That(SurvivorsContentValidator.MaximumTutorialLineCount, Is.EqualTo(3));
             Assert.That(result.Succeeded, Is.False);
             StringAssert.Contains("supports at most 3 lines in the current tutorial panel", errors);
+        }
+
+        [TestCase("\n")]
+        [TestCase("\r\n")]
+        public void TutorialCapacityMutationSupportsLfAndCrLf(string newline)
+        {
+            const string original = "        \"Third tutorial row.\"\n      ]";
+            const string replacement = "        \"Third tutorial row.\",\n        \"Fourth tutorial row.\"\n      ]";
+            string source = "{\n      [\n" + original + "\n}";
+            source = source.Replace("\n", newline);
+
+            string mutated = ReplaceFirstAcrossLineEndings(source, original, replacement);
+
+            StringAssert.Contains("\"Third tutorial row.\"," + newline, mutated);
+            StringAssert.Contains("\"Fourth tutorial row.\"" + newline + "      ]", mutated);
+            Assert.That(mutated.Replace(newline, string.Empty), Does.Not.Contain("\n").And.Not.Contain("\r"));
         }
 
         [Test]
@@ -2803,6 +2819,15 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             int index = text.IndexOf(oldValue, StringComparison.Ordinal);
             Assert.That(index, Is.GreaterThanOrEqualTo(0), "Text did not contain expected fragment: " + oldValue);
             return text.Substring(0, index) + newValue + text.Substring(index + oldValue.Length);
+        }
+
+        private static string ReplaceFirstAcrossLineEndings(string text, string oldValue, string newValue)
+        {
+            string newline = text.IndexOf("\r\n", StringComparison.Ordinal) >= 0 ? "\r\n" : "\n";
+            return ReplaceFirst(
+                text,
+                oldValue.Replace("\n", newline),
+                newValue.Replace("\n", newline));
         }
 
         private sealed class LegacyMetaProfileV1
