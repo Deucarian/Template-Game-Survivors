@@ -17,7 +17,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         private SurvivorsPacingProfile _pacingProfile = SurvivorsPacingProfile.HumanPlaytest;
         private Vector2 _scroll;
 
-        [MenuItem("Tools/Deucarian/Templates/Survivors/Runtime Debugger", priority = 340)]
+        [MenuItem(SurvivorsEditorContentValidation.MenuRoot + "Runtime Debugger", priority = 340)]
         public static void Open()
         {
             GetWindow<SurvivorsRuntimeDebugWindow>("Survivors Debug");

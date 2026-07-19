@@ -9,7 +9,8 @@ namespace Deucarian.TemplateGameSurvivors.Editor
 {
     public static class SurvivorsEditorContentValidation
     {
-        public const string MenuPath = "Tools/Deucarian/Templates/Survivors/Validate Content";
+        public const string MenuRoot = "Tools/Deucarian/Templates/Games/Survivors/";
+        public const string MenuPath = MenuRoot + "Validate Content";
         private const string ReportTitle = "Survivors Template Content Validation";
         private const string SampleName = "BasicSurvivorsGame";
 

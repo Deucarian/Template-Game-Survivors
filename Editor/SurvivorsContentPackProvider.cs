@@ -106,7 +106,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         {
             if (string.Equals(actionId, OpenInstallerActionId, StringComparison.OrdinalIgnoreCase))
             {
-                return EditorApplication.ExecuteMenuItem("Tools/Deucarian/Package Installer")
+                return EditorApplication.ExecuteMenuItem("Tools/Deucarian/Tools and Quality/Package Installer")
                     ? GameContentActionResult.Success("Opened Package Installer. Import the Basic Survivors Game sample from the Survivors package.")
                     : GameContentActionResult.Failure("Package Installer is not installed. Install it, then import the Basic Survivors Game sample.");
             }
