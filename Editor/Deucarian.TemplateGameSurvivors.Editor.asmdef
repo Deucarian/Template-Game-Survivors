@@ -3,6 +3,7 @@
   "rootNamespace": "Deucarian.TemplateGameSurvivors.Editor",
   "references": [
     "Deucarian.TemplateGameSurvivors",
+    "Deucarian.Editor",
     "Deucarian.Attacks.Editor",
     "Deucarian.GameplayFoundation",
     "Deucarian.GameContentAuthoring.Editor",
