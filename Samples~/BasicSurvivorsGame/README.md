@@ -8,7 +8,7 @@ The sample includes two playable scenes. `Scenes/BasicSurvivorsGame.unity` binds
 
 For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` and then open `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under the current imported Survivors sample in `Assets/Samples`. The root scene hierarchy includes `PLAYTEST_THIS_SCENE_OPEN_ME`. Before exposing Standard/Sprint, the bootstrap strictly validates and binds every gameplay library, the pickup manifest, both themes, audio IDs, and tutorial copy. It then builds the selector, arena, player, horde loop, pooled enemies, pickups, projectiles, clean HUD, drafts, build/relic UI, meta profile, summaries, endless continuation, and restart flow.
 
-`ContentPacks/BasicSurvivors.asset` and `ContentPacks/NeonArcana.asset` expose both variations through `Tools > Deucarian > Game Content Authoring` after import. They reference the existing scenes and JSON only; they do not duplicate gameplay records.
+`ContentPacks/BasicSurvivors.asset` and `ContentPacks/NeonArcana.asset` expose both variations through `Tools > Deucarian > Authoring > Game Content...` after import. They reference the existing scenes and JSON only; they do not duplicate gameplay records.
 
 - Move with WASD or arrow keys, and use Space for Arc Step when the horde closes in.
 - The pre-run selector starts Standard Run with `1`/Enter or Sprint Run with `2`/`S`.
@@ -65,7 +65,7 @@ For branch playtesting, open `C:\Repositories\Template-Game-Survivors-Playtest` 
 - Edit draft-card, tutorial, run-summary, HUD, rarity, category, placeholder icon, button, and audio event palette presentation in `Content/DefaultUiTheme/ui-theme.json`. `Content/NeonArcanaUiTheme/ui-theme.json` is the Basic scene's UI-only variant; the complete game-content flip lives under `Content/NeonArcana` and is wired by `Scenes/NeonArcana.unity`.
 - Press `C` after Standard victory to continue into endless escalation.
 - Press `R` after death or victory to restart.
-- Use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to start Standard or Sprint, force XP, grant blood shards, force level-up, trigger or clear horde rushes, force elite/miniboss/boss spawns including a Sprint boss, spawn bursts, fill the arena, switch pacing profiles with a current-run restart, apply stress targets, trigger magnet recall, inspect live build ranks, eligible evolutions, current drafts, run metrics, or explicitly reset save/progress.
+- Use Deucarian Control Center > Developer > Survivors Runtime Debugger during Play Mode to start Standard or Sprint, force XP, grant blood shards, force level-up, trigger or clear horde rushes, force elite/miniboss/boss spawns including a Sprint boss, spawn bursts, fill the arena, switch pacing profiles with a current-run restart, apply stress targets, trigger magnet recall, inspect live build ranks, eligible evolutions, current drafts, run metrics, or explicitly reset save/progress.
 
 First run target:
 
@@ -94,4 +94,4 @@ First run target:
 
 For manual timing checks, use the host scene path above rather than the package source scene.
 
-Run `Tools > Deucarian > Templates > Survivors > Validate Content` after editing sample weapons, upgrades, enemies, pickups, rewards, relics, classes, progression tracks, run-flow pacing, slot limits, or rarity weights.
+Run Deucarian Control Center > Authoring > Survivors Content > Validate Content after editing sample weapons, upgrades, enemies, pickups, rewards, relics, classes, progression tracks, run-flow pacing, slot limits, or rarity weights.

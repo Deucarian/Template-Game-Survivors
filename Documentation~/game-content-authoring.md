@@ -4,7 +4,7 @@
 
 Import the `Basic Survivors Game` sample, then open:
 
-`Tools > Deucarian > Game Content Authoring`
+`Tools > Deucarian > Authoring > Game Content...`
 
 Use the global `Content Pack` selector to choose one of two imported manifests:
 

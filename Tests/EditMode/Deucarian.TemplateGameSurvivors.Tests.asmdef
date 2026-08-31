@@ -4,6 +4,7 @@
   "references": [
     "Deucarian.TemplateGameSurvivors",
     "Deucarian.TemplateGameSurvivors.Editor",
+    "Deucarian.Editor",
     "Deucarian.Attacks.Editor",
     "Deucarian.Combat",
     "Deucarian.Encounters",
