@@ -18,7 +18,7 @@ Package extraction is governed by `Documentation~/template-contract.md`: “Extr
 
 ## Game Content Authoring
 
-After importing the `Basic Survivors Game` sample, open `Tools > Deucarian > Game Content Authoring` and choose `Basic Survivors` or `Neon Arcana` from the global Content Pack selector. Pack Dashboard and All Content expose all 251 records in that selected pack. The reusable Attacks, Enemies, Wave / Encounter, Weapon / Tower, and Upgrades lenses then show the same canonical records through typed, editor-only projections.
+After importing the `Basic Survivors Game` sample, open `Tools > Deucarian > Authoring > Game Content...` and choose `Basic Survivors` or `Neon Arcana` from the global Content Pack selector. Pack Dashboard and All Content expose all 251 records in that selected pack. The reusable Attacks, Enemies, Wave / Encounter, Weapon / Tower, and Upgrades lenses then show the same canonical records through typed, editor-only projections.
 
 Each authored weapon appears as one record in both Attacks and Weapon / Tower; enemy role categories such as Elite and Boss remain semantic views of one Enemy record; run profiles project into Wave / Encounter; and upgrade capabilities drive Weapon Upgrade, Passive, Pickup / Magnet, Mutation, Evolution, and Meta Upgrade filters. Basic and Neon retain separate owner/pack/source/record keys, so references cannot silently cross between them.
 
@@ -99,7 +99,7 @@ Sprint Run uses `SurvivorsPacingProfile.SprintRun` for a separate 5-minute loop:
 - Boss relics: edit `Samples~/BasicSurvivorsGame/Content/DefaultRelics/relics.json` and `CreateRelicDefinitions`.
 - Classes and starting loadouts: edit `Samples~/BasicSurvivorsGame/Content/DefaultClasses/classes.json` and `CreateClassLibraryDefinition`.
 - Run tuning, pacing profiles, player/dash values, spawn geometry, orbit knockback, horde/crowd pressure, threat warning/slam/support, Gem Rush, level/reward/evolution/relic/loadout surges, roaming caches, Arena Trials, waystones, status durations, pickup values, XP/draft throttles, rarity weights, and endless rewards: edit `Samples~/BasicSurvivorsGame/Content/DefaultRunFlow/run-flow.json`. Shared values belong in `sharedGameplayTuning`; only deliberate profile differences belong in `gameplayTuningOverrides`. `CreateDefaultTuning` remains a fallback/parity reference, not the normal sample authoring surface.
-- Debug iteration: use `Tools > Deucarian > Templates > Survivors > Runtime Debugger` during Play Mode to start Standard or Sprint, grant XP or blood shards, force level-ups, trigger or clear horde rushes, force elite/miniboss/boss spawns including a Sprint boss, spawn bursts, fill the arena, switch pacing profiles with a restart, inspect live build ranks/evolutions/drafts with current-to-next rank labels, inspect run metrics, trigger magnet recall, or reset meta progression.
+- Debug iteration: open Deucarian Control Center > Developer > Survivors Runtime Debugger during Play Mode to start Standard or Sprint, grant XP or blood shards, force level-ups, trigger or clear horde rushes, force elite/miniboss/boss spawns including a Sprint boss, spawn bursts, fill the arena, switch pacing profiles with a restart, inspect live build ranks/evolutions/drafts with current-to-next rank labels, inspect run metrics, trigger magnet recall, or reset meta progression.
 
 ## Asset Flip Shape
 
@@ -156,6 +156,7 @@ This slice uses:
 - `com.deucarian.progression` for local meta currency, legacy XP, and ranked persistent upgrade state.
 - `com.deucarian.persistence` for the local Survivors meta profile save document.
 - `com.deucarian.game-content-authoring` from editor validation code for report formatting.
+- `com.deucarian.editor` for the Control Center contribution and shared runtime-debugger workbench.
 - `com.deucarian.gameplay-foundation` for stable IDs and deterministic primitives surfaced by Deucarian runtime packages.
 
 ## Local Template Code
@@ -175,9 +176,9 @@ Keep these systems local to this template until reuse is proven across another S
 
 From the Unity editor, run:
 
-`Tools > Deucarian > Templates > Survivors > Validate Content`
+`Deucarian Control Center > Authoring > Survivors Content > Validate Content`
 
-The menu validates strict sample JSON and runtime catalogs for required scalar/display fields, IDs, archetype/projectile references, upgrade targets and amounts, pickup manifests, pickup-build coverage, weapon roles, enemy combat/lifecycle/marker fields, boss/miniboss definitions, relics, class starters, progression atlases/tracks/nodes/gates, the shared gameplay-tuning baseline and profile overrides, Sprint XP/draft throttles, rewards, themes, audio IDs, tutorial copy, and unlock requirements. The report is written to the Unity console for template developer visibility.
+The Control Center action validates strict sample JSON and runtime catalogs for required scalar/display fields, IDs, archetype/projectile references, upgrade targets and amounts, pickup manifests, pickup-build coverage, weapon roles, enemy combat/lifecycle/marker fields, boss/miniboss definitions, relics, class starters, progression atlases/tracks/nodes/gates, the shared gameplay-tuning baseline and profile overrides, Sprint XP/draft throttles, rewards, themes, audio IDs, tutorial copy, and unlock requirements. The report is written to the Unity console for template developer visibility.
 
 Before committing package changes, run:
 
@@ -190,7 +191,7 @@ Run existing Unity EditMode and PlayMode tests when changing code, asmdefs, pack
 
 During Play Mode, run:
 
-`Tools > Deucarian > Templates > Survivors > Runtime Debugger`
+`Deucarian Control Center > Developer > Survivors Runtime Debugger`
 
 Use it to force XP, grant blood shards, force level-up, trigger or clear horde rushes, force elite/miniboss/boss spawns, spawn enemy bursts, fill the arena, apply stress targets, switch pacing profiles with a restart, inspect live spawn interval/pack/counts, horde-rush and threat-enrage state, build ranks, eligible evolutions, and the current draft pool, trigger magnet recall, and reset the local meta profile.
 
@@ -201,7 +202,7 @@ No screenshot or GIF assets are committed yet. Add `Documentation~/media/` captu
 ## Troubleshooting
 
 - Sample scene is missing: import `Basic Survivors Game` through Package Installer or Package Manager, then open `Basic Survivors Game/Scenes/BasicSurvivorsGame.unity` under the current import in `Assets/Samples`.
-- Mode cards are disabled with an authored-content error: run `Tools > Deucarian > Templates > Survivors > Validate Content`, fix the named JSON field/reference in the imported sample source, and reimport the sample if its copied scene/content is stale. Strict mode intentionally will not substitute `BasicSurvivorsGame` values.
+- Mode cards are disabled with an authored-content error: run Deucarian Control Center > Authoring > Survivors Content > Validate Content, fix the named JSON field/reference in the imported sample source, and reimport the sample if its copied scene/content is stale. Strict mode intentionally will not substitute `BasicSurvivorsGame` values.
 - Weapons do not fire: enemies must be in range; move near the horde and wait for auto-fire cadence.
 - Combat feedback is hard to read: confirm the imported sample is current, then damage enemies or take a hit; enemies should flash on hit, deaths should leave a short burst, ranged attackers should draw a quick hostile shot cue before damage lands, streak drops should show a short reward banner, major reward kills should pop a colored cache beacon and pull their cache pickups inward, resolved damage should appear as short-lived numbers, and the first low-health crossing should pulse the red screen edge plus fire a Clutch Pulse.
 - Draft choices do not appear: collect XP gems until the level-up overlay opens, then choose with the mouse or `1`, `2`, or `3`.

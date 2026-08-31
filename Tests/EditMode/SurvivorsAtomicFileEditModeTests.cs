@@ -432,6 +432,7 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             var operations = new SurvivorsAtomicFileOperations
             {
                 ProbeDirectory = Path.Combine(_directory, "probe"),
+                TemporaryDirectory = Path.Combine(_directory, "probe"),
                 UtcNow = () => now,
                 DelayMilliseconds = delays.Add,
                 ReplacementOperation = (replacement, destination) =>

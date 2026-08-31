@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Deucarian.Editor;
 using UnityEditor;
 using UnityEngine;
 
@@ -17,157 +18,183 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         private SurvivorsPacingProfile _pacingProfile = SurvivorsPacingProfile.HumanPlaytest;
         private Vector2 _scroll;
 
-        [MenuItem(SurvivorsEditorContentValidation.MenuRoot + "Runtime Debugger", priority = 340)]
         public static void Open()
         {
-            GetWindow<SurvivorsRuntimeDebugWindow>("Survivors Debug");
+            SurvivorsRuntimeDebugWindow window =
+                GetWindow<SurvivorsRuntimeDebugWindow>("Survivors Debug");
+            window.minSize = new Vector2(560f, 520f);
+            window.Show();
         }
 
         private void OnGUI()
         {
-            SurvivorsTemplateController controller = FindController();
-            EditorGUILayout.LabelField("Runtime Controls", EditorStyles.boldLabel);
-            if (!Application.isPlaying)
+            using (DeucarianEditorWorkbenchPanelScope page =
+                   DeucarianEditorWorkbenchGUI.BeginSettingsPage(GUILayout.ExpandHeight(true)))
             {
-                EditorGUILayout.HelpBox("Enter Play Mode with the Basic Survivors Game scene open to use runtime controls.", MessageType.Info);
-                return;
-            }
+                DeucarianEditorChrome.DrawPackageHeader(
+                    "bug",
+                    "Survivors Runtime Debugger",
+                    "Inspect and deliberately exercise the active template run.");
+                SurvivorsTemplateController controller = FindController();
+                DeucarianEditorChrome.DrawSectionHeader("Runtime Controls");
+                DeucarianEditorChrome.BeginSection();
+                if (!Application.isPlaying)
+                {
+                    DeucarianEditorWorkbenchGUI.DrawStatusIconRow(
+                        "circle-info",
+                        "Enter Play Mode with the Basic Survivors Game scene open to use runtime controls.",
+                        DeucarianEditorStatus.Info);
+                    DeucarianEditorChrome.EndSection();
+                    DeucarianEditorChrome.DrawFooterVersion(
+                        "com.deucarian.template.game.survivors");
+                    return;
+                }
 
-            if (controller == null)
-            {
-                EditorGUILayout.HelpBox("No active SurvivorsTemplateController was found in the open scene.", MessageType.Warning);
-                return;
-            }
+                if (controller == null)
+                {
+                    DeucarianEditorWorkbenchGUI.DrawStatusIconRow(
+                        "circle-alert",
+                        "No active SurvivorsTemplateController was found in the open scene.",
+                        DeucarianEditorStatus.Warning);
+                    DeucarianEditorChrome.EndSection();
+                    DeucarianEditorChrome.DrawFooterVersion(
+                        "com.deucarian.template.game.survivors");
+                    return;
+                }
 
-            _scroll = EditorGUILayout.BeginScrollView(_scroll);
-            DrawSnapshot(controller);
-            EditorGUILayout.Space(8f);
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Start Standard Run"))
-            {
-                controller.SelectStandardRun();
-            }
+                _scroll = EditorGUILayout.BeginScrollView(_scroll);
+                DrawSnapshot(controller);
+                EditorGUILayout.Space(8f);
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Start Standard Run"))
+                {
+                    controller.SelectStandardRun();
+                }
 
-            if (GUILayout.Button("Start Sprint Run"))
-            {
-                controller.SelectSprintRun();
-            }
+                if (GUILayout.Button("Start Sprint Run"))
+                {
+                    controller.SelectSprintRun();
+                }
 
-            if (GUILayout.Button("Choose Run Mode"))
-            {
-                controller.OpenRunModeSelection();
-            }
+                if (GUILayout.Button("Choose Run Mode"))
+                {
+                    controller.OpenRunModeSelection();
+                }
 
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.Space(8f);
-            _experienceAmount = EditorGUILayout.IntSlider("Grant XP", _experienceAmount, 1, 250);
-            if (GUILayout.Button("Grant XP"))
-            {
-                controller.DebugGrantExperience(_experienceAmount);
-            }
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.Space(8f);
+                _experienceAmount = EditorGUILayout.IntSlider("Grant XP", _experienceAmount, 1, 250);
+                if (GUILayout.Button("Grant XP"))
+                {
+                    controller.DebugGrantExperience(_experienceAmount);
+                }
 
-            if (GUILayout.Button("Force Level-Up"))
-            {
-                controller.ForceLevelUp();
-            }
+                if (GUILayout.Button("Force Level-Up"))
+                {
+                    controller.ForceLevelUp();
+                }
 
-            _bloodShardAmount = EditorGUILayout.IntSlider("Grant Blood Shards", _bloodShardAmount, 1, 500);
-            if (GUILayout.Button("Grant Blood Shards"))
-            {
-                controller.DebugGrantBloodShards(_bloodShardAmount);
-            }
+                _bloodShardAmount = EditorGUILayout.IntSlider("Grant Blood Shards", _bloodShardAmount, 1, 500);
+                if (GUILayout.Button("Grant Blood Shards"))
+                {
+                    controller.DebugGrantBloodShards(_bloodShardAmount);
+                }
 
-            EditorGUILayout.Space(8f);
-            _spawnRole = (SurvivorsEnemyRole)EditorGUILayout.EnumPopup("Enemy Role", _spawnRole);
-            _burstCount = EditorGUILayout.IntSlider("Burst Count", _burstCount, 1, 128);
-            _spawnRadius = EditorGUILayout.Slider("Spawn Radius", _spawnRadius, 2f, 24f);
-            if (GUILayout.Button("Spawn Enemy Burst"))
-            {
-                controller.DebugSpawnEnemyBurst(_spawnRole, _burstCount, _spawnRadius);
-            }
+                EditorGUILayout.Space(8f);
+                _spawnRole = (SurvivorsEnemyRole)EditorGUILayout.EnumPopup("Enemy Role", _spawnRole);
+                _burstCount = EditorGUILayout.IntSlider("Burst Count", _burstCount, 1, 128);
+                _spawnRadius = EditorGUILayout.Slider("Spawn Radius", _spawnRadius, 2f, 24f);
+                if (GUILayout.Button("Spawn Enemy Burst"))
+                {
+                    controller.DebugSpawnEnemyBurst(_spawnRole, _burstCount, _spawnRadius);
+                }
 
-            _fillTarget = EditorGUILayout.IntSlider("Fill Target", _fillTarget, 1, 512);
-            if (GUILayout.Button("Fill Arena To Target"))
-            {
-                controller.DebugFillArenaToTarget(_spawnRole, _fillTarget, _spawnRadius);
-            }
+                _fillTarget = EditorGUILayout.IntSlider("Fill Target", _fillTarget, 1, 512);
+                if (GUILayout.Button("Fill Arena To Target"))
+                {
+                    controller.DebugFillArenaToTarget(_spawnRole, _fillTarget, _spawnRadius);
+                }
 
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Trigger Horde Rush"))
-            {
-                controller.DebugTriggerHordeRush();
-            }
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Trigger Horde Rush"))
+                {
+                    controller.DebugTriggerHordeRush();
+                }
 
-            if (GUILayout.Button("Clear Horde Rush"))
-            {
-                controller.DebugClearActiveHordeRush();
-            }
+                if (GUILayout.Button("Clear Horde Rush"))
+                {
+                    controller.DebugClearActiveHordeRush();
+                }
 
-            EditorGUILayout.EndHorizontal();
-            _majorEnemyRadius = EditorGUILayout.Slider("Major Enemy Radius", _majorEnemyRadius, 2f, 24f);
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Force Elite"))
-            {
-                controller.DebugSpawnElite(_majorEnemyRadius);
-            }
+                EditorGUILayout.EndHorizontal();
+                _majorEnemyRadius = EditorGUILayout.Slider("Major Enemy Radius", _majorEnemyRadius, 2f, 24f);
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Force Elite"))
+                {
+                    controller.DebugSpawnElite(_majorEnemyRadius);
+                }
 
-            if (GUILayout.Button("Force Dread Elite"))
-            {
-                controller.DebugSpawnDreadElite(_majorEnemyRadius);
-            }
+                if (GUILayout.Button("Force Dread Elite"))
+                {
+                    controller.DebugSpawnDreadElite(_majorEnemyRadius);
+                }
 
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.BeginHorizontal();
-            if (GUILayout.Button("Force Miniboss"))
-            {
-                controller.DebugSpawnMiniboss(_majorEnemyRadius);
-            }
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.BeginHorizontal();
+                if (GUILayout.Button("Force Miniboss"))
+                {
+                    controller.DebugSpawnMiniboss(_majorEnemyRadius);
+                }
 
-            if (GUILayout.Button("Force Boss"))
-            {
-                controller.DebugSpawnBoss(_majorEnemyRadius);
-            }
+                if (GUILayout.Button("Force Boss"))
+                {
+                    controller.DebugSpawnBoss(_majorEnemyRadius);
+                }
 
-            if (GUILayout.Button("Force Sprint Boss"))
-            {
-                controller.DebugSpawnSprintBoss(_majorEnemyRadius);
-            }
+                if (GUILayout.Button("Force Sprint Boss"))
+                {
+                    controller.DebugSpawnSprintBoss(_majorEnemyRadius);
+                }
 
-            EditorGUILayout.EndHorizontal();
-            EditorGUILayout.Space(8f);
-            _stressTarget = EditorGUILayout.IntSlider("Stress Target", _stressTarget, 50, 512);
-            if (GUILayout.Button("Apply Stress Profile"))
-            {
-                controller.DebugApplyStressProfile(_stressTarget);
-            }
+                EditorGUILayout.EndHorizontal();
+                EditorGUILayout.Space(8f);
+                _stressTarget = EditorGUILayout.IntSlider("Stress Target", _stressTarget, 50, 512);
+                if (GUILayout.Button("Apply Stress Profile"))
+                {
+                    controller.DebugApplyStressProfile(_stressTarget);
+                }
 
-            EditorGUILayout.Space(8f);
-            _pacingProfile = (SurvivorsPacingProfile)EditorGUILayout.EnumPopup("Pacing Profile", _pacingProfile);
-            if (GUILayout.Button("Apply Pacing Profile And Restart Current Run"))
-            {
-                controller.DebugApplyPacingProfile(_pacingProfile);
-            }
+                EditorGUILayout.Space(8f);
+                _pacingProfile = (SurvivorsPacingProfile)EditorGUILayout.EnumPopup("Pacing Profile", _pacingProfile);
+                if (GUILayout.Button("Apply Pacing Profile And Restart Current Run"))
+                {
+                    controller.DebugApplyPacingProfile(_pacingProfile);
+                }
 
-            if (GUILayout.Button("Trigger Magnet Recall"))
-            {
-                controller.TriggerMagnetRecall();
-            }
+                if (GUILayout.Button("Trigger Magnet Recall"))
+                {
+                    controller.TriggerMagnetRecall();
+                }
 
-            if (GUILayout.Button("Explicitly Reset Save / Progress"))
-            {
-                controller.DebugResetMetaProgression();
-            }
+                if (GUILayout.Button("Explicitly Reset Save / Progress"))
+                {
+                    controller.DebugResetMetaProgression();
+                }
 
-            EditorGUILayout.Space(8f);
-            DrawDebugLines("Run Metrics", controller.DebugDescribeRunMetrics());
-            if (controller.IsRunStarted)
-            {
-                DrawDebugLines("Current Build", controller.DebugDescribeCurrentBuild());
-                DrawDebugLines("Eligible Evolutions", controller.DebugDescribeEligibleEvolutionPool());
-                DrawDebugLines("Current Draft Pool", controller.DebugDescribeCurrentDraftPool());
-            }
+                EditorGUILayout.Space(8f);
+                DrawDebugLines("Run Metrics", controller.DebugDescribeRunMetrics());
+                if (controller.IsRunStarted)
+                {
+                    DrawDebugLines("Current Build", controller.DebugDescribeCurrentBuild());
+                    DrawDebugLines("Eligible Evolutions", controller.DebugDescribeEligibleEvolutionPool());
+                    DrawDebugLines("Current Draft Pool", controller.DebugDescribeCurrentDraftPool());
+                }
 
-            EditorGUILayout.EndScrollView();
+                EditorGUILayout.EndScrollView();
+                DeucarianEditorChrome.EndSection();
+                DeucarianEditorChrome.DrawFooterVersion(
+                    "com.deucarian.template.game.survivors");
+            }
         }
 
         private static void DrawSnapshot(SurvivorsTemplateController controller)

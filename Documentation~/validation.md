@@ -110,8 +110,8 @@ No package extraction, package publishing, Survivors template registration, Idle
 
 Phase 3E adds editor-side validation adoption:
 
-- `Tools > Deucarian > Templates > Survivors > Validate Content` validates the package `Samples~/BasicSurvivorsGame` JSON libraries.
-- The menu action runs the local `SurvivorsContentValidator`; Survivors-specific rules remain in this template.
+- Deucarian Control Center > Authoring > Survivors Content > Validate Content validates the package `Samples~/BasicSurvivorsGame` JSON libraries.
+- The Control Center action runs the local `SurvivorsContentValidator`; Survivors-specific rules remain in this template.
 - The editor report includes pickup JSON validation for required pickup ids, duplicate ids, display names, and behavior text. Pickup attraction values are validated in authored run flow.
 - The editor runner converts local validation errors to Gameplay Foundation `ContentValidationReport` issues.
 - Game Content Authoring formats and summarizes that report for console output only. Runtime assemblies do not reference editor-only authoring packages.
@@ -126,7 +126,7 @@ Phase 3F adds reference-parity gameplay validation:
 - Sample JSON validation now enforces the vertical-slice minimums for weapon roles, complete weapon skill tracks, passive atlas count, enemy roles, elite variants, and boss/miniboss presence.
 - EditMode coverage checks expanded enemy profiles plus barrier absorption and poison damage-over-time behavior.
 - PlayMode coverage checks the one-weapon default loadout, draftable weapon unlocks, owned weapon unlock suppression, XP-gain and area-scaling passives, early/boss rarity weighting, weapon-owned mutation availability, and class-gated advanced weapon/passive availability.
-- `Tools > Deucarian > Templates > Survivors > Runtime Debugger` provides Play Mode controls for forced XP, shard grants, level-ups, horde-rush trigger/clear checks, elite/miniboss/boss spawns, enemy bursts, arena fill, stress profiles, magnet recall, build/evolution/draft inspection, and meta reset.
+- Deucarian Control Center > Developer > Survivors Runtime Debugger provides Play Mode controls for forced XP, shard grants, level-ups, horde-rush trigger/clear checks, elite/miniboss/boss spawns, enemy bursts, arena fill, stress profiles, magnet recall, build/evolution/draft inspection, and meta reset.
 
 Full graph-editor passive skill trees, production class content packs, production UI, monetization, networking, and shared package extraction remain deferred.
 
