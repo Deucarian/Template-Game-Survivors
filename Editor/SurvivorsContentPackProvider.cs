@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Deucarian.Editor;
 using Deucarian.GameContentAuthoring.Editor;
 using UnityEditor;
 
@@ -106,7 +107,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         {
             if (string.Equals(actionId, OpenInstallerActionId, StringComparison.OrdinalIgnoreCase))
             {
-                return EditorApplication.ExecuteMenuItem("Tools/Deucarian/Tools and Quality/Package Installer")
+                return DeucarianToolRegistry.TryOpen(DeucarianToolIds.PackageInstaller)
                     ? GameContentActionResult.Success("Opened Package Installer. Import the Basic Survivors Game sample from the Survivors package.")
                     : GameContentActionResult.Failure("Package Installer is not installed. Install it, then import the Basic Survivors Game sample.");
             }

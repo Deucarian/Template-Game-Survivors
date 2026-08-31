@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Registered Survivors authoring, validation, and runtime debugger actions with Deucarian Control Center; Package Installer navigation now uses the stable tool registry.
+
 ## [0.1.1] - 2026-07-17
 
 - Declared the built-in Particle System module required by runtime feedback effects in minimal Unity hosts.

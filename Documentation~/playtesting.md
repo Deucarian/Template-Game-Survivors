@@ -16,7 +16,7 @@ Press Play from that scene. The root scene hierarchy includes `PLAYTEST_THIS_SCE
 
 `Documentation~/template-contract.md` protects this scene as the default vertical-slice experience. After package extraction or major refactors, confirm the sample still opens, shows mode selection, starts Standard and Sprint from authored run-flow profiles, uses authored weapons/upgrades/enemies/rewards/themes/tutorial copy, hides debug UI by default, resolves at least one draft, and reaches restart/change-mode without manual reconstruction.
 
-Before choosing a mode, confirm the selector reports `Strict authored Survivors sample bound`. This status means all gameplay JSON, the pickup manifest, both themes, audio IDs, and tutorial copy validated before startup. A strict error intentionally disables mode start and leaves the error visible. Run `Tools > Deucarian > Templates > Survivors > Validate Content`, fix the named field/reference, and reimport the copied sample when its imported scene or content is stale. Do not judge gameplay from a `Fallback content active` host; that state is reserved for tests/debug/unbound integrations.
+Before choosing a mode, confirm the selector reports `Strict authored Survivors sample bound`. This status means all gameplay JSON, the pickup manifest, both themes, audio IDs, and tutorial copy validated before startup. A strict error intentionally disables mode start and leaves the error visible. Run Deucarian Control Center > Authoring > Survivors Content > Validate Content, fix the named field/reference, and reimport the copied sample when its imported scene or content is stale. Do not judge gameplay from a `Fallback content active` host; that state is reserved for tests/debug/unbound integrations.
 
 `Content/DefaultRunFlow/run-flow.json` owns both the required `sharedGameplayTuning` baseline and each profile's pacing. Human Playtest inherits the shared values directly. Sprint, Normal, Debug Fast, and Showcase list only their intentional `gameplayTuningOverrides`; an omitted override inherits the authored shared value, not a runtime default. This is the place to inspect player/dash, spawn geometry/crowd spacing, threat warning/slam, pickup/reward feedback, waystone, status, barrier, and surge values during asset-flip testing.
 
@@ -148,7 +148,7 @@ Choose Sprint Run from the selector or start it through the runtime debugger.
 
 Enter Play Mode, then open:
 
-`Tools > Deucarian > Templates > Survivors > Runtime Debugger`
+`Deucarian Control Center > Developer > Survivors Runtime Debugger`
 
 Click `Explicitly Reset Save / Progress`. Restart Play Mode to confirm the sample starts from a fresh local meta profile. The same window can start Standard or Sprint, grant blood shards for meta-upgrade checks, force a Sprint boss, inspect run metrics, and inspect the current build ranks, eligible evolutions, and current draft pool. Entering Play Mode, restarting the current run, and applying a pacing profile should not wipe saved meta progress.
 
@@ -157,7 +157,7 @@ Click `Explicitly Reset Save / Progress`. Restart Play Mode to confirm the sampl
 Debug Fast is opt-in only.
 
 1. Enter Play Mode in the scene above.
-2. Open `Tools > Deucarian > Templates > Survivors > Runtime Debugger`.
+2. Open Deucarian Control Center > Developer > Survivors Runtime Debugger.
 3. Set `Pacing Profile` to `DebugFast`.
 4. Click `Apply Pacing Profile And Restart Current Run`.
 

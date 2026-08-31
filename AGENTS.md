@@ -22,7 +22,7 @@ This package must not own:
 
 Allowed dependency shape:
 
-- Template package may depend on lower reusable gameplay packages needed by its playable sample and local adapters.
+- Template package may depend on lower reusable gameplay packages needed by its playable sample and local adapters, plus Editor for shared template tooling presentation.
 
 Required dependencies and why:
 
@@ -30,6 +30,7 @@ Required dependencies and why:
 - `com.deucarian.common`: approved transient Unity object cleanup for local template runtime objects.
 - `com.deucarian.combat`: damage and combat state.
 - `com.deucarian.encounters`: horde/wave foundations.
+- `com.deucarian.editor`: shared Control Center contracts and runtime-debugger workbench presentation.
 - `com.deucarian.game-content-authoring`: editor validation/content authoring hooks.
 - `com.deucarian.gameplay-foundation`: shared IDs and deterministic primitives.
 - `com.deucarian.persistence`: local save/load and Unity persistence helpers.
