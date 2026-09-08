@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -696,6 +696,41 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsProjectileLaunchPort.RegisterProjectile(SurvivorsProjectileActor projectile) => _projectiles.Add(projectile);
         void ISurvivorsProjectileLaunchPort.ShowProjectileLaunchFeedback(Vector3 origin) => PlayFeedback(_firePulse, origin, 8, _fireClip);
 
+        internal Vector3 ResolveRuntimeEnemySpawnPositionForResolver(long seed) => SpawnSafety.ResolveRuntimeEnemySpawnPositionForResolver(seed);
+
+        public bool IsWorldPositionInsideCameraViewportForTest(Vector3 position, float padding) => SpawnSafety.IsWorldPositionInsideCameraViewportForTest(position, padding);
+
+        private Vector3 ResolveSafeOffscreenPosition(Vector3 center, float minimumDistance, float maximumDistance, long seed) => SpawnSafety.ResolveSafeOffscreenPosition(center, minimumDistance, maximumDistance, seed);
+
+        private Vector3 ResolveSafeOffscreenPosition(
+            Vector3 center, float minimumDistance, float maximumDistance, long seed, float padding, float bandDepth) => SpawnSafety.ResolveSafeOffscreenPosition(center, minimumDistance, maximumDistance, seed, padding, bandDepth);
+
+        private float ResolveGameplaySpawnMinimumDistance(SurvivorsEnemyRole role, float requested) => SpawnSafety.ResolveGameplaySpawnMinimumDistance(role, requested);
+
+        private float ResolveGameplaySpawnMaximumDistance(SurvivorsEnemyRole role, float minimumDistance, float requestedMaximum) => SpawnSafety.ResolveGameplaySpawnMaximumDistance(role, minimumDistance, requestedMaximum);
+
+        private float ResolveOffscreenSpawnPadding(SurvivorsEnemyRole role, string spawnSource) => SpawnSafety.ResolveOffscreenSpawnPadding(role, spawnSource);
+
+        private void RecordGameplaySpawnSafety(SurvivorsEnemyRole role, Vector3 position, string spawnSource) => SpawnSafety.RecordGameplaySpawnSafety(role, position, spawnSource);
+
+        private int CountEnemiesByRole(SurvivorsEnemyRole role) => EnemyRosterQueries.CountEnemiesByRole(role);
+
+        private int CountEliteEnemies() => EnemyRosterQueries.CountEliteEnemies();
+
+        private static bool IsEliteRole(SurvivorsEnemyRole role) => SurvivorsEnemyRosterQueries.IsEliteRole(role);
+
+        private static bool IsMajorRewardRole(SurvivorsEnemyRole role) => SurvivorsEnemyRosterQueries.IsMajorRewardRole(role);
+
+        private static SurvivorsEnemyRole ResolveDebugMajorEnemyRole(SurvivorsEnemyRole role) => SurvivorsEnemyRosterQueries.ResolveDebugMajorEnemyRole(role);
+
+        private SurvivorsSpawnSafety _spawnSafety;
+        private SurvivorsSpawnSafety SpawnSafety => _spawnSafety ?? (_spawnSafety = new SurvivorsSpawnSafety(this));
+        private SurvivorsEnemyRosterQueries _enemyRosterQueries;
+        private SurvivorsEnemyRosterQueries EnemyRosterQueries => _enemyRosterQueries ?? (_enemyRosterQueries = new SurvivorsEnemyRosterQueries(_enemies));
+        SurvivorsTemplateTuning ISurvivorsSpawnSafetyPort.Tuning => CurrentTuning;
+        Vector3 ISurvivorsSpawnSafetyPort.PlayerPosition => PlayerPosition;
+        bool ISurvivorsSpawnSafetyPort.TryResolveCameraGroundRect(float padding, out Rect rect) => TryResolveCameraGroundRect(padding, out rect);
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -1301,10 +1336,6 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsThreatHudModel _threatHud;
         private SurvivorsThreatHudModel ThreatHud => _threatHud ??
             (_threatHud = new SurvivorsThreatHudModel(new SurvivorsEnemyHudSource(_enemies)));
-        private string _lastGameplaySpawnSafetyFailure = string.Empty;
-        private Vector3 _lastGameplaySpawnPosition = Vector3.zero;
-        private float _lastGameplaySpawnPadding;
-        private bool _lastGameplaySpawnWasInsideCameraViewport;
 
         public SurvivorsRunState State => _runSession.State;
         public int Level => _experienceProgression.Level;
@@ -1681,12 +1712,12 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveIncomingThreatTelegraphEffectCount => ThreatTelegraphs.ActiveIncomingThreatTelegraphEffectCount;
         public int NormalEnemyRecycleCount => _enemyNavigation?.NormalEnemyRecycleCount ?? 0;
         public int MajorThreatRepositionCount => _enemyNavigation?.MajorThreatRepositionCount ?? 0;
-        public int GameplayEnemySpawnSafetyCheckCountForTest { get; private set; }
-        public int GameplaySpawnInsideCameraViewViolationCountForTest { get; private set; }
-        public string LastGameplaySpawnSafetyFailureForTest => _lastGameplaySpawnSafetyFailure;
-        public Vector3 LastGameplaySpawnPositionForTest => _lastGameplaySpawnPosition;
-        public float LastGameplaySpawnPaddingForTest => _lastGameplaySpawnPadding;
-        public bool LastGameplaySpawnWasInsideCameraViewportForTest => _lastGameplaySpawnWasInsideCameraViewport;
+        public int GameplayEnemySpawnSafetyCheckCountForTest => SpawnSafety.GameplayEnemySpawnSafetyCheckCountForTest;
+        public int GameplaySpawnInsideCameraViewViolationCountForTest => SpawnSafety.GameplaySpawnInsideCameraViewViolationCountForTest;
+        public string LastGameplaySpawnSafetyFailureForTest => SpawnSafety.LastGameplaySpawnSafetyFailureForTest;
+        public Vector3 LastGameplaySpawnPositionForTest => SpawnSafety.LastGameplaySpawnPositionForTest;
+        public float LastGameplaySpawnPaddingForTest => SpawnSafety.LastGameplaySpawnPaddingForTest;
+        public bool LastGameplaySpawnWasInsideCameraViewportForTest => SpawnSafety.LastGameplaySpawnWasInsideCameraViewportForTest;
         public int ActiveOffscreenThreatMarkerCount => CountOffscreenMajorThreatMarkers();
         public string CurrentOffscreenThreatMarkerLabel => ResolveFirstOffscreenMajorThreatMarkerLabel();
         public string LastOffscreenThreatMarkerLabel => ThreatHud.LastMarkerLabel;
@@ -2308,12 +2339,7 @@ namespace Deucarian.TemplateGameSurvivors
             PlayerVitals.SetBarrier(0f);
             _enemyNavigation?.ResetDiagnostics();
             ThreatHud.Reset();
-            GameplayEnemySpawnSafetyCheckCountForTest = 0;
-            GameplaySpawnInsideCameraViewViolationCountForTest = 0;
-            _lastGameplaySpawnSafetyFailure = string.Empty;
-            _lastGameplaySpawnPosition = Vector3.zero;
-            _lastGameplaySpawnPadding = 0f;
-            _lastGameplaySpawnWasInsideCameraViewport = false;
+            SpawnSafety.ResetDiagnostics();
             TimedEncounters.Reset();
             HordeRush.Reset();
             KillStreakRewards.Reset();
@@ -3539,35 +3565,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private int CountEnemiesByRole(SurvivorsEnemyRole role)
-        {
-            int count = 0;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy != null && enemy.IsAlive && enemy.Role == role)
-                {
-                    count++;
-                }
-            }
 
-            return count;
-        }
-
-        private int CountEliteEnemies()
-        {
-            int count = 0;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy != null && enemy.IsAlive && IsEliteRole(enemy.Role))
-                {
-                    count++;
-                }
-            }
-
-            return count;
-        }
 
         private int CountAuthoredThreatLifeBars(bool showBossLifeBar) => ThreatHud.CountLifeBars(showBossLifeBar);
 
@@ -3575,15 +3573,6 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static string ResolveMajorThreatHealthFallbackLabel(SurvivorsEnemyRole role) => SurvivorsThreatHudModel.ResolveFallbackLabel(role);
 
-        private static bool IsEliteRole(SurvivorsEnemyRole role)
-        {
-            return role == SurvivorsEnemyRole.Elite || role == SurvivorsEnemyRole.DreadElite;
-        }
-
-        private static bool IsMajorRewardRole(SurvivorsEnemyRole role)
-        {
-            return IsEliteRole(role) || role == SurvivorsEnemyRole.Miniboss || role == SurvivorsEnemyRole.Boss;
-        }
 
 
 
@@ -3593,15 +3582,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private static SurvivorsEnemyRole ResolveDebugMajorEnemyRole(SurvivorsEnemyRole role)
-        {
-            if (IsEliteRole(role) || role == SurvivorsEnemyRole.Miniboss || role == SurvivorsEnemyRole.Boss)
-            {
-                return role;
-            }
 
-            return SurvivorsEnemyRole.Elite;
-        }
 
         private void EnsureRunStartedForTest()
         {
@@ -4166,92 +4147,13 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
 
-        internal Vector3 ResolveRuntimeEnemySpawnPositionForResolver(long seed)
-        {
-            return ResolveSafeOffscreenPosition(
-                PlayerPosition,
-                ResolveGameplaySpawnMinimumDistance(SurvivorsEnemyRole.Swarm, CurrentTuning.EnemySpawnRadius),
-                ResolveGameplaySpawnMaximumDistance(SurvivorsEnemyRole.Swarm, CurrentTuning.EnemySpawnRadius, CurrentTuning.EnemySpawnRadius + CurrentTuning.SpawnBandDepth),
-                seed,
-                ResolveOffscreenSpawnPadding(SurvivorsEnemyRole.Swarm, "radial-resolver"),
-                CurrentTuning.SpawnBandDepth);
-        }
 
-        public bool IsWorldPositionInsideCameraViewportForTest(Vector3 position, float padding)
-        {
-            return TryResolveCameraGroundRect(Mathf.Max(0f, padding), out Rect visibleRect) &&
-                SurvivorsOffscreenSpawnPolicy.ContainsGroundPoint(visibleRect, position);
-        }
 
-        private Vector3 ResolveSafeOffscreenPosition(Vector3 center, float minimumDistance, float maximumDistance, long seed)
-        {
-            return ResolveSafeOffscreenPosition(
-                center,
-                minimumDistance,
-                maximumDistance,
-                seed,
-                CurrentTuning.OffscreenSpawnPadding,
-                CurrentTuning.SpawnBandDepth);
-        }
 
-        private Vector3 ResolveSafeOffscreenPosition(
-            Vector3 center, float minimumDistance, float maximumDistance, long seed, float padding, float bandDepth)
-        {
-            Rect? visible = TryResolveCameraGroundRect(Mathf.Max(0f, padding), out Rect rect) ? rect : (Rect?)null;
-            return SurvivorsOffscreenSpawnPolicy.Resolve(center, minimumDistance, maximumDistance, seed, bandDepth, visible);
-        }
 
-        private float ResolveGameplaySpawnMinimumDistance(SurvivorsEnemyRole role, float requested)
-        {
-            float minimum = Mathf.Max(1f, requested);
-            if (IsMajorRewardRole(role))
-            {
-                minimum = Mathf.Max(minimum, CurrentTuning.MajorThreatCatchUpRadius);
-            }
 
-            return minimum;
-        }
 
-        private float ResolveGameplaySpawnMaximumDistance(SurvivorsEnemyRole role, float minimumDistance, float requestedMaximum)
-        {
-            float band = Mathf.Max(0.25f, CurrentTuning.SpawnBandDepth);
-            float maximum = Mathf.Max(minimumDistance + band, requestedMaximum);
-            if (IsMajorRewardRole(role))
-            {
-                maximum = Mathf.Max(maximum, CurrentTuning.MajorThreatCatchUpRadius + band);
-            }
 
-            return maximum;
-        }
-
-        private float ResolveOffscreenSpawnPadding(SurvivorsEnemyRole role, string spawnSource)
-        {
-            if (string.Equals(spawnSource, "normal-recycle", StringComparison.Ordinal))
-            {
-                return Mathf.Max(0.1f, CurrentTuning.RecycledEnemyOffscreenSpawnPadding);
-            }
-
-            return IsMajorRewardRole(role)
-                ? Mathf.Max(0.1f, CurrentTuning.MajorThreatOffscreenSpawnPadding)
-                : Mathf.Max(0.1f, CurrentTuning.OffscreenSpawnPadding);
-        }
-
-        private void RecordGameplaySpawnSafety(SurvivorsEnemyRole role, Vector3 position, string spawnSource)
-        {
-            float padding = ResolveOffscreenSpawnPadding(role, spawnSource);
-            GameplayEnemySpawnSafetyCheckCountForTest++;
-            _lastGameplaySpawnPosition = position;
-            _lastGameplaySpawnPadding = padding;
-            _lastGameplaySpawnWasInsideCameraViewport = IsWorldPositionInsideCameraViewportForTest(position, padding);
-            if (!_lastGameplaySpawnWasInsideCameraViewport)
-            {
-                return;
-            }
-
-            GameplaySpawnInsideCameraViewViolationCountForTest++;
-            string source = string.IsNullOrWhiteSpace(spawnSource) ? "runtime" : spawnSource;
-            _lastGameplaySpawnSafetyFailure = $"{source} spawned {role} inside camera viewport at {position}";
-        }
 
         private bool TryResolveCameraGroundRect(float padding, out Rect rect)
         {
