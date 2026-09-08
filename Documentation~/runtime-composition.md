@@ -35,6 +35,9 @@ The controller retains its original script GUID, six serialized fields, public m
 | Infinite arena and waypoint observations | `SurvivorsArenaPresenter` / `SurvivorsArenaGeometry` | Owns tile/landmark hierarchy and recoloring, deterministic cell positions/keys, copied landmark observations and nearest-target read query |
 | Waystone compass drawing | `SurvivorsWaystoneCompassPresenter` | Target distance/direction and elapsed time; owns arrow hierarchy, visibility, orientation, pulse and theme refresh |
 | Generated arena materials | `SurvivorsArenaPrimitives` | Creates local visual primitives and releases their materials on rebuild/disposal, including after parent loss |
+| Player vitality and safety | `SurvivorsPlayerVitals` | Owns HealthState, barrier, contact/dash safety, one-use clutch response, pickup healing and damage accounting; uses Combat's existing resolver |
+| Player movement and dash cadence | `SurvivorsPlayerMotion` | Analog input, bounded motion/safety/travel/pressure ports, cooldown and dash diagnostics; world transform adapter remains in composition |
+| Dash path pressure | `SurvivorsDashPressure` | Snapshot of existing enemy references, segment projection, ordered damage/death/knockback behavior and per-hit accounting callback |
 
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
@@ -62,4 +65,6 @@ Exploration tests cover lane geometry and endless scaling, failed-cache cadence,
 
 Arena tests cover positive/negative cell boundaries, signed cell-key identity, landmark offsets, horizontal nearest-target selection, discovered-target suppression and exact tile/landmark counts and positions. Rebuilding the arena replaces its previous hierarchy and releases generated materials; disposal remains safe after the parent has already been destroyed. Presentation reads discovered keys and does not award exploration rewards.
 
-This decomposition is in progress. Player movement/safety, combat augments, full build/draft orchestration, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.
+Player tests cover barrier absorption starting contact safety, blocked damage feedback, exactly one clutch on threshold crossing, damage accounting before defeat, actual pickup healing and barrier caps, analog/diagonal movement, dash travel-before-safety-before-pressure ordering, pause/cooldown behavior and segment endpoints. Maximum-health effects retain their existing double precision input. The owner uses the shared Combat resolver and does not duplicate damage formulas.
+
+This decomposition is in progress. Combat augments and further momentum rewards, full build/draft orchestration, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.

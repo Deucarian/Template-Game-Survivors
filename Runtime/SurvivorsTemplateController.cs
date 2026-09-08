@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -153,6 +153,48 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsPlayerVitals _playerVitals;
+        private SurvivorsPlayerVitals PlayerVitals => _playerVitals ?? (_playerVitals = new SurvivorsPlayerVitals(this));
+        private SurvivorsPlayerMotion _playerMotion;
+        private SurvivorsPlayerMotion PlayerMotion => _playerMotion ?? (_playerMotion = new SurvivorsPlayerMotion(this));
+        public void ApplyDamageToPlayer(float amount, string source) => PlayerVitals.ApplyDamageToPlayer(amount, source);
+        SurvivorsTemplateTuning ISurvivorsPlayerDamagePort.Tuning => CurrentTuning;
+        int ISurvivorsPlayerDamagePort.DamageNonMajorEnemies(Vector3 position, float radius, float damage, string source) =>
+            DamageNonMajorEnemies(position, radius, damage, source);
+        void ISurvivorsPlayerDamagePort.ShowBlockedDamage(bool invulnerable)
+        {
+            if (invulnerable) PlayFeedback(_pickupPulse, PlayerPosition, 4, null);
+            else PlayFeedback(_bossPulse, PlayerPosition, 8, _dangerClip);
+        }
+        void ISurvivorsPlayerDamagePort.RecordDamage(DamageResult damage, Vector3 position) => RecordPlayerDamageFeedback(damage, position);
+        void ISurvivorsPlayerDamagePort.Defeat()
+        {
+            GrantRunRewards(victory: false);
+            _runSession.Defeat();
+            ClearRewardDrafts();
+            PlayFeedback(_bossPulse, PlayerPosition, 34, _dangerClip, AudioEventDefeat, 0.5f);
+        }
+        void ISurvivorsPlayerDamagePort.ShowClutch(string label, int hitCount)
+        {
+            RecordStreakRewardFeedback(label, new Color(1f, 0.32f, 0.42f));
+            PlayFeedback(_bossPulse, PlayerPosition, Mathf.Clamp(24 + hitCount * 5, 30, 72), _dangerClip, AudioEventLowHealthWarning, 0.5f);
+        }
+        void ISurvivorsPlayerDamagePort.ShowHurt() => PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip);
+        SurvivorsTemplateTuning ISurvivorsPlayerMotionPort.Tuning => CurrentTuning;
+        bool ISurvivorsPlayerMotionPort.HasPlayer => _playerObject != null;
+        Vector3 ISurvivorsPlayerMotionPort.Position { get => PlayerPosition; set => _playerObject.transform.position = value; }
+        Vector3 ISurvivorsPlayerMotionPort.Forward { get => PlayerForward; set => _playerObject.transform.forward = value; }
+        float ISurvivorsPlayerMotionPort.MoveSpeed => PlayerMoveSpeed;
+        void ISurvivorsPlayerMotionPort.RecordTravel(Vector3 delta) => RecordRoamingArenaTravel(delta);
+        void ISurvivorsPlayerMotionPort.ExtendSafety(float seconds) => PlayerVitals.ExtendSafety(seconds);
+        int ISurvivorsPlayerMotionPort.ApplyDashPressure(Vector3 start, Vector3 end, Vector3 direction, Action onDamageHit) =>
+            SurvivorsDashPressure.Apply(CurrentTuning, _enemies, start, end, direction, onDamageHit);
+        void ISurvivorsPlayerMotionPort.ShowDash(Vector3 position, string label, int shoved)
+        {
+            RecordStreakRewardFeedback(label, new Color(0.54f, 0.84f, 1f));
+            PlayFeedback(_pickupPulse, position, Mathf.Clamp(18 + shoved * 4, 18, 54), _pickupClip);
+        }
+
         private SurvivorsArenaPresenter _arena;
         private SurvivorsArenaPresenter Arena => _arena ?? (_arena = new SurvivorsArenaPresenter(() => ActiveUiTheme, key => Waystones.IsDiscovered(key)));
         private bool TryResolveClosestArenaLandmark(bool ignoreDiscovered, out Vector3 closest, out float distance, out Vector3 delta) =>
@@ -283,7 +325,6 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _transparentButtonStyle => _hudStyles.TransparentButtonStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService;
-        private HealthState _playerHealth;
         private RunUpgradeCatalog _upgradeCatalog;
         private RunUpgradeState _upgradeState;
         private RunUpgradeDraft _currentDraft;
@@ -329,8 +370,6 @@ namespace Deucarian.TemplateGameSurvivors
         long ISurvivorsSwarmSpawnPort.SpawnSequence => _spawnSequence;
         bool ISurvivorsSwarmSpawnPort.TrySpawn(SurvivorsEnemyRole role) =>
             SpawnEnemy(Vector3.zero, explicitPosition: false, role, gameplaySpawn: true, spawnSource: "normal-pack") != null;
-        private float _playerInvulnerabilityTimer;
-        private float _dashCooldownTimer;
         private float _rewardSelectionTimer;
         private float _killStreakTimer;
         private SurvivorsTraversalDirector _traversal;
@@ -376,7 +415,6 @@ namespace Deucarian.TemplateGameSurvivors
         private RunUpgradeRarity _highestChosenRarity;
         private string _highestChosenRarityLabel = string.Empty;
         private string _bestMomentLabel = string.Empty;
-        private bool _lowHealthClutchPulseUsed;
         private bool _weaponLoadoutSurgeUsed;
         private bool _passiveLoadoutSurgeUsed;
         private bool _runRewardsGranted;
@@ -400,7 +438,6 @@ namespace Deucarian.TemplateGameSurvivors
         private float _firstBossKillTimeSeconds;
         private float _firstEvolutionEligibilityTimeSeconds;
         private float _firstEvolutionAcquiredTimeSeconds;
-        private float _damageTakenThisRun;
         private int _draftOpenCount;
         private int _levelAtOneMinute;
         private int _levelAtTwoMinutes;
@@ -521,13 +558,13 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastClassUnlockRewardFeedbackLabel { get; private set; } = string.Empty;
         public int DamagePopupSpawnCount => _damageFeedback.SpawnCount;
         public int PlayerDamageFeedbackCount { get; private set; }
-        public int LowHealthClutchPulseCount { get; private set; }
-        public int LowHealthClutchPulseHitCount { get; private set; }
-        public string LastLowHealthClutchPulseFeedbackLabel { get; private set; } = string.Empty;
-        public int DashUseCount { get; private set; }
-        public int DashEnemyShoveCount { get; private set; }
-        public int DashDamageHitCount { get; private set; }
-        public string LastDashFeedbackLabel { get; private set; } = string.Empty;
+        public int LowHealthClutchPulseCount => PlayerVitals.LowHealthClutchPulseCount;
+        public int LowHealthClutchPulseHitCount => PlayerVitals.LowHealthClutchPulseHitCount;
+        public string LastLowHealthClutchPulseFeedbackLabel => PlayerVitals.LastLowHealthClutchPulseFeedbackLabel;
+        public int DashUseCount => PlayerMotion.DashUseCount;
+        public int DashEnemyShoveCount => PlayerMotion.DashEnemyShoveCount;
+        public int DashDamageHitCount => PlayerMotion.DashDamageHitCount;
+        public string LastDashFeedbackLabel => PlayerMotion.LastDashFeedbackLabel;
         public int EnemyHitFlashFeedbackCount { get; private set; }
         public int CriticalHitFeedbackCount { get; private set; }
         public int DeathNovaTriggerCount { get; private set; }
@@ -576,8 +613,8 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastEvolutionGoalFeedbackLabel { get; private set; } = string.Empty;
         public int EvolutionReadyFeedbackCount { get; private set; }
         public string LastEvolutionReadyFeedbackLabel { get; private set; } = string.Empty;
-        public int HealthPickupCollectedCount { get; private set; }
-        public float HealthRestoredByPickups { get; private set; }
+        public int HealthPickupCollectedCount => PlayerVitals.HealthPickupCollectedCount;
+        public float HealthRestoredByPickups => PlayerVitals.HealthRestoredByPickups;
         public int BloodShardPickupCollectedCount { get; private set; }
         public int BloodShardsCollectedFromPickups { get; private set; }
         public int PickupAttractionFeedbackCount { get; private set; }
@@ -730,7 +767,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float RelicPickupRangeBonus => UpgradeModifiers.RelicPickupRangeBonus;
         public float WeaponCooldownMultiplierBonus => UpgradeModifiers.WeaponCooldownMultiplierBonus;
         public float PickupRangeBonus => UpgradeModifiers.PickupRangeBonus;
-        public float BarrierValue { get; private set; }
+        public float BarrierValue => PlayerVitals.BarrierValue;
         public float BarrierCapacityBonus => UpgradeModifiers.BarrierCapacityBonus;
         public float BarrierRegenPerSecondBonus => UpgradeModifiers.BarrierRegenPerSecondBonus;
         public float BarrierOnDamageRatio => UpgradeModifiers.BarrierOnDamageRatio;
@@ -837,9 +874,9 @@ namespace Deucarian.TemplateGameSurvivors
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + ArenaShrineSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + WaystoneChainSurgeMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus + WeaponLoadoutSurgeMoveSpeedBonus + PassiveLoadoutSurgeMoveSpeedBonus + BossRelicSurgeMoveSpeedBonus + GemRushMoveSpeedBonus + EvolutionChainSurgeMoveSpeedBonus + EndlessSurgeMoveSpeedBonus;
-        public float DashCooldownRemainingSeconds => Mathf.Max(0f, _dashCooldownTimer);
-        public float PlayerSafetyRemainingSeconds => Mathf.Max(0f, _playerInvulnerabilityTimer);
-        public bool IsPlayerSafetyActive => _playerInvulnerabilityTimer > 0f;
+        public float DashCooldownRemainingSeconds => PlayerMotion.CooldownRemaining;
+        public float PlayerSafetyRemainingSeconds => PlayerVitals.SafetyRemaining;
+        public bool IsPlayerSafetyActive => PlayerVitals.SafetyRemaining > 0f;
         public float ProjectileDamage => ResolveDisplayedWeaponDamage();
         public float WeaponCooldownSeconds => ResolveDisplayedWeaponCooldownSeconds();
         public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + ArenaShrineSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus + WaystoneChainSurgePickupRangeBonus + HordeRushClearSurgePickupRangeBonus + WeaponLoadoutSurgePickupRangeBonus + PassiveLoadoutSurgePickupRangeBonus + BossRelicSurgePickupRangeBonus + GemRushPickupRangeBonus + EvolutionChainSurgePickupRangeBonus + EndlessSurgePickupRangeBonus);
@@ -857,8 +894,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
         public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
         public float DeathNovaRadius => DeathNovaDamage <= 0f ? 0f : Mathf.Max(0f, BaseDeathNovaRadius + DeathNovaRadiusBonus + AreaRadiusBonus * 0.5f);
-        public float CurrentHealth => _playerHealth == null ? 0f : (float)_playerHealth.CurrentHealth;
-        public float MaxHealth => _playerHealth == null ? 0f : (float)_playerHealth.MaximumHealth;
+        public float CurrentHealth => PlayerVitals.CurrentHealth;
+        public float MaxHealth => PlayerVitals.MaxHealth;
         public float BarrierCapacity => Mathf.Max(0f, CurrentTuning.StartingBarrierCapacity + BarrierCapacityBonus);
         public Vector3 PlayerPosition => _playerObject == null ? transform.position : _playerObject.transform.position;
         public Vector3 PlayerForward => _playerObject == null ? Vector3.forward : _playerObject.transform.forward;
@@ -995,19 +1032,19 @@ namespace Deucarian.TemplateGameSurvivors
         public float FirstBossKillTimeSeconds => _firstBossKillTimeSeconds;
         public float FirstEvolutionEligibilityTimeSeconds => _firstEvolutionEligibilityTimeSeconds;
         public float FirstEvolutionAcquiredTimeSeconds => _firstEvolutionAcquiredTimeSeconds;
-        public float DamageTakenThisRun => _damageTakenThisRun;
+        public float DamageTakenThisRun => PlayerVitals.DamageTaken;
         public int ThrottledExperienceOverflow => _experienceProgression.ThrottledExperienceOverflow;
         public int DraftOpenCount => _draftOpenCount;
 
         void ISurvivorsUpgradeEffectSink.IncreaseMaximumHealth(double amount)
         {
-            if (_playerHealth != null)
+            if (PlayerVitals.IsBound)
             {
-                _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + amount, MaximumChangePolicy.FillToMaximum);
+                PlayerVitals.IncreaseMaximumHealth(amount);
             }
         }
 
-        void ISurvivorsUpgradeEffectSink.RestoreBarrier(float amount) => RestoreBarrier(amount);
+        void ISurvivorsUpgradeEffectSink.RestoreBarrier(float amount) => PlayerVitals.RestoreBarrier(amount);
 
         void ISurvivorsUpgradeEffectSink.ScheduleMagnetPulse()
         {
@@ -1129,7 +1166,7 @@ namespace Deucarian.TemplateGameSurvivors
             Vector2 movement = ReadMovementInput();
             if (Input.GetKeyDown(KeyCode.Space))
             {
-                TryDash(movement);
+                PlayerMotion.TryDash(movement);
             }
 
             Simulate(Time.deltaTime, movement);
@@ -2143,7 +2180,8 @@ namespace Deucarian.TemplateGameSurvivors
             _ownedEvolutionUpgradeIds.Clear();
             _selectedRelicIds.Clear();
             _selectedRelics.Clear();
-            _playerHealth = new HealthState(new CombatantId("combatant.survivors.player"), resolved.PlayerMaxHealth, resolved.PlayerMaxHealth);
+            PlayerVitals.Initialize(resolved.PlayerMaxHealth);
+            PlayerMotion.Reset();
             SpawnedCount = 0;
             KilledCount = 0;
             ProjectileLaunchCount = 0;
@@ -2252,13 +2290,6 @@ namespace Deucarian.TemplateGameSurvivors
             LastClassUnlockRewardFeedbackLabel = string.Empty;
             _classUnlockRewardBanner.Reset();
             PlayerDamageFeedbackCount = 0;
-            LowHealthClutchPulseCount = 0;
-            LowHealthClutchPulseHitCount = 0;
-            LastLowHealthClutchPulseFeedbackLabel = string.Empty;
-            DashUseCount = 0;
-            DashEnemyShoveCount = 0;
-            DashDamageHitCount = 0;
-            LastDashFeedbackLabel = string.Empty;
             EnemyHitFlashFeedbackCount = 0;
             CriticalHitFeedbackCount = 0;
             DeathNovaTriggerCount = 0;
@@ -2282,8 +2313,6 @@ namespace Deucarian.TemplateGameSurvivors
             GemRushActivationCount = 0;
             LastExperienceComboFeedbackLabel = string.Empty;
             LastGemRushFeedbackLabel = string.Empty;
-            HealthPickupCollectedCount = 0;
-            HealthRestoredByPickups = 0f;
             BloodShardPickupCollectedCount = 0;
             BloodShardsCollectedFromPickups = 0;
             PickupAttractionFeedbackCount = 0;
@@ -2321,7 +2350,7 @@ namespace Deucarian.TemplateGameSurvivors
             ThreatTelegraphs.ResetMetrics();
             CombatFeedback.ResetMetrics();
             _experienceProgression.Reset();
-            BarrierValue = 0f;
+            PlayerVitals.SetBarrier(0f);
             NormalEnemyRecycleCount = 0;
             MajorThreatRepositionCount = 0;
             MagnetPulseActivationCount = 0;
@@ -2349,9 +2378,6 @@ namespace Deucarian.TemplateGameSurvivors
             _bonusLegacyExperienceEarnedThisRun = 0;
             SwarmSpawning.Reset();
             _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
-            _playerInvulnerabilityTimer = 0f;
-            _lowHealthClutchPulseUsed = false;
-            _dashCooldownTimer = 0f;
             _killStreakTimer = 0f;
             Traversal.Reset();
             _killStreakCount = 0;
@@ -2375,7 +2401,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentDraftRerollIndex = 0;
             ApplyPersistentMetaBonuses();
             ApplySelectedClassBonuses();
-            BarrierValue = BarrierCapacity;
+            PlayerVitals.SetBarrier(BarrierCapacity);
             BuildRuntimeWorld();
             _runFlow = new SurvivorsRunFlowRuntime(CreateRunFlowDefinition(resolved));
             _weaponArchetypeDefinitions = CreateWeaponArchetypeDefinitions(resolved);
@@ -2457,8 +2483,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             HordeRush.TickHordeRushEvents();
-            _playerInvulnerabilityTimer = Mathf.Max(0f, _playerInvulnerabilityTimer - dt);
-            _dashCooldownTimer = Mathf.Max(0f, _dashCooldownTimer - dt);
+            PlayerVitals.TickSafety(dt);
+            PlayerMotion.TickCooldown(dt);
             TickKillStreak(dt);
             TickStreakSurge(dt);
             RoamingCaches.TickRoamingCacheSurge(dt);
@@ -2474,8 +2500,8 @@ namespace Deucarian.TemplateGameSurvivors
             TickPickupMagnetPulse(dt);
             TickEvolutionChainSurge(dt);
             TickEndlessSurge(dt);
-            TickBarrier(dt);
-            MovePlayer(movementInput, dt);
+            PlayerVitals.TickBarrier(dt);
+            PlayerMotion.MovePlayer(movementInput, dt);
             TickArenaWaystoneDiscoveries();
             UpdateArenaPresentation();
             TickArenaWaystoneDiscoveries();
@@ -2654,7 +2680,7 @@ namespace Deucarian.TemplateGameSurvivors
         public bool DashForTest(Vector2 directionInput)
         {
             EnsureRunStartedForTest();
-            return TryDash(directionInput);
+            return PlayerMotion.TryDash(directionInput);
         }
 
         public void ForceLevelUp()
@@ -3462,7 +3488,7 @@ namespace Deucarian.TemplateGameSurvivors
             AppendMetricTime(_runMetricsLines, "First evolution acquired", _firstEvolutionAcquiredTimeSeconds);
             _runMetricsLines.Add($"Levels 1m {FormatMetricLevel(_levelAtOneMinute)}, 2m {FormatMetricLevel(_levelAtTwoMinutes)}, 3m {FormatMetricLevel(_levelAtThreeMinutes)}, 4m {FormatMetricLevel(_levelAtFourMinutes)}, 5m {FormatMetricLevel(_levelAtFiveMinutes)}");
             _runMetricsLines.Add($"Drafts level {LevelUpDraftOpenCount}, total {_draftOpenCount}, pending {PendingLevelUps}, weapons {ActiveWeaponCount}/{MaxWeaponSlots}, passives {ActivePassiveCount}/{MaxPassiveSlots}, evolutions {EvolvedWeaponCount}");
-            _runMetricsLines.Add($"Kills {KilledCount}, XP {ExperienceCollected}, stored {Experience}/{RequiredExperienceForNextLevel}, overflow {ThrottledExperienceOverflow}, damage taken {_damageTakenThisRun:0.#}");
+            _runMetricsLines.Add($"Kills {KilledCount}, XP {ExperienceCollected}, stored {Experience}/{RequiredExperienceForNextLevel}, overflow {ThrottledExperienceOverflow}, damage taken {PlayerVitals.DamageTaken:0.#}");
             _runMetricsLines.Add($"Pickup range {CurrentPickupAttractRange:0.#}, pull {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, markers {ActiveOffscreenThreatMarkerCount}, recycles {NormalEnemyRecycleCount}, major repositions {MajorThreatRepositionCount}");
             return _runMetricsLines;
         }
@@ -3495,7 +3521,7 @@ namespace Deucarian.TemplateGameSurvivors
             _firstBossKillTimeSeconds = -1f;
             _firstEvolutionEligibilityTimeSeconds = -1f;
             _firstEvolutionAcquiredTimeSeconds = -1f;
-            _damageTakenThisRun = 0f;
+            PlayerVitals.ResetDamageTaken();
             _draftOpenCount = 0;
             _levelAtOneMinute = -1;
             _levelAtTwoMinutes = -1;
@@ -3592,116 +3618,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return false;
-        }
-
-        public void ApplyDamageToPlayer(float amount, string source)
-        {
-            if (_playerHealth == null || State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
-            {
-                return;
-            }
-
-            float incoming = Mathf.Max(0f, amount);
-            if (_playerInvulnerabilityTimer > 0f && incoming > 0f)
-            {
-                PlayFeedback(_pickupPulse, PlayerPosition, 4, null);
-                return;
-            }
-
-            if (incoming > 0f)
-            {
-                _playerInvulnerabilityTimer = Mathf.Max(_playerInvulnerabilityTimer, CurrentTuning.PlayerContactInvulnerabilitySeconds);
-            }
-
-            if (BarrierValue > 0f && incoming > 0f)
-            {
-                float absorbed = Mathf.Min(BarrierValue, incoming);
-                BarrierValue -= absorbed;
-                incoming -= absorbed;
-            }
-
-            if (incoming <= 0f)
-            {
-                PlayFeedback(_bossPulse, PlayerPosition, 8, _dangerClip);
-                return;
-            }
-
-            float healthFractionBefore = MaxHealth <= 0f ? 1f : CurrentHealth / MaxHealth;
-            DamageRequest request = new DamageRequest(
-                _playerHealth.Id,
-                new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, incoming) },
-                sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.enemy" : source),
-                preResolvedCritical: false);
-            DamageResolutionResult result = CombatDamageResolver.Resolve(_combatCatalog, _playerHealth, null, request);
-            if (result != null && result.Damage != null)
-            {
-                _damageTakenThisRun += Mathf.Max(0f, (float)result.Damage.HealthDamage);
-            }
-
-            RecordPlayerDamageFeedback(result == null ? null : result.Damage, PlayerPosition);
-            if (!_playerHealth.IsAlive)
-            {
-                GrantRunRewards(victory: false);
-                _runSession.Defeat();
-                ClearRewardDrafts();
-                PlayFeedback(_bossPulse, PlayerPosition, 34, _dangerClip, AudioEventDefeat, 0.5f);
-            }
-            else
-            {
-                if (!TryTriggerLowHealthClutchPulse(healthFractionBefore))
-                {
-                    PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip);
-                }
-            }
-        }
-
-        private bool TryTriggerLowHealthClutchPulse(float healthFractionBefore)
-        {
-            if (_lowHealthClutchPulseUsed || _playerHealth == null || !_playerHealth.IsAlive || MaxHealth <= 0f)
-            {
-                return false;
-            }
-
-            float healthFractionAfter = CurrentHealth / MaxHealth;
-            if (healthFractionBefore <= LowHealthWarningThreshold || healthFractionAfter > LowHealthWarningThreshold)
-            {
-                return false;
-            }
-
-            _lowHealthClutchPulseUsed = true;
-
-            float safetySeconds = Mathf.Max(0f, CurrentTuning.LowHealthClutchSafetySeconds);
-            if (safetySeconds > 0f)
-            {
-                _playerInvulnerabilityTimer = Mathf.Max(_playerInvulnerabilityTimer, safetySeconds);
-            }
-
-            float radius = Mathf.Max(0f, CurrentTuning.LowHealthClutchPulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.LowHealthClutchPulseDamage);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.low-health.clutch-pulse");
-                    hitCount++;
-                }
-            }
-
-            LowHealthClutchPulseCount++;
-            LowHealthClutchPulseHitCount += hitCount;
-            LastLowHealthClutchPulseFeedbackLabel = $"Clutch Pulse: {hitCount} enemies hit, safety {safetySeconds:0.#}s";
-            RecordStreakRewardFeedback(LastLowHealthClutchPulseFeedbackLabel, new Color(1f, 0.32f, 0.42f));
-            PlayFeedback(_bossPulse, PlayerPosition, Mathf.Clamp(24 + hitCount * 5, 30, 72), _dangerClip, AudioEventLowHealthWarning, 0.5f);
-            return true;
         }
 
         public bool SelectUpgrade(int index)
@@ -3922,14 +3838,14 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            if (LifestealRatio > 0f && _playerHealth != null)
+            if (LifestealRatio > 0f && PlayerVitals.IsBound)
             {
-                _playerHealth.Heal(dealt * LifestealRatio);
+                PlayerVitals.Heal(dealt * LifestealRatio);
             }
 
             if (BarrierOnDamageRatio > 0f)
             {
-                RestoreBarrier(dealt * BarrierOnDamageRatio);
+                PlayerVitals.RestoreBarrier(dealt * BarrierOnDamageRatio);
             }
 
             if (PoisonDamageRatio > 0f)
@@ -4237,7 +4153,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
             else if (pickup.Kind == SurvivorsPickupKind.Health)
             {
-                RestoreHealthFromPickup(Mathf.Max(1, pickup.Amount));
+                PlayerVitals.RestoreHealthFromPickup(Mathf.Max(1, pickup.Amount));
             }
             else if (pickup.Kind == SurvivorsPickupKind.BloodShard)
             {
@@ -4258,20 +4174,6 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 _spawnService.Despawn(pickup.InstanceId, DespawnReason.Completed);
             }
-        }
-
-        private void RestoreHealthFromPickup(int amount)
-        {
-            if (_playerHealth == null || amount <= 0)
-            {
-                return;
-            }
-
-            float before = CurrentHealth;
-            _playerHealth.Heal(amount);
-            float restored = Mathf.Max(0f, CurrentHealth - before);
-            HealthPickupCollectedCount++;
-            HealthRestoredByPickups += restored;
         }
 
         private void CollectBloodShardPickup(int amount)
@@ -5279,7 +5181,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private bool TryDropHealthPickup(Vector3 position)
         {
-            if (_playerHealth == null || CurrentTuning.HealthPickupHealAmount <= 0 || CurrentHealth >= MaxHealth - 0.01f)
+            if (!PlayerVitals.IsBound || CurrentTuning.HealthPickupHealAmount <= 0 || CurrentHealth >= MaxHealth - 0.01f)
             {
                 return false;
             }
@@ -7268,142 +7170,6 @@ namespace Deucarian.TemplateGameSurvivors
             _profileSession.Release();
         }
 
-        private void MovePlayer(Vector2 movementInput, float deltaTime)
-        {
-            if (_playerObject == null || movementInput.sqrMagnitude <= 0.0001f)
-            {
-                return;
-            }
-
-            Vector2 normalized = movementInput.sqrMagnitude > 1f ? movementInput.normalized : movementInput;
-            Vector3 delta = new Vector3(normalized.x, 0f, normalized.y) * (PlayerMoveSpeed * deltaTime);
-            _playerObject.transform.position += delta;
-            if (delta.sqrMagnitude > 0.0001f)
-            {
-                _playerObject.transform.forward = delta.normalized;
-                RecordRoamingArenaTravel(delta);
-            }
-        }
-
-        private bool TryDash(Vector2 directionInput)
-        {
-            if (State != SurvivorsRunState.Playing || _playerObject == null || _dashCooldownTimer > 0f)
-            {
-                return false;
-            }
-
-            Vector3 direction = ResolveDashDirection(directionInput);
-            if (direction.sqrMagnitude <= 0.0001f)
-            {
-                return false;
-            }
-
-            float distance = Mathf.Max(0f, CurrentTuning.DashDistance);
-            if (distance <= 0f)
-            {
-                return false;
-            }
-
-            Vector3 start = PlayerPosition;
-            Vector3 delta = direction.normalized * distance;
-            Vector3 end = start + delta;
-            _playerObject.transform.position = end;
-            _playerObject.transform.forward = direction.normalized;
-            RecordRoamingArenaTravel(delta);
-
-            _dashCooldownTimer = Mathf.Max(0.05f, CurrentTuning.DashCooldownSeconds);
-            _playerInvulnerabilityTimer = Mathf.Max(_playerInvulnerabilityTimer, CurrentTuning.DashInvulnerabilitySeconds);
-            DashUseCount++;
-
-            int shoved = ApplyDashEnemyPressure(start, end, direction.normalized);
-            DashEnemyShoveCount += shoved;
-            LastDashFeedbackLabel = shoved > 0 ? $"Arc Step: shoved {shoved}" : "Arc Step";
-            RecordStreakRewardFeedback(LastDashFeedbackLabel, new Color(0.54f, 0.84f, 1f));
-            PlayFeedback(_pickupPulse, end, Mathf.Clamp(18 + shoved * 4, 18, 54), _pickupClip);
-            return true;
-        }
-
-        private Vector3 ResolveDashDirection(Vector2 directionInput)
-        {
-            Vector2 planar = directionInput.sqrMagnitude > 1f ? directionInput.normalized : directionInput;
-            Vector3 direction = planar.sqrMagnitude > 0.0001f
-                ? new Vector3(planar.x, 0f, planar.y)
-                : PlayerForward;
-            direction.y = 0f;
-            if (direction.sqrMagnitude <= 0.0001f)
-            {
-                direction = Vector3.forward;
-            }
-
-            return direction.normalized;
-        }
-
-        private int ApplyDashEnemyPressure(Vector3 start, Vector3 end, Vector3 dashDirection)
-        {
-            float pressureRadius = Mathf.Max(0f, CurrentTuning.DashKnockbackRadius);
-            float knockbackDistance = Mathf.Max(0f, CurrentTuning.DashKnockbackDistance);
-            float damage = Mathf.Max(0f, CurrentTuning.DashDamage);
-            if ((pressureRadius <= 0f && damage <= 0f) || _enemies.Count == 0)
-            {
-                return 0;
-            }
-
-            int impacted = 0;
-            var enemies = new List<SurvivorsEnemyActor>(_enemies);
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = enemies[i];
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    continue;
-                }
-
-                Vector3 enemyPosition = enemy.transform.position;
-                Vector3 closest = ClosestPointOnSegment(start, end, enemyPosition);
-                float allowedDistance = pressureRadius + enemy.Radius;
-                if ((enemyPosition - closest).sqrMagnitude > allowedDistance * allowedDistance)
-                {
-                    continue;
-                }
-
-                impacted++;
-                if (damage > 0f && enemy.ApplyDamage(damage, "survivors.player.arc-step") != null)
-                {
-                    DashDamageHitCount++;
-                }
-
-                if (!enemy.IsAlive || knockbackDistance <= 0f)
-                {
-                    continue;
-                }
-
-                Vector3 away = enemyPosition - closest;
-                away.y = 0f;
-                if (away.sqrMagnitude <= 0.0001f)
-                {
-                    away = dashDirection;
-                }
-
-                enemy.transform.position += away.normalized * knockbackDistance;
-                enemy.transform.forward = away.normalized;
-            }
-
-            return impacted;
-        }
-
-        private static Vector3 ClosestPointOnSegment(Vector3 start, Vector3 end, Vector3 point)
-        {
-            Vector3 segment = end - start;
-            float lengthSquared = segment.sqrMagnitude;
-            if (lengthSquared <= 0.0001f)
-            {
-                return start;
-            }
-
-            float t = Vector3.Dot(point - start, segment) / lengthSquared;
-            return start + segment * Mathf.Clamp01(t);
-        }
-
         private void RecordRoamingArenaTravel(Vector3 delta) => Traversal.RecordTravel(delta, State == SurvivorsRunState.Playing);
 
         private void TryActivateEndlessSurge(SurvivorsEnemyRole role, Vector3 position, int baseExperienceReward)
@@ -8769,25 +8535,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _endlessSurgeTimer = Mathf.Max(0f, _endlessSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
-
-        private void TickBarrier(float deltaTime)
-        {
-            float regen = Mathf.Max(0f, CurrentTuning.BaseBarrierRegenPerSecond + BarrierRegenPerSecondBonus);
-            if (regen > 0f)
-            {
-                RestoreBarrier(regen * deltaTime);
-            }
-        }
-
-        private void RestoreBarrier(float amount)
-        {
-            if (amount <= 0f)
-            {
-                return;
-            }
-
-            BarrierValue = Mathf.Min(BarrierCapacity, BarrierValue + amount);
         }
 
         private static bool CanApplyDamageAugments(string source)
