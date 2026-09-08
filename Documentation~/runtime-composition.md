@@ -121,6 +121,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Class and result definition labels | `SurvivorsProgressionChoiceLabels` | Copied definitions and current unlock/rank observations; no profile commands |
 
+| Progression and evolution feedback history | `SurvivorsProgressionFeedback` | Owned retained labels/counts with borrowed banners, profile queries and presentation commands |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -220,5 +222,7 @@ Twenty-nine cases preserve hit/critical counting, Unity-null boundaries, live do
 Eighteen cases preserve class/loadout order, slot/failure semantics, live stat terms and separate early-definition/late-loadout/disposal phases.
 
 Nine cases preserve class stat/weapon labels, result selection markers, rank/cost and authored display fallbacks.
+
+Six cases preserve progression/evolution callback and live-label order, independent banner/history lifetime and original reset boundaries.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.

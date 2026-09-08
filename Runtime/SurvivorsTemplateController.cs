@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -844,13 +844,7 @@ namespace Deucarian.TemplateGameSurvivors
             EnemySupportSpawning.ResetDiagnostics();
             RunRewards.Reset();
             PersistentProgression.ResetRunDiagnostics();
-            LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
-            LastResultClassSelectionFeedbackLabel = string.Empty;
-            EvolutionGoalFeedbackCount = 0;
-            LastEvolutionGoalFeedbackLabel = string.Empty;
-            EvolutionReadyFeedbackCount = 0;
-            LastEvolutionReadyFeedbackLabel = string.Empty;
-            LastClassUnlockRewardFeedbackLabel = string.Empty;
+            ProgressionFeedback.ResetHistory();
             _classUnlockRewardBanner.Reset();
             DamageFeedback.ResetPlayerFeedback();
             DamageFeedback.ResetEnemyFeedback();
@@ -1151,6 +1145,29 @@ namespace Deucarian.TemplateGameSurvivors
             return SurvivorsProgressionChoiceLabels.ClassDisplayName(_classLibrary, classId, fallback);
         }
 
+        private void RecordResultClassSelectionFeedback(SurvivorsClassDefinition selected) => ProgressionFeedback.RecordResultClassSelectionFeedback(selected);
+
+        private void RecordMetaUpgradePurchaseFeedback(string id) => ProgressionFeedback.RecordMetaUpgradePurchaseFeedback(id);
+
+        private void RecordEvolutionGoalFeedback(RunUpgradeDefinition evolution, RunUpgradeDefinition missingPassive) => ProgressionFeedback.RecordEvolutionGoalFeedback(evolution, missingPassive);
+
+        private void RecordEvolutionReadyFeedback(RunUpgradeDefinition evolution) => ProgressionFeedback.RecordEvolutionReadyFeedback(evolution);
+
+        private void RecordClassUnlockRewardFeedback() => ProgressionFeedback.RecordClassUnlockRewardFeedback();
+
+        private SurvivorsProgressionFeedback _progressionFeedback;
+        private SurvivorsProgressionFeedback ProgressionFeedback => _progressionFeedback ?? (_progressionFeedback = new SurvivorsProgressionFeedback(this, _rewardBanner, _classUnlockRewardBanner, _evolutionReadyBanner));
+        void ISurvivorsProgressionFeedbackPort.EnsureProfile() => EnsureMetaProgressionLoaded();
+        SurvivorsMetaProgressionDefinition ISurvivorsProgressionFeedbackPort.MetaDefinition => ResolveMetaProgressionDefinition();
+        int ISurvivorsProgressionFeedbackPort.GetPersistentRank(string id) => _metaProgression.GetPersistentUpgradeRank(id);
+        string ISurvivorsProgressionFeedbackPort.ResolveUpgradeDisplayName(RunUpgradeId id) => ResolveUpgradeDisplayName(id);
+        string ISurvivorsProgressionFeedbackPort.ResolveClassDisplayName(string classId, string fallback) => ResolveClassDisplayName(classId, fallback);
+        string ISurvivorsProgressionFeedbackPort.CurrencyRewardLabel => CurrencyRewardLabel;
+        string ISurvivorsProgressionFeedbackPort.ProgressionRewardLabel => ProgressionRewardLabel;
+        void ISurvivorsProgressionFeedbackPort.RecordEvolutionEligibility() => Telemetry.Record(SurvivorsRunMetric.FirstEvolutionEligibility, RunTimeSeconds);
+        void ISurvivorsProgressionFeedbackPort.PlayEvolutionPulse(int count) => PlayFeedback(_levelUpPulse, PlayerPosition, count, _levelUpClip);
+        void ISurvivorsProgressionFeedbackPort.PlayClassUnlockPulse() => PlayFeedback(_bossPulse, PlayerPosition, 52, _levelUpClip);
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -1175,8 +1192,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
-        private const float ClassUnlockRewardFeedbackDurationSeconds = 2.65f;
-        private const float EvolutionReadyFeedbackDurationSeconds = 2.4f;
         private const float EnemyHitFlashSeconds = 0.13f;
         private const float BaseDeathNovaRadius = 1.65f;
         private const int ResultMetaUpgradeOptionCount = 3;
@@ -1842,7 +1857,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftBanishCount => DraftSession.BanishCount;
         public int DraftSkipCount => DraftSession.SkipCount;
         public int ClassUnlockRewardCount => RunRewards.ClassUnlockRewardCount;
-        public string LastClassUnlockRewardFeedbackLabel { get; private set; } = string.Empty;
+        public string LastClassUnlockRewardFeedbackLabel => ProgressionFeedback.LastClassUnlockRewardFeedbackLabel;
         public int DamagePopupSpawnCount => _damageFeedback.SpawnCount;
         public int PlayerDamageFeedbackCount => DamageFeedback.PlayerDamageFeedbackCount;
         public int LowHealthClutchPulseCount => PlayerVitals.LowHealthClutchPulseCount;
@@ -1877,9 +1892,9 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastEvolutionMagnetRecallFeedbackLabel => BuildSurges.LastEvolutionMagnetRecallFeedbackLabel;
         public string LastEvolutionChainSurgeFeedbackLabel => BuildSurges.LastEvolutionChainSurgeFeedbackLabel;
         public int MetaUpgradePurchaseCount => PersistentProgression.MetaUpgradePurchaseCount;
-        public string LastMetaUpgradePurchaseFeedbackLabel { get; private set; } = string.Empty;
+        public string LastMetaUpgradePurchaseFeedbackLabel => ProgressionFeedback.LastMetaUpgradePurchaseFeedbackLabel;
         public int ResultClassSelectionCount => PersistentProgression.ResultClassSelectionCount;
-        public string LastResultClassSelectionFeedbackLabel { get; private set; } = string.Empty;
+        public string LastResultClassSelectionFeedbackLabel => ProgressionFeedback.LastResultClassSelectionFeedbackLabel;
         public int MajorThreatWarningCount => TimedEncounters.MajorThreatWarningCount;
         public int MajorThreatEnrageCount => MajorThreatAbilities.MajorThreatEnrageCount;
         public int MajorThreatEnrageSupportSpawnCount => MajorThreatAbilities.MajorThreatEnrageSupportSpawnCount;
@@ -1896,10 +1911,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int GemRushActivationCount => ExperienceRhythm.GemRushActivationCount;
         public string LastExperienceComboFeedbackLabel => ExperienceRhythm.LastExperienceComboFeedbackLabel;
         public string LastGemRushFeedbackLabel => ExperienceRhythm.LastGemRushFeedbackLabel;
-        public int EvolutionGoalFeedbackCount { get; private set; }
-        public string LastEvolutionGoalFeedbackLabel { get; private set; } = string.Empty;
-        public int EvolutionReadyFeedbackCount { get; private set; }
-        public string LastEvolutionReadyFeedbackLabel { get; private set; } = string.Empty;
+        public int EvolutionGoalFeedbackCount => ProgressionFeedback.EvolutionGoalFeedbackCount;
+        public string LastEvolutionGoalFeedbackLabel => ProgressionFeedback.LastEvolutionGoalFeedbackLabel;
+        public int EvolutionReadyFeedbackCount => ProgressionFeedback.EvolutionReadyFeedbackCount;
+        public string LastEvolutionReadyFeedbackLabel => ProgressionFeedback.LastEvolutionReadyFeedbackLabel;
         public int HealthPickupCollectedCount => PlayerVitals.HealthPickupCollectedCount;
         public float HealthRestoredByPickups => PlayerVitals.HealthRestoredByPickups;
         public int BloodShardPickupCollectedCount => PickupCollection.BloodShardPickupCollectedCount;
@@ -2770,31 +2785,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void RecordResultClassSelectionFeedback(SurvivorsClassDefinition selected)
-        {
-            if (selected == null)
-            {
-                return;
-            }
 
-            LastResultClassSelectionFeedbackLabel = "Next Run Class: " + selected.DisplayName;
-            _rewardBanner.Show(LastResultClassSelectionFeedbackLabel, RewardFeedbackDurationSeconds, new Color(0.8f, 0.58f, 1f));
-        }
-
-        private void RecordMetaUpgradePurchaseFeedback(string id)
-        {
-            EnsureMetaProgressionLoaded();
-            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
-            string displayName = id;
-            if (definition.TryGetPersistentUpgrade(id, out SurvivorsPersistentUpgradeDefinition upgrade))
-            {
-                displayName = upgrade.DisplayName;
-            }
-
-            int rank = _metaProgression.GetPersistentUpgradeRank(id);
-            LastMetaUpgradePurchaseFeedbackLabel = $"Meta Upgrade: {displayName} rank {rank}";
-            _rewardBanner.Show(LastMetaUpgradePurchaseFeedbackLabel, RewardFeedbackDurationSeconds, new Color(0.45f, 0.95f, 0.76f));
-        }
 
         public void ResetMetaProgressionForTest()
         {
@@ -3560,25 +3551,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void RecordEvolutionGoalFeedback(RunUpgradeDefinition evolution, RunUpgradeDefinition missingPassive)
-        {
-            string evolutionName = evolution == null ? "Evolution" : ResolveUpgradeDisplayName(evolution.Id);
-            string passiveName = missingPassive == null ? "matching passive" : ResolveUpgradeDisplayName(missingPassive.Id);
-            _evolutionReadyBanner.Show($"Evolution Goal: {passiveName} for {evolutionName}", EvolutionReadyFeedbackDurationSeconds, Color.white);
-            EvolutionGoalFeedbackCount++;
-            LastEvolutionGoalFeedbackLabel = _evolutionReadyBanner.Label;
-            PlayFeedback(_levelUpPulse, PlayerPosition, 22, _levelUpClip);
-        }
 
-        private void RecordEvolutionReadyFeedback(RunUpgradeDefinition evolution)
-        {
-            Telemetry.Record(SurvivorsRunMetric.FirstEvolutionEligibility, RunTimeSeconds);
-            string name = ResolveUpgradeDisplayName(evolution.Id);
-            _evolutionReadyBanner.Show($"Evolution Ready: {name}", EvolutionReadyFeedbackDurationSeconds, Color.white);
-            EvolutionReadyFeedbackCount++;
-            LastEvolutionReadyFeedbackLabel = _evolutionReadyBanner.Label;
-            PlayFeedback(_levelUpPulse, PlayerPosition, 36, _levelUpClip);
-        }
 
 
 
@@ -3606,18 +3579,6 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void RecordClassUnlockRewardFeedback()
-        {
-            LastClassUnlockRewardFeedbackLabel = "Class Unlocked: " + ResolveClassDisplayName(BasicSurvivorsGame.EmberVanguardClassId, "Ember Vanguard");
-            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
-            if (definition.TryGetReward(BasicSurvivorsGame.EmberVanguardUnlockRewardId, out SurvivorsRewardDefinition reward))
-            {
-                LastClassUnlockRewardFeedbackLabel += $" +{reward.CurrencyAmount} {CurrencyRewardLabel} +{reward.TrackAmount} {ProgressionRewardLabel}";
-            }
-
-            _classUnlockRewardBanner.Show(LastClassUnlockRewardFeedbackLabel, ClassUnlockRewardFeedbackDurationSeconds, Color.white);
-            PlayFeedback(_bossPulse, PlayerPosition, 52, _levelUpClip);
-        }
 
 
 
