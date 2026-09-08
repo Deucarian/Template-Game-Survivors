@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -769,6 +769,178 @@ namespace Deucarian.TemplateGameSurvivors
             (_evolutionAnnouncements = new SurvivorsEvolutionAnnouncements(RunBuild, DraftOffers.Catalogs,
                 RecordEvolutionGoalFeedback, RecordEvolutionReadyFeedback));
         private void RecordNewlyEligibleEvolutionFeedback() => EvolutionAnnouncements.Refresh();
+
+        private SurvivorsRunLifecycle _lifecycle;
+        private SurvivorsRunLifecycle Lifecycle => _lifecycle ?? (_lifecycle = new SurvivorsRunLifecycle(_runSession, Menus, this));
+        private void Start() => Lifecycle.StartAutomatically(showRunModeSelection, autoStart);
+        public void ConfigureRunModeSelection(bool enabled) => Lifecycle.ConfigureModeSelection(enabled);
+        public void OpenRunModeSelection() => Lifecycle.OpenModeSelection();
+        public bool SelectRunMode(SurvivorsPacingProfile profile) => Lifecycle.SelectMode(profile);
+        public void StartRun() => Lifecycle.StartRun();
+        public bool ContinueAfterVictory() => Lifecycle.ContinueAfterVictory();
+        private void EnterVictory() => Lifecycle.EnterVictory();
+        bool ISurvivorsRunLifecyclePort.CanStart => CanStartConfiguredRun;
+        bool ISurvivorsRunLifecyclePort.EndlessEnabled => CurrentTuning.EndlessContinuationEnabled;
+        void ISurvivorsRunLifecyclePort.SetStartupFlags(bool modeSelection, bool start) { showRunModeSelection = modeSelection; autoStart = start; }
+        void ISurvivorsRunLifecyclePort.DisableAutoStart() => autoStart = false;
+        void ISurvivorsRunLifecyclePort.ResetDebugVisibility() => _debugOverlayVisible = false;
+        void ISurvivorsRunLifecyclePort.ResetScreenScrolls()
+        { BuildMenuPresenter.ResetScroll(); ResultScreen.ResetScroll(); DraftScreen.ResetScroll(); RunModePresenter.ResetScroll(); }
+        void ISurvivorsRunLifecyclePort.EnsureTheme() => EnsureUiTheme();
+        void ISurvivorsRunLifecyclePort.RestoreTimeScale() => Time.timeScale = 1f;
+        void ISurvivorsRunLifecyclePort.ReleaseRun() => ClearRun();
+        void ISurvivorsRunLifecyclePort.InitializeRun() => InitializeNewRun();
+        void ISurvivorsRunLifecyclePort.ClearDrafts() => ClearRewardDrafts();
+        void ISurvivorsRunLifecyclePort.ApplyPacing(SurvivorsPacingProfile profile) => ApplyPacingProfile(profile, restartRun: false);
+        void ISurvivorsRunLifecyclePort.PlayModeSelected() => PlayAudioEvent(AudioEventModeSelected, _levelUpClip, 0.05f);
+        void ISurvivorsRunLifecyclePort.ScheduleContinuation()
+        { SwarmSpawning.Reset(); TimedEncounters.ScheduleEndlessThreats(RunTimeSeconds); HordeRush.EnsureFutureHordeRushScheduled(); }
+        void ISurvivorsRunLifecyclePort.PlayContinuation() => PlayFeedback(_levelUpPulse, PlayerPosition, 32, _levelUpClip);
+        void ISurvivorsRunLifecyclePort.ConsumeBossVictory() => _runFlow?.TryConsumeBossVictory();
+        void ISurvivorsRunLifecyclePort.GrantVictoryRewards() => GrantRunRewards(victory: true);
+        void ISurvivorsRunLifecyclePort.PlayVictory() => PlayFeedback(_levelUpPulse, PlayerPosition, 42, _levelUpClip, AudioEventVictory, 0.5f);
+        private void InitializeNewRun()
+        {
+            _audioEvents.Reset();
+            _highestChosenRarity = RunUpgradeRarity.Common;
+            _highestChosenRarityLabel = string.Empty;
+            _bestMomentLabel = string.Empty;
+            SurvivorsTemplateTuning resolved = CurrentTuning;
+            EnemyDamage.Reset(resolved.RunSeed);
+            _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
+            _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
+            _relicDefinitions = CreateRelicDefinitions();
+            _upgradeClassGates = CreateClassUpgradeGates();
+            _classLibrary = CreateClassLibraryDefinition();
+            EnsureMetaProgressionLoaded();
+            _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
+            _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
+            RunBuild.Initialize(CreateBaseRunUpgradeCatalog(), CreateRunUpgradeMetadata(), _selectedClass, _upgradeClassGates);
+            RelicInventory.Reset();
+            DraftSession.Reset();
+            PlayerVitals.Initialize(resolved.PlayerMaxHealth);
+            PlayerMotion.Reset();
+            EnemySpawner.ResetDiagnostics();
+            Defeats.Reset();
+            ProjectileLauncher.ResetDiagnostics();
+            OrbitHitCount = 0;
+            MeleeSwingCount = 0;
+            MeleeHitCount = 0;
+            BurstPulseCount = 0;
+            BurstHitCount = 0;
+            HitscanFireCount = 0;
+            HitscanHitCount = 0;
+            TempestPrismArcHitCount = 0;
+            LastTempestPrismArcFeedbackLabel = string.Empty;
+            ProjectilePierceHitCount = 0;
+            ProjectileChainHitCount = 0;
+            ProjectileForkSpawnCount = 0;
+            ProjectileReturnStartCount = 0;
+            OrbitKnockbackCount = 0;
+            LastOrbitKnockbackFeedbackLabel = string.Empty;
+            DamageAugments.Reset();
+            PayloadThrowCount = 0;
+            PayloadPlacedCount = 0;
+            PayloadDetonationCount = 0;
+            PayloadExplosionHitCount = 0;
+            PayloadHazards.Reset();
+            EnemySupportSpawning.ResetDiagnostics();
+            RunRewards.Reset();
+            PersistentProgression.ResetRunDiagnostics();
+            LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
+            LastResultClassSelectionFeedbackLabel = string.Empty;
+            EvolutionGoalFeedbackCount = 0;
+            LastEvolutionGoalFeedbackLabel = string.Empty;
+            EvolutionReadyFeedbackCount = 0;
+            LastEvolutionReadyFeedbackLabel = string.Empty;
+            LastClassUnlockRewardFeedbackLabel = string.Empty;
+            _classUnlockRewardBanner.Reset();
+            PlayerDamageFeedbackCount = 0;
+            EnemyHitFlashFeedbackCount = 0;
+            CriticalHitFeedbackCount = 0;
+            DeathNova.Reset();
+            EnemyRangedAttackDodgeFeedbackCount = 0;
+            EnemyRangedAttackDodgeExperienceGemDropCount = 0;
+            LastEnemyRangedAttackDodgeFeedbackLabel = string.Empty;
+            MajorRewardPickupCache.ResetDiagnostics();
+            MajorThreatAbilities.ResetDiagnostics();
+            PickupCollection.ResetDiagnostics();
+            RewardCardPresentationCount = 0;
+            RewardSelectionFeedbackCount = 0;
+            LastRewardCardPresentationLabel = string.Empty;
+            LastRewardSelectionFeedbackLabel = string.Empty;
+            ExplorationFeedback.Reset();
+            RoamingCaches.Reset();
+            ShrineTrials.Reset();
+            Waystones.Reset();
+            Waystones.ClearDiscoveries();
+            StreakRewardFeedbackCount = 0;
+            LastStreakRewardFeedbackLabel = string.Empty;
+            RunSummary.Clear();
+            ResetRunMetrics();
+            UpgradeModifiers.Reset();
+            _runSession.Reset();
+            RewardDrops.ResetMetrics();
+            ThreatTelegraphs.ResetMetrics();
+            CombatFeedback.ResetMetrics();
+            _experienceProgression.Reset();
+            PlayerVitals.SetBarrier(0f);
+            _enemyNavigation?.ResetDiagnostics();
+            ThreatHud.Reset();
+            SpawnSafety.ResetDiagnostics();
+            TimedEncounters.Reset();
+            HordeRush.Reset();
+            KillStreakRewards.Reset();
+            BuildSurges.Reset();
+            SelectionRewards.Reset();
+            ExperienceRhythm.Reset();
+            _rewardBanner.Reset();
+            _streakRewardBanner.Reset();
+            SwarmSpawning.Reset();
+            PickupCollection.ResetPulseSchedule();
+            Traversal.Reset();
+            EndlessSurges.Reset();
+            _evolutionAnnouncements?.Reset();
+            _evolutionReadyBanner.Reset();
+            SpawnSequence.Reset();
+            _damageFeedback.Reset();
+            ApplyPersistentMetaBonuses();
+            ApplySelectedClassBonuses();
+            PlayerVitals.SetBarrier(BarrierCapacity);
+            BuildRuntimeWorld();
+            _runFlow = new SurvivorsRunFlowRuntime(CreateRunFlowDefinition(resolved));
+            _weaponArchetypeDefinitions = CreateWeaponArchetypeDefinitions(resolved);
+            _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(_weaponArchetypeDefinitions));
+        }
+
+        private SurvivorsHudDispatch _hudDispatch;
+        private SurvivorsHudDispatch HudDispatch => _hudDispatch ?? (_hudDispatch = new SurvivorsHudDispatch(_runSession, Menus, this));
+        private void OnGUI() => HudDispatch.Draw();
+        bool ISurvivorsHudRenderPort.DebugVisible => _debugOverlayVisible;
+        void ISurvivorsHudRenderPort.EnsureStyles() => EnsureHudStyles();
+        void ISurvivorsHudRenderPort.DrawModeSelection() => DrawRunModeSelectionOverlay();
+        void ISurvivorsHudRenderPort.DrawTutorial() => DrawTutorialOverlay();
+        void ISurvivorsHudRenderPort.DrawTimer() => DrawTopCenterTimerHud();
+        void ISurvivorsHudRenderPort.DrawPlayer() => DrawPlayerHud();
+        void ISurvivorsHudRenderPort.DrawDebug() => DrawDebugOverlay();
+        void ISurvivorsHudRenderPort.DrawBuildHud() => DrawBuildHudPanel();
+        void ISurvivorsHudRenderPort.DrawDraft() => DrawLevelUpOverlay();
+        void ISurvivorsHudRenderPort.DrawResult(bool victory) => DrawRunResultOverlay(victory);
+        void ISurvivorsHudRenderPort.DrawBuildMenu() => DrawBuildMenuOverlay();
+        void ISurvivorsHudRenderPort.DrawRunFeedback()
+        {
+            DrawLowHealthWarning();
+            DrawMajorThreatWarning();
+            DrawHordeRushWarning();
+            DrawMajorThreatHealthBar();
+            DrawOffscreenThreatMarker();
+            DrawRewardSelectionFeedback();
+            DrawStreakRewardFeedback();
+            DrawClassUnlockRewardFeedback();
+            DrawEvolutionReadyFeedback();
+            DrawExperienceComboFeedback();
+            DrawDamagePopups();
+        }
 
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
@@ -1956,87 +2128,9 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void Start()
-        {
-            if (showRunModeSelection && !_runSession.Started)
-            {
-                Menus.ModeSelectionOpen = true;
-                autoStart = false;
-                return;
-            }
-
-            if (autoStart && !_runSession.Started)
-            {
-                StartRun();
-            }
-        }
 
 
 
-        private void OnGUI()
-        {
-            if (!_runSession.Started)
-            {
-                if (Menus.ModeSelectionOpen)
-                {
-                    EnsureHudStyles();
-                    DrawRunModeSelectionOverlay();
-                }
-
-                if (Menus.TutorialOpen)
-                {
-                    EnsureHudStyles();
-                    DrawTutorialOverlay();
-                }
-
-                return;
-            }
-
-            EnsureHudStyles();
-            DrawTopCenterTimerHud();
-            DrawPlayerHud();
-            if (_debugOverlayVisible)
-            {
-                DrawDebugOverlay();
-                DrawBuildHudPanel();
-            }
-
-            DrawLowHealthWarning();
-            DrawMajorThreatWarning();
-            DrawHordeRushWarning();
-            DrawMajorThreatHealthBar();
-            DrawOffscreenThreatMarker();
-            DrawRewardSelectionFeedback();
-            DrawStreakRewardFeedback();
-            DrawClassUnlockRewardFeedback();
-            DrawEvolutionReadyFeedback();
-            DrawExperienceComboFeedback();
-            DrawDamagePopups();
-
-            if (Menus.TutorialOpen)
-            {
-                DrawTutorialOverlay();
-                return;
-            }
-
-            if (State == SurvivorsRunState.LevelUp)
-            {
-                DrawLevelUpOverlay();
-            }
-            else if (State == SurvivorsRunState.GameOver)
-            {
-                DrawRunResultOverlay(victory: false);
-            }
-            else if (State == SurvivorsRunState.Victory)
-            {
-                DrawRunResultOverlay(victory: true);
-            }
-
-            if (Menus.BuildOpen && State == SurvivorsRunState.Playing)
-            {
-                DrawBuildMenuOverlay();
-            }
-        }
 
 
         private void DrawPlayerHud()
@@ -2115,16 +2209,6 @@ namespace Deucarian.TemplateGameSurvivors
             return ActiveUiTheme.GetTutorialStepLines(resolvedStep, SurvivorsTutorialContent.ResolveDefaultTutorialStepLines(resolvedStep));
         }
 
-        public void ConfigureRunModeSelection(bool enabled)
-        {
-            showRunModeSelection = enabled;
-            autoStart = !enabled;
-            if (!_runSession.Started)
-            {
-                Menus.ModeSelectionOpen = enabled;
-                _runSession.OpenModeSelection();
-            }
-        }
 
 
 
@@ -2143,28 +2227,6 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        public void OpenRunModeSelection()
-        {
-            if (_runSession.Started)
-            {
-                ClearRun();
-            }
-
-            ClearRewardDrafts();
-            showRunModeSelection = true;
-            autoStart = false;
-            _debugOverlayVisible = false;
-            Menus.BuildOpen = false;
-            Menus.BuildTab = BuildMenuTab.CurrentBuild;
-            BuildMenuPresenter.ResetScroll();
-            ResultScreen.ResetScroll();
-            DraftScreen.ResetScroll();
-            RunModePresenter.ResetScroll();
-            Menus.TutorialOpen = false;
-            Menus.TutorialIndex = 0;
-            Menus.ModeSelectionOpen = true;
-            _runSession.OpenModeSelection();
-        }
 
         public bool SelectStandardRun()
         {
@@ -2176,179 +2238,13 @@ namespace Deucarian.TemplateGameSurvivors
             return SelectRunMode(SurvivorsPacingProfile.SprintRun);
         }
 
-        public bool SelectRunMode(SurvivorsPacingProfile profile)
-        {
-            if (!CanStartConfiguredRun)
-            {
-                Menus.ModeSelectionOpen = true;
-                _runSession.OpenModeSelection();
-                return false;
-            }
 
-            ApplyPacingProfile(profile, restartRun: false);
-            Menus.ModeSelectionOpen = false;
-            StartRun();
-            PlayAudioEvent(AudioEventModeSelected, _levelUpClip, 0.05f);
-            return true;
-        }
-
-        public void StartRun()
-        {
-            if (!CanStartConfiguredRun)
-            {
-                Menus.ModeSelectionOpen = true;
-                _runSession.OpenModeSelection();
-                return;
-            }
-
-            EnsureUiTheme();
-            Time.timeScale = 1f;
-            ClearRun();
-            Menus.ModeSelectionOpen = false;
-            _debugOverlayVisible = false;
-            Menus.BuildOpen = false;
-            Menus.BuildTab = BuildMenuTab.CurrentBuild;
-            BuildMenuPresenter.ResetScroll();
-            ResultScreen.ResetScroll();
-            DraftScreen.ResetScroll();
-            RunModePresenter.ResetScroll();
-            Menus.TutorialOpen = false;
-            Menus.TutorialIndex = 0;
-            _audioEvents.Reset();
-            _highestChosenRarity = RunUpgradeRarity.Common;
-            _highestChosenRarityLabel = string.Empty;
-            _bestMomentLabel = string.Empty;
-            SurvivorsTemplateTuning resolved = CurrentTuning;
-            EnemyDamage.Reset(resolved.RunSeed);
-            _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
-            _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
-            _relicDefinitions = CreateRelicDefinitions();
-            _upgradeClassGates = CreateClassUpgradeGates();
-            _classLibrary = CreateClassLibraryDefinition();
-            EnsureMetaProgressionLoaded();
-            _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
-            _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
-            RunBuild.Initialize(CreateBaseRunUpgradeCatalog(), CreateRunUpgradeMetadata(), _selectedClass, _upgradeClassGates);
-            RelicInventory.Reset();
-            DraftSession.Reset();
-            PlayerVitals.Initialize(resolved.PlayerMaxHealth);
-            PlayerMotion.Reset();
-            EnemySpawner.ResetDiagnostics();
-            Defeats.Reset();
-            ProjectileLauncher.ResetDiagnostics();
-            OrbitHitCount = 0;
-            MeleeSwingCount = 0;
-            MeleeHitCount = 0;
-            BurstPulseCount = 0;
-            BurstHitCount = 0;
-            HitscanFireCount = 0;
-            HitscanHitCount = 0;
-            TempestPrismArcHitCount = 0;
-            LastTempestPrismArcFeedbackLabel = string.Empty;
-            ProjectilePierceHitCount = 0;
-            ProjectileChainHitCount = 0;
-            ProjectileForkSpawnCount = 0;
-            ProjectileReturnStartCount = 0;
-            OrbitKnockbackCount = 0;
-            LastOrbitKnockbackFeedbackLabel = string.Empty;
-            DamageAugments.Reset();
-            PayloadThrowCount = 0;
-            PayloadPlacedCount = 0;
-            PayloadDetonationCount = 0;
-            PayloadExplosionHitCount = 0;
-            PayloadHazards.Reset();
-            EnemySupportSpawning.ResetDiagnostics();
-            RunRewards.Reset();
-            PersistentProgression.ResetRunDiagnostics();
-            LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
-            LastResultClassSelectionFeedbackLabel = string.Empty;
-            EvolutionGoalFeedbackCount = 0;
-            LastEvolutionGoalFeedbackLabel = string.Empty;
-            EvolutionReadyFeedbackCount = 0;
-            LastEvolutionReadyFeedbackLabel = string.Empty;
-            LastClassUnlockRewardFeedbackLabel = string.Empty;
-            _classUnlockRewardBanner.Reset();
-            PlayerDamageFeedbackCount = 0;
-            EnemyHitFlashFeedbackCount = 0;
-            CriticalHitFeedbackCount = 0;
-            DeathNova.Reset();
-            EnemyRangedAttackDodgeFeedbackCount = 0;
-            EnemyRangedAttackDodgeExperienceGemDropCount = 0;
-            LastEnemyRangedAttackDodgeFeedbackLabel = string.Empty;
-            MajorRewardPickupCache.ResetDiagnostics();
-            MajorThreatAbilities.ResetDiagnostics();
-            PickupCollection.ResetDiagnostics();
-            RewardCardPresentationCount = 0;
-            RewardSelectionFeedbackCount = 0;
-            LastRewardCardPresentationLabel = string.Empty;
-            LastRewardSelectionFeedbackLabel = string.Empty;
-            ExplorationFeedback.Reset();
-            RoamingCaches.Reset();
-            ShrineTrials.Reset();
-            Waystones.Reset();
-            Waystones.ClearDiscoveries();
-            StreakRewardFeedbackCount = 0;
-            LastStreakRewardFeedbackLabel = string.Empty;
-            RunSummary.Clear();
-            ResetRunMetrics();
-            UpgradeModifiers.Reset();
-            _runSession.Reset();
-            RewardDrops.ResetMetrics();
-            ThreatTelegraphs.ResetMetrics();
-            CombatFeedback.ResetMetrics();
-            _experienceProgression.Reset();
-            PlayerVitals.SetBarrier(0f);
-            _enemyNavigation?.ResetDiagnostics();
-            ThreatHud.Reset();
-            SpawnSafety.ResetDiagnostics();
-            TimedEncounters.Reset();
-            HordeRush.Reset();
-            KillStreakRewards.Reset();
-            BuildSurges.Reset();
-            SelectionRewards.Reset();
-            ExperienceRhythm.Reset();
-            _rewardBanner.Reset();
-            _streakRewardBanner.Reset();
-            SwarmSpawning.Reset();
-            PickupCollection.ResetPulseSchedule();
-            Traversal.Reset();
-            EndlessSurges.Reset();
-            _evolutionAnnouncements?.Reset();
-            _evolutionReadyBanner.Reset();
-            SpawnSequence.Reset();
-            _damageFeedback.Reset();
-            ApplyPersistentMetaBonuses();
-            ApplySelectedClassBonuses();
-            PlayerVitals.SetBarrier(BarrierCapacity);
-            BuildRuntimeWorld();
-            _runFlow = new SurvivorsRunFlowRuntime(CreateRunFlowDefinition(resolved));
-            _weaponArchetypeDefinitions = CreateWeaponArchetypeDefinitions(resolved);
-            _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(_weaponArchetypeDefinitions));
-            _runSession.Start();
-            TryOpenFirstRunTutorial();
-        }
 
         public void RestartRun()
         {
             StartRun();
         }
 
-        public bool ContinueAfterVictory()
-        {
-            if (!_runSession.ContinueAfterVictory(CurrentTuning.EndlessContinuationEnabled))
-            {
-                return false;
-            }
-
-            ClearRewardDrafts();
-            Menus.TutorialOpen = false;
-            _runSession.ResumePlaying();
-            SwarmSpawning.Reset();
-            TimedEncounters.ScheduleEndlessThreats(RunTimeSeconds);
-            HordeRush.EnsureFutureHordeRushScheduled();
-            PlayFeedback(_levelUpPulse, PlayerPosition, 32, _levelUpClip);
-            return true;
-        }
 
 
         public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, float healthOverride = -1f)
@@ -3935,23 +3831,6 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void EnterVictory()
-        {
-            if (State == SurvivorsRunState.Victory || State == SurvivorsRunState.GameOver)
-            {
-                return;
-            }
-
-            if (_runFlow != null)
-            {
-                _runFlow.TryConsumeBossVictory();
-            }
-
-            GrantRunRewards(victory: true);
-            ClearRewardDrafts();
-            _runSession.Win();
-            PlayFeedback(_levelUpPulse, PlayerPosition, 42, _levelUpClip, AudioEventVictory, 0.5f);
-        }
 
         private float ResolveEnemySpawnIntervalSeconds() =>
             SurvivorsSwarmSpawnCoordinator.ResolveInterval(CurrentTuning, _runFlow, _runSession.HasClearedVictory);
