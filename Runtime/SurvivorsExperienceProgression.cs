@@ -28,8 +28,12 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
         public int Gain(int amount, float multiplierBonus, SurvivorsTemplateTuning tuning)
+            => Gain(amount, multiplierBonus, 0f, tuning);
+
+        public int Gain(int amount, float multiplierBonus, float surgeBonus, SurvivorsTemplateTuning tuning)
         {
-            int gained = Mathf.Max(1, Mathf.RoundToInt(Mathf.Max(1, amount) * Mathf.Max(0.1f, 1f + multiplierBonus)));
+            // Keep the original base + persistent/run bonus + surge order before clamping and rounding.
+            int gained = Mathf.Max(1, Mathf.RoundToInt(Mathf.Max(1, amount) * Mathf.Max(0.1f, 1f + multiplierBonus + surgeBonus)));
             ExperienceCollected += gained;
             Experience += gained;
             ResolveBudget(tuning);
