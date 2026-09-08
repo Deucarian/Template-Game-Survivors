@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -622,6 +622,80 @@ namespace Deucarian.TemplateGameSurvivors
                 frame => UpdateOffscreenThreatMarkerSnapshot(),
             });
 
+        private SurvivorsEnemyProfile ResolveEnemyProfile(SurvivorsEnemyRole role) => EnemySpawner.ResolveEnemyProfile(role);
+
+        private SurvivorsEnemyActor SpawnEnemy(Vector3 position, bool explicitPosition, SurvivorsEnemyRole role, bool gameplaySpawn = false, string spawnSource = null) => EnemySpawner.SpawnEnemy(position, explicitPosition, role, gameplaySpawn, spawnSource);
+
+        private SurvivorsEnemyActor SpawnGameplayEnemyOffscreen(
+            SurvivorsEnemyRole role,
+            long seed,
+            float minimumDistance,
+            float maximumDistance,
+            string spawnSource) => EnemySpawner.SpawnGameplayEnemyOffscreen(role, seed, minimumDistance, maximumDistance, spawnSource);
+
+        private static WorldSpawnableId ResolveEnemySpawnableId(SurvivorsEnemyRole role) => SurvivorsEnemySpawner.ResolveEnemySpawnableId(role);
+
+        private static string ResolveEnemyGroupId(SurvivorsEnemyRole role) => SurvivorsEnemySpawner.ResolveEnemyGroupId(role);
+
+        private SurvivorsPickupActor SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount) => PickupSpawner.SpawnPickup(kind, position, amount);
+
+        private static WorldSpawnableId ResolvePickupSpawnableId(SurvivorsPickupKind kind) => SurvivorsPickupSpawner.ResolvePickupSpawnableId(kind);
+
+        internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction) => ProjectileLauncher.LaunchProjectile(definition, direction);
+
+        internal bool LaunchProjectileFrom(
+            SurvivorsWeaponArchetypeDefinition definition,
+            Vector3 origin,
+            Vector3 direction,
+            int remainingChains,
+            int remainingPierces,
+            int remainingForks,
+            int remainingReturns,
+            HashSet<int> ignoredEnemyIds) => ProjectileLauncher.LaunchProjectileFrom(definition, origin, direction, remainingChains, remainingPierces, remainingForks, remainingReturns, ignoredEnemyIds);
+
+        private SurvivorsEnemySpawner _enemySpawner;
+        private SurvivorsEnemySpawner EnemySpawner => _enemySpawner ?? (_enemySpawner = new SurvivorsEnemySpawner(this, SpawnSequence));
+        private SurvivorsPickupSpawner _pickupSpawner;
+        private SurvivorsPickupSpawner PickupSpawner => _pickupSpawner ?? (_pickupSpawner = new SurvivorsPickupSpawner(this, SpawnSequence));
+        private SurvivorsProjectileLauncher _projectileLauncher;
+        private SurvivorsProjectileLauncher ProjectileLauncher => _projectileLauncher ?? (_projectileLauncher = new SurvivorsProjectileLauncher(this, SpawnSequence));
+        bool ISurvivorsSpawnBackend.HasSpawnService => _spawnService != null;
+        void ISurvivorsSpawnBackend.RegisterExplicitPose(long sequence, Vector3 position) => _poseResolver.RegisterExplicitPose(sequence, position);
+        SpawnResult ISurvivorsSpawnBackend.Spawn(WorldSpawnRequest request) => _spawnService.Spawn(request);
+        SurvivorsTemplateTuning ISurvivorsEnemySpawnPort.Tuning => CurrentTuning;
+        SurvivorsRunFlowRuntime ISurvivorsEnemySpawnPort.RunFlow => _runFlow;
+        Vector3 ISurvivorsEnemySpawnPort.PlayerPosition => PlayerPosition;
+        float ISurvivorsEnemySpawnPort.ResolveGameplaySpawnMinimumDistance(SurvivorsEnemyRole role, float requested) => ResolveGameplaySpawnMinimumDistance(role, requested);
+        float ISurvivorsEnemySpawnPort.ResolveGameplaySpawnMaximumDistance(SurvivorsEnemyRole role, float minimum, float maximum) => ResolveGameplaySpawnMaximumDistance(role, minimum, maximum);
+        float ISurvivorsEnemySpawnPort.ResolveOffscreenSpawnPadding(SurvivorsEnemyRole role, string source) => ResolveOffscreenSpawnPadding(role, source);
+        Vector3 ISurvivorsEnemySpawnPort.ResolveSafeOffscreenPosition(Vector3 center, float minimum, float maximum, long seed, float padding, float bandDepth) => ResolveSafeOffscreenPosition(center, minimum, maximum, seed, padding, bandDepth);
+        void ISurvivorsEnemySpawnPort.InitializeEnemy(SurvivorsEnemyActor enemy, SurvivorsEnemyProfile profile) => enemy.Initialize(this, profile);
+        void ISurvivorsEnemySpawnPort.RegisterEnemy(SurvivorsEnemyActor enemy) => _enemies.Add(enemy);
+        void ISurvivorsEnemySpawnPort.RecordGameplaySpawnSafety(SurvivorsEnemyRole role, Vector3 position, string source) => RecordGameplaySpawnSafety(role, position, source);
+        void ISurvivorsEnemySpawnPort.RecordSpawnMetric(SurvivorsEnemyRole role)
+        {
+            Telemetry.Record(role == SurvivorsEnemyRole.Miniboss ? SurvivorsRunMetric.FirstMinibossSpawn :
+                role == SurvivorsEnemyRole.Boss ? SurvivorsRunMetric.FirstBossSpawn : SurvivorsRunMetric.FirstEliteSpawn, RunTimeSeconds);
+        }
+        void ISurvivorsEnemySpawnPort.ShowEnemySpawnFeedback(bool major, Vector3 position, int burst) =>
+            PlayFeedback(major ? _bossPulse : _spawnPulse, position, burst, major ? _bossClip : _spawnClip);
+        SurvivorsTemplateTuning ISurvivorsPickupSpawnPort.Tuning => CurrentTuning;
+        float ISurvivorsPickupSpawnPort.CurrentPickupAttractRange => CurrentPickupAttractRange;
+        float ISurvivorsPickupSpawnPort.CurrentPickupAttractionSpeed => CurrentPickupAttractionSpeed;
+        void ISurvivorsPickupSpawnPort.InitializePickup(SurvivorsPickupActor pickup, SurvivorsPickupKind kind, int amount, float range, float speed, float radius) => pickup.Initialize(this, kind, amount, range, speed, radius);
+        void ISurvivorsPickupSpawnPort.RegisterPickup(SurvivorsPickupActor pickup) => _pickups.Add(pickup);
+        Vector3 ISurvivorsProjectileLaunchPort.PlayerPosition => PlayerPosition;
+        int ISurvivorsProjectileLaunchPort.ProjectileChainBonus => ProjectileChainBonus;
+        int ISurvivorsProjectileLaunchPort.ProjectilePierceBonus => ProjectilePierceBonus;
+        int ISurvivorsProjectileLaunchPort.ProjectileForkBonus => ProjectileForkBonus;
+        int ISurvivorsProjectileLaunchPort.ProjectileReturnBonus => ProjectileReturnBonus;
+        float ISurvivorsProjectileLaunchPort.ResolveWeaponDamage(SurvivorsWeaponArchetypeDefinition definition) => ResolveWeaponDamage(definition);
+        void ISurvivorsProjectileLaunchPort.InitializeProjectile(SurvivorsProjectileActor projectile, SurvivorsWeaponArchetypeDefinition definition, SurvivorsProjectileLaunchValues values) =>
+            projectile.Initialize(this, definition, values.Direction, values.Speed, values.Damage, values.Radius, values.Lifetime,
+                values.Chains, values.Pierces, values.Forks, values.Returns, values.IgnoredEnemyIds);
+        void ISurvivorsProjectileLaunchPort.RegisterProjectile(SurvivorsProjectileActor projectile) => _projectiles.Add(projectile);
+        void ISurvivorsProjectileLaunchPort.ShowProjectileLaunchFeedback(Vector3 origin) => PlayFeedback(_firePulse, origin, 8, _fireClip);
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -1207,7 +1281,8 @@ namespace Deucarian.TemplateGameSurvivors
         int ISurvivorsTraversalPort.ActiveShrineEnemyCount => ShrineTrials.ActiveCount;
         void ISurvivorsTraversalPort.SpawnShrine(Vector3 direction) => ShrineTrials.SpawnArenaShrineTrial(direction);
         void ISurvivorsTraversalPort.SpawnCache(Vector3 direction, int sequenceOffset) => RoamingCaches.SpawnRoamingArenaCache(direction, sequenceOffset);
-        private long _spawnSequence;
+        private readonly SurvivorsSpawnSequence SpawnSequence = new SurvivorsSpawnSequence();
+        private long _spawnSequence => SpawnSequence.Current;
         private SurvivorsUpgradeModifiers _upgradeModifiers;
         private SurvivorsUpgradeModifiers UpgradeModifiers => _upgradeModifiers ?? (_upgradeModifiers = new SurvivorsUpgradeModifiers(this));
         private readonly SurvivorsRunSession _runSession = new SurvivorsRunSession();
@@ -1235,9 +1310,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int Level => _experienceProgression.Level;
         public int Experience => _experienceProgression.Experience;
         public int PendingLevelUps => _experienceProgression.PendingLevelUps;
-        public int SpawnedCount { get; private set; }
+        public int SpawnedCount => EnemySpawner.SpawnedCount;
         public int KilledCount => Defeats.KilledCount;
-        public int ProjectileLaunchCount { get; private set; }
+        public int ProjectileLaunchCount => ProjectileLauncher.ProjectileLaunchCount;
         public int OrbitHitCount { get; private set; }
         public int MeleeSwingCount { get; private set; }
         public int MeleeHitCount { get; private set; }
@@ -1274,8 +1349,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int SummonerSupportSpawnCount => EnemySupportSpawning.SummonerSupportSpawnCount;
         public int SummonerSupportFeedbackCount => EnemySupportSpawning.SummonerSupportFeedbackCount;
         public string LastSummonerSupportFeedbackLabel => EnemySupportSpawning.LastSummonerSupportFeedbackLabel;
-        public int MinibossSpawnCount { get; private set; }
-        public int BossSpawnCount { get; private set; }
+        public int MinibossSpawnCount => EnemySpawner.MinibossSpawnCount;
+        public int BossSpawnCount => EnemySpawner.BossSpawnCount;
         public int EliteKilledCount => Defeats.EliteKilledCount;
         public int MinibossKilledCount => Defeats.MinibossKilledCount;
         public int BossKilledCount => Defeats.BossKilledCount;
@@ -2166,9 +2241,9 @@ namespace Deucarian.TemplateGameSurvivors
             DraftSession.Reset();
             PlayerVitals.Initialize(resolved.PlayerMaxHealth);
             PlayerMotion.Reset();
-            SpawnedCount = 0;
+            EnemySpawner.ResetDiagnostics();
             Defeats.Reset();
-            ProjectileLaunchCount = 0;
+            ProjectileLauncher.ResetDiagnostics();
             OrbitHitCount = 0;
             MeleeSwingCount = 0;
             MeleeHitCount = 0;
@@ -2191,8 +2266,6 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadExplosionHitCount = 0;
             PayloadHazards.Reset();
             EnemySupportSpawning.ResetDiagnostics();
-            MinibossSpawnCount = 0;
-            BossSpawnCount = 0;
             RunRewards.Reset();
             PersistentProgression.ResetRunDiagnostics();
             LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
@@ -2256,7 +2329,7 @@ namespace Deucarian.TemplateGameSurvivors
             _announcedEvolutionGoalUpgradeIds.Clear();
             _announcedEvolutionReadyUpgradeIds.Clear();
             _evolutionReadyBanner.Reset();
-            _spawnSequence = 0;
+            SpawnSequence.Reset();
             _damageFeedback.Reset();
             ApplyPersistentMetaBonuses();
             ApplySelectedClassBonuses();
@@ -3327,71 +3400,7 @@ namespace Deucarian.TemplateGameSurvivors
             return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + ArenaShrineSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + WaystoneChainSurgeCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus + EndlessSurgeCooldownMultiplierBonus));
         }
 
-        internal bool LaunchProjectile(SurvivorsWeaponArchetypeDefinition definition, Vector3 direction)
-        {
-            if (definition == null)
-            {
-                return false;
-            }
 
-            return LaunchProjectileFrom(
-                definition,
-                PlayerPosition + Vector3.up * 0.4f,
-                direction,
-                definition.ProjectileChainCount + ProjectileChainBonus,
-                definition.ProjectilePierceCount + ProjectilePierceBonus,
-                definition.ProjectileForkCount + ProjectileForkBonus,
-                definition.ProjectileReturnCount + ProjectileReturnBonus,
-                null);
-        }
-
-        internal bool LaunchProjectileFrom(
-            SurvivorsWeaponArchetypeDefinition definition,
-            Vector3 origin,
-            Vector3 direction,
-            int remainingChains,
-            int remainingPierces,
-            int remainingForks,
-            int remainingReturns,
-            HashSet<int> ignoredEnemyIds)
-        {
-            if (definition == null || _spawnService == null)
-            {
-                return false;
-            }
-
-            Vector3 resolvedDirection = direction.sqrMagnitude <= 0.001f ? Vector3.forward : direction.normalized;
-            long sequence = ++_spawnSequence;
-            _poseResolver.RegisterExplicitPose(sequence, origin + resolvedDirection * 0.55f);
-            SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
-                BasicSurvivorsGame.ProjectileSpawnableId,
-                BasicSurvivorsGame.ExplicitSpawnChannelId,
-                sequence,
-                new WorldSpawnRequestContext("SurvivorsTemplate", groupId: definition.Id)));
-            if (!result.Succeeded || result.Instance == null)
-            {
-                return false;
-            }
-
-            SurvivorsProjectileActor projectile = result.Instance.GetComponent<SurvivorsProjectileActor>();
-            projectile.Initialize(
-                this,
-                definition,
-                resolvedDirection,
-                definition.ProjectileSpeed,
-                ResolveWeaponDamage(definition),
-                definition.ProjectileRadius,
-                definition.ProjectileLifetimeSeconds,
-                remainingChains,
-                remainingPierces,
-                remainingForks,
-                remainingReturns,
-                ignoredEnemyIds);
-            _projectiles.Add(projectile);
-            ProjectileLaunchCount++;
-            PlayFeedback(_firePulse, origin, 8, _fireClip);
-            return true;
-        }
 
         internal void RecordOrbitHit()
         {
@@ -4134,220 +4143,22 @@ namespace Deucarian.TemplateGameSurvivors
 
         private int ResolveEnemySpawnPackSize() => SurvivorsSwarmSpawnCoordinator.ResolvePackSize(CurrentTuning, _runFlow);
 
-        private SurvivorsEnemyProfile ResolveEnemyProfile(SurvivorsEnemyRole role)
-        {
-            if (_runFlow != null && _runFlow.Definition != null)
-            {
-                if (role == SurvivorsEnemyRole.Miniboss)
-                {
-                    return _runFlow.Definition.Miniboss;
-                }
 
-                if (role == SurvivorsEnemyRole.Boss)
-                {
-                    return _runFlow.Definition.Boss;
-                }
 
-                return _runFlow.ResolveSwarmProfile(CurrentTuning, role);
-            }
-
-            return BasicSurvivorsGame.CreateEnemyProfile(role, CurrentTuning);
-        }
-
-        private static WorldSpawnableId ResolveEnemySpawnableId(SurvivorsEnemyRole role)
-        {
-            if (role == SurvivorsEnemyRole.Miniboss)
-            {
-                return BasicSurvivorsGame.MinibossEnemySpawnableId;
-            }
-
-            if (role == SurvivorsEnemyRole.Boss)
-            {
-                return BasicSurvivorsGame.BossEnemySpawnableId;
-            }
-
-            return BasicSurvivorsGame.SwarmEnemySpawnableId;
-        }
-
-        private static string ResolveEnemyGroupId(SurvivorsEnemyRole role)
-        {
-            if (role == SurvivorsEnemyRole.Runner)
-            {
-                return "group.survivors.runners";
-            }
-
-            if (role == SurvivorsEnemyRole.Bruiser)
-            {
-                return "group.survivors.bruisers";
-            }
-
-            if (role == SurvivorsEnemyRole.Spitter)
-            {
-                return "group.survivors.spitters";
-            }
-
-            if (role == SurvivorsEnemyRole.Splitter)
-            {
-                return "group.survivors.splitters";
-            }
-
-            if (role == SurvivorsEnemyRole.Summoner)
-            {
-                return "group.survivors.summoners";
-            }
-
-            if (role == SurvivorsEnemyRole.Elite)
-            {
-                return "group.survivors.elites";
-            }
-
-            if (role == SurvivorsEnemyRole.DreadElite)
-            {
-                return "group.survivors.dread-elites";
-            }
-
-            if (role == SurvivorsEnemyRole.Miniboss)
-            {
-                return "group.survivors.miniboss";
-            }
-
-            if (role == SurvivorsEnemyRole.Boss)
-            {
-                return "group.survivors.boss";
-            }
-
-            return "group.survivors.opening-swarm";
-        }
 
         private void TickEnemySpawning(float deltaTime)
         {
             SwarmSpawning.Tick(deltaTime, RunTimeSeconds, CurrentTuning, _runFlow, _runSession.HasClearedVictory);
         }
 
-        private SurvivorsEnemyActor SpawnGameplayEnemyOffscreen(
-            SurvivorsEnemyRole role,
-            long seed,
-            float minimumDistance,
-            float maximumDistance,
-            string spawnSource)
-        {
-            Vector3 position = ResolveSafeOffscreenPosition(
-                PlayerPosition,
-                ResolveGameplaySpawnMinimumDistance(role, minimumDistance),
-                ResolveGameplaySpawnMaximumDistance(role, minimumDistance, maximumDistance),
-                seed,
-                ResolveOffscreenSpawnPadding(role, spawnSource),
-                CurrentTuning.SpawnBandDepth);
-            return SpawnEnemy(position, explicitPosition: true, role, gameplaySpawn: true, spawnSource: spawnSource);
-        }
-
-        private SurvivorsEnemyActor SpawnEnemy(Vector3 position, bool explicitPosition, SurvivorsEnemyRole role, bool gameplaySpawn = false, string spawnSource = null)
-        {
-            long sequence = ++_spawnSequence;
-            bool trackSpawnSafety = gameplaySpawn || !explicitPosition;
-            if (!explicitPosition)
-            {
-                position = ResolveSafeOffscreenPosition(
-                    PlayerPosition,
-                    ResolveGameplaySpawnMinimumDistance(role, CurrentTuning.EnemySpawnRadius),
-                    ResolveGameplaySpawnMaximumDistance(role, CurrentTuning.EnemySpawnRadius, CurrentTuning.EnemySpawnRadius + CurrentTuning.SpawnBandDepth),
-                    sequence,
-                    ResolveOffscreenSpawnPadding(role, spawnSource),
-                    CurrentTuning.SpawnBandDepth);
-                explicitPosition = true;
-            }
-
-            WorldSpawnChannelId channel = explicitPosition ? BasicSurvivorsGame.ExplicitSpawnChannelId : BasicSurvivorsGame.RadialSpawnChannelId;
-            if (explicitPosition)
-            {
-                _poseResolver.RegisterExplicitPose(sequence, position);
-            }
-
-            SurvivorsEnemyProfile profile = ResolveEnemyProfile(role);
-            SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
-                ResolveEnemySpawnableId(role),
-                channel,
-                sequence,
-                new WorldSpawnRequestContext("SurvivorsTemplate", waveId: "wave.survivors.opening-ring", groupId: ResolveEnemyGroupId(role))));
-            if (!result.Succeeded || result.Instance == null)
-            {
-                return null;
-            }
-
-            SurvivorsEnemyActor enemy = result.Instance.GetComponent<SurvivorsEnemyActor>();
-            enemy.Initialize(this, profile);
-            _enemies.Add(enemy);
-            SpawnedCount++;
-            if (trackSpawnSafety)
-            {
-                RecordGameplaySpawnSafety(role, enemy.transform.position, spawnSource);
-            }
-
-            if (role == SurvivorsEnemyRole.Miniboss)
-            {
-                Telemetry.Record(SurvivorsRunMetric.FirstMinibossSpawn, RunTimeSeconds);
-                MinibossSpawnCount++;
-                PlayFeedback(_bossPulse, enemy.transform.position, 42, _bossClip);
-            }
-            else if (role == SurvivorsEnemyRole.Boss)
-            {
-                Telemetry.Record(SurvivorsRunMetric.FirstBossSpawn, RunTimeSeconds);
-                BossSpawnCount++;
-                PlayFeedback(_bossPulse, enemy.transform.position, 58, _bossClip);
-            }
-            else if (IsEliteRole(role))
-            {
-                Telemetry.Record(SurvivorsRunMetric.FirstEliteSpawn, RunTimeSeconds);
-                PlayFeedback(_bossPulse, enemy.transform.position, 30, _bossClip);
-            }
-            else
-            {
-                PlayFeedback(_spawnPulse, enemy.transform.position, 10, _spawnClip);
-            }
-
-            return enemy;
-        }
 
 
 
 
 
 
-        private SurvivorsPickupActor SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount)
-        {
-            long sequence = ++_spawnSequence;
-            WorldSpawnableId spawnable = ResolvePickupSpawnableId(kind);
-            _poseResolver.RegisterExplicitPose(sequence, position);
-            SpawnResult result = _spawnService.Spawn(new WorldSpawnRequest(
-                spawnable,
-                BasicSurvivorsGame.ExplicitSpawnChannelId,
-                sequence,
-                new WorldSpawnRequestContext("SurvivorsTemplate", groupId: kind.ToString())));
-            if (!result.Succeeded || result.Instance == null)
-            {
-                return null;
-            }
 
-            SurvivorsPickupActor pickup = result.Instance.GetComponent<SurvivorsPickupActor>();
-            pickup.Initialize(this, kind, Mathf.Max(1, amount), CurrentPickupAttractRange, CurrentPickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
-            _pickups.Add(pickup);
-            return pickup;
-        }
 
-        private static WorldSpawnableId ResolvePickupSpawnableId(SurvivorsPickupKind kind)
-        {
-            switch (kind)
-            {
-                case SurvivorsPickupKind.Magnet:
-                    return BasicSurvivorsGame.MagnetPickupSpawnableId;
-                case SurvivorsPickupKind.Health:
-                    return BasicSurvivorsGame.HealthPickupSpawnableId;
-                case SurvivorsPickupKind.BloodShard:
-                    return BasicSurvivorsGame.BloodShardPickupSpawnableId;
-                default:
-                    return BasicSurvivorsGame.ExperiencePickupSpawnableId;
-            }
-        }
 
         private void TickWeapon(float deltaTime)
         {
