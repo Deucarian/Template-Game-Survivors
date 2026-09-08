@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -77,25 +77,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const int ResultMetaUpgradeOptionCount = 3;
         private const int ResultClassOptionCount = 4;
 
-        private enum BuildMenuTab
-        {
-            CurrentBuild = 0,
-            Stats = 1,
-            RunInfo = 2,
-            Controls = 3
-        }
-
-        private enum TutorialStep
-        {
-            Movement = 0,
-            Combat = 1,
-            Experience = 2,
-            Drafts = 3,
-            ElitesBosses = 4,
-            Evolutions = 5,
-            Modes = 6
-        }
-
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
         private static readonly string[] EmptyWeaponIds = Array.Empty<string>();
@@ -138,6 +119,31 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsMenuSession _menus;
+        private SurvivorsMenuSession Menus => _menus ?? (_menus = new SurvivorsMenuSession(this));
+        private SurvivorsBuildMenuPresenter _buildMenuPresenter;
+        private SurvivorsBuildMenuPresenter BuildMenuPresenter => _buildMenuPresenter ?? (_buildMenuPresenter = new SurvivorsBuildMenuPresenter(
+            Menus, () => ActiveUiTheme, _hudStyles, ResolveBuildMenuLines, () => PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f)));
+        private SurvivorsTutorialPresenter _tutorialPresenter;
+        private SurvivorsTutorialPresenter TutorialPresenter => _tutorialPresenter ?? (_tutorialPresenter = new SurvivorsTutorialPresenter(
+            Menus, () => ActiveUiTheme, _hudStyles, ResolveTutorialStepTitle, ResolveTutorialStepLines));
+        private void DrawBuildMenuOverlay() => BuildMenuPresenter.Draw();
+        private void DrawTutorialOverlay() => TutorialPresenter.Draw();
+        private void TryOpenFirstRunTutorial() => Menus.TryOpenFirstRunTutorial();
+        private bool OpenTutorialOverlay(bool markUnseen) => Menus.OpenTutorialOverlay(markUnseen);
+        private bool CloseTutorialOverlay(bool markSeen) => Menus.CloseTutorialOverlay(markSeen);
+        private bool AdvanceTutorialStep() => Menus.AdvanceTutorialStep();
+        private bool BackTutorialStep() => Menus.BackTutorialStep();
+        private bool HandleBuildMenuInput() => Menus.HandleBuildInput(State,
+            Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B),
+            Input.GetKeyDown(KeyCode.Alpha1) ? 0 : Input.GetKeyDown(KeyCode.Alpha2) ? 1 : Input.GetKeyDown(KeyCode.Alpha3) ? 2 : Input.GetKeyDown(KeyCode.Alpha4) ? 3 : -1);
+        bool ISurvivorsTutorialPort.HasProfile => _metaProgression != null;
+        bool ISurvivorsTutorialPort.TutorialSeen => _metaProgression != null && _metaProgression.TutorialSeen;
+        void ISurvivorsTutorialPort.EnsureProfile() => EnsureMetaProgressionLoaded();
+        void ISurvivorsTutorialPort.ResetTutorialSeen() => _metaProgression?.ResetTutorialSeen();
+        void ISurvivorsTutorialPort.MarkTutorialSeen() => _metaProgression?.MarkTutorialSeen();
+        void ISurvivorsTutorialPort.PlaySelect() => PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+
         private SurvivorsRelicInventory _relicInventory;
         private SurvivorsRelicInventory RelicInventory => _relicInventory ?? (_relicInventory = new SurvivorsRelicInventory(
             () => { EnsureClassLibraryLoaded(); return _relicDefinitions; }, ApplyRelic,
@@ -481,16 +487,10 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsAudioEventRouter _audioEvents => AudioPresentation.Events;
         private readonly SurvivorsProfileSession _profileSession = new SurvivorsProfileSession(
             () => new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider())));
-        private bool _runModeSelectionOpen;
         private bool _debugOverlayVisible;
-        private bool _buildMenuOpen;
-        private BuildMenuTab _buildMenuTab;
-        private Vector2 _buildMenuScrollPosition;
         private Vector2 _runSummaryScrollPosition;
         private Vector2 _draftCardScrollPosition;
         private Vector2 _modeSelectionScrollPosition;
-        private bool _tutorialOverlayOpen;
-        private int _tutorialStepIndex;
         private int _selectedUiThemeIndex;
         private string _lastRunSummaryTitle = string.Empty;
         private RunUpgradeRarity _highestChosenRarity;
@@ -982,19 +982,19 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsHumanPlaytestPacing => CurrentPacingProfile == SurvivorsPacingProfile.HumanPlaytest;
         public bool IsDebugFastPacing => CurrentPacingProfile == SurvivorsPacingProfile.DebugFast;
         public bool IsSprintRunMode => CurrentPacingProfile == SurvivorsPacingProfile.SprintRun;
-        public bool IsRunModeSelectionOpen => _runModeSelectionOpen;
+        public bool IsRunModeSelectionOpen => Menus.ModeSelectionOpen;
         public string CurrentRunModeDisplayName => CurrentTuning.RunModeDisplayName;
         public bool IsDebugOverlayVisible => _debugOverlayVisible;
-        public bool IsBuildMenuOpen => _buildMenuOpen;
-        public string CurrentBuildMenuTabLabel => FormatBuildMenuTabLabel(_buildMenuTab);
+        public bool IsBuildMenuOpen => Menus.BuildOpen;
+        public string CurrentBuildMenuTabLabel => SurvivorsMenuSession.FormatBuildMenuTabLabel(Menus.BuildTab);
         public string CurrentUiThemeName => ActiveUiTheme.themeName;
         public IReadOnlyList<SurvivorsUiTheme> AvailableUiThemesForTest => _availableUiThemes;
         public int SelectedUiThemeIndex => _selectedUiThemeIndex;
-        public bool IsTutorialOverlayOpen => _tutorialOverlayOpen;
+        public bool IsTutorialOverlayOpen => Menus.TutorialOpen;
         public bool IsTutorialSeen => _metaProgression != null && _metaProgression.TutorialSeen;
-        public string CurrentTutorialStepTitle => ResolveTutorialStepTitle(ClampTutorialStepIndex(_tutorialStepIndex));
-        public int CurrentTutorialStepIndex => ClampTutorialStepIndex(_tutorialStepIndex);
-        public int TutorialStepCount => Enum.GetValues(typeof(TutorialStep)).Length;
+        public string CurrentTutorialStepTitle => ResolveTutorialStepTitle(SurvivorsTutorialContent.ClampTutorialStepIndex(Menus.TutorialIndex));
+        public int CurrentTutorialStepIndex => SurvivorsTutorialContent.ClampTutorialStepIndex(Menus.TutorialIndex);
+        public int TutorialStepCount => SurvivorsTutorialContent.StepCount;
         public bool IsAudioMuted => _audioEvents.Muted;
         public int AudioEventDispatchCount => _audioEvents.DispatchCount;
         public string LastAudioEventId => _audioEvents.LastEventId;
@@ -1149,7 +1149,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (showRunModeSelection && !_runSession.Started)
             {
-                _runModeSelectionOpen = true;
+                Menus.ModeSelectionOpen = true;
                 autoStart = false;
                 return;
             }
@@ -1169,11 +1169,11 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (!_runSession.Started)
             {
-                if (_tutorialOverlayOpen)
+                if (Menus.TutorialOpen)
                 {
                     HandleTutorialInput();
                 }
-                else if (_runModeSelectionOpen)
+                else if (Menus.ModeSelectionOpen)
                 {
                     HandleRunModeSelectionInput();
                 }
@@ -1181,7 +1181,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            if (_tutorialOverlayOpen)
+            if (Menus.TutorialOpen)
             {
                 HandleTutorialInput();
                 return;
@@ -1272,13 +1272,13 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (!_runSession.Started)
             {
-                if (_runModeSelectionOpen)
+                if (Menus.ModeSelectionOpen)
                 {
                     EnsureHudStyles();
                     DrawRunModeSelectionOverlay();
                 }
 
-                if (_tutorialOverlayOpen)
+                if (Menus.TutorialOpen)
                 {
                     EnsureHudStyles();
                     DrawTutorialOverlay();
@@ -1308,7 +1308,7 @@ namespace Deucarian.TemplateGameSurvivors
             DrawExperienceComboFeedback();
             DrawDamagePopups();
 
-            if (_tutorialOverlayOpen)
+            if (Menus.TutorialOpen)
             {
                 DrawTutorialOverlay();
                 return;
@@ -1327,7 +1327,7 @@ namespace Deucarian.TemplateGameSurvivors
                 DrawRunResultOverlay(victory: true);
             }
 
-            if (_buildMenuOpen && State == SurvivorsRunState.Playing)
+            if (Menus.BuildOpen && State == SurvivorsRunState.Playing)
             {
                 DrawBuildMenuOverlay();
             }
@@ -1349,51 +1349,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private bool HandleBuildMenuInput()
-        {
-            if (State != SurvivorsRunState.Playing)
-            {
-                _buildMenuOpen = false;
-                return false;
-            }
-
-            bool menuToggle = Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B);
-            if (menuToggle)
-            {
-                _buildMenuOpen = !_buildMenuOpen;
-                if (_buildMenuOpen)
-                {
-                    _buildMenuTab = BuildMenuTab.CurrentBuild;
-                }
-
-                return _buildMenuOpen;
-            }
-
-            if (!_buildMenuOpen)
-            {
-                return false;
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha1))
-            {
-                _buildMenuTab = BuildMenuTab.CurrentBuild;
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha2))
-            {
-                _buildMenuTab = BuildMenuTab.Stats;
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha3))
-            {
-                _buildMenuTab = BuildMenuTab.RunInfo;
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha4))
-            {
-                _buildMenuTab = BuildMenuTab.Controls;
-            }
-
-            return true;
-        }
-
         private void DrawPlayerHud()
         {
             IReadOnlyList<string> lines = ResolvePlayerHudLines();
@@ -1401,8 +1356,8 @@ namespace Deucarian.TemplateGameSurvivors
             float lineHeight = 19f;
             float panelHeight = 126f + Mathf.Min(4, lines.Count) * lineHeight;
             Rect panel = new Rect(12f, 58f, panelWidth, panelHeight);
-            DrawSolidRect(panel, new Color(0.015f, 0.02f, 0.026f, 0.74f));
-            DrawSolidRect(new Rect(panel.x, panel.y, 4f, panel.height), new Color(0.2f, 0.78f, 1f, 0.9f));
+            SurvivorsScreenLayout.DrawSolidRect(panel, new Color(0.015f, 0.02f, 0.026f, 0.74f));
+            SurvivorsScreenLayout.DrawSolidRect(new Rect(panel.x, panel.y, 4f, panel.height), new Color(0.2f, 0.78f, 1f, 0.9f));
             GUI.Label(new Rect(panel.x + 14f, panel.y + 8f, panel.width - 28f, 22f), CurrentRunModeDisplayName, _hudTitleStyle);
             DrawHudBar(new Rect(panel.x + 14f, panel.y + 36f, panel.width - 28f, 18f), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
             if (BarrierCapacity > 0.01f)
@@ -1426,8 +1381,8 @@ namespace Deucarian.TemplateGameSurvivors
             string waystoneCompassHud = ResolveWaystoneCompassHudLabel();
             float panelHeight = string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 424f : 448f;
             Rect panel = new Rect(12f, 58f + Mathf.Min(206f, Screen.height * 0.22f), 356f, panelHeight);
-            DrawSolidRect(panel, new Color(0.02f, 0.024f, 0.03f, 0.86f));
-            DrawSolidRect(new Rect(panel.x, panel.y, 4f, panel.height), new Color(1f, 0.72f, 0.22f, 0.86f));
+            SurvivorsScreenLayout.DrawSolidRect(panel, new Color(0.02f, 0.024f, 0.03f, 0.86f));
+            SurvivorsScreenLayout.DrawSolidRect(new Rect(panel.x, panel.y, 4f, panel.height), new Color(1f, 0.72f, 0.22f, 0.86f));
             GUI.Label(new Rect(panel.x + 12f, panel.y + 10f, 300f, 22f), "Survivors Debug Overlay", _hudTitleStyle);
             DrawHudBar(new Rect(panel.x + 12f, panel.y + 38f, 318f, 18f), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
             DrawHudBar(new Rect(panel.x + 12f, panel.y + 62f, 318f, 18f), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
@@ -1454,61 +1409,9 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(panel.x + 12f, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? panel.y + 400f : panel.y + 422f, 318f, 22f), ResolveDashHudLabel(), _hudSmallStyle);
         }
 
-        private void DrawBuildMenuOverlay()
-        {
-            DrawDimOverlay(0.62f);
-            Rect panel = ResolveCenteredPanelRect(860f, 620f, 360f, 360f, 24f);
-            DrawSolidRect(panel, new Color(0.018f, 0.023f, 0.032f, 0.96f));
-            Color accent = ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f));
-            DrawSolidRect(new Rect(panel.x, panel.y, panel.width, 4f), new Color(accent.r, accent.g, accent.b, 0.9f));
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 18f, panel.width - 48f, 32f), ActiveUiTheme.buildMenuTitle, _menuTitleStyle);
-            if (GUI.Button(new Rect(panel.xMax - 94f, panel.y + 18f, 70f, 28f), "Close"))
-            {
-                PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-                _buildMenuOpen = false;
-                return;
-            }
-
-            DrawBuildMenuTabs(new Rect(panel.x + 24f, panel.y + 62f, panel.width - 48f, 34f));
-            IReadOnlyList<string> lines = ResolveBuildMenuLines(_buildMenuTab);
-            Rect viewRect = new Rect(panel.x + 24f, panel.y + 110f, panel.width - 48f, panel.height - 132f);
-            float lineHeight = 22f;
-            Rect contentRect = new Rect(0f, 0f, Mathf.Max(1f, viewRect.width - 18f), Mathf.Max(viewRect.height, lines.Count * lineHeight + 10f));
-            _buildMenuScrollPosition = GUI.BeginScrollView(viewRect, _buildMenuScrollPosition, contentRect);
-            float y = 0f;
-            for (int i = 0; i < lines.Count; i++)
-            {
-                GUI.Label(new Rect(0f, y, contentRect.width, lineHeight), lines[i], _hudLabelStyle);
-                y += lineHeight;
-            }
-            GUI.EndScrollView();
-        }
-
-        private void DrawBuildMenuTabs(Rect rect)
-        {
-            float gap = 8f;
-            float width = (rect.width - gap * 3f) / 4f;
-            DrawBuildMenuTabButton(new Rect(rect.x, rect.y, width, rect.height), BuildMenuTab.CurrentBuild, "1 Current Build");
-            DrawBuildMenuTabButton(new Rect(rect.x + (width + gap), rect.y, width, rect.height), BuildMenuTab.Stats, "2 Stats");
-            DrawBuildMenuTabButton(new Rect(rect.x + (width + gap) * 2f, rect.y, width, rect.height), BuildMenuTab.RunInfo, "3 Run Info");
-            DrawBuildMenuTabButton(new Rect(rect.x + (width + gap) * 3f, rect.y, width, rect.height), BuildMenuTab.Controls, "4 Controls");
-        }
-
-        private void DrawBuildMenuTabButton(Rect rect, BuildMenuTab tab, string label)
-        {
-            Color oldColor = GUI.backgroundColor;
-            GUI.backgroundColor = _buildMenuTab == tab ? new Color(0.35f, 0.76f, 1f) : new Color(0.42f, 0.48f, 0.56f);
-            if (GUI.Button(rect, label, _menuTabStyle))
-            {
-                _buildMenuTab = tab;
-            }
-
-            GUI.backgroundColor = oldColor;
-        }
-
         private void DrawRunModeSelectionOverlay()
         {
-            Rect rect = ResolveCenteredPanelRect(820f, 430f, 340f, 360f, 20f);
+            Rect rect = SurvivorsScreenLayout.ResolveCenteredPanelRect(820f, 430f, 340f, 360f, 20f);
             float width = rect.width;
             GUI.Box(rect, "Choose Run Mode");
             GUI.Label(new Rect(rect.x + 28f, rect.y + 34f, width - 56f, 28f), "Deucarian Survivors Run", _hudTitleStyle);
@@ -1651,170 +1554,18 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void TryOpenFirstRunTutorial()
-        {
-            EnsureMetaProgressionLoaded();
-            if (_metaProgression != null && !_metaProgression.TutorialSeen)
-            {
-                OpenTutorialOverlay(markUnseen: true);
-            }
-        }
-
-        private bool OpenTutorialOverlay(bool markUnseen)
-        {
-            EnsureMetaProgressionLoaded();
-            _tutorialOverlayOpen = true;
-            _tutorialStepIndex = 0;
-            _buildMenuOpen = false;
-            if (markUnseen && _metaProgression != null && _metaProgression.TutorialSeen)
-            {
-                _metaProgression.ResetTutorialSeen();
-            }
-
-            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-            return true;
-        }
-
-        private bool CloseTutorialOverlay(bool markSeen)
-        {
-            if (!_tutorialOverlayOpen && !markSeen)
-            {
-                return false;
-            }
-
-            _tutorialOverlayOpen = false;
-            if (markSeen)
-            {
-                EnsureMetaProgressionLoaded();
-                _metaProgression?.MarkTutorialSeen();
-            }
-
-            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-            return true;
-        }
-
-        private bool AdvanceTutorialStep()
-        {
-            int max = TutorialStepCount - 1;
-            if (_tutorialStepIndex >= max)
-            {
-                return CloseTutorialOverlay(markSeen: true);
-            }
-
-            _tutorialStepIndex = Mathf.Min(max, _tutorialStepIndex + 1);
-            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-            return true;
-        }
-
-        private bool BackTutorialStep()
-        {
-            if (!_tutorialOverlayOpen || _tutorialStepIndex <= 0)
-            {
-                return false;
-            }
-
-            _tutorialStepIndex--;
-            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-            return true;
-        }
-
-        private void DrawTutorialOverlay()
-        {
-            DrawDimOverlay(0.7f);
-            Rect panel = ResolveCenteredPanelRect(720f, 420f, 320f, 330f, 22f);
-            Color accent = ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f));
-            DrawSolidRect(panel, new Color(0.016f, 0.02f, 0.03f, 0.97f));
-            DrawSolidRect(new Rect(panel.x, panel.y, panel.width, 4f), new Color(accent.r, accent.g, accent.b, 0.94f));
-            int step = ClampTutorialStepIndex(_tutorialStepIndex);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 20f, panel.width - 48f, 32f), ActiveUiTheme.tutorialTitle, _menuTitleStyle);
-            GUI.Label(new Rect(panel.x + 24f, panel.y + 56f, panel.width - 48f, 28f), $"{step + 1}/{TutorialStepCount}  {ResolveTutorialStepTitle(step)}", _hudLabelStyle);
-
-            IReadOnlyList<string> lines = ResolveTutorialStepLines(step);
-            float y = panel.y + 104f;
-            for (int i = 0; i < lines.Count; i++)
-            {
-                GUI.Label(new Rect(panel.x + 28f, y, panel.width - 56f, 34f), lines[i], _draftCardDescriptionStyle);
-                y += 42f;
-            }
-
-            float buttonY = panel.yMax - 52f;
-            if (GUI.Button(new Rect(panel.x + 24f, buttonY, 108f, 34f), "Back"))
-            {
-                BackTutorialStep();
-            }
-
-            if (GUI.Button(new Rect(panel.x + 144f, buttonY, 120f, 34f), "Skip"))
-            {
-                CloseTutorialOverlay(markSeen: true);
-            }
-
-            string nextLabel = step >= TutorialStepCount - 1 ? "Finish" : "Next";
-            if (GUI.Button(new Rect(panel.xMax - 152f, buttonY, 128f, 34f), nextLabel))
-            {
-                AdvanceTutorialStep();
-            }
-        }
-
-        private static int ClampTutorialStepIndex(int index)
-        {
-            int max = Enum.GetValues(typeof(TutorialStep)).Length - 1;
-            return Mathf.Clamp(index, 0, Mathf.Max(0, max));
-        }
-
         private string ResolveTutorialStepTitle(int step)
         {
             EnsureUiTheme();
-            int resolvedStep = ClampTutorialStepIndex(step);
-            return ActiveUiTheme.GetTutorialStepTitle(resolvedStep, ResolveDefaultTutorialStepTitle(resolvedStep));
-        }
-
-        private static string ResolveDefaultTutorialStepTitle(int step)
-        {
-            switch ((TutorialStep)ClampTutorialStepIndex(step))
-            {
-                case TutorialStep.Combat:
-                    return "Move And Survive";
-                case TutorialStep.Experience:
-                    return "Collect XP Gems";
-                case TutorialStep.Drafts:
-                    return "Choose A Build";
-                case TutorialStep.ElitesBosses:
-                    return "Elites, Bosses, Rewards";
-                case TutorialStep.Evolutions:
-                    return "Evolve Weapons";
-                case TutorialStep.Modes:
-                    return "Pick A Run Mode";
-                default:
-                    return "Move To Survive";
-            }
+            int resolvedStep = SurvivorsTutorialContent.ClampTutorialStepIndex(step);
+            return ActiveUiTheme.GetTutorialStepTitle(resolvedStep, SurvivorsTutorialContent.ResolveDefaultTutorialStepTitle(resolvedStep));
         }
 
         private IReadOnlyList<string> ResolveTutorialStepLines(int step)
         {
             EnsureUiTheme();
-            int resolvedStep = ClampTutorialStepIndex(step);
-            return ActiveUiTheme.GetTutorialStepLines(resolvedStep, ResolveDefaultTutorialStepLines(resolvedStep));
-        }
-
-        private static IReadOnlyList<string> ResolveDefaultTutorialStepLines(int step)
-        {
-            switch ((TutorialStep)ClampTutorialStepIndex(step))
-            {
-                case TutorialStep.Combat:
-                    return new[] { "Move with WASD or the left stick. Your weapons fire automatically at nearby enemies.", "Use Arc Step to dash through pressure, shove enemies back, and buy a short safety window.", "The goal is not to stand still. Kite, collect, and keep the horde just barely under control." };
-                case TutorialStep.Experience:
-                    return new[] { "Enemies drop blue XP gems. Move near them to pull them in and fill the level bar.", "Magnet pickups and pickup-radius upgrades help recover loose gems without flooding drafts.", "Streak rewards, horde clears, and waystones can add extra pickups when you play actively." };
-                case TutorialStep.Drafts:
-                    return new[] { "Level-ups pause the run and offer draft cards. Pick weapons, passives, mutations, and evolutions.", "Reroll changes the offered cards, Banish removes a card for the run, and Skip grants blood shards.", "Open the Build panel to compare current weapons, passives, relics, run info, and controls." };
-                case TutorialStep.ElitesBosses:
-                    return new[] { "Elites, dread elites, minibosses, and bosses keep their health, show bars, and stay tracked offscreen.", "Major threats drop recoverable reward caches, relic drafts, upgrade drafts, or class unlock rewards.", "Warnings, slam markers, and support-call banners tell you when the arena is about to spike." };
-                case TutorialStep.Evolutions:
-                    return new[] { "Evolutions need a ranked weapon path plus its matching passive. Ready banners call out missing pieces.", "Evolution picks trigger big payoff surges, XP recall, and stronger weapon behavior.", "Multiple evolutions can stack into a late-run Legend Surge." };
-                case TutorialStep.Modes:
-                    return new[] { "Standard / Human Playtest is the full 30-minute arc with victory, boss rewards, and endless continuation.", "Sprint Run compresses the game into 5 minutes with quicker XP, early elites, a faster boss climax, and fast restart.", "After victory or defeat you can restart the same mode or return to mode selection." };
-                default:
-                    return new[] { "Move to survive. Standing still becomes dangerous unless your build is already overpowering the arena.", "Arc Step with Space can buy room when enemies get close." };
-            }
+            int resolvedStep = SurvivorsTutorialContent.ClampTutorialStepIndex(step);
+            return ActiveUiTheme.GetTutorialStepLines(resolvedStep, SurvivorsTutorialContent.ResolveDefaultTutorialStepLines(resolvedStep));
         }
 
         private static string GetPacingProfileDisplayNameForCard(SurvivorsPacingProfile profile)
@@ -1840,7 +1591,7 @@ namespace Deucarian.TemplateGameSurvivors
             autoStart = !enabled;
             if (!_runSession.Started)
             {
-                _runModeSelectionOpen = enabled;
+                Menus.ModeSelectionOpen = enabled;
                 _runSession.OpenModeSelection();
             }
         }
@@ -2176,15 +1927,15 @@ namespace Deucarian.TemplateGameSurvivors
             showRunModeSelection = true;
             autoStart = false;
             _debugOverlayVisible = false;
-            _buildMenuOpen = false;
-            _buildMenuTab = BuildMenuTab.CurrentBuild;
-            _buildMenuScrollPosition = Vector2.zero;
+            Menus.BuildOpen = false;
+            Menus.BuildTab = BuildMenuTab.CurrentBuild;
+            BuildMenuPresenter.ResetScroll();
             _runSummaryScrollPosition = Vector2.zero;
             _draftCardScrollPosition = Vector2.zero;
             _modeSelectionScrollPosition = Vector2.zero;
-            _tutorialOverlayOpen = false;
-            _tutorialStepIndex = 0;
-            _runModeSelectionOpen = true;
+            Menus.TutorialOpen = false;
+            Menus.TutorialIndex = 0;
+            Menus.ModeSelectionOpen = true;
             _runSession.OpenModeSelection();
         }
 
@@ -2202,13 +1953,13 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (!CanStartConfiguredRun)
             {
-                _runModeSelectionOpen = true;
+                Menus.ModeSelectionOpen = true;
                 _runSession.OpenModeSelection();
                 return false;
             }
 
             ApplyPacingProfile(profile, restartRun: false);
-            _runModeSelectionOpen = false;
+            Menus.ModeSelectionOpen = false;
             StartRun();
             PlayAudioEvent(AudioEventModeSelected, _levelUpClip, 0.05f);
             return true;
@@ -2218,7 +1969,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (!CanStartConfiguredRun)
             {
-                _runModeSelectionOpen = true;
+                Menus.ModeSelectionOpen = true;
                 _runSession.OpenModeSelection();
                 return;
             }
@@ -2226,16 +1977,16 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureUiTheme();
             Time.timeScale = 1f;
             ClearRun();
-            _runModeSelectionOpen = false;
+            Menus.ModeSelectionOpen = false;
             _debugOverlayVisible = false;
-            _buildMenuOpen = false;
-            _buildMenuTab = BuildMenuTab.CurrentBuild;
-            _buildMenuScrollPosition = Vector2.zero;
+            Menus.BuildOpen = false;
+            Menus.BuildTab = BuildMenuTab.CurrentBuild;
+            BuildMenuPresenter.ResetScroll();
             _runSummaryScrollPosition = Vector2.zero;
             _draftCardScrollPosition = Vector2.zero;
             _modeSelectionScrollPosition = Vector2.zero;
-            _tutorialOverlayOpen = false;
-            _tutorialStepIndex = 0;
+            Menus.TutorialOpen = false;
+            Menus.TutorialIndex = 0;
             _audioEvents.Reset();
             _highestChosenRarity = RunUpgradeRarity.Common;
             _highestChosenRarityLabel = string.Empty;
@@ -2479,7 +2230,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             ClearRewardDrafts();
-            _tutorialOverlayOpen = false;
+            Menus.TutorialOpen = false;
             _runSession.ResumePlaying();
             SwarmSpawning.Reset();
             TimedEncounters.ScheduleEndlessThreats(RunTimeSeconds);
@@ -2495,12 +2246,12 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            if (_buildMenuOpen && State == SurvivorsRunState.Playing)
+            if (Menus.BuildOpen && State == SurvivorsRunState.Playing)
             {
                 return;
             }
 
-            if (_tutorialOverlayOpen)
+            if (Menus.TutorialOpen)
             {
                 return;
             }
@@ -3371,7 +3122,7 @@ namespace Deucarian.TemplateGameSurvivors
         public IReadOnlyList<string> CurrentBuildMenuLinesForTest()
         {
             EnsureRunStartedForTest();
-            return ResolveBuildMenuLines(_buildMenuTab);
+            return ResolveBuildMenuLines(Menus.BuildTab);
         }
 
         public IReadOnlyList<string> RunSummaryLinesForTest()
@@ -3387,7 +3138,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public IReadOnlyList<string> CurrentTutorialLinesForTest()
         {
-            return ResolveTutorialStepLines(ClampTutorialStepIndex(_tutorialStepIndex));
+            return ResolveTutorialStepLines(SurvivorsTutorialContent.ClampTutorialStepIndex(Menus.TutorialIndex));
         }
 
         public void ToggleDebugOverlayForTest()
@@ -3397,12 +3148,12 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void SetBuildMenuOpenForTest(bool open)
         {
-            _buildMenuOpen = open && _runSession.Started && State == SurvivorsRunState.Playing;
+            Menus.BuildOpen = open && _runSession.Started && State == SurvivorsRunState.Playing;
         }
 
         public void SetBuildMenuTabForTest(int tabIndex)
         {
-            _buildMenuTab = ClampBuildMenuTab(tabIndex);
+            Menus.BuildTab = SurvivorsMenuSession.ClampBuildMenuTab(tabIndex);
         }
 
         public void SetAudioMutedForTest(bool muted)
@@ -3434,15 +3185,15 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureMetaProgressionLoaded();
             _metaProgression.ResetTutorialSeen();
-            _tutorialOverlayOpen = false;
-            _tutorialStepIndex = 0;
+            Menus.TutorialOpen = false;
+            Menus.TutorialIndex = 0;
         }
 
         public void MarkTutorialSeenForTest()
         {
             EnsureMetaProgressionLoaded();
             _metaProgression.MarkTutorialSeen();
-            _tutorialOverlayOpen = false;
+            Menus.TutorialOpen = false;
         }
 
         public bool DispatchAudioEventForTest(string eventId)
@@ -3452,7 +3203,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public Rect ResolveCenteredPanelRectForTest(float maxWidth, float maxHeight, float minWidth, float minHeight, float margin)
         {
-            return ResolveCenteredPanelRect(maxWidth, maxHeight, minWidth, minHeight, margin);
+            return SurvivorsScreenLayout.ResolveCenteredPanelRect(maxWidth, maxHeight, minWidth, minHeight, margin);
         }
 
         public IReadOnlyList<string> DebugDescribeEligibleEvolutionPool()
@@ -3526,7 +3277,7 @@ namespace Deucarian.TemplateGameSurvivors
             _runMetricsLines.Add($"Target {FormatMetricTime(CurrentTuning.TargetDurationSeconds)} - boss {FormatMetricTime(CurrentTuning.BossSpawnTimeSeconds)} - victory {FormatMetricTime(CurrentTuning.SurvivalVictoryTimeSeconds)}");
             if (!_runSession.Started)
             {
-                _runMetricsLines.Add(_runModeSelectionOpen ? "Run mode selection open" : "Run not started");
+                _runMetricsLines.Add(Menus.ModeSelectionOpen ? "Run mode selection open" : "Run not started");
                 return _runMetricsLines;
             }
 
@@ -7273,10 +7024,10 @@ namespace Deucarian.TemplateGameSurvivors
         {
             bool upgradeDraftOpen = !IsRelicChoiceOpen;
             int choiceCount = IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
-            DrawDimOverlay(0.72f);
-            Rect rect = ResolveCenteredPanelRect(1120f, 690f, 320f, 420f, 20f);
-            DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.96f));
-            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), ResolveRewardTitleAccentColor());
+            SurvivorsScreenLayout.DrawDimOverlay(0.72f);
+            Rect rect = SurvivorsScreenLayout.ResolveCenteredPanelRect(1120f, 690f, 320f, 420f, 20f);
+            SurvivorsScreenLayout.DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.96f));
+            SurvivorsScreenLayout.DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), ResolveRewardTitleAccentColor());
             string title = ResolveRewardOverlayTitle();
             GUI.Label(new Rect(rect.x + 30f, rect.y + 20f, rect.width - 60f, 38f), title, _draftTitleStyle);
             GUI.Label(
@@ -7824,29 +7575,6 @@ namespace Deucarian.TemplateGameSurvivors
             };
         }
 
-        private static BuildMenuTab ClampBuildMenuTab(int tabIndex)
-        {
-            if (tabIndex <= 0) return BuildMenuTab.CurrentBuild;
-            if (tabIndex == 1) return BuildMenuTab.Stats;
-            if (tabIndex == 2) return BuildMenuTab.RunInfo;
-            return BuildMenuTab.Controls;
-        }
-
-        private static string FormatBuildMenuTabLabel(BuildMenuTab tab)
-        {
-            switch (tab)
-            {
-                case BuildMenuTab.Stats:
-                    return "Stats";
-                case BuildMenuTab.RunInfo:
-                    return "Run Info";
-                case BuildMenuTab.Controls:
-                    return "Controls";
-                default:
-                    return "Current Build";
-            }
-        }
-
         private Color ResolveRewardTitleAccentColor()
         {
             if (IsRelicChoiceOpen)
@@ -7872,53 +7600,13 @@ namespace Deucarian.TemplateGameSurvivors
             return ActiveUiTheme.GetRarityAccentColor(rarity, ResolveRarityAccentColor(rarity));
         }
 
-        private static void DrawDimOverlay(float alpha)
-        {
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, Mathf.Clamp01(alpha));
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), Texture2D.whiteTexture);
-            GUI.color = oldColor;
-        }
-
-        private static Rect ResolveCenteredPanelRect(float maxWidth, float maxHeight, float minWidth, float minHeight, float margin)
-        {
-            float safeMargin = Mathf.Max(8f, margin);
-            float availableWidth = Mathf.Max(220f, Screen.width - safeMargin * 2f);
-            float availableHeight = Mathf.Max(220f, Screen.height - safeMargin * 2f);
-            float width = Mathf.Min(Mathf.Max(1f, maxWidth), availableWidth);
-            float height = Mathf.Min(Mathf.Max(1f, maxHeight), availableHeight);
-            if (width < minWidth)
-            {
-                width = availableWidth;
-            }
-
-            if (height < minHeight)
-            {
-                height = availableHeight;
-            }
-
-            return new Rect(
-                Mathf.Max(safeMargin, Screen.width * 0.5f - width * 0.5f),
-                Mathf.Max(safeMargin, Screen.height * 0.5f - height * 0.5f),
-                width,
-                height);
-        }
-
-        private static void DrawSolidRect(Rect rect, Color color)
-        {
-            Color oldColor = GUI.color;
-            GUI.color = color;
-            GUI.DrawTexture(rect, Texture2D.whiteTexture);
-            GUI.color = oldColor;
-        }
-
         private void DrawRunResultOverlay(bool victory)
         {
-            DrawDimOverlay(0.72f);
-            Rect rect = ResolveCenteredPanelRect(760f, 700f, 320f, 400f, 20f);
+            SurvivorsScreenLayout.DrawDimOverlay(0.72f);
+            Rect rect = SurvivorsScreenLayout.ResolveCenteredPanelRect(760f, 700f, 320f, 400f, 20f);
             Color accent = ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f));
-            DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.97f));
-            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), new Color(accent.r, accent.g, accent.b, 0.95f));
+            SurvivorsScreenLayout.DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.97f));
+            SurvivorsScreenLayout.DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), new Color(accent.r, accent.g, accent.b, 0.95f));
             string title = string.IsNullOrWhiteSpace(_lastRunSummaryTitle)
                 ? ActiveUiTheme.runSummaryTitle + " - " + (victory ? "Victory" : "Defeat")
                 : _lastRunSummaryTitle;
