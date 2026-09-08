@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -103,6 +103,26 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsBuildSurgeRewards _buildSurges;
+        private SurvivorsBuildSurgeRewards BuildSurges => _buildSurges ?? (_buildSurges = new SurvivorsBuildSurgeRewards(RunBuild, this));
+        private void TriggerWeaponEvolutionSurge(RunUpgradeDefinition upgrade) => BuildSurges.TriggerWeaponEvolutionSurge(upgrade);
+        private void TriggerEvolutionChainSurge(RunUpgradeDefinition upgrade) => BuildSurges.TriggerEvolutionChainSurge(upgrade);
+        private void TryTriggerWeaponLoadoutSurge(SurvivorsWeaponArchetypeDefinition weapon) => BuildSurges.TryTriggerWeaponLoadoutSurge(weapon);
+        private void TryTriggerPassiveLoadoutSurge(RunUpgradeDefinition passive) => BuildSurges.TryTriggerPassiveLoadoutSurge(passive);
+        private void TriggerBossRelicSurge(SurvivorsRelicDefinition relic) => BuildSurges.TriggerBossRelicSurge(relic);
+        private void TickWeaponLoadoutSurge(float deltaTime) => BuildSurges.TickWeaponLoadoutSurge(deltaTime);
+        private void TickPassiveLoadoutSurge(float deltaTime) => BuildSurges.TickPassiveLoadoutSurge(deltaTime);
+        private void TickBossRelicSurge(float deltaTime) => BuildSurges.TickBossRelicSurge(deltaTime);
+        private void TickEvolutionChainSurge(float deltaTime) => BuildSurges.TickEvolutionChainSurge(deltaTime);
+        SurvivorsTemplateTuning ISurvivorsBuildSurgePort.Tuning => CurrentTuning;
+        Vector3 ISurvivorsBuildSurgePort.PlayerPosition => PlayerPosition;
+        int ISurvivorsBuildSurgePort.WeaponCount => ActiveWeaponCount;
+        int ISurvivorsBuildSurgePort.DamageNonMajor(Vector3 position, float radius, float damage, string source) => DamageNonMajorEnemies(position, radius, damage, source);
+        int ISurvivorsBuildSurgePort.RecallGems() => StartMagnetRecall();
+        Color ISurvivorsBuildSurgePort.RelicAccent(SurvivorsRelicDefinition relic) => ResolveRelicAccentColor(relic);
+        void ISurvivorsBuildSurgePort.ShowFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
+        void ISurvivorsBuildSurgePort.PlayPulse(int count, bool boss) => PlayFeedback(boss ? _bossPulse : _levelUpPulse, PlayerPosition, count, boss ? _bossClip : _levelUpClip);
+
         private SurvivorsDraftCardFactory _draftCardFactory;
         private SurvivorsDraftCardFactory DraftCards => _draftCardFactory ?? (_draftCardFactory = new SurvivorsDraftCardFactory(RunBuild, ShortWeaponName));
 
@@ -604,10 +624,6 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsTraversalPort.SpawnShrine(Vector3 direction) => ShrineTrials.SpawnArenaShrineTrial(direction);
         void ISurvivorsTraversalPort.SpawnCache(Vector3 direction, int sequenceOffset) => RoamingCaches.SpawnRoamingArenaCache(direction, sequenceOffset);
         private long _spawnSequence;
-        private float _weaponLoadoutSurgeTimer;
-        private float _passiveLoadoutSurgeTimer;
-        private float _bossRelicSurgeTimer;
-        private float _evolutionChainSurgeTimer;
         private float _endlessSurgeTimer;
         private float _payloadHazardChainWindowTimer;
         private float _payloadHazardChainCooldownTimer;
@@ -628,8 +644,6 @@ namespace Deucarian.TemplateGameSurvivors
         private RunUpgradeRarity _highestChosenRarity;
         private string _highestChosenRarityLabel = string.Empty;
         private string _bestMomentLabel = string.Empty;
-        private bool _weaponLoadoutSurgeUsed;
-        private bool _passiveLoadoutSurgeUsed;
         private bool _runRewardsGranted;
         private int _bonusBloodShardsEarnedThisRun;
         private int _bonusLegacyExperienceEarnedThisRun;
@@ -715,15 +729,15 @@ namespace Deucarian.TemplateGameSurvivors
         public int BossUpgradeDraftOpenCount => DraftSession.BossOpenCount;
         public int LevelUpDraftOpenCount => DraftSession.LevelUpOpenCount;
         public int SelectedRelicCount => RelicInventory.Count;
-        public int BossRelicSurgeCount { get; private set; }
-        public int BossRelicSurgeHitCount { get; private set; }
-        public string LastBossRelicSurgeFeedbackLabel { get; private set; } = string.Empty;
-        public int WeaponLoadoutSurgeActivationCount { get; private set; }
-        public int WeaponLoadoutSurgePulseHitCount { get; private set; }
-        public string LastWeaponLoadoutSurgeFeedbackLabel { get; private set; } = string.Empty;
-        public int PassiveLoadoutSurgeActivationCount { get; private set; }
-        public int PassiveLoadoutSurgePulseHitCount { get; private set; }
-        public string LastPassiveLoadoutSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public int BossRelicSurgeCount => BuildSurges.BossRelicSurgeCount;
+        public int BossRelicSurgeHitCount => BuildSurges.BossRelicSurgeHitCount;
+        public string LastBossRelicSurgeFeedbackLabel => BuildSurges.LastBossRelicSurgeFeedbackLabel;
+        public int WeaponLoadoutSurgeActivationCount => BuildSurges.WeaponLoadoutSurgeActivationCount;
+        public int WeaponLoadoutSurgePulseHitCount => BuildSurges.WeaponLoadoutSurgePulseHitCount;
+        public string LastWeaponLoadoutSurgeFeedbackLabel => BuildSurges.LastWeaponLoadoutSurgeFeedbackLabel;
+        public int PassiveLoadoutSurgeActivationCount => BuildSurges.PassiveLoadoutSurgeActivationCount;
+        public int PassiveLoadoutSurgePulseHitCount => BuildSurges.PassiveLoadoutSurgePulseHitCount;
+        public string LastPassiveLoadoutSurgeFeedbackLabel => BuildSurges.LastPassiveLoadoutSurgeFeedbackLabel;
         public int LevelUpPulseCount { get; private set; }
         public int LevelUpPulseHitCount { get; private set; }
         public string LastLevelUpPulseFeedbackLabel { get; private set; } = string.Empty;
@@ -785,15 +799,15 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorRewardCacheSpecialDropCount { get; private set; }
         public int MajorRewardCacheAttractedPickupCount { get; private set; }
         public int WeaponEvolutionFeedbackCount => RunBuild.WeaponEvolutionFeedbackCount;
-        public int WeaponEvolutionSurgeCount { get; private set; }
-        public int WeaponEvolutionSurgeHitCount { get; private set; }
-        public int EvolutionMagnetRecallCount { get; private set; }
-        public int EvolutionMagnetRecallGemCount { get; private set; }
-        public int EvolutionChainSurgeActivationCount { get; private set; }
-        public int EvolutionChainSurgePulseHitCount { get; private set; }
-        public string LastWeaponEvolutionSurgeFeedbackLabel { get; private set; } = string.Empty;
-        public string LastEvolutionMagnetRecallFeedbackLabel { get; private set; } = string.Empty;
-        public string LastEvolutionChainSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public int WeaponEvolutionSurgeCount => BuildSurges.WeaponEvolutionSurgeCount;
+        public int WeaponEvolutionSurgeHitCount => BuildSurges.WeaponEvolutionSurgeHitCount;
+        public int EvolutionMagnetRecallCount => BuildSurges.EvolutionMagnetRecallCount;
+        public int EvolutionMagnetRecallGemCount => BuildSurges.EvolutionMagnetRecallGemCount;
+        public int EvolutionChainSurgeActivationCount => BuildSurges.EvolutionChainSurgeActivationCount;
+        public int EvolutionChainSurgePulseHitCount => BuildSurges.EvolutionChainSurgePulseHitCount;
+        public string LastWeaponEvolutionSurgeFeedbackLabel => BuildSurges.LastWeaponEvolutionSurgeFeedbackLabel;
+        public string LastEvolutionMagnetRecallFeedbackLabel => BuildSurges.LastEvolutionMagnetRecallFeedbackLabel;
+        public string LastEvolutionChainSurgeFeedbackLabel => BuildSurges.LastEvolutionChainSurgeFeedbackLabel;
         public int MetaUpgradePurchaseCount { get; private set; }
         public string LastMetaUpgradePurchaseFeedbackLabel { get; private set; } = string.Empty;
         public int ResultClassSelectionCount { get; private set; }
@@ -915,37 +929,37 @@ namespace Deucarian.TemplateGameSurvivors
         public float HordeRushClearSurgeMoveSpeedBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, CurrentTuning.HordeRushClearSurgeMoveSpeedBonus) : 0f;
         public float HordeRushClearSurgeCooldownMultiplierBonus => IsHordeRushClearSurgeActive ? Mathf.Min(0f, CurrentTuning.HordeRushClearSurgeCooldownMultiplierBonus) : 0f;
         public float HordeRushClearSurgePickupRangeBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, CurrentTuning.HordeRushClearSurgePickupRangeBonus) : 0f;
-        public bool IsWeaponLoadoutSurgeActive => _weaponLoadoutSurgeTimer > 0f;
-        public float WeaponLoadoutSurgeRemainingSeconds => Mathf.Max(0f, _weaponLoadoutSurgeTimer);
-        public float WeaponLoadoutSurgeDamageBonus => IsWeaponLoadoutSurgeActive ? Mathf.Max(0f, CurrentTuning.WeaponLoadoutSurgeDamageBonus) : 0f;
-        public float WeaponLoadoutSurgeMoveSpeedBonus => IsWeaponLoadoutSurgeActive ? Mathf.Max(0f, CurrentTuning.WeaponLoadoutSurgeMoveSpeedBonus) : 0f;
-        public float WeaponLoadoutSurgeCooldownMultiplierBonus => IsWeaponLoadoutSurgeActive ? Mathf.Min(0f, CurrentTuning.WeaponLoadoutSurgeCooldownMultiplierBonus) : 0f;
-        public float WeaponLoadoutSurgePickupRangeBonus => IsWeaponLoadoutSurgeActive ? Mathf.Max(0f, CurrentTuning.WeaponLoadoutSurgePickupRangeBonus) : 0f;
-        public bool IsPassiveLoadoutSurgeActive => _passiveLoadoutSurgeTimer > 0f;
-        public float PassiveLoadoutSurgeRemainingSeconds => Mathf.Max(0f, _passiveLoadoutSurgeTimer);
-        public float PassiveLoadoutSurgeDamageBonus => IsPassiveLoadoutSurgeActive ? Mathf.Max(0f, CurrentTuning.PassiveLoadoutSurgeDamageBonus) : 0f;
-        public float PassiveLoadoutSurgeMoveSpeedBonus => IsPassiveLoadoutSurgeActive ? Mathf.Max(0f, CurrentTuning.PassiveLoadoutSurgeMoveSpeedBonus) : 0f;
-        public float PassiveLoadoutSurgeCooldownMultiplierBonus => IsPassiveLoadoutSurgeActive ? Mathf.Min(0f, CurrentTuning.PassiveLoadoutSurgeCooldownMultiplierBonus) : 0f;
-        public float PassiveLoadoutSurgePickupRangeBonus => IsPassiveLoadoutSurgeActive ? Mathf.Max(0f, CurrentTuning.PassiveLoadoutSurgePickupRangeBonus) : 0f;
-        public float PassiveLoadoutSurgeExperienceGainMultiplierBonus => IsPassiveLoadoutSurgeActive ? Mathf.Max(0f, CurrentTuning.PassiveLoadoutSurgeExperienceGainMultiplierBonus) : 0f;
-        public bool IsBossRelicSurgeActive => _bossRelicSurgeTimer > 0f;
-        public float BossRelicSurgeRemainingSeconds => Mathf.Max(0f, _bossRelicSurgeTimer);
-        public float BossRelicSurgeDamageBonus => IsBossRelicSurgeActive ? Mathf.Max(0f, CurrentTuning.BossRelicSurgeDamageBonus) : 0f;
-        public float BossRelicSurgeMoveSpeedBonus => IsBossRelicSurgeActive ? Mathf.Max(0f, CurrentTuning.BossRelicSurgeMoveSpeedBonus) : 0f;
-        public float BossRelicSurgeCooldownMultiplierBonus => IsBossRelicSurgeActive ? Mathf.Min(0f, CurrentTuning.BossRelicSurgeCooldownMultiplierBonus) : 0f;
-        public float BossRelicSurgePickupRangeBonus => IsBossRelicSurgeActive ? Mathf.Max(0f, CurrentTuning.BossRelicSurgePickupRangeBonus) : 0f;
+        public bool IsWeaponLoadoutSurgeActive => BuildSurges.IsWeaponLoadoutSurgeActive;
+        public float WeaponLoadoutSurgeRemainingSeconds => BuildSurges.WeaponLoadoutSurgeRemainingSeconds;
+        public float WeaponLoadoutSurgeDamageBonus => BuildSurges.WeaponLoadoutSurgeDamageBonus;
+        public float WeaponLoadoutSurgeMoveSpeedBonus => BuildSurges.WeaponLoadoutSurgeMoveSpeedBonus;
+        public float WeaponLoadoutSurgeCooldownMultiplierBonus => BuildSurges.WeaponLoadoutSurgeCooldownMultiplierBonus;
+        public float WeaponLoadoutSurgePickupRangeBonus => BuildSurges.WeaponLoadoutSurgePickupRangeBonus;
+        public bool IsPassiveLoadoutSurgeActive => BuildSurges.IsPassiveLoadoutSurgeActive;
+        public float PassiveLoadoutSurgeRemainingSeconds => BuildSurges.PassiveLoadoutSurgeRemainingSeconds;
+        public float PassiveLoadoutSurgeDamageBonus => BuildSurges.PassiveLoadoutSurgeDamageBonus;
+        public float PassiveLoadoutSurgeMoveSpeedBonus => BuildSurges.PassiveLoadoutSurgeMoveSpeedBonus;
+        public float PassiveLoadoutSurgeCooldownMultiplierBonus => BuildSurges.PassiveLoadoutSurgeCooldownMultiplierBonus;
+        public float PassiveLoadoutSurgePickupRangeBonus => BuildSurges.PassiveLoadoutSurgePickupRangeBonus;
+        public float PassiveLoadoutSurgeExperienceGainMultiplierBonus => BuildSurges.PassiveLoadoutSurgeExperienceGainMultiplierBonus;
+        public bool IsBossRelicSurgeActive => BuildSurges.IsBossRelicSurgeActive;
+        public float BossRelicSurgeRemainingSeconds => BuildSurges.BossRelicSurgeRemainingSeconds;
+        public float BossRelicSurgeDamageBonus => BuildSurges.BossRelicSurgeDamageBonus;
+        public float BossRelicSurgeMoveSpeedBonus => BuildSurges.BossRelicSurgeMoveSpeedBonus;
+        public float BossRelicSurgeCooldownMultiplierBonus => BuildSurges.BossRelicSurgeCooldownMultiplierBonus;
+        public float BossRelicSurgePickupRangeBonus => BuildSurges.BossRelicSurgePickupRangeBonus;
         public bool IsGemRushActive => ExperienceRhythm.IsGemRushActive;
         public float GemRushRemainingSeconds => ExperienceRhythm.GemRushRemainingSeconds;
         public float GemRushDamageBonus => ExperienceRhythm.GemRushDamageBonus;
         public float GemRushMoveSpeedBonus => ExperienceRhythm.GemRushMoveSpeedBonus;
         public float GemRushCooldownMultiplierBonus => ExperienceRhythm.GemRushCooldownMultiplierBonus;
         public float GemRushPickupRangeBonus => ExperienceRhythm.GemRushPickupRangeBonus;
-        public bool IsEvolutionChainSurgeActive => _evolutionChainSurgeTimer > 0f;
-        public float EvolutionChainSurgeRemainingSeconds => Mathf.Max(0f, _evolutionChainSurgeTimer);
-        public float EvolutionChainSurgeDamageBonus => IsEvolutionChainSurgeActive ? Mathf.Max(0f, CurrentTuning.EvolutionChainSurgeDamageBonus) : 0f;
-        public float EvolutionChainSurgeMoveSpeedBonus => IsEvolutionChainSurgeActive ? Mathf.Max(0f, CurrentTuning.EvolutionChainSurgeMoveSpeedBonus) : 0f;
-        public float EvolutionChainSurgeCooldownMultiplierBonus => IsEvolutionChainSurgeActive ? Mathf.Min(0f, CurrentTuning.EvolutionChainSurgeCooldownMultiplierBonus) : 0f;
-        public float EvolutionChainSurgePickupRangeBonus => IsEvolutionChainSurgeActive ? Mathf.Max(0f, CurrentTuning.EvolutionChainSurgePickupRangeBonus) : 0f;
+        public bool IsEvolutionChainSurgeActive => BuildSurges.IsEvolutionChainSurgeActive;
+        public float EvolutionChainSurgeRemainingSeconds => BuildSurges.EvolutionChainSurgeRemainingSeconds;
+        public float EvolutionChainSurgeDamageBonus => BuildSurges.EvolutionChainSurgeDamageBonus;
+        public float EvolutionChainSurgeMoveSpeedBonus => BuildSurges.EvolutionChainSurgeMoveSpeedBonus;
+        public float EvolutionChainSurgeCooldownMultiplierBonus => BuildSurges.EvolutionChainSurgeCooldownMultiplierBonus;
+        public float EvolutionChainSurgePickupRangeBonus => BuildSurges.EvolutionChainSurgePickupRangeBonus;
         public bool IsEndlessSurgeActive => _endlessSurgeTimer > 0f && EndlessSurgeTier > 0;
         public float EndlessSurgeRemainingSeconds => Mathf.Max(0f, _endlessSurgeTimer);
         public float EndlessSurgeDamageBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgeDamageBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
@@ -2054,15 +2068,6 @@ namespace Deucarian.TemplateGameSurvivors
             EliteRewardGrantCount = 0;
             MinibossRewardGrantCount = 0;
             BossRewardGrantCount = 0;
-            WeaponEvolutionSurgeCount = 0;
-            WeaponEvolutionSurgeHitCount = 0;
-            EvolutionMagnetRecallCount = 0;
-            EvolutionMagnetRecallGemCount = 0;
-            EvolutionChainSurgeActivationCount = 0;
-            EvolutionChainSurgePulseHitCount = 0;
-            LastWeaponEvolutionSurgeFeedbackLabel = string.Empty;
-            LastEvolutionMagnetRecallFeedbackLabel = string.Empty;
-            LastEvolutionChainSurgeFeedbackLabel = string.Empty;
             MetaUpgradePurchaseCount = 0;
             LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
             ResultClassSelectionCount = 0;
@@ -2071,15 +2076,6 @@ namespace Deucarian.TemplateGameSurvivors
             LastEvolutionGoalFeedbackLabel = string.Empty;
             EvolutionReadyFeedbackCount = 0;
             LastEvolutionReadyFeedbackLabel = string.Empty;
-            BossRelicSurgeCount = 0;
-            BossRelicSurgeHitCount = 0;
-            LastBossRelicSurgeFeedbackLabel = string.Empty;
-            WeaponLoadoutSurgeActivationCount = 0;
-            WeaponLoadoutSurgePulseHitCount = 0;
-            LastWeaponLoadoutSurgeFeedbackLabel = string.Empty;
-            PassiveLoadoutSurgeActivationCount = 0;
-            PassiveLoadoutSurgePulseHitCount = 0;
-            LastPassiveLoadoutSurgeFeedbackLabel = string.Empty;
             LevelUpPulseCount = 0;
             LevelUpPulseHitCount = 0;
             LastLevelUpPulseFeedbackLabel = string.Empty;
@@ -2164,6 +2160,7 @@ namespace Deucarian.TemplateGameSurvivors
             TimedEncounters.Reset();
             HordeRush.Reset();
             KillStreakRewards.Reset();
+            BuildSurges.Reset();
             ExperienceRhythm.Reset();
             _rewardBanner.Reset();
             _streakRewardBanner.Reset();
@@ -2172,13 +2169,7 @@ namespace Deucarian.TemplateGameSurvivors
             SwarmSpawning.Reset();
             _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
             Traversal.Reset();
-            _weaponLoadoutSurgeTimer = 0f;
-            _passiveLoadoutSurgeTimer = 0f;
-            _bossRelicSurgeTimer = 0f;
-            _evolutionChainSurgeTimer = 0f;
             _endlessSurgeTimer = 0f;
-            _weaponLoadoutSurgeUsed = false;
-            _passiveLoadoutSurgeUsed = false;
             _announcedEvolutionGoalUpgradeIds.Clear();
             _announcedEvolutionReadyUpgradeIds.Clear();
             _evolutionReadyBanner.Reset();
@@ -5059,96 +5050,6 @@ namespace Deucarian.TemplateGameSurvivors
                 selectionKind == SurvivorsRewardSelectionKind.BossUpgrade;
         }
 
-        private void TriggerWeaponEvolutionSurge(RunUpgradeDefinition upgrade)
-        {
-            float radius = Mathf.Max(0f, CurrentTuning.EvolutionSurgeRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.EvolutionSurgeDamage);
-            string name = upgrade == null ? "Evolution" : ResolveUpgradeDisplayName(upgrade.Id);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.evolution.surge");
-                    hitCount++;
-                }
-            }
-
-            int recalledGemCount = StartMagnetRecall();
-            if (recalledGemCount > 0)
-            {
-                EvolutionMagnetRecallCount++;
-                EvolutionMagnetRecallGemCount += recalledGemCount;
-                LastEvolutionMagnetRecallFeedbackLabel = $"{name} Recall: {recalledGemCount} XP gems pulled";
-            }
-
-            WeaponEvolutionSurgeCount++;
-            WeaponEvolutionSurgeHitCount += hitCount;
-            LastWeaponEvolutionSurgeFeedbackLabel = $"{name} Surge: {hitCount} enemies hit";
-            if (recalledGemCount > 0)
-            {
-                LastWeaponEvolutionSurgeFeedbackLabel += $", {recalledGemCount} XP recalled";
-            }
-
-            RecordStreakRewardFeedback(LastWeaponEvolutionSurgeFeedbackLabel, new Color(0.72f, 0.42f, 1f));
-            PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(46 + hitCount * 5, 54, 96), _levelUpClip);
-        }
-
-        private void TriggerEvolutionChainSurge(RunUpgradeDefinition upgrade)
-        {
-            int evolutionCount = EvolvedWeaponCount;
-            if (evolutionCount < Mathf.Max(2, CurrentTuning.EvolutionChainSurgeMinimumEvolutions))
-            {
-                return;
-            }
-
-            float duration = Mathf.Max(0f, CurrentTuning.EvolutionChainSurgeDurationSeconds);
-            if (duration > 0f)
-            {
-                _evolutionChainSurgeTimer = Mathf.Max(_evolutionChainSurgeTimer, duration);
-            }
-
-            float radius = Mathf.Max(0f, CurrentTuning.EvolutionChainSurgePulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.EvolutionChainSurgePulseDamage);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.evolution.legend-surge");
-                    hitCount++;
-                }
-            }
-
-            string name = upgrade == null ? "Evolution" : ResolveUpgradeDisplayName(upgrade.Id);
-            EvolutionChainSurgeActivationCount++;
-            EvolutionChainSurgePulseHitCount += hitCount;
-            LastEvolutionChainSurgeFeedbackLabel = $"{name} Legend Surge: {evolutionCount} evolutions, {hitCount} enemies hit";
-            if (duration > 0f)
-            {
-                LastEvolutionChainSurgeFeedbackLabel += $", rush {EvolutionChainSurgeRemainingSeconds:0.#}s";
-            }
-
-            RecordStreakRewardFeedback(LastEvolutionChainSurgeFeedbackLabel, new Color(1f, 0.66f, 0.2f));
-            PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(58 + hitCount * 5, 64, 112), _levelUpClip);
-        }
-
         private void TriggerRewardUpgradeSurge(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind selectionKind)
         {
             float radius = Mathf.Max(0f, CurrentTuning.RewardUpgradeSurgeRadius);
@@ -5399,102 +5300,6 @@ namespace Deucarian.TemplateGameSurvivors
 
             TryTriggerWeaponLoadoutSurge(definition);
             return true;
-        }
-
-        private void TryTriggerWeaponLoadoutSurge(SurvivorsWeaponArchetypeDefinition addedWeapon)
-        {
-            if (_weaponLoadoutSurgeUsed || ActiveWeaponCount < MaxWeaponSlots)
-            {
-                return;
-            }
-
-            _weaponLoadoutSurgeUsed = true;
-
-            float duration = Mathf.Max(0f, CurrentTuning.WeaponLoadoutSurgeDurationSeconds);
-            if (duration > 0f)
-            {
-                _weaponLoadoutSurgeTimer = Mathf.Max(_weaponLoadoutSurgeTimer, duration);
-            }
-
-            float radius = Mathf.Max(0f, CurrentTuning.WeaponLoadoutSurgePulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.WeaponLoadoutSurgePulseDamage);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.weapon-loadout.arsenal-surge");
-                    hitCount++;
-                }
-            }
-
-            string name = addedWeapon == null ? "Weapon" : addedWeapon.DisplayName;
-            WeaponLoadoutSurgeActivationCount++;
-            WeaponLoadoutSurgePulseHitCount += hitCount;
-            LastWeaponLoadoutSurgeFeedbackLabel = $"{name} Arsenal Surge: {ActiveWeaponCount}/{MaxWeaponSlots} weapons, {hitCount} enemies hit";
-            if (duration > 0f)
-            {
-                LastWeaponLoadoutSurgeFeedbackLabel += $", rush {WeaponLoadoutSurgeRemainingSeconds:0.#}s";
-            }
-
-            RecordStreakRewardFeedback(LastWeaponLoadoutSurgeFeedbackLabel, new Color(0.45f, 1f, 0.62f));
-            PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(34 + hitCount * 5, 42, 86), _levelUpClip);
-        }
-
-        private void TryTriggerPassiveLoadoutSurge(RunUpgradeDefinition addedPassive)
-        {
-            if (_passiveLoadoutSurgeUsed || ActivePassiveCount < MaxPassiveSlots)
-            {
-                return;
-            }
-
-            _passiveLoadoutSurgeUsed = true;
-
-            float duration = Mathf.Max(0f, CurrentTuning.PassiveLoadoutSurgeDurationSeconds);
-            if (duration > 0f)
-            {
-                _passiveLoadoutSurgeTimer = Mathf.Max(_passiveLoadoutSurgeTimer, duration);
-            }
-
-            float radius = Mathf.Max(0f, CurrentTuning.PassiveLoadoutSurgePulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.PassiveLoadoutSurgePulseDamage);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.passive-loadout.harmony-surge");
-                    hitCount++;
-                }
-            }
-
-            string name = addedPassive == null ? "Passive" : ResolveUpgradeDisplayName(addedPassive.Id);
-            PassiveLoadoutSurgeActivationCount++;
-            PassiveLoadoutSurgePulseHitCount += hitCount;
-            LastPassiveLoadoutSurgeFeedbackLabel = $"{name} Harmony Surge: {ActivePassiveCount}/{MaxPassiveSlots} passives, {hitCount} enemies hit";
-            if (duration > 0f)
-            {
-                LastPassiveLoadoutSurgeFeedbackLabel += $", rush {PassiveLoadoutSurgeRemainingSeconds:0.#}s";
-            }
-
-            RecordStreakRewardFeedback(LastPassiveLoadoutSurgeFeedbackLabel, new Color(0.58f, 0.92f, 1f));
-            PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(32 + hitCount * 5, 40, 82), _levelUpClip);
         }
 
         private SurvivorsWeaponArchetypeDefinition FindWeaponDefinition(string weaponId)
@@ -6496,46 +6301,6 @@ namespace Deucarian.TemplateGameSurvivors
             return highest;
         }
 
-        private void TickWeaponLoadoutSurge(float deltaTime)
-        {
-            if (_weaponLoadoutSurgeTimer <= 0f)
-            {
-                return;
-            }
-
-            _weaponLoadoutSurgeTimer = Mathf.Max(0f, _weaponLoadoutSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
-
-        private void TickPassiveLoadoutSurge(float deltaTime)
-        {
-            if (_passiveLoadoutSurgeTimer <= 0f)
-            {
-                return;
-            }
-
-            _passiveLoadoutSurgeTimer = Mathf.Max(0f, _passiveLoadoutSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
-
-        private void TickBossRelicSurge(float deltaTime)
-        {
-            if (_bossRelicSurgeTimer <= 0f)
-            {
-                return;
-            }
-
-            _bossRelicSurgeTimer = Mathf.Max(0f, _bossRelicSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
-
-        private void TickEvolutionChainSurge(float deltaTime)
-        {
-            if (_evolutionChainSurgeTimer <= 0f)
-            {
-                return;
-            }
-
-            _evolutionChainSurgeTimer = Mathf.Max(0f, _evolutionChainSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
-
         private void TickEndlessSurge(float deltaTime)
         {
             if (_endlessSurgeTimer <= 0f)
@@ -6571,47 +6336,6 @@ namespace Deucarian.TemplateGameSurvivors
         private void ApplyRelic(SurvivorsRelicDefinition relic)
         {
             UpgradeModifiers.ApplyRelic(relic);
-        }
-
-        private void TriggerBossRelicSurge(SurvivorsRelicDefinition relic)
-        {
-            float duration = Mathf.Max(0f, CurrentTuning.BossRelicSurgeDurationSeconds);
-            if (duration > 0f)
-            {
-                _bossRelicSurgeTimer = Mathf.Max(_bossRelicSurgeTimer, duration);
-            }
-
-            float radius = Mathf.Max(0f, CurrentTuning.BossRelicSurgeRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.BossRelicSurgeDamage);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.relic.surge");
-                    hitCount++;
-                }
-            }
-
-            BossRelicSurgeCount++;
-            BossRelicSurgeHitCount += hitCount;
-            string name = relic == null || string.IsNullOrWhiteSpace(relic.DisplayName) ? "Boss Relic" : relic.DisplayName;
-            LastBossRelicSurgeFeedbackLabel = $"{name} Surge: {hitCount} enemies hit";
-            if (duration > 0f)
-            {
-                LastBossRelicSurgeFeedbackLabel += $", rush {BossRelicSurgeRemainingSeconds:0.#}s";
-            }
-
-            RecordStreakRewardFeedback(LastBossRelicSurgeFeedbackLabel, ResolveRelicAccentColor(relic));
-            PlayFeedback(_bossPulse, PlayerPosition, Mathf.Clamp(42 + hitCount * 4, 48, 88), _bossClip);
         }
 
         private void ApplyUpgrade(RunUpgradeDefinition upgrade)
