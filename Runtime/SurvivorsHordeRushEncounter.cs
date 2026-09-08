@@ -23,6 +23,12 @@ namespace Deucarian.TemplateGameSurvivors
     /// <summary>Owns horde scheduling, membership, clear rewards and Breaker momentum.</summary>
     internal sealed class SurvivorsHordeRushEncounter
     {
+        public bool IsHordeRushClearSurgeActive => ClearSurgeRemaining > 0f;
+        public float HordeRushClearSurgeRemainingSeconds => ClearSurgeRemaining;
+        public float HordeRushClearSurgeDamageBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, _port.Tuning.HordeRushClearSurgeDamageBonus) : 0f;
+        public float HordeRushClearSurgeMoveSpeedBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, _port.Tuning.HordeRushClearSurgeMoveSpeedBonus) : 0f;
+        public float HordeRushClearSurgeCooldownMultiplierBonus => IsHordeRushClearSurgeActive ? Mathf.Min(0f, _port.Tuning.HordeRushClearSurgeCooldownMultiplierBonus) : 0f;
+        public float HordeRushClearSurgePickupRangeBonus => IsHordeRushClearSurgeActive ? Mathf.Max(0f, _port.Tuning.HordeRushClearSurgePickupRangeBonus) : 0f;
         private readonly ISurvivorsHordeRushPort _port;
         private readonly HashSet<long> _members = new HashSet<long>();
         private SurvivorsTemplateTuning CurrentTuning => _port.Tuning;

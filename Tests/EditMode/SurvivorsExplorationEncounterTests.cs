@@ -182,6 +182,37 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.AreEqual(0f, waystones.ChainRemaining);
         }
 
+        [Test]
+        public void EncounterBonusesReadLiveTuningOnlyWhileTheirOwnTimersAreActive()
+        {
+            var port = new ExplorationPort();
+            var cache = new SurvivorsRoamingCacheEncounter(port);
+            var shrine = new SurvivorsShrineEncounter(port);
+            var stones = new SurvivorsWaystoneExploration(port);
+            port.Tuning.RoamingCacheSurgeInterval = 1;
+            port.Tuning.RoamingCacheSurgeDurationSeconds = 3;
+            port.Tuning.WaystoneChainInterval = 1;
+            port.Tuning.WaystoneChainDurationSeconds = 3;
+            Assert.AreEqual(0, cache.RoamingCacheSurgeDamageBonus);
+            Assert.AreEqual(0, shrine.ArenaShrineSurgeMoveSpeedBonus);
+            cache.SpawnRoamingArenaCache(Vector3.forward, 0);
+            shrine.SpawnArenaShrineClearReward(Vector3.zero);
+            Assert.IsTrue(stones.TryDiscover(1, Vector3.zero));
+            port.Tuning.RoamingCacheSurgeDamageBonus = -7;
+            port.Tuning.ArenaShrineSurgeMoveSpeedBonus = 9;
+            port.Tuning.WaystoneFocusCooldownMultiplierBonus = 4;
+            port.Tuning.WaystoneChainPickupRangeBonus = 8;
+            Assert.AreEqual(0, cache.RoamingCacheSurgeDamageBonus);
+            Assert.AreEqual(9, shrine.ArenaShrineSurgeMoveSpeedBonus);
+            Assert.AreEqual(0, stones.WaystoneFocusCooldownMultiplierBonus);
+            Assert.AreEqual(8, stones.WaystoneChainSurgePickupRangeBonus);
+            cache.TickRoamingCacheSurge(10); shrine.TickArenaShrineSurge(10);
+            stones.TickWaystoneFocus(10); stones.TickWaystoneChainSurge(10);
+            Assert.IsFalse(cache.IsRoamingCacheSurgeActive);
+            Assert.AreEqual(0, shrine.ArenaShrineSurgeMoveSpeedBonus);
+            Assert.AreEqual(0, stones.WaystoneChainSurgePickupRangeBonus);
+        }
+
         private sealed class ExplorationPort : ISurvivorsExplorationPort
         {
             public SurvivorsTemplateTuning Tuning { get; } = new SurvivorsTemplateTuning

@@ -6,6 +6,12 @@ namespace Deucarian.TemplateGameSurvivors
 {
     internal sealed class SurvivorsRoamingCacheEncounter
     {
+        public bool IsRoamingCacheSurgeActive => SurgeRemaining > 0f;
+        public float RoamingCacheSurgeRemainingSeconds => Mathf.Max(0f, SurgeRemaining);
+        public float RoamingCacheSurgeDamageBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, _port.Tuning.RoamingCacheSurgeDamageBonus) : 0f;
+        public float RoamingCacheSurgeMoveSpeedBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, _port.Tuning.RoamingCacheSurgeMoveSpeedBonus) : 0f;
+        public float RoamingCacheSurgeCooldownMultiplierBonus => IsRoamingCacheSurgeActive ? Mathf.Min(0f, _port.Tuning.RoamingCacheSurgeCooldownMultiplierBonus) : 0f;
+        public float RoamingCacheSurgePickupRangeBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, _port.Tuning.RoamingCacheSurgePickupRangeBonus) : 0f;
         private readonly ISurvivorsExplorationPort _port;
         public SurvivorsRoamingCacheEncounter(ISurvivorsExplorationPort port) => _port = port ?? throw new ArgumentNullException(nameof(port));
         private readonly HashSet<long> _members = new HashSet<long>();

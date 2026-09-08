@@ -6,6 +6,12 @@ namespace Deucarian.TemplateGameSurvivors
 {
     internal sealed class SurvivorsShrineEncounter
     {
+        public bool IsArenaShrineSurgeActive => SurgeRemaining > 0f;
+        public float ArenaShrineSurgeRemainingSeconds => Mathf.Max(0f, SurgeRemaining);
+        public float ArenaShrineSurgeDamageBonus => IsArenaShrineSurgeActive ? Mathf.Max(0f, _port.Tuning.ArenaShrineSurgeDamageBonus) : 0f;
+        public float ArenaShrineSurgeMoveSpeedBonus => IsArenaShrineSurgeActive ? Mathf.Max(0f, _port.Tuning.ArenaShrineSurgeMoveSpeedBonus) : 0f;
+        public float ArenaShrineSurgeCooldownMultiplierBonus => IsArenaShrineSurgeActive ? Mathf.Min(0f, _port.Tuning.ArenaShrineSurgeCooldownMultiplierBonus) : 0f;
+        public float ArenaShrineSurgePickupRangeBonus => IsArenaShrineSurgeActive ? Mathf.Max(0f, _port.Tuning.ArenaShrineSurgePickupRangeBonus) : 0f;
         private readonly ISurvivorsExplorationPort _port;
         public SurvivorsShrineEncounter(ISurvivorsExplorationPort port) => _port = port ?? throw new ArgumentNullException(nameof(port));
         private readonly HashSet<long> _members = new HashSet<long>();

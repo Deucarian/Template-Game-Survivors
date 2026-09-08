@@ -131,6 +131,21 @@ namespace Deucarian.TemplateGameSurvivors.Tests
             Assert.IsEmpty(port.Events);
         }
 
+        [Test]
+        public void HordeBonusProjectionUsesItsExistingClearTimerAndLiveClamps()
+        {
+            var port = new HordePort(); var horde = new SurvivorsHordeRushEncounter(port);
+            Assert.AreEqual(0, horde.HordeRushClearSurgePickupRangeBonus);
+            horde.SpawnHordeRushClearReward(Vector3.zero);
+            port.Tuning.HordeRushClearSurgePickupRangeBonus = 9;
+            port.Tuning.HordeRushClearSurgeCooldownMultiplierBonus = 2;
+            Assert.AreEqual(9, horde.HordeRushClearSurgePickupRangeBonus);
+            Assert.AreEqual(0, horde.HordeRushClearSurgeCooldownMultiplierBonus);
+            horde.TickHordeRushClearSurge(10);
+            Assert.IsFalse(horde.IsHordeRushClearSurgeActive);
+            Assert.AreEqual(0, horde.HordeRushClearSurgePickupRangeBonus);
+        }
+
         private sealed class HordePort : ISurvivorsHordeRushPort
         {
             public SurvivorsTemplateTuning Tuning { get; } = new SurvivorsTemplateTuning

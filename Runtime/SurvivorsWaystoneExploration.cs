@@ -6,6 +6,18 @@ namespace Deucarian.TemplateGameSurvivors
 {
     internal sealed class SurvivorsWaystoneExploration
     {
+        public bool IsWaystoneFocusActive => FocusRemaining > 0f;
+        public float WaystoneFocusRemainingSeconds => Mathf.Max(0f, FocusRemaining);
+        public float WaystoneFocusDamageBonus => IsWaystoneFocusActive ? Mathf.Max(0f, _port.Tuning.WaystoneFocusDamageBonus) : 0f;
+        public float WaystoneFocusMoveSpeedBonus => IsWaystoneFocusActive ? Mathf.Max(0f, _port.Tuning.WaystoneFocusMoveSpeedBonus) : 0f;
+        public float WaystoneFocusCooldownMultiplierBonus => IsWaystoneFocusActive ? Mathf.Min(0f, _port.Tuning.WaystoneFocusCooldownMultiplierBonus) : 0f;
+        public float WaystoneFocusPickupRangeBonus => IsWaystoneFocusActive ? Mathf.Max(0f, _port.Tuning.WaystoneFocusPickupRangeBonus) : 0f;
+        public bool IsWaystoneChainSurgeActive => ChainRemaining > 0f;
+        public float WaystoneChainSurgeRemainingSeconds => Mathf.Max(0f, ChainRemaining);
+        public float WaystoneChainSurgeDamageBonus => IsWaystoneChainSurgeActive ? Mathf.Max(0f, _port.Tuning.WaystoneChainDamageBonus) : 0f;
+        public float WaystoneChainSurgeMoveSpeedBonus => IsWaystoneChainSurgeActive ? Mathf.Max(0f, _port.Tuning.WaystoneChainMoveSpeedBonus) : 0f;
+        public float WaystoneChainSurgeCooldownMultiplierBonus => IsWaystoneChainSurgeActive ? Mathf.Min(0f, _port.Tuning.WaystoneChainCooldownMultiplierBonus) : 0f;
+        public float WaystoneChainSurgePickupRangeBonus => IsWaystoneChainSurgeActive ? Mathf.Max(0f, _port.Tuning.WaystoneChainPickupRangeBonus) : 0f;
         private readonly ISurvivorsExplorationPort _port;
         public SurvivorsWaystoneExploration(ISurvivorsExplorationPort port) => _port = port ?? throw new ArgumentNullException(nameof(port));
         private readonly HashSet<long> _discovered = new HashSet<long>();
