@@ -1124,6 +1124,33 @@ namespace Deucarian.TemplateGameSurvivors
             EvolutionChainSurgeCooldownMultiplierBonus,
             EndlessSurgeCooldownMultiplierBonus);
 
+        private string FormatPersistentUpgradeOptionLabel(int index, SurvivorsPersistentUpgradeDefinition upgrade)
+        {
+            if (upgrade == null) return string.Empty;
+            EnsureMetaProgressionLoaded();
+            int currentRank = _metaProgression.GetPersistentUpgradeRank(upgrade.Id.Value);
+            int nextCost = ResolveNextPersistentUpgradeCost(upgrade, currentRank);
+            return SurvivorsProgressionChoiceLabels.PersistentUpgradeOption(index, upgrade,
+                currentRank, nextCost, CurrencyRewardLabel);
+        }
+        private string FormatResultClassOptionLabel(int index, SurvivorsClassDefinition definition)
+        {
+            if (definition == null) return string.Empty;
+            bool unlocked = IsResultClassUnlocked(definition);
+            return SurvivorsProgressionChoiceLabels.ClassOption(index, definition, unlocked, SelectedClassId);
+        }
+        private static string FormatClassStatSummary(SurvivorsClassDefinition definition)
+            => SurvivorsProgressionChoiceLabels.ClassStats(definition);
+        private static string FormatClassStartingWeaponSummary(SurvivorsClassDefinition definition)
+            => SurvivorsProgressionChoiceLabels.ClassStartingWeapons(definition);
+        private static string FormatPersistentUpgradeEffectLabel(SurvivorsPersistentUpgradeDefinition upgrade)
+            => SurvivorsProgressionChoiceLabels.PersistentUpgradeEffect(upgrade);
+        private string ResolveClassDisplayName(string classId, string fallback)
+        {
+            EnsureClassLibraryLoaded();
+            return SurvivorsProgressionChoiceLabels.ClassDisplayName(_classLibrary, classId, fallback);
+        }
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -2738,111 +2765,10 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private string FormatPersistentUpgradeOptionLabel(int index, SurvivorsPersistentUpgradeDefinition upgrade)
-        {
-            if (upgrade == null)
-            {
-                return string.Empty;
-            }
 
-            EnsureMetaProgressionLoaded();
-            int currentRank = _metaProgression.GetPersistentUpgradeRank(upgrade.Id.Value);
-            int nextCost = ResolveNextPersistentUpgradeCost(upgrade, currentRank);
-            return $"{index + 1}. {upgrade.DisplayName} rank {currentRank}->{Mathf.Min(upgrade.MaxRank, currentRank + 1)}/{upgrade.MaxRank} ({nextCost} {CurrencyRewardLabel}) - {FormatPersistentUpgradeEffectLabel(upgrade)}";
-        }
 
-        private string FormatResultClassOptionLabel(int index, SurvivorsClassDefinition definition)
-        {
-            if (definition == null)
-            {
-                return string.Empty;
-            }
 
-            bool unlocked = IsResultClassUnlocked(definition);
-            bool selected = string.Equals(SelectedClassId, definition.Id, StringComparison.Ordinal);
-            string state = selected ? "Selected" : (unlocked ? "Unlocked" : "Locked");
-            return $"{index + 1}. {definition.DisplayName} [{state}]\n{FormatClassStatSummary(definition)} | {FormatClassStartingWeaponSummary(definition)}";
-        }
 
-        private static string FormatClassStatSummary(SurvivorsClassDefinition definition)
-        {
-            if (definition == null || definition.StartingStatModifiers.Count == 0)
-            {
-                return "Balanced";
-            }
-
-            var labels = new List<string>(definition.StartingStatModifiers.Count);
-            for (int i = 0; i < definition.StartingStatModifiers.Count; i++)
-            {
-                SurvivorsClassStatModifierDefinition modifier = definition.StartingStatModifiers[i];
-                if (modifier == null)
-                {
-                    continue;
-                }
-
-                if (modifier.StatKind == SurvivorsClassStatKind.MoveSpeed)
-                {
-                    labels.Add($"Move +{modifier.Amount:0.##}");
-                }
-                else if (modifier.StatKind == SurvivorsClassStatKind.Damage)
-                {
-                    labels.Add($"Dmg +{modifier.Amount:0.##}");
-                }
-                else if (modifier.StatKind == SurvivorsClassStatKind.MaxHealth)
-                {
-                    labels.Add($"HP +{modifier.Amount:0.#}");
-                }
-            }
-
-            return labels.Count == 0 ? "Balanced" : string.Join(", ", labels);
-        }
-
-        private static string FormatClassStartingWeaponSummary(SurvivorsClassDefinition definition)
-        {
-            if (definition == null || definition.StartingWeaponIds.Count == 0)
-            {
-                return "0 weapons";
-            }
-
-            return definition.StartingWeaponIds.Count == 1
-                ? "1 weapon"
-                : definition.StartingWeaponIds.Count.ToString() + " weapons";
-        }
-
-        private static string FormatPersistentUpgradeEffectLabel(SurvivorsPersistentUpgradeDefinition upgrade)
-        {
-            if (upgrade == null)
-            {
-                return string.Empty;
-            }
-
-            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaDamageEffectId, StringComparison.Ordinal))
-            {
-                return $"+{upgrade.AmountPerRank:0.#} starting damage";
-            }
-
-            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaMaxHealthEffectId, StringComparison.Ordinal))
-            {
-                return $"+{upgrade.AmountPerRank:0.#} max health";
-            }
-
-            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaPickupRangeEffectId, StringComparison.Ordinal))
-            {
-                return $"+{upgrade.AmountPerRank:0.#} pickup range";
-            }
-
-            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaExperienceGainEffectId, StringComparison.Ordinal))
-            {
-                return $"+{upgrade.AmountPerRank:P0} XP gain";
-            }
-
-            if (string.Equals(upgrade.EffectId, BasicSurvivorsGame.MetaDraftRerollEffectId, StringComparison.Ordinal))
-            {
-                return $"+{upgrade.AmountPerRank:0} draft reroll";
-            }
-
-            return upgrade.EffectId;
-        }
 
         private void RecordResultClassSelectionFeedback(SurvivorsClassDefinition selected)
         {
@@ -3693,15 +3619,6 @@ namespace Deucarian.TemplateGameSurvivors
             PlayFeedback(_bossPulse, PlayerPosition, 52, _levelUpClip);
         }
 
-        private string ResolveClassDisplayName(string classId, string fallback)
-        {
-            EnsureClassLibraryLoaded();
-            return _classLibrary != null &&
-                _classLibrary.TryGetClass(classId, out SurvivorsClassDefinition definition) &&
-                !string.IsNullOrWhiteSpace(definition.DisplayName)
-                    ? definition.DisplayName
-                    : fallback;
-        }
 
 
 
