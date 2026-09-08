@@ -205,10 +205,10 @@ namespace Deucarian.TemplateGameSurvivors
         { if (enemy != null) Defeats.HandleEnemyKilled(enemy, source, applyAugments); }
         void ISurvivorsEnemyDefeatPort.RecordKillMetric(SurvivorsEnemyRole role)
         {
-            RecordMetricTime(ref _firstKillTimeSeconds);
-            if (IsEliteRole(role)) RecordMetricTime(ref _firstEliteKillTimeSeconds);
-            else if (role == SurvivorsEnemyRole.Miniboss) RecordMetricTime(ref _firstMinibossKillTimeSeconds);
-            else if (role == SurvivorsEnemyRole.Boss) RecordMetricTime(ref _firstBossKillTimeSeconds);
+            Telemetry.Record(SurvivorsRunMetric.FirstKill, RunTimeSeconds);
+            if (IsEliteRole(role)) Telemetry.Record(SurvivorsRunMetric.FirstEliteKill, RunTimeSeconds);
+            else if (role == SurvivorsEnemyRole.Miniboss) Telemetry.Record(SurvivorsRunMetric.FirstMinibossKill, RunTimeSeconds);
+            else if (role == SurvivorsEnemyRole.Boss) Telemetry.Record(SurvivorsRunMetric.FirstBossKill, RunTimeSeconds);
         }
         SurvivorsEncounterClears ISurvivorsEnemyDefeatPort.ReleaseKilledEnemy(ISurvivorsDefeatTarget target)
         {
@@ -283,7 +283,7 @@ namespace Deucarian.TemplateGameSurvivors
                 currentHealth: CurrentHealth,
                 maxHealth: MaxHealth,
                 bestMomentLabel: _bestMomentLabel,
-                firstEvolutionAcquiredTimeSeconds: _firstEvolutionAcquiredTimeSeconds,
+                firstEvolutionAcquiredTimeSeconds: Telemetry.FirstEvolutionAcquiredTimeSeconds,
                 highestChosenRarityLabel: _highestChosenRarityLabel,
                 bestKillStreak: BestKillStreak),
             new SurvivorsRunSummaryCollection(
@@ -376,7 +376,7 @@ namespace Deucarian.TemplateGameSurvivors
         SurvivorsTemplateTuning ISurvivorsPickupCollectionPort.Tuning => CurrentTuning;
         float ISurvivorsPickupCollectionPort.PickupMagnetPulseIntervalReductionBonus => PickupMagnetPulseIntervalReductionBonus;
         Vector3 ISurvivorsPickupCollectionPort.PlayerPosition => PlayerPosition;
-        void ISurvivorsPickupCollectionPort.RecordFirstExperiencePickupTime() => RecordMetricTime(ref _firstExperiencePickupTimeSeconds);
+        void ISurvivorsPickupCollectionPort.RecordFirstExperiencePickupTime() => Telemetry.Record(SurvivorsRunMetric.FirstExperiencePickup, RunTimeSeconds);
         int ISurvivorsPickupCollectionPort.GainExperience(int amount) => GainExperience(amount);
         void ISurvivorsPickupCollectionPort.RecordExperienceCombo(int gained) => RecordExperienceCombo(gained);
         void ISurvivorsPickupCollectionPort.RestoreHealthFromPickup(int amount) => PlayerVitals.RestoreHealthFromPickup(amount);
@@ -501,6 +501,9 @@ namespace Deucarian.TemplateGameSurvivors
             pickupPulseLabel: FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds),
             evolutionLabel: ResolveEvolutionObjectiveHudLabel());
 
+
+        private readonly SurvivorsRunTelemetry Telemetry = new SurvivorsRunTelemetry();
+        private void RecordLevelCheckpoints() => Telemetry.RecordLevelCheckpoints(RunTimeSeconds, Level);
 
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -828,7 +831,7 @@ namespace Deucarian.TemplateGameSurvivors
         }
         void ISurvivorsDraftSessionPort.PresentDraft(SurvivorsRewardSelectionKind kind, RunUpgradeDraft upgradeDraft, SurvivorsRelicDraft relicDraft, bool opening)
         {
-            if (opening && kind == SurvivorsRewardSelectionKind.LevelUp) RecordMetricTime(ref _firstLevelUpDraftTimeSeconds);
+            if (opening && kind == SurvivorsRewardSelectionKind.LevelUp) Telemetry.Record(SurvivorsRunMetric.FirstLevelUpDraft, RunTimeSeconds);
             if (relicDraft != null) RecordRewardCardPresentation(relicDraft);
             else RecordRewardCardPresentation(kind, upgradeDraft);
         }
@@ -878,7 +881,7 @@ namespace Deucarian.TemplateGameSurvivors
         bool ISurvivorsRunBuildPort.HasWeapon(string id) => _weaponLoadout != null && _weaponLoadout.ContainsWeapon(id);
         void ISurvivorsRunBuildPort.AddWeapon(string id) => TryAddWeaponToLoadout(id);
         void ISurvivorsRunBuildPort.PassiveAdded(RunUpgradeDefinition upgrade) => TryTriggerPassiveLoadoutSurge(upgrade);
-        void ISurvivorsRunBuildPort.RecordEvolutionTime() => RecordMetricTime(ref _firstEvolutionAcquiredTimeSeconds);
+        void ISurvivorsRunBuildPort.RecordEvolutionTime() => Telemetry.Record(SurvivorsRunMetric.FirstEvolutionAcquired, RunTimeSeconds);
         void ISurvivorsRunBuildPort.EvolutionAdded(RunUpgradeDefinition upgrade)
         {
             TriggerWeaponEvolutionSurge(upgrade);
@@ -1107,22 +1110,6 @@ namespace Deucarian.TemplateGameSurvivors
         private RunUpgradeRarity _highestChosenRarity;
         private string _highestChosenRarityLabel = string.Empty;
         private string _bestMomentLabel = string.Empty;
-        private float _firstKillTimeSeconds;
-        private float _firstExperiencePickupTimeSeconds;
-        private float _firstLevelUpDraftTimeSeconds;
-        private float _firstEliteSpawnTimeSeconds;
-        private float _firstEliteKillTimeSeconds;
-        private float _firstMinibossSpawnTimeSeconds;
-        private float _firstMinibossKillTimeSeconds;
-        private float _firstBossSpawnTimeSeconds;
-        private float _firstBossKillTimeSeconds;
-        private float _firstEvolutionEligibilityTimeSeconds;
-        private float _firstEvolutionAcquiredTimeSeconds;
-        private int _levelAtOneMinute;
-        private int _levelAtTwoMinutes;
-        private int _levelAtThreeMinutes;
-        private int _levelAtFourMinutes;
-        private int _levelAtFiveMinutes;
         private SurvivorsThreatHudModel _threatHud;
         private SurvivorsThreatHudModel ThreatHud => _threatHud ??
             (_threatHud = new SurvivorsThreatHudModel(new SurvivorsEnemyHudSource(_enemies)));
@@ -1544,11 +1531,11 @@ namespace Deucarian.TemplateGameSurvivors
         public float CurrentPickupAttractionSpeed => Mathf.Max(0.1f, CurrentTuning.PickupAttractionSpeed + PickupAttractionSpeedBonus);
         public float CurrentPickupMagnetPulseIntervalSeconds => ResolvePickupMagnetPulseIntervalSeconds();
         public float LevelUpDraftCooldownRemainingSeconds => Mathf.Max(0f, _experienceProgression.DraftCooldownRemaining);
-        public int LevelAtOneMinute => _levelAtOneMinute;
-        public int LevelAtTwoMinutes => _levelAtTwoMinutes;
-        public int LevelAtThreeMinutes => _levelAtThreeMinutes;
-        public int LevelAtFourMinutes => _levelAtFourMinutes;
-        public int LevelAtFiveMinutes => _levelAtFiveMinutes;
+        public int LevelAtOneMinute => Telemetry.LevelAtOneMinute;
+        public int LevelAtTwoMinutes => Telemetry.LevelAtTwoMinutes;
+        public int LevelAtThreeMinutes => Telemetry.LevelAtThreeMinutes;
+        public int LevelAtFourMinutes => Telemetry.LevelAtFourMinutes;
+        public int LevelAtFiveMinutes => Telemetry.LevelAtFiveMinutes;
         public int MagnetPulseActivationCount => PickupCollection.MagnetPulseActivationCount;
         public string LastMagnetPulseFeedbackLabel => PickupCollection.LastMagnetPulseFeedbackLabel;
         public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
@@ -1682,17 +1669,17 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftRerollsRemaining => DraftSession.RerollsRemaining;
         public int DraftBanishesRemaining => DraftSession.BanishesRemaining;
         public int DraftSkipBloodShards => Mathf.Max(0, CurrentTuning.DraftSkipBloodShards);
-        public float FirstKillTimeSeconds => _firstKillTimeSeconds;
-        public float FirstExperiencePickupTimeSeconds => _firstExperiencePickupTimeSeconds;
-        public float FirstLevelUpDraftTimeSeconds => _firstLevelUpDraftTimeSeconds;
-        public float FirstEliteSpawnTimeSeconds => _firstEliteSpawnTimeSeconds;
-        public float FirstEliteKillTimeSeconds => _firstEliteKillTimeSeconds;
-        public float FirstMinibossSpawnTimeSeconds => _firstMinibossSpawnTimeSeconds;
-        public float FirstMinibossKillTimeSeconds => _firstMinibossKillTimeSeconds;
-        public float FirstBossSpawnTimeSeconds => _firstBossSpawnTimeSeconds;
-        public float FirstBossKillTimeSeconds => _firstBossKillTimeSeconds;
-        public float FirstEvolutionEligibilityTimeSeconds => _firstEvolutionEligibilityTimeSeconds;
-        public float FirstEvolutionAcquiredTimeSeconds => _firstEvolutionAcquiredTimeSeconds;
+        public float FirstKillTimeSeconds => Telemetry.FirstKillTimeSeconds;
+        public float FirstExperiencePickupTimeSeconds => Telemetry.FirstExperiencePickupTimeSeconds;
+        public float FirstLevelUpDraftTimeSeconds => Telemetry.FirstLevelUpDraftTimeSeconds;
+        public float FirstEliteSpawnTimeSeconds => Telemetry.FirstEliteSpawnTimeSeconds;
+        public float FirstEliteKillTimeSeconds => Telemetry.FirstEliteKillTimeSeconds;
+        public float FirstMinibossSpawnTimeSeconds => Telemetry.FirstMinibossSpawnTimeSeconds;
+        public float FirstMinibossKillTimeSeconds => Telemetry.FirstMinibossKillTimeSeconds;
+        public float FirstBossSpawnTimeSeconds => Telemetry.FirstBossSpawnTimeSeconds;
+        public float FirstBossKillTimeSeconds => Telemetry.FirstBossKillTimeSeconds;
+        public float FirstEvolutionEligibilityTimeSeconds => Telemetry.FirstEvolutionEligibilityTimeSeconds;
+        public float FirstEvolutionAcquiredTimeSeconds => Telemetry.FirstEvolutionAcquiredTimeSeconds;
         public float DamageTakenThisRun => PlayerVitals.DamageTaken;
         public int ThrottledExperienceOverflow => _experienceProgression.ThrottledExperienceOverflow;
         public int DraftOpenCount => DraftSession.OpenCount;
@@ -3238,18 +3225,18 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _runMetricsLines.Add($"Runtime {FormatMetricTime(RunTimeSeconds)} - state {State}");
-            AppendMetricTime(_runMetricsLines, "First kill", _firstKillTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First XP pickup", _firstExperiencePickupTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First level-up draft", _firstLevelUpDraftTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First elite spawn", _firstEliteSpawnTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First elite kill", _firstEliteKillTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First miniboss spawn", _firstMinibossSpawnTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First miniboss kill", _firstMinibossKillTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First boss spawn", _firstBossSpawnTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First boss kill", _firstBossKillTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First evolution ready", _firstEvolutionEligibilityTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First evolution acquired", _firstEvolutionAcquiredTimeSeconds);
-            _runMetricsLines.Add($"Levels 1m {FormatMetricLevel(_levelAtOneMinute)}, 2m {FormatMetricLevel(_levelAtTwoMinutes)}, 3m {FormatMetricLevel(_levelAtThreeMinutes)}, 4m {FormatMetricLevel(_levelAtFourMinutes)}, 5m {FormatMetricLevel(_levelAtFiveMinutes)}");
+            AppendMetricTime(_runMetricsLines, "First kill", Telemetry.FirstKillTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First XP pickup", Telemetry.FirstExperiencePickupTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First level-up draft", Telemetry.FirstLevelUpDraftTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First elite spawn", Telemetry.FirstEliteSpawnTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First elite kill", Telemetry.FirstEliteKillTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First miniboss spawn", Telemetry.FirstMinibossSpawnTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First miniboss kill", Telemetry.FirstMinibossKillTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First boss spawn", Telemetry.FirstBossSpawnTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First boss kill", Telemetry.FirstBossKillTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First evolution ready", Telemetry.FirstEvolutionEligibilityTimeSeconds);
+            AppendMetricTime(_runMetricsLines, "First evolution acquired", Telemetry.FirstEvolutionAcquiredTimeSeconds);
+            _runMetricsLines.Add($"Levels 1m {FormatMetricLevel(Telemetry.LevelAtOneMinute)}, 2m {FormatMetricLevel(Telemetry.LevelAtTwoMinutes)}, 3m {FormatMetricLevel(Telemetry.LevelAtThreeMinutes)}, 4m {FormatMetricLevel(Telemetry.LevelAtFourMinutes)}, 5m {FormatMetricLevel(Telemetry.LevelAtFiveMinutes)}");
             _runMetricsLines.Add($"Drafts level {LevelUpDraftOpenCount}, total {DraftSession.OpenCount}, pending {PendingLevelUps}, weapons {ActiveWeaponCount}/{MaxWeaponSlots}, passives {ActivePassiveCount}/{MaxPassiveSlots}, evolutions {EvolvedWeaponCount}");
             _runMetricsLines.Add($"Kills {KilledCount}, XP {ExperienceCollected}, stored {Experience}/{RequiredExperienceForNextLevel}, overflow {ThrottledExperienceOverflow}, damage taken {PlayerVitals.DamageTaken:0.#}");
             _runMetricsLines.Add($"Pickup range {CurrentPickupAttractRange:0.#}, pull {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, markers {ActiveOffscreenThreatMarkerCount}, recycles {NormalEnemyRecycleCount}, major repositions {MajorThreatRepositionCount}");
@@ -3270,61 +3257,12 @@ namespace Deucarian.TemplateGameSurvivors
         private void ResetRunMetrics()
         {
             DraftSession.ResetOpenCount();
-            _firstKillTimeSeconds = -1f;
-            _firstExperiencePickupTimeSeconds = -1f;
-            _firstLevelUpDraftTimeSeconds = -1f;
-            _firstEliteSpawnTimeSeconds = -1f;
-            _firstEliteKillTimeSeconds = -1f;
-            _firstMinibossSpawnTimeSeconds = -1f;
-            _firstMinibossKillTimeSeconds = -1f;
-            _firstBossSpawnTimeSeconds = -1f;
-            _firstBossKillTimeSeconds = -1f;
-            _firstEvolutionEligibilityTimeSeconds = -1f;
-            _firstEvolutionAcquiredTimeSeconds = -1f;
+            Telemetry.Reset();
             PlayerVitals.ResetDamageTaken();
-            _levelAtOneMinute = -1;
-            _levelAtTwoMinutes = -1;
-            _levelAtThreeMinutes = -1;
-            _levelAtFourMinutes = -1;
-            _levelAtFiveMinutes = -1;
             _runMetricsLines.Clear();
         }
 
-        private void RecordMetricTime(ref float field)
-        {
-            if (field < 0f)
-            {
-                field = RunTimeSeconds;
-            }
-        }
 
-        private void RecordLevelCheckpoints()
-        {
-            if (_levelAtOneMinute < 0 && RunTimeSeconds >= 60f)
-            {
-                _levelAtOneMinute = Level;
-            }
-
-            if (_levelAtTwoMinutes < 0 && RunTimeSeconds >= 120f)
-            {
-                _levelAtTwoMinutes = Level;
-            }
-
-            if (_levelAtThreeMinutes < 0 && RunTimeSeconds >= 180f)
-            {
-                _levelAtThreeMinutes = Level;
-            }
-
-            if (_levelAtFourMinutes < 0 && RunTimeSeconds >= 240f)
-            {
-                _levelAtFourMinutes = Level;
-            }
-
-            if (_levelAtFiveMinutes < 0 && RunTimeSeconds >= 300f)
-            {
-                _levelAtFiveMinutes = Level;
-            }
-        }
 
         private void TickLevelUpDraftCooldown(float deltaTime)
         {
@@ -4297,7 +4235,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordEvolutionReadyFeedback(RunUpgradeDefinition evolution)
         {
-            RecordMetricTime(ref _firstEvolutionEligibilityTimeSeconds);
+            Telemetry.Record(SurvivorsRunMetric.FirstEvolutionEligibility, RunTimeSeconds);
             string name = ResolveUpgradeDisplayName(evolution.Id);
             _evolutionReadyBanner.Show($"Evolution Ready: {name}", EvolutionReadyFeedbackDurationSeconds, Color.white);
             EvolutionReadyFeedbackCount++;
@@ -4621,19 +4559,19 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (role == SurvivorsEnemyRole.Miniboss)
             {
-                RecordMetricTime(ref _firstMinibossSpawnTimeSeconds);
+                Telemetry.Record(SurvivorsRunMetric.FirstMinibossSpawn, RunTimeSeconds);
                 MinibossSpawnCount++;
                 PlayFeedback(_bossPulse, enemy.transform.position, 42, _bossClip);
             }
             else if (role == SurvivorsEnemyRole.Boss)
             {
-                RecordMetricTime(ref _firstBossSpawnTimeSeconds);
+                Telemetry.Record(SurvivorsRunMetric.FirstBossSpawn, RunTimeSeconds);
                 BossSpawnCount++;
                 PlayFeedback(_bossPulse, enemy.transform.position, 58, _bossClip);
             }
             else if (IsEliteRole(role))
             {
-                RecordMetricTime(ref _firstEliteSpawnTimeSeconds);
+                Telemetry.Record(SurvivorsRunMetric.FirstEliteSpawn, RunTimeSeconds);
                 PlayFeedback(_bossPulse, enemy.transform.position, 30, _bossClip);
             }
             else
