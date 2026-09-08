@@ -14,7 +14,7 @@
 - `SurvivorsRunState`
 - `SurvivorsPickupKind`
 
-`Runtime/SurvivorsTemplateController.cs` contains the run composition root, local actors, and local genre adapters:
+`Runtime/SurvivorsTemplateController.cs` remains the serialized run composition root and public compatibility facade. Its composed responsibilities are documented in `runtime-composition.md`. Enemy, projectile, pickup, and spawn-pose resolver types now have their own source files while retaining their namespace, assembly, public identity, and gameplay contracts. The template as a whole provides:
 
 - `SurvivorsTemplateController`
 - `SurvivorsEnemyActor`

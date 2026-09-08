@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -22,7 +22,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const string PickupPulseName = "Survivors Pickup Pulse";
         private const string LevelUpPulseName = "Survivors Level Up Pulse";
         private const string BossPulseName = "Survivors Boss Cue Pulse";
-        private const string FeedbackAudioName = "Survivors Feedback Audio";
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -63,9 +62,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const float StreakSurgePickupRangeBonusPerTier = 0.18f;
         private const int DefaultMaxWeaponSlots = 6;
         private const int DefaultMaxPassiveSlots = 6;
-        private const float DamagePopupLifetimeSeconds = 0.9f;
-        private const float DamagePopupRiseHeight = 1.25f;
-        private const int DamagePopupLimit = 72;
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
@@ -82,20 +78,8 @@ namespace Deucarian.TemplateGameSurvivors
         private const float ExperienceComboFeedbackDurationSeconds = 1.35f;
         private const int ExperienceComboMinimumPickupCount = 3;
         private const float EnemyHitFlashSeconds = 0.13f;
-        private const float EnemyDeathEffectLifetimeSeconds = 0.42f;
-        private const int EnemyDeathEffectLimit = 56;
         private const float BaseDeathNovaRadius = 1.65f;
-        private const float MajorRewardDropLifetimeSeconds = 1.25f;
-        private const int MajorRewardDropEffectLimit = 8;
         private const float MajorRewardPickupCacheRadiusPadding = 0.55f;
-        private const int MajorThreatSlamTelegraphEffectLimit = 12;
-        private const float MajorThreatSlamTelegraphFadePaddingSeconds = 0.12f;
-        private const int IncomingThreatTelegraphEffectLimit = 6;
-        private const float IncomingThreatTelegraphFadePaddingSeconds = 0.18f;
-        private const float EnemyRangedAttackFeedbackLifetimeSeconds = 0.34f;
-        private const int EnemyRangedAttackFeedbackLimit = 28;
-        private const float EndlessSpawnIntervalMultiplier = 0.82f;
-        private const int EndlessEnemyAliveBonus = 24;
         private const int NormalDraftRarityLockSeedSalt = 7919;
         private const int EarlyPassiveDraftLockSeedSalt = 12289;
         private const int EvolutionPrimerPassiveDraftLockSeedSalt = 17443;
@@ -131,33 +115,6 @@ namespace Deucarian.TemplateGameSurvivors
             Modes = 6
         }
 
-        private struct DraftCardPresentation
-        {
-            public int Index;
-            public string Hotkey;
-            public string Name;
-            public string RarityLabel;
-            public string CategoryId;
-            public string CategoryLabel;
-            public string AffectedLabel;
-            public string RankLabel;
-            public string Description;
-            public string EffectPreview;
-            public string RequirementHint;
-            public string IconId;
-            public string StyleToken;
-            public bool IsEvolution;
-            public Color AccentColor;
-
-            public string Summary
-            {
-                get
-                {
-                    return $"{Hotkey} | {Name} | {RarityLabel} | {CategoryLabel} | {AffectedLabel} | {RankLabel} | {Description} | Preview: {EffectPreview} | {RequirementHint}";
-                }
-            }
-        }
-
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
         private static readonly string[] EmptyWeaponIds = Array.Empty<string>();
@@ -186,16 +143,21 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<Transform> _arenaTiles = new List<Transform>(25);
         private readonly List<Transform> _arenaLandmarks = new List<Transform>(InfiniteArenaLandmarkCount);
         private readonly List<long> _arenaLandmarkKeys = new List<long>(InfiniteArenaLandmarkCount);
-        private readonly List<SurvivorsDamagePopup> _damagePopups = new List<SurvivorsDamagePopup>(DamagePopupLimit);
-        private readonly List<SurvivorsWorldFeedbackEffect> _worldFeedbackEffects = new List<SurvivorsWorldFeedbackEffect>(EnemyDeathEffectLimit);
-        private readonly List<SurvivorsRewardDropFeedbackEffect> _rewardDropFeedbackEffects = new List<SurvivorsRewardDropFeedbackEffect>(MajorRewardDropEffectLimit);
-        private readonly List<SurvivorsMajorThreatSlamTelegraphEffect> _majorThreatSlamTelegraphEffects = new List<SurvivorsMajorThreatSlamTelegraphEffect>(MajorThreatSlamTelegraphEffectLimit);
-        private readonly List<SurvivorsIncomingThreatTelegraphEffect> _incomingThreatTelegraphEffects = new List<SurvivorsIncomingThreatTelegraphEffect>(IncomingThreatTelegraphEffectLimit);
-        private readonly List<SurvivorsEnemyRangedAttackFeedbackEffect> _enemyRangedAttackFeedbackEffects = new List<SurvivorsEnemyRangedAttackFeedbackEffect>(EnemyRangedAttackFeedbackLimit);
+        private readonly SurvivorsFeedbackBannerPresenter _rewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Reward);
+        private readonly SurvivorsFeedbackBannerPresenter _streakRewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Streak);
+        private readonly SurvivorsFeedbackBannerPresenter _classUnlockRewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.ClassUnlock);
+        private readonly SurvivorsFeedbackBannerPresenter _experienceComboBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Experience);
+        private readonly SurvivorsFeedbackBannerPresenter _evolutionReadyBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Evolution);
+        private SurvivorsCombatFeedbackPresenter _combatFeedback;
+        private SurvivorsCombatFeedbackPresenter CombatFeedback => _combatFeedback ?? (_combatFeedback = new SurvivorsCombatFeedbackPresenter(() => _feedbackRoot));
+        private SurvivorsThreatTelegraphPresenter _threatTelegraphs;
+        private SurvivorsThreatTelegraphPresenter ThreatTelegraphs => _threatTelegraphs ?? (_threatTelegraphs = new SurvivorsThreatTelegraphPresenter(() => _feedbackRoot));
+        private SurvivorsRewardDropPresenter _rewardDrops;
+        private SurvivorsRewardDropPresenter RewardDrops => _rewardDrops ?? (_rewardDrops = new SurvivorsRewardDropPresenter(() => _feedbackRoot, () => ActiveUiTheme));
+        private readonly SurvivorsDamagePopupPresenter _damageFeedback = new SurvivorsDamagePopupPresenter();
         private readonly List<string> _lastRunSummaryLines = new List<string>(8);
         private readonly List<string> _runMetricsLines = new List<string>(16);
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
-        private readonly Dictionary<string, float> _audioEventNextAllowedTime = new Dictionary<string, float>(StringComparer.Ordinal);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
         private readonly HashSet<SurvivorsEnemyActor> _activeHordeRushEnemies = new HashSet<SurvivorsEnemyActor>();
@@ -231,30 +193,28 @@ namespace Deucarian.TemplateGameSurvivors
         private ParticleSystem _pickupPulse;
         private ParticleSystem _levelUpPulse;
         private ParticleSystem _bossPulse;
-        private AudioSource _feedbackAudio;
-        private AudioClip _spawnClip;
-        private AudioClip _fireClip;
-        private AudioClip _killClip;
-        private AudioClip _pickupClip;
-        private AudioClip _levelUpClip;
-        private AudioClip _bossClip;
-        private AudioClip _dangerClip;
-        private GUIStyle _hudTitleStyle;
-        private GUIStyle _hudLabelStyle;
-        private GUIStyle _hudSmallStyle;
-        private GUIStyle _damagePopupStyle;
-        private GUIStyle _playerDamagePopupStyle;
-        private GUIStyle _lowHealthStyle;
-        private GUIStyle _majorThreatWarningStyle;
-        private GUIStyle _rewardFeedbackStyle;
-        private GUIStyle _draftTitleStyle;
-        private GUIStyle _draftCardNameStyle;
-        private GUIStyle _draftCardMetaStyle;
-        private GUIStyle _draftCardDescriptionStyle;
-        private GUIStyle _draftCardHotkeyStyle;
-        private GUIStyle _menuTitleStyle;
-        private GUIStyle _menuTabStyle;
-        private GUIStyle _transparentButtonStyle;
+        private AudioClip _spawnClip => AudioPresentation.SpawnClip;
+        private AudioClip _fireClip => AudioPresentation.FireClip;
+        private AudioClip _killClip => AudioPresentation.KillClip;
+        private AudioClip _pickupClip => AudioPresentation.PickupClip;
+        private AudioClip _levelUpClip => AudioPresentation.LevelUpClip;
+        private AudioClip _bossClip => AudioPresentation.BossClip;
+        private AudioClip _dangerClip => AudioPresentation.DangerClip;
+        private readonly SurvivorsHudStyles _hudStyles = new SurvivorsHudStyles();
+        private GUIStyle _hudTitleStyle => _hudStyles.HudTitleStyle;
+        private GUIStyle _hudLabelStyle => _hudStyles.HudLabelStyle;
+        private GUIStyle _hudSmallStyle => _hudStyles.HudSmallStyle;
+        private GUIStyle _lowHealthStyle => _hudStyles.LowHealthStyle;
+        private GUIStyle _majorThreatWarningStyle => _hudStyles.MajorThreatWarningStyle;
+        private GUIStyle _rewardFeedbackStyle => _hudStyles.RewardFeedbackStyle;
+        private GUIStyle _draftTitleStyle => _hudStyles.DraftTitleStyle;
+        private GUIStyle _draftCardNameStyle => _hudStyles.DraftCardNameStyle;
+        private GUIStyle _draftCardMetaStyle => _hudStyles.DraftCardMetaStyle;
+        private GUIStyle _draftCardDescriptionStyle => _hudStyles.DraftCardDescriptionStyle;
+        private GUIStyle _draftCardHotkeyStyle => _hudStyles.DraftCardHotkeyStyle;
+        private GUIStyle _menuTitleStyle => _hudStyles.MenuTitleStyle;
+        private GUIStyle _menuTabStyle => _hudStyles.MenuTabStyle;
+        private GUIStyle _transparentButtonStyle => _hudStyles.TransparentButtonStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService;
         private HealthState _playerHealth;
@@ -279,10 +239,30 @@ namespace Deucarian.TemplateGameSurvivors
         private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> _upgradeClassGates;
         private SurvivorsClassLibraryDefinition _classLibrary;
         private SurvivorsClassDefinition _selectedClass;
-        private SurvivorsMetaProgressionService _metaProgression;
-        private IPersistenceService _injectedMetaPersistence;
-        private SaveSlotId _metaSaveSlotId = new SaveSlotId("survivors-template");
-        private float _enemySpawnTimer;
+        private SurvivorsMetaProgressionService _metaProgression => _profileSession.Current;
+        private SurvivorsTimedEncounterDirector _timedEncounters;
+        private SurvivorsTimedEncounterDirector TimedEncounters => _timedEncounters ??
+            (_timedEncounters = new SurvivorsTimedEncounterDirector(this));
+        SurvivorsRunFlowRuntime ISurvivorsTimedEncounterPort.RunFlow => _runFlow;
+        SurvivorsTemplateTuning ISurvivorsTimedEncounterPort.Tuning => CurrentTuning;
+        float ISurvivorsTimedEncounterPort.RunTime => RunTimeSeconds;
+        bool ISurvivorsTimedEncounterPort.IsEndlessPlaying => IsEndlessRun;
+        bool ISurvivorsTimedEncounterPort.TrySpawn(SurvivorsEnemyRole role, string source) =>
+            SpawnEnemy(Vector3.zero, explicitPosition: false, role, gameplaySpawn: true, spawnSource: source) != null;
+        void ISurvivorsTimedEncounterPort.EnterVictory() => EnterVictory();
+        void ISurvivorsTimedEncounterPort.ShowWarning(SurvivorsEnemyRole role, string label, float remainingSeconds)
+        {
+            RecordIncomingThreatTelegraph(PlayerPosition, role, label, ResolveIncomingThreatTelegraphRadius(role), remainingSeconds);
+            PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 44 : 28, _dangerClip,
+                role == SurvivorsEnemyRole.Boss ? AudioEventBossWarning : AudioEventEliteWarning, 0.35f);
+        }
+
+        private SurvivorsSwarmSpawnCoordinator _swarmSpawning;
+        private SurvivorsSwarmSpawnCoordinator SwarmSpawning => _swarmSpawning ??
+            (_swarmSpawning = new SurvivorsSwarmSpawnCoordinator(this));
+        long ISurvivorsSwarmSpawnPort.SpawnSequence => _spawnSequence;
+        bool ISurvivorsSwarmSpawnPort.TrySpawn(SurvivorsEnemyRole role) =>
+            SpawnEnemy(Vector3.zero, explicitPosition: false, role, gameplaySpawn: true, spawnSource: "normal-pack") != null;
         private float _playerInvulnerabilityTimer;
         private float _dashCooldownTimer;
         private float _rewardSelectionTimer;
@@ -306,7 +286,16 @@ namespace Deucarian.TemplateGameSurvivors
         private float _payloadHazardChainWindowTimer;
         private float _payloadHazardChainCooldownTimer;
         private int _payloadHazardChainSnareCount;
-        private bool _runStarted;
+        private SurvivorsUpgradeModifiers _upgradeModifiers;
+        private SurvivorsUpgradeModifiers UpgradeModifiers => _upgradeModifiers ?? (_upgradeModifiers = new SurvivorsUpgradeModifiers(this));
+        private readonly SurvivorsRunSession _runSession = new SurvivorsRunSession();
+        private readonly SurvivorsExperienceProgression _experienceProgression = new SurvivorsExperienceProgression();
+        private SurvivorsAudioPresenter _audioPresentation;
+        private SurvivorsAudioPresenter AudioPresentation => _audioPresentation ??
+            (_audioPresentation = new SurvivorsAudioPresenter(() => ActiveUiTheme, () => Time.unscaledTime));
+        private SurvivorsAudioEventRouter _audioEvents => AudioPresentation.Events;
+        private readonly SurvivorsProfileSession _profileSession = new SurvivorsProfileSession(
+            () => new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider())));
         private bool _runModeSelectionOpen;
         private bool _debugOverlayVisible;
         private bool _buildMenuOpen;
@@ -318,9 +307,6 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _tutorialOverlayOpen;
         private int _tutorialStepIndex;
         private int _selectedUiThemeIndex;
-        private bool _audioMuted;
-        private int _audioEventDispatchCount;
-        private string _lastAudioEventId = string.Empty;
         private string _lastRunSummaryTitle = string.Empty;
         private RunUpgradeRarity _highestChosenRarity;
         private string _highestChosenRarityLabel = string.Empty;
@@ -328,45 +314,15 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _lowHealthClutchPulseUsed;
         private bool _weaponLoadoutSurgeUsed;
         private bool _passiveLoadoutSurgeUsed;
-        private bool _ownsMetaProgressionService;
-        private bool _metaProfileLoaded;
         private bool _runRewardsGranted;
         private bool _pendingVictoryAfterRewardDraft;
         private bool _pendingBossRelicAfterRewardDraft;
-        private bool _victoryClearedThisRun;
-        private bool _firstEliteWarningShown;
-        private bool _firstDreadEliteWarningShown;
-        private float _timedEliteWarningTargetTimeSeconds;
-        private float _timedDreadEliteWarningTargetTimeSeconds;
-        private bool _minibossWarningShown;
-        private bool _bossWarningShown;
-        private bool _endlessEliteWarningShown;
-        private bool _endlessMinibossWarningShown;
-        private bool _endlessBossWarningShown;
-        private float _nextEndlessEliteSpawnTimeSeconds;
-        private float _nextEndlessMinibossSpawnTimeSeconds;
-        private float _nextEndlessBossSpawnTimeSeconds;
-        private int _endlessEliteSpawnSequence;
         private bool _hordeRushWarningShown;
         private float _nextHordeRushTimeSeconds;
         private int _hordeRushSequence;
         private string _hordeRushWarningLabel = string.Empty;
         private float _hordeRushWarningTargetTimeSeconds;
-        private string _majorThreatWarningLabel = string.Empty;
-        private float _majorThreatWarningTargetTimeSeconds;
-        private string _rewardFeedbackLabel = string.Empty;
-        private Color _rewardFeedbackColor = Color.white;
-        private float _rewardFeedbackTimer;
-        private string _streakRewardFeedbackLabel = string.Empty;
-        private Color _streakRewardFeedbackColor = Color.white;
-        private float _streakRewardFeedbackTimer;
-        private string _classUnlockRewardFeedbackLabel = string.Empty;
-        private float _classUnlockRewardFeedbackTimer;
-        private string _evolutionReadyFeedbackLabel = string.Empty;
-        private float _evolutionReadyFeedbackTimer;
-        private string _experienceComboFeedbackLabel = string.Empty;
         private float _experienceComboTimer;
-        private float _experienceComboFeedbackTimer;
         private float _gemRushTimer;
         private int _experienceComboPickupCount;
         private int _experienceComboAmount;
@@ -386,7 +342,6 @@ namespace Deucarian.TemplateGameSurvivors
         private float _firstEvolutionAcquiredTimeSeconds;
         private float _damageTakenThisRun;
         private int _draftOpenCount;
-        private float _levelUpDraftCooldownTimer;
         private int _levelAtOneMinute;
         private int _levelAtTwoMinutes;
         private int _levelAtThreeMinutes;
@@ -400,10 +355,10 @@ namespace Deucarian.TemplateGameSurvivors
         private float _lastGameplaySpawnPadding;
         private bool _lastGameplaySpawnWasInsideCameraViewport;
 
-        public SurvivorsRunState State { get; private set; } = SurvivorsRunState.Booting;
-        public int Level { get; private set; } = 1;
-        public int Experience { get; private set; }
-        public int PendingLevelUps { get; private set; }
+        public SurvivorsRunState State => _runSession.State;
+        public int Level => _experienceProgression.Level;
+        public int Experience => _experienceProgression.Experience;
+        public int PendingLevelUps => _experienceProgression.PendingLevelUps;
         public int SpawnedCount { get; private set; }
         public int KilledCount { get; private set; }
         public int ProjectileLaunchCount { get; private set; }
@@ -478,7 +433,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int RewardJackpotBloodShardsDropped { get; private set; }
         public string LastRewardJackpotFeedbackLabel { get; private set; } = string.Empty;
         public int RewardAutoSelectCount { get; private set; }
-        public int EndlessThreatSpawnCount { get; private set; }
+        public int EndlessThreatSpawnCount => TimedEncounters.EndlessThreatSpawnCount;
         public int EndlessSurgeActivationCount { get; private set; }
         public int EndlessSurgeTier { get; private set; }
         public int EndlessSurgeExperienceGemDropCount { get; private set; }
@@ -502,7 +457,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftSkipCount { get; private set; }
         public int ClassUnlockRewardCount { get; private set; }
         public string LastClassUnlockRewardFeedbackLabel { get; private set; } = string.Empty;
-        public int DamagePopupSpawnCount { get; private set; }
+        public int DamagePopupSpawnCount => _damageFeedback.SpawnCount;
         public int PlayerDamageFeedbackCount { get; private set; }
         public int LowHealthClutchPulseCount { get; private set; }
         public int LowHealthClutchPulseHitCount { get; private set; }
@@ -515,12 +470,12 @@ namespace Deucarian.TemplateGameSurvivors
         public int CriticalHitFeedbackCount { get; private set; }
         public int DeathNovaTriggerCount { get; private set; }
         public int DeathNovaHitCount { get; private set; }
-        public int EnemyDeathEffectCount { get; private set; }
-        public int EnemyRangedAttackFeedbackCount { get; private set; }
+        public int EnemyDeathEffectCount => CombatFeedback.EnemyDeathEffectCount;
+        public int EnemyRangedAttackFeedbackCount => CombatFeedback.EnemyRangedAttackFeedbackCount;
         public int EnemyRangedAttackDodgeFeedbackCount { get; private set; }
         public int EnemyRangedAttackDodgeExperienceGemDropCount { get; private set; }
         public string LastEnemyRangedAttackDodgeFeedbackLabel { get; private set; } = string.Empty;
-        public int MajorRewardDropFeedbackCount { get; private set; }
+        public int MajorRewardDropFeedbackCount => RewardDrops.MajorRewardDropFeedbackCount;
         public int MajorRewardCacheDropCount { get; private set; }
         public int MajorRewardCacheExperienceGemDropCount { get; private set; }
         public int MajorRewardCacheSpecialDropCount { get; private set; }
@@ -539,17 +494,17 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastMetaUpgradePurchaseFeedbackLabel { get; private set; } = string.Empty;
         public int ResultClassSelectionCount { get; private set; }
         public string LastResultClassSelectionFeedbackLabel { get; private set; } = string.Empty;
-        public int MajorThreatWarningCount { get; private set; }
+        public int MajorThreatWarningCount => TimedEncounters.MajorThreatWarningCount;
         public int MajorThreatEnrageCount { get; private set; }
         public int MajorThreatEnrageSupportSpawnCount { get; private set; }
         public string LastMajorThreatEnrageFeedbackLabel { get; private set; } = string.Empty;
         public int MajorThreatSlamWarningCount { get; private set; }
         public int MajorThreatSlamCastCount { get; private set; }
         public int MajorThreatSlamHitCount { get; private set; }
-        public int MajorThreatSlamTelegraphEffectCount { get; private set; }
-        public int IncomingThreatTelegraphEffectCount { get; private set; }
+        public int MajorThreatSlamTelegraphEffectCount => ThreatTelegraphs.MajorThreatSlamTelegraphEffectCount;
+        public int IncomingThreatTelegraphEffectCount => ThreatTelegraphs.IncomingThreatTelegraphEffectCount;
         public string LastMajorThreatSlamFeedbackLabel { get; private set; } = string.Empty;
-        public string LastIncomingThreatTelegraphLabel { get; private set; } = string.Empty;
+        public string LastIncomingThreatTelegraphLabel => ThreatTelegraphs.LastIncomingThreatTelegraphLabel;
         public int ExperiencePickupFeedbackCount { get; private set; }
         public int ExperienceComboFeedbackCount { get; private set; }
         public int GemRushActivationCount { get; private set; }
@@ -569,9 +524,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int RewardSelectionFeedbackCount { get; private set; }
         public string LastRewardCardPresentationLabel { get; private set; } = string.Empty;
         public string LastRewardSelectionFeedbackLabel { get; private set; } = string.Empty;
-        public string LastMajorRewardDropFeedbackLabel { get; private set; } = string.Empty;
+        public string LastMajorRewardDropFeedbackLabel => RewardDrops.LastMajorRewardDropFeedbackLabel;
         public string LastMajorRewardCacheFeedbackLabel { get; private set; } = string.Empty;
-        public int ExperienceCollected { get; private set; }
+        public int ExperienceCollected => _experienceProgression.ExperienceCollected;
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
         public int RoamingCacheDropCount { get; private set; }
@@ -700,51 +655,51 @@ namespace Deucarian.TemplateGameSurvivors
         public int LegacyExperienceEarnedThisRun { get; private set; }
         public SurvivorsRunRewardSummary LastRunResult { get; private set; }
         public IReadOnlyList<string> LastRunSummaryLines => _lastRunSummaryLines;
-        public float RunTimeSeconds { get; private set; }
-        public float MoveSpeedBonus { get; private set; }
-        public float DamageBonus { get; private set; }
-        public float PersistentDamageBonus { get; private set; }
-        public float PersistentMaxHealthBonus { get; private set; }
-        public float PersistentPickupRangeBonus { get; private set; }
-        public float PersistentExperienceGainMultiplierBonus { get; private set; }
-        public int PersistentDraftRerollBonus { get; private set; }
-        public float RelicDamageBonus { get; private set; }
-        public float RelicCooldownMultiplierBonus { get; private set; }
-        public float RelicPickupRangeBonus { get; private set; }
-        public float WeaponCooldownMultiplierBonus { get; private set; }
-        public float PickupRangeBonus { get; private set; }
+        public float RunTimeSeconds => _runSession.ElapsedSeconds;
+        public float MoveSpeedBonus => UpgradeModifiers.MoveSpeedBonus;
+        public float DamageBonus => UpgradeModifiers.DamageBonus;
+        public float PersistentDamageBonus => UpgradeModifiers.PersistentDamageBonus;
+        public float PersistentMaxHealthBonus => UpgradeModifiers.PersistentMaxHealthBonus;
+        public float PersistentPickupRangeBonus => UpgradeModifiers.PersistentPickupRangeBonus;
+        public float PersistentExperienceGainMultiplierBonus => UpgradeModifiers.PersistentExperienceGainMultiplierBonus;
+        public int PersistentDraftRerollBonus => UpgradeModifiers.PersistentDraftRerollBonus;
+        public float RelicDamageBonus => UpgradeModifiers.RelicDamageBonus;
+        public float RelicCooldownMultiplierBonus => UpgradeModifiers.RelicCooldownMultiplierBonus;
+        public float RelicPickupRangeBonus => UpgradeModifiers.RelicPickupRangeBonus;
+        public float WeaponCooldownMultiplierBonus => UpgradeModifiers.WeaponCooldownMultiplierBonus;
+        public float PickupRangeBonus => UpgradeModifiers.PickupRangeBonus;
         public float BarrierValue { get; private set; }
-        public float BarrierCapacityBonus { get; private set; }
-        public float BarrierRegenPerSecondBonus { get; private set; }
-        public float BarrierOnDamageRatio { get; private set; }
-        public float PoisonDamageRatio { get; private set; }
-        public float BleedDamageRatio { get; private set; }
-        public float ExecuteThresholdNormalized { get; private set; }
-        public float CriticalChanceBonus { get; private set; }
-        public float CriticalDamageMultiplierBonus { get; private set; }
-        public float DraftLuckBonus { get; private set; }
-        public float DeathNovaDamageBonus { get; private set; }
-        public float DeathNovaRadiusBonus { get; private set; }
-        public float LifestealRatio { get; private set; }
-        public float ExperienceGainMultiplierBonus { get; private set; }
-        public float AreaRadiusBonus { get; private set; }
-        public int ProjectileFanBonus { get; private set; }
-        public int OrbitBladeBonus { get; private set; }
-        public float OrbitRadiusBonus { get; private set; }
-        public int MeleeTargetBonus { get; private set; }
-        public int BurstCountBonus { get; private set; }
-        public int BurstEchoBonus { get; private set; }
-        public int TargetedBurstSigilBonus { get; private set; }
-        public int ProjectilePierceBonus { get; private set; }
-        public int ProjectileChainBonus { get; private set; }
-        public int ProjectileForkBonus { get; private set; }
-        public int ProjectileReturnBonus { get; private set; }
-        public int HitscanPierceBonus { get; private set; }
-        public int PayloadCountBonus { get; private set; }
-        public float PayloadExplosionRadiusBonus { get; private set; }
-        public float PayloadTriggerRadiusBonus { get; private set; }
-        public float PickupAttractionSpeedBonus { get; private set; }
-        public float PickupMagnetPulseIntervalReductionBonus { get; private set; }
+        public float BarrierCapacityBonus => UpgradeModifiers.BarrierCapacityBonus;
+        public float BarrierRegenPerSecondBonus => UpgradeModifiers.BarrierRegenPerSecondBonus;
+        public float BarrierOnDamageRatio => UpgradeModifiers.BarrierOnDamageRatio;
+        public float PoisonDamageRatio => UpgradeModifiers.PoisonDamageRatio;
+        public float BleedDamageRatio => UpgradeModifiers.BleedDamageRatio;
+        public float ExecuteThresholdNormalized => UpgradeModifiers.ExecuteThresholdNormalized;
+        public float CriticalChanceBonus => UpgradeModifiers.CriticalChanceBonus;
+        public float CriticalDamageMultiplierBonus => UpgradeModifiers.CriticalDamageMultiplierBonus;
+        public float DraftLuckBonus => UpgradeModifiers.DraftLuckBonus;
+        public float DeathNovaDamageBonus => UpgradeModifiers.DeathNovaDamageBonus;
+        public float DeathNovaRadiusBonus => UpgradeModifiers.DeathNovaRadiusBonus;
+        public float LifestealRatio => UpgradeModifiers.LifestealRatio;
+        public float ExperienceGainMultiplierBonus => UpgradeModifiers.ExperienceGainMultiplierBonus;
+        public float AreaRadiusBonus => UpgradeModifiers.AreaRadiusBonus;
+        public int ProjectileFanBonus => UpgradeModifiers.ProjectileFanBonus;
+        public int OrbitBladeBonus => UpgradeModifiers.OrbitBladeBonus;
+        public float OrbitRadiusBonus => UpgradeModifiers.OrbitRadiusBonus;
+        public int MeleeTargetBonus => UpgradeModifiers.MeleeTargetBonus;
+        public int BurstCountBonus => UpgradeModifiers.BurstCountBonus;
+        public int BurstEchoBonus => UpgradeModifiers.BurstEchoBonus;
+        public int TargetedBurstSigilBonus => UpgradeModifiers.TargetedBurstSigilBonus;
+        public int ProjectilePierceBonus => UpgradeModifiers.ProjectilePierceBonus;
+        public int ProjectileChainBonus => UpgradeModifiers.ProjectileChainBonus;
+        public int ProjectileForkBonus => UpgradeModifiers.ProjectileForkBonus;
+        public int ProjectileReturnBonus => UpgradeModifiers.ProjectileReturnBonus;
+        public int HitscanPierceBonus => UpgradeModifiers.HitscanPierceBonus;
+        public int PayloadCountBonus => UpgradeModifiers.PayloadCountBonus;
+        public float PayloadExplosionRadiusBonus => UpgradeModifiers.PayloadExplosionRadiusBonus;
+        public float PayloadTriggerRadiusBonus => UpgradeModifiers.PayloadTriggerRadiusBonus;
+        public float PickupAttractionSpeedBonus => UpgradeModifiers.PickupAttractionSpeedBonus;
+        public float PickupMagnetPulseIntervalReductionBonus => UpgradeModifiers.PickupMagnetPulseIntervalReductionBonus;
         public int ActiveEnemyCount => _enemies.Count;
         public int ActiveRunnerCount => CountEnemiesByRole(SurvivorsEnemyRole.Runner);
         public int ActiveBruiserCount => CountEnemiesByRole(SurvivorsEnemyRole.Bruiser);
@@ -787,12 +742,12 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveRoamingCacheAmbushEnemyCount => _activeRoamingCacheAmbushEnemies.Count;
         public int ActiveArenaShrineEnemyCount => _activeArenaShrineEnemies.Count;
         public int ActiveProjectileCount => _projectiles.Count;
-        public int ActiveDamagePopupCount => _damagePopups.Count;
-        public int ActiveEnemyDeathEffectCount => _worldFeedbackEffects.Count;
-        public int ActiveEnemyRangedAttackFeedbackCount => _enemyRangedAttackFeedbackEffects.Count;
-        public int ActiveMajorRewardDropFeedbackCount => _rewardDropFeedbackEffects.Count;
-        public int ActiveMajorThreatSlamTelegraphEffectCount => _majorThreatSlamTelegraphEffects.Count;
-        public int ActiveIncomingThreatTelegraphEffectCount => _incomingThreatTelegraphEffects.Count;
+        public int ActiveDamagePopupCount => _damageFeedback.ActiveCount;
+        public int ActiveEnemyDeathEffectCount => CombatFeedback.ActiveEnemyDeathEffectCount;
+        public int ActiveEnemyRangedAttackFeedbackCount => CombatFeedback.ActiveEnemyRangedAttackFeedbackCount;
+        public int ActiveMajorRewardDropFeedbackCount => RewardDrops.ActiveMajorRewardDropFeedbackCount;
+        public int ActiveMajorThreatSlamTelegraphEffectCount => ThreatTelegraphs.ActiveMajorThreatSlamTelegraphEffectCount;
+        public int ActiveIncomingThreatTelegraphEffectCount => ThreatTelegraphs.ActiveIncomingThreatTelegraphEffectCount;
         public int NormalEnemyRecycleCount { get; private set; }
         public int MajorThreatRepositionCount { get; private set; }
         public int GameplayEnemySpawnSafetyCheckCountForTest { get; private set; }
@@ -848,7 +803,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + ArenaShrineSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus + WaystoneChainSurgePickupRangeBonus + HordeRushClearSurgePickupRangeBonus + WeaponLoadoutSurgePickupRangeBonus + PassiveLoadoutSurgePickupRangeBonus + BossRelicSurgePickupRangeBonus + GemRushPickupRangeBonus + EvolutionChainSurgePickupRangeBonus + EndlessSurgePickupRangeBonus);
         public float CurrentPickupAttractionSpeed => Mathf.Max(0.1f, CurrentTuning.PickupAttractionSpeed + PickupAttractionSpeedBonus);
         public float CurrentPickupMagnetPulseIntervalSeconds => ResolvePickupMagnetPulseIntervalSeconds();
-        public float LevelUpDraftCooldownRemainingSeconds => Mathf.Max(0f, _levelUpDraftCooldownTimer);
+        public float LevelUpDraftCooldownRemainingSeconds => Mathf.Max(0f, _experienceProgression.DraftCooldownRemaining);
         public int LevelAtOneMinute => _levelAtOneMinute;
         public int LevelAtTwoMinutes => _levelAtTwoMinutes;
         public int LevelAtThreeMinutes => _levelAtThreeMinutes;
@@ -883,9 +838,9 @@ namespace Deucarian.TemplateGameSurvivors
         public string CurrentTutorialStepTitle => ResolveTutorialStepTitle(ClampTutorialStepIndex(_tutorialStepIndex));
         public int CurrentTutorialStepIndex => ClampTutorialStepIndex(_tutorialStepIndex);
         public int TutorialStepCount => Enum.GetValues(typeof(TutorialStep)).Length;
-        public bool IsAudioMuted => _audioMuted;
-        public int AudioEventDispatchCount => _audioEventDispatchCount;
-        public string LastAudioEventId => _lastAudioEventId;
+        public bool IsAudioMuted => _audioEvents.Muted;
+        public int AudioEventDispatchCount => _audioEvents.DispatchCount;
+        public string LastAudioEventId => _audioEvents.LastEventId;
         public string LastRunSummaryTitle => _lastRunSummaryTitle;
         public bool IsRunSummaryVisible => State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory;
         public bool IsPlayerFacingDraftOverlayVisible => State == SurvivorsRunState.LevelUp && (_currentDraft != null || _currentRelicDraft != null);
@@ -899,8 +854,8 @@ namespace Deucarian.TemplateGameSurvivors
         public bool CanStartConfiguredRun => !IsStrictAuthoredSample || (_strictSampleContentReady && _authoredContent != null);
         public bool IsUsingAuthoredRunFlow => _usingAuthoredRunFlow;
         public string AuthoredContentStatus => _authoredContentStatus;
-        public string TopCenterTimerHudLabel => _runStarted ? ResolveTopCenterTimerHudLabel() : string.Empty;
-        public bool IsTopCenterTimerVisible => _runStarted;
+        public string TopCenterTimerHudLabel => _runSession.Started ? ResolveTopCenterTimerHudLabel() : string.Empty;
+        public bool IsTopCenterTimerVisible => _runSession.Started;
         public Rect TopCenterTimerRectForTest => ResolveTopCenterTimerRect();
         public float CurrentEnemySpawnIntervalSeconds => ResolveEnemySpawnIntervalSeconds();
         public int CurrentEnemySpawnPackSize => ResolveEnemySpawnPackSize();
@@ -920,19 +875,19 @@ namespace Deucarian.TemplateGameSurvivors
         public SurvivorsRunPhase RunPhase => _runFlow == null ? SurvivorsRunPhase.Opening : _runFlow.Phase;
         public int RunEscalationLevel => _runFlow == null ? 0 : _runFlow.EscalationLevel;
         public bool IsPlaying => State == SurvivorsRunState.Playing;
-        public bool IsRunStarted => _runStarted;
+        public bool IsRunStarted => _runSession.Started;
         public bool IsLevelUpOpen => State == SurvivorsRunState.LevelUp;
         public bool IsRunUpgradeDraftOpen => State == SurvivorsRunState.LevelUp && _rewardSelectionKind == SurvivorsRewardSelectionKind.LevelUp;
         public bool IsRelicChoiceOpen => State == SurvivorsRunState.LevelUp && _rewardSelectionKind == SurvivorsRewardSelectionKind.BossRelic;
         public bool IsUpgradeRewardChoiceOpen => State == SurvivorsRunState.LevelUp && IsRewardUpgradeSelectionKind(_rewardSelectionKind);
         public bool IsGameOver => State == SurvivorsRunState.GameOver;
         public bool IsVictory => State == SurvivorsRunState.Victory;
-        public bool HasClearedVictoryThisRun => _victoryClearedThisRun;
-        public bool IsEndlessRun => State == SurvivorsRunState.Playing && _victoryClearedThisRun;
+        public bool HasClearedVictoryThisRun => _runSession.HasClearedVictory;
+        public bool IsEndlessRun => State == SurvivorsRunState.Playing && _runSession.HasClearedVictory;
         public bool IsLowHealthWarningActive => (State == SurvivorsRunState.Playing || State == SurvivorsRunState.LevelUp) && MaxHealth > 0f && CurrentHealth / MaxHealth <= LowHealthWarningThreshold;
-        public bool IsMajorThreatWarningActive => !string.IsNullOrEmpty(_majorThreatWarningLabel) && RunTimeSeconds < _majorThreatWarningTargetTimeSeconds;
-        public string CurrentMajorThreatWarningLabel => IsMajorThreatWarningActive ? _majorThreatWarningLabel : string.Empty;
-        public float MajorThreatWarningRemainingSeconds => IsMajorThreatWarningActive ? Mathf.Max(0f, _majorThreatWarningTargetTimeSeconds - RunTimeSeconds) : 0f;
+        public bool IsMajorThreatWarningActive => !string.IsNullOrEmpty(TimedEncounters.WarningLabel) && RunTimeSeconds < TimedEncounters.WarningTargetTime;
+        public string CurrentMajorThreatWarningLabel => IsMajorThreatWarningActive ? TimedEncounters.WarningLabel : string.Empty;
+        public float MajorThreatWarningRemainingSeconds => IsMajorThreatWarningActive ? Mathf.Max(0f, TimedEncounters.WarningTargetTime - RunTimeSeconds) : 0f;
         public bool IsHordeRushWarningActive => !string.IsNullOrEmpty(_hordeRushWarningLabel) && RunTimeSeconds < _hordeRushWarningTargetTimeSeconds;
         public string CurrentHordeRushWarningLabel => IsHordeRushWarningActive ? _hordeRushWarningLabel : string.Empty;
         public float HordeRushWarningRemainingSeconds => IsHordeRushWarningActive ? Mathf.Max(0f, _hordeRushWarningTargetTimeSeconds - RunTimeSeconds) : 0f;
@@ -968,21 +923,21 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
         public string CurrentRunMilestoneHudLabel => ResolveRunMilestoneHudLabel();
-        public string ActiveRewardFeedbackLabel => _rewardFeedbackTimer > 0f ? _rewardFeedbackLabel : string.Empty;
-        public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardFeedbackTimer);
-        public string ActiveStreakRewardFeedbackLabel => _streakRewardFeedbackTimer > 0f ? _streakRewardFeedbackLabel : string.Empty;
-        public float StreakRewardFeedbackRemainingSeconds => Mathf.Max(0f, _streakRewardFeedbackTimer);
-        public string ActiveClassUnlockRewardFeedbackLabel => _classUnlockRewardFeedbackTimer > 0f ? _classUnlockRewardFeedbackLabel : string.Empty;
-        public float ClassUnlockRewardFeedbackRemainingSeconds => Mathf.Max(0f, _classUnlockRewardFeedbackTimer);
-        public string ActiveEvolutionReadyFeedbackLabel => _evolutionReadyFeedbackTimer > 0f ? _evolutionReadyFeedbackLabel : string.Empty;
-        public float EvolutionReadyFeedbackRemainingSeconds => Mathf.Max(0f, _evolutionReadyFeedbackTimer);
+        public string ActiveRewardFeedbackLabel => _rewardBanner.RemainingSeconds > 0f ? _rewardBanner.Label : string.Empty;
+        public float RewardFeedbackRemainingSeconds => Mathf.Max(0f, _rewardBanner.RemainingSeconds);
+        public string ActiveStreakRewardFeedbackLabel => _streakRewardBanner.RemainingSeconds > 0f ? _streakRewardBanner.Label : string.Empty;
+        public float StreakRewardFeedbackRemainingSeconds => Mathf.Max(0f, _streakRewardBanner.RemainingSeconds);
+        public string ActiveClassUnlockRewardFeedbackLabel => _classUnlockRewardBanner.RemainingSeconds > 0f ? _classUnlockRewardBanner.Label : string.Empty;
+        public float ClassUnlockRewardFeedbackRemainingSeconds => Mathf.Max(0f, _classUnlockRewardBanner.RemainingSeconds);
+        public string ActiveEvolutionReadyFeedbackLabel => _evolutionReadyBanner.RemainingSeconds > 0f ? _evolutionReadyBanner.Label : string.Empty;
+        public float EvolutionReadyFeedbackRemainingSeconds => Mathf.Max(0f, _evolutionReadyBanner.RemainingSeconds);
         public string CurrentEvolutionGoalHudLabel => ResolveEvolutionGoalHudLabel();
         public string CurrentEvolutionReadyHudLabel => ResolveEvolutionReadyHudLabel();
-        public string ActiveExperienceComboFeedbackLabel => _experienceComboFeedbackTimer > 0f ? _experienceComboFeedbackLabel : string.Empty;
-        public float ExperienceComboFeedbackRemainingSeconds => Mathf.Max(0f, _experienceComboFeedbackTimer);
+        public string ActiveExperienceComboFeedbackLabel => _experienceComboBanner.RemainingSeconds > 0f ? _experienceComboBanner.Label : string.Empty;
+        public float ExperienceComboFeedbackRemainingSeconds => Mathf.Max(0f, _experienceComboBanner.RemainingSeconds);
         public int CurrentExperienceComboPickupCount => _experienceComboTimer > 0f ? _experienceComboPickupCount : 0;
         public int CurrentExperienceComboAmount => _experienceComboTimer > 0f ? _experienceComboAmount : 0;
-        public int RequiredExperienceForNextLevel => Mathf.Max(1, CurrentTuning.ExperienceRequiredBase + ((Level - 1) * CurrentTuning.ExperienceRequiredPerLevel));
+        public int RequiredExperienceForNextLevel => _experienceProgression.RequiredExperience(CurrentTuning);
         public int TotalDraftRerollCharges => Mathf.Max(0, CurrentTuning.DraftRerollCharges + PersistentDraftRerollBonus);
         public int DraftRerollsRemaining => Mathf.Max(0, TotalDraftRerollCharges - DraftRerollCount);
         public int DraftBanishesRemaining => Mathf.Max(0, CurrentTuning.DraftBanishCharges - DraftBanishCount);
@@ -999,8 +954,26 @@ namespace Deucarian.TemplateGameSurvivors
         public float FirstEvolutionEligibilityTimeSeconds => _firstEvolutionEligibilityTimeSeconds;
         public float FirstEvolutionAcquiredTimeSeconds => _firstEvolutionAcquiredTimeSeconds;
         public float DamageTakenThisRun => _damageTakenThisRun;
-        public int ThrottledExperienceOverflow { get; private set; }
+        public int ThrottledExperienceOverflow => _experienceProgression.ThrottledExperienceOverflow;
         public int DraftOpenCount => _draftOpenCount;
+
+        void ISurvivorsUpgradeEffectSink.IncreaseMaximumHealth(double amount)
+        {
+            if (_playerHealth != null)
+            {
+                _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + amount, MaximumChangePolicy.FillToMaximum);
+            }
+        }
+
+        void ISurvivorsUpgradeEffectSink.RestoreBarrier(float amount) => RestoreBarrier(amount);
+
+        void ISurvivorsUpgradeEffectSink.ScheduleMagnetPulse()
+        {
+            if (_pickupMagnetPulseTimer <= 0f)
+            {
+                _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
+            }
+        }
 
         private void Awake()
         {
@@ -1017,14 +990,14 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void Start()
         {
-            if (showRunModeSelection && !_runStarted)
+            if (showRunModeSelection && !_runSession.Started)
             {
                 _runModeSelectionOpen = true;
                 autoStart = false;
                 return;
             }
 
-            if (autoStart && !_runStarted)
+            if (autoStart && !_runSession.Started)
             {
                 StartRun();
             }
@@ -1037,7 +1010,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _debugOverlayVisible = !_debugOverlayVisible;
             }
 
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 if (_tutorialOverlayOpen)
                 {
@@ -1140,7 +1113,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void OnGUI()
         {
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 if (_runModeSelectionOpen)
                 {
@@ -1708,10 +1681,10 @@ namespace Deucarian.TemplateGameSurvivors
         {
             showRunModeSelection = enabled;
             autoStart = !enabled;
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 _runModeSelectionOpen = enabled;
-                State = SurvivorsRunState.Booting;
+                _runSession.OpenModeSelection();
             }
         }
 
@@ -1924,7 +1897,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _authoredContentStatus = string.IsNullOrWhiteSpace(error)
                     ? "Fallback policy active after authored Survivors content failed to bind."
                     : "Fallback policy active after authored Survivors content failed to bind: " + error;
-                if (!_runStarted)
+                if (!_runSession.Started)
                 {
                     tuning = CreateConfiguredTuning(pacingProfile);
                 }
@@ -1935,7 +1908,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             _authoredContent = definition;
             _authoredContentStatus = "Authored Survivors content bound with fallback policy active: " + definition.SourceSummary;
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 tuning = CreateConfiguredTuning(pacingProfile);
             }
@@ -1996,7 +1969,7 @@ namespace Deucarian.TemplateGameSurvivors
                 _authoredContentStatus = string.IsNullOrWhiteSpace(error)
                     ? "Authored Survivors content failed to bind."
                     : "Authored Survivors content failed to bind: " + error;
-                if (!_runStarted)
+                if (!_runSession.Started)
                 {
                     tuning = CreateConfiguredTuning(pacingProfile);
                 }
@@ -2010,7 +1983,7 @@ namespace Deucarian.TemplateGameSurvivors
             _authoredContentStatus = definition.IsStrictSample
                 ? "Strict authored Survivors content bound: " + definition.SourceSummary
                 : "Authored Survivors content bound with fallback policy: " + definition.SourceSummary;
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 tuning = CreateConfiguredTuning(pacingProfile);
             }
@@ -2026,7 +1999,7 @@ namespace Deucarian.TemplateGameSurvivors
             _authoredContentStatus = string.IsNullOrWhiteSpace(message)
                 ? "Strict authored Survivors content failed to bind."
                 : message;
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 tuning = CreateConfiguredTuning(pacingProfile);
             }
@@ -2037,7 +2010,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void OpenRunModeSelection()
         {
-            if (_runStarted)
+            if (_runSession.Started)
             {
                 ClearRun();
             }
@@ -2055,7 +2028,7 @@ namespace Deucarian.TemplateGameSurvivors
             _tutorialOverlayOpen = false;
             _tutorialStepIndex = 0;
             _runModeSelectionOpen = true;
-            State = SurvivorsRunState.Booting;
+            _runSession.OpenModeSelection();
         }
 
         public bool SelectStandardRun()
@@ -2073,7 +2046,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (!CanStartConfiguredRun)
             {
                 _runModeSelectionOpen = true;
-                State = SurvivorsRunState.Booting;
+                _runSession.OpenModeSelection();
                 return false;
             }
 
@@ -2089,7 +2062,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (!CanStartConfiguredRun)
             {
                 _runModeSelectionOpen = true;
-                State = SurvivorsRunState.Booting;
+                _runSession.OpenModeSelection();
                 return;
             }
 
@@ -2106,9 +2079,7 @@ namespace Deucarian.TemplateGameSurvivors
             _modeSelectionScrollPosition = Vector2.zero;
             _tutorialOverlayOpen = false;
             _tutorialStepIndex = 0;
-            _audioEventNextAllowedTime.Clear();
-            _audioEventDispatchCount = 0;
-            _lastAudioEventId = string.Empty;
+            _audioEvents.Reset();
             _highestChosenRarity = RunUpgradeRarity.Common;
             _highestChosenRarityLabel = string.Empty;
             _bestMomentLabel = string.Empty;
@@ -2131,9 +2102,6 @@ namespace Deucarian.TemplateGameSurvivors
             _selectedRelicIds.Clear();
             _selectedRelics.Clear();
             _playerHealth = new HealthState(new CombatantId("combatant.survivors.player"), resolved.PlayerMaxHealth, resolved.PlayerMaxHealth);
-            Level = 1;
-            Experience = 0;
-            PendingLevelUps = 0;
             SpawnedCount = 0;
             KilledCount = 0;
             ProjectileLaunchCount = 0;
@@ -2229,7 +2197,6 @@ namespace Deucarian.TemplateGameSurvivors
             RewardJackpotBloodShardsDropped = 0;
             LastRewardJackpotFeedbackLabel = string.Empty;
             RewardAutoSelectCount = 0;
-            EndlessThreatSpawnCount = 0;
             EndlessSurgeActivationCount = 0;
             EndlessSurgeTier = 0;
             EndlessSurgeExperienceGemDropCount = 0;
@@ -2253,9 +2220,7 @@ namespace Deucarian.TemplateGameSurvivors
             DraftSkipCount = 0;
             ClassUnlockRewardCount = 0;
             LastClassUnlockRewardFeedbackLabel = string.Empty;
-            _classUnlockRewardFeedbackLabel = string.Empty;
-            _classUnlockRewardFeedbackTimer = 0f;
-            DamagePopupSpawnCount = 0;
+            _classUnlockRewardBanner.Reset();
             PlayerDamageFeedbackCount = 0;
             LowHealthClutchPulseCount = 0;
             LowHealthClutchPulseHitCount = 0;
@@ -2268,27 +2233,20 @@ namespace Deucarian.TemplateGameSurvivors
             CriticalHitFeedbackCount = 0;
             DeathNovaTriggerCount = 0;
             DeathNovaHitCount = 0;
-            EnemyDeathEffectCount = 0;
-            EnemyRangedAttackFeedbackCount = 0;
             EnemyRangedAttackDodgeFeedbackCount = 0;
             EnemyRangedAttackDodgeExperienceGemDropCount = 0;
             LastEnemyRangedAttackDodgeFeedbackLabel = string.Empty;
-            MajorRewardDropFeedbackCount = 0;
             MajorRewardCacheDropCount = 0;
             MajorRewardCacheExperienceGemDropCount = 0;
             MajorRewardCacheSpecialDropCount = 0;
             MajorRewardCacheAttractedPickupCount = 0;
-            MajorThreatWarningCount = 0;
             MajorThreatEnrageCount = 0;
             MajorThreatEnrageSupportSpawnCount = 0;
             LastMajorThreatEnrageFeedbackLabel = string.Empty;
             MajorThreatSlamWarningCount = 0;
             MajorThreatSlamCastCount = 0;
             MajorThreatSlamHitCount = 0;
-            MajorThreatSlamTelegraphEffectCount = 0;
-            IncomingThreatTelegraphEffectCount = 0;
             LastMajorThreatSlamFeedbackLabel = string.Empty;
-            LastIncomingThreatTelegraphLabel = string.Empty;
             ExperiencePickupFeedbackCount = 0;
             ExperienceComboFeedbackCount = 0;
             GemRushActivationCount = 0;
@@ -2304,9 +2262,7 @@ namespace Deucarian.TemplateGameSurvivors
             RewardSelectionFeedbackCount = 0;
             LastRewardCardPresentationLabel = string.Empty;
             LastRewardSelectionFeedbackLabel = string.Empty;
-            LastMajorRewardDropFeedbackLabel = string.Empty;
             LastMajorRewardCacheFeedbackLabel = string.Empty;
-            ExperienceCollected = 0;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
             RoamingCacheDropCount = 0;
@@ -2361,51 +2317,13 @@ namespace Deucarian.TemplateGameSurvivors
             _lastRunSummaryLines.Clear();
             _lastRunSummaryTitle = string.Empty;
             ResetRunMetrics();
-            RunTimeSeconds = 0f;
-            MoveSpeedBonus = 0f;
-            DamageBonus = 0f;
-            PersistentDamageBonus = 0f;
-            PersistentMaxHealthBonus = 0f;
-            PersistentPickupRangeBonus = 0f;
-            PersistentExperienceGainMultiplierBonus = 0f;
-            PersistentDraftRerollBonus = 0;
-            RelicDamageBonus = 0f;
-            RelicCooldownMultiplierBonus = 0f;
-            RelicPickupRangeBonus = 0f;
-            WeaponCooldownMultiplierBonus = 0f;
-            PickupRangeBonus = 0f;
+            UpgradeModifiers.Reset();
+            _runSession.Reset();
+            RewardDrops.ResetMetrics();
+            ThreatTelegraphs.ResetMetrics();
+            CombatFeedback.ResetMetrics();
+            _experienceProgression.Reset();
             BarrierValue = 0f;
-            BarrierCapacityBonus = 0f;
-            BarrierRegenPerSecondBonus = 0f;
-            BarrierOnDamageRatio = 0f;
-            PoisonDamageRatio = 0f;
-            BleedDamageRatio = 0f;
-            ExecuteThresholdNormalized = 0f;
-            CriticalChanceBonus = 0f;
-            CriticalDamageMultiplierBonus = 0f;
-            DraftLuckBonus = 0f;
-            DeathNovaDamageBonus = 0f;
-            DeathNovaRadiusBonus = 0f;
-            LifestealRatio = 0f;
-            ExperienceGainMultiplierBonus = 0f;
-            AreaRadiusBonus = 0f;
-            ProjectileFanBonus = 0;
-            OrbitBladeBonus = 0;
-            OrbitRadiusBonus = 0f;
-            MeleeTargetBonus = 0;
-            BurstCountBonus = 0;
-            BurstEchoBonus = 0;
-            TargetedBurstSigilBonus = 0;
-            ProjectilePierceBonus = 0;
-            ProjectileChainBonus = 0;
-            ProjectileForkBonus = 0;
-            ProjectileReturnBonus = 0;
-            HitscanPierceBonus = 0;
-            PayloadCountBonus = 0;
-            PayloadExplosionRadiusBonus = 0f;
-            PayloadTriggerRadiusBonus = 0f;
-            PickupAttractionSpeedBonus = 0f;
-            PickupMagnetPulseIntervalReductionBonus = 0f;
             NormalEnemyRecycleCount = 0;
             MajorThreatRepositionCount = 0;
             MagnetPulseActivationCount = 0;
@@ -2419,34 +2337,19 @@ namespace Deucarian.TemplateGameSurvivors
             _lastGameplaySpawnWasInsideCameraViewport = false;
             _runRewardsGranted = false;
             _pendingVictoryAfterRewardDraft = false;
-            _victoryClearedThisRun = false;
-            _firstEliteWarningShown = false;
-            _firstDreadEliteWarningShown = false;
-            _timedEliteWarningTargetTimeSeconds = 0f;
-            _timedDreadEliteWarningTargetTimeSeconds = 0f;
-            _minibossWarningShown = false;
-            _bossWarningShown = false;
-            ResetEndlessThreatSchedule();
+            TimedEncounters.Reset();
             ResetHordeRushSchedule();
-            _majorThreatWarningLabel = string.Empty;
-            _majorThreatWarningTargetTimeSeconds = 0f;
-            _rewardFeedbackLabel = string.Empty;
-            _rewardFeedbackTimer = 0f;
-            _rewardFeedbackColor = Color.white;
-            _streakRewardFeedbackLabel = string.Empty;
-            _streakRewardFeedbackTimer = 0f;
-            _streakRewardFeedbackColor = Color.white;
-            _experienceComboFeedbackLabel = string.Empty;
+            _rewardBanner.Reset();
+            _streakRewardBanner.Reset();
+            _experienceComboBanner.Reset();
             _experienceComboTimer = 0f;
-            _experienceComboFeedbackTimer = 0f;
             _gemRushTimer = 0f;
             _experienceComboPickupCount = 0;
             _experienceComboAmount = 0;
             _gemRushActivatedForCurrentCombo = false;
             _bonusBloodShardsEarnedThisRun = 0;
             _bonusLegacyExperienceEarnedThisRun = 0;
-            _enemySpawnTimer = 0f;
-            _levelUpDraftCooldownTimer = 0f;
+            SwarmSpawning.Reset();
             _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
             _playerInvulnerabilityTimer = 0f;
             _lowHealthClutchPulseUsed = false;
@@ -2470,12 +2373,11 @@ namespace Deucarian.TemplateGameSurvivors
             _passiveLoadoutSurgeUsed = false;
             _announcedEvolutionGoalUpgradeIds.Clear();
             _announcedEvolutionReadyUpgradeIds.Clear();
-            _evolutionReadyFeedbackLabel = string.Empty;
-            _evolutionReadyFeedbackTimer = 0f;
+            _evolutionReadyBanner.Reset();
             _spawnSequence = 0;
             _currentDraft = null;
             _currentRelicDraft = null;
-            _damagePopups.Clear();
+            _damageFeedback.Reset();
             _rewardSelectionKind = SurvivorsRewardSelectionKind.None;
             _rewardSelectionTimer = 0f;
             _currentDraftRerollIndex = 0;
@@ -2486,8 +2388,7 @@ namespace Deucarian.TemplateGameSurvivors
             _runFlow = new SurvivorsRunFlowRuntime(CreateRunFlowDefinition(resolved));
             _weaponArchetypeDefinitions = CreateWeaponArchetypeDefinitions(resolved);
             _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(_weaponArchetypeDefinitions));
-            State = SurvivorsRunState.Playing;
-            _runStarted = true;
+            _runSession.Start();
             TryOpenFirstRunTutorial();
         }
 
@@ -2498,17 +2399,16 @@ namespace Deucarian.TemplateGameSurvivors
 
         public bool ContinueAfterVictory()
         {
-            if (State != SurvivorsRunState.Victory || !_runStarted || !CurrentTuning.EndlessContinuationEnabled)
+            if (!_runSession.ContinueAfterVictory(CurrentTuning.EndlessContinuationEnabled))
             {
                 return false;
             }
 
-            _victoryClearedThisRun = true;
             ClearRewardDrafts();
             _tutorialOverlayOpen = false;
-            State = SurvivorsRunState.Playing;
-            _enemySpawnTimer = 0f;
-            ScheduleEndlessThreats(RunTimeSeconds);
+            _runSession.ResumePlaying();
+            SwarmSpawning.Reset();
+            TimedEncounters.ScheduleEndlessThreats(RunTimeSeconds);
             EnsureFutureHordeRushScheduled();
             PlayFeedback(_levelUpPulse, PlayerPosition, 32, _levelUpClip);
             return true;
@@ -2516,7 +2416,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void Simulate(float deltaTime, Vector2 movementInput = default)
         {
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 return;
             }
@@ -2554,11 +2454,11 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            RunTimeSeconds += dt;
+            _runSession.Tick(dt);
             RecordLevelCheckpoints();
             TickLevelUpDraftCooldown(dt);
-            TickMajorThreatWarnings();
-            TickRunFlow();
+            TimedEncounters.TickMajorThreatWarnings();
+            TimedEncounters.TickRunFlow();
             if (State != SurvivorsRunState.Playing)
             {
                 return;
@@ -2768,7 +2668,7 @@ namespace Deucarian.TemplateGameSurvivors
         public void ForceLevelUp()
         {
             EnsureRunStartedForTest();
-            PendingLevelUps++;
+            _experienceProgression.QueueDebugLevelUp();
             OpenLevelUpDraft();
         }
 
@@ -2782,7 +2682,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureMetaProgressionLoaded();
             bool granted = _metaProgression.GrantBloodShardsForDebug(Mathf.Max(1, amount)).Succeeded;
-            if (granted && _runStarted)
+            if (granted && _runSession.Started)
             {
                 ApplyPersistentMetaBonuses();
             }
@@ -2833,10 +2733,10 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (CurrentPacingProfile != SurvivorsPacingProfile.SprintRun)
             {
-                ApplyPacingProfile(SurvivorsPacingProfile.SprintRun, restartRun: _runStarted);
+                ApplyPacingProfile(SurvivorsPacingProfile.SprintRun, restartRun: _runSession.Started);
             }
 
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 StartRun();
             }
@@ -2895,7 +2795,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void DebugApplyPacingProfile(SurvivorsPacingProfile profile)
         {
-            ApplyPacingProfile(profile, restartRun: _runStarted);
+            ApplyPacingProfile(profile, restartRun: _runSession.Started);
         }
 
         public void ApplyPacingProfileForTest(SurvivorsPacingProfile profile, bool restartRun = false)
@@ -2911,7 +2811,7 @@ namespace Deucarian.TemplateGameSurvivors
         public void ForceLevelUpWithLockedChoiceForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
-            PendingLevelUps++;
+            _experienceProgression.QueueDebugLevelUp();
             var lockedChoices = string.IsNullOrWhiteSpace(upgradeId)
                 ? null
                 : new[] { new RunUpgradeId(upgradeId) };
@@ -2925,9 +2825,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void ConfigureMetaPersistenceForTest(IPersistenceService persistence, SaveSlotId slotId)
         {
-            _injectedMetaPersistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
-            _metaSaveSlotId = slotId;
-            ReleaseMetaProgressionService();
+            _profileSession.ConfigureBorrowedPersistence(persistence, slotId);
         }
 
         public bool TryPurchasePersistentUpgradeForTest(string id)
@@ -2973,7 +2871,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureMetaProgressionLoaded();
             bool purchased = _metaProgression.TryPurchasePersistentUpgrade(id);
-            if (purchased && _runStarted)
+            if (purchased && _runSession.Started)
             {
                 ApplyPersistentMetaBonuses();
             }
@@ -3061,7 +2959,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private bool TrySelectResultClass(int index)
         {
-            if (_runStarted && State != SurvivorsRunState.GameOver && State != SurvivorsRunState.Victory)
+            if (_runSession.Started && State != SurvivorsRunState.GameOver && State != SurvivorsRunState.Victory)
             {
                 return false;
             }
@@ -3226,9 +3124,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             ResultClassSelectionCount++;
             LastResultClassSelectionFeedbackLabel = "Next Run Class: " + selected.DisplayName;
-            _rewardFeedbackLabel = LastResultClassSelectionFeedbackLabel;
-            _rewardFeedbackColor = new Color(0.8f, 0.58f, 1f);
-            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+            _rewardBanner.Show(LastResultClassSelectionFeedbackLabel, RewardFeedbackDurationSeconds, new Color(0.8f, 0.58f, 1f));
         }
 
         private void RecordMetaUpgradePurchaseFeedback(string id)
@@ -3244,9 +3140,7 @@ namespace Deucarian.TemplateGameSurvivors
             int rank = _metaProgression.GetPersistentUpgradeRank(id);
             MetaUpgradePurchaseCount++;
             LastMetaUpgradePurchaseFeedbackLabel = $"Meta Upgrade: {displayName} rank {rank}";
-            _rewardFeedbackLabel = LastMetaUpgradePurchaseFeedbackLabel;
-            _rewardFeedbackColor = new Color(0.45f, 0.95f, 0.76f);
-            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+            _rewardBanner.Show(LastMetaUpgradePurchaseFeedbackLabel, RewardFeedbackDurationSeconds, new Color(0.45f, 0.95f, 0.76f));
         }
 
         public void ResetMetaProgressionForTest()
@@ -3254,7 +3148,7 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureMetaProgressionLoaded();
             _metaProgression.Reset();
             _metaProgression.Load();
-            if (_runStarted)
+            if (_runSession.Started)
             {
                 ApplyPersistentMetaBonuses();
             }
@@ -3489,7 +3383,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void SetBuildMenuOpenForTest(bool open)
         {
-            _buildMenuOpen = open && _runStarted && State == SurvivorsRunState.Playing;
+            _buildMenuOpen = open && _runSession.Started && State == SurvivorsRunState.Playing;
         }
 
         public void SetBuildMenuTabForTest(int tabIndex)
@@ -3499,7 +3393,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public void SetAudioMutedForTest(bool muted)
         {
-            _audioMuted = muted;
+            _audioEvents.SetMuted(muted);
         }
 
         public bool OpenTutorialForTest()
@@ -3616,7 +3510,7 @@ namespace Deucarian.TemplateGameSurvivors
             _runMetricsLines.Clear();
             _runMetricsLines.Add($"Mode {CurrentRunModeDisplayName} ({BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)})");
             _runMetricsLines.Add($"Target {FormatMetricTime(CurrentTuning.TargetDurationSeconds)} - boss {FormatMetricTime(CurrentTuning.BossSpawnTimeSeconds)} - victory {FormatMetricTime(CurrentTuning.SurvivalVictoryTimeSeconds)}");
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 _runMetricsLines.Add(_runModeSelectionOpen ? "Run mode selection open" : "Run not started");
                 return _runMetricsLines;
@@ -3670,7 +3564,6 @@ namespace Deucarian.TemplateGameSurvivors
             _firstEvolutionEligibilityTimeSeconds = -1f;
             _firstEvolutionAcquiredTimeSeconds = -1f;
             _damageTakenThisRun = 0f;
-            ThrottledExperienceOverflow = 0;
             _draftOpenCount = 0;
             _levelAtOneMinute = -1;
             _levelAtTwoMinutes = -1;
@@ -3718,12 +3611,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void TickLevelUpDraftCooldown(float deltaTime)
         {
-            if (_levelUpDraftCooldownTimer > 0f)
-            {
-                _levelUpDraftCooldownTimer = Mathf.Max(0f, _levelUpDraftCooldownTimer - Mathf.Max(0f, deltaTime));
-            }
-
-            ResolveLevelUpsFromExperienceBudget();
+            _experienceProgression.Tick(deltaTime, CurrentTuning);
             TryOpenPendingLevelUpDraft();
         }
 
@@ -3822,7 +3710,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (!_playerHealth.IsAlive)
             {
                 GrantRunRewards(victory: false);
-                State = SurvivorsRunState.GameOver;
+                _runSession.Defeat();
                 ClearRewardDrafts();
                 PlayFeedback(_bossPulse, PlayerPosition, 34, _dangerClip, AudioEventDefeat, 0.5f);
             }
@@ -4300,7 +4188,7 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 BossKilledCount++;
                 GrantMajorEnemyReward(SurvivorsEnemyRole.Boss);
-                if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false) && !_victoryClearedThisRun)
+                if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false) && !_runSession.HasClearedVictory)
                 {
                     EnterVictory();
                 }
@@ -5255,7 +5143,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void EnsureRunStartedForTest()
         {
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 StartRun();
             }
@@ -5650,9 +5538,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             StreakRewardFeedbackCount++;
             LastStreakRewardFeedbackLabel = label;
-            _streakRewardFeedbackLabel = label;
-            _streakRewardFeedbackColor = color;
-            _streakRewardFeedbackTimer = StreakRewardFeedbackDurationSeconds;
+            _streakRewardBanner.Show(label, StreakRewardFeedbackDurationSeconds, color);
         }
 
         private bool TryDropHealthPickup(Vector3 position)
@@ -5703,19 +5589,7 @@ namespace Deucarian.TemplateGameSurvivors
             _levelUpPulse = CreateFeedbackPulse(LevelUpPulseName, elite, 0.28f, 2.0f, 0.7f);
             _bossPulse = CreateFeedbackPulse(BossPulseName, boss, 0.32f, 3.6f, 0.65f);
 
-            GameObject audioObject = new GameObject(FeedbackAudioName);
-            audioObject.transform.SetParent(_feedbackRoot, false);
-            _feedbackAudio = audioObject.AddComponent<AudioSource>();
-            _feedbackAudio.playOnAwake = false;
-            _feedbackAudio.spatialBlend = 0f;
-            _feedbackAudio.volume = 0.28f;
-            _spawnClip = CreateTone("survivors-spawn", 170f, 0.12f, 0.16f);
-            _fireClip = CreateTone("survivors-fire", 540f, 0.07f, 0.13f);
-            _killClip = CreateTone("survivors-kill", 760f, 0.1f, 0.18f);
-            _pickupClip = CreateTone("survivors-pickup", 1040f, 0.07f, 0.16f);
-            _levelUpClip = CreateTone("survivors-level-up", 880f, 0.2f, 0.2f);
-            _bossClip = CreateTone("survivors-boss", 92f, 0.28f, 0.24f);
-            _dangerClip = CreateTone("survivors-danger", 130f, 0.16f, 0.2f);
+            AudioPresentation.Build(_feedbackRoot);
         }
 
         private void ApplyWorldPresentation()
@@ -5853,173 +5727,19 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            if (!_audioMuted && _feedbackAudio != null && clip != null)
-            {
-                _feedbackAudio.PlayOneShot(clip);
-            }
+            AudioPresentation.Play(clip);
         }
 
         private bool PlayAudioEvent(string eventId, AudioClip fallbackClip, float fallbackThrottleSeconds)
         {
-            if (string.IsNullOrWhiteSpace(eventId) || _audioMuted)
-            {
-                return false;
-            }
-
-            EnsureUiTheme();
-            string normalized = eventId.Trim();
-            float now = Time.unscaledTime;
-            float throttleSeconds = ActiveUiTheme.GetAudioEventThrottleSeconds(normalized, fallbackThrottleSeconds);
-            if (throttleSeconds > 0f &&
-                _audioEventNextAllowedTime.TryGetValue(normalized, out float nextAllowed) &&
-                now < nextAllowed)
-            {
-                return false;
-            }
-
-            if (throttleSeconds > 0f)
-            {
-                _audioEventNextAllowedTime[normalized] = now + throttleSeconds;
-            }
-
-            _audioEventDispatchCount++;
-            _lastAudioEventId = normalized;
-            if (_feedbackAudio != null && fallbackClip != null)
-            {
-                float oldVolume = _feedbackAudio.volume;
-                _feedbackAudio.volume = ActiveUiTheme.GetAudioEventVolume(normalized, oldVolume);
-                _feedbackAudio.PlayOneShot(fallbackClip);
-                _feedbackAudio.volume = oldVolume;
-            }
-
-            return true;
+            return AudioPresentation.PlayEvent(eventId, fallbackClip, fallbackThrottleSeconds);
         }
 
-        private void RecordEnemyDeathEffect(Vector3 position, SurvivorsEnemyRole role, float radius)
-        {
-            if (_feedbackRoot == null)
-            {
-                return;
-            }
+        private void RecordEnemyDeathEffect(Vector3 position, SurvivorsEnemyRole role, float radius) => CombatFeedback.RecordEnemyDeathEffect(position, role, radius);
 
-            while (_worldFeedbackEffects.Count >= EnemyDeathEffectLimit)
-            {
-                ReleaseWorldFeedbackEffect(0);
-            }
+        private void TickWorldFeedbackEffects(float deltaTime) => CombatFeedback.TickWorldFeedbackEffects(deltaTime);
 
-            Color color = ResolveEnemyDeathEffectColor(role);
-            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            instance.name = "Survivors Enemy Death Burst";
-            instance.transform.SetParent(_feedbackRoot, false);
-            instance.transform.position = position + Vector3.up * 0.16f;
-            Vector3 baseScale = Vector3.one * Mathf.Max(0.35f, radius * 1.7f);
-            instance.transform.localScale = baseScale;
-
-            Collider collider = instance.GetComponent<Collider>();
-            if (collider != null)
-            {
-                ReleaseTemplateObject(collider);
-            }
-
-            Renderer renderer = instance.GetComponentInChildren<Renderer>();
-            Material material = ApplyColor(renderer, color);
-            _worldFeedbackEffects.Add(new SurvivorsWorldFeedbackEffect(instance, renderer, material, color, baseScale));
-            EnemyDeathEffectCount++;
-        }
-
-        private void TickWorldFeedbackEffects(float deltaTime)
-        {
-            if (_worldFeedbackEffects.Count == 0)
-            {
-                return;
-            }
-
-            float dt = Mathf.Max(0f, deltaTime);
-            for (int i = _worldFeedbackEffects.Count - 1; i >= 0; i--)
-            {
-                SurvivorsWorldFeedbackEffect effect = _worldFeedbackEffects[i];
-                effect.ElapsedSeconds += dt;
-                if (effect.Instance == null || effect.ElapsedSeconds >= EnemyDeathEffectLifetimeSeconds)
-                {
-                    ReleaseWorldFeedbackEffect(i);
-                    continue;
-                }
-
-                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / EnemyDeathEffectLifetimeSeconds);
-                float scale = Mathf.Lerp(1f, 2.65f, normalizedAge);
-                effect.Instance.transform.localScale = effect.BaseScale * scale;
-                if (effect.Material != null)
-                {
-                    Color color = effect.Color;
-                    color.a = Mathf.Lerp(0.72f, 0.04f, normalizedAge);
-                    effect.Material.color = color;
-                }
-
-                _worldFeedbackEffects[i] = effect;
-            }
-        }
-
-        private void ReleaseWorldFeedbackEffect(int index)
-        {
-            if (index < 0 || index >= _worldFeedbackEffects.Count)
-            {
-                return;
-            }
-
-            SurvivorsWorldFeedbackEffect effect = _worldFeedbackEffects[index];
-            _worldFeedbackEffects.RemoveAt(index);
-            if (effect.Material != null)
-            {
-                ReleaseTemplateObject(effect.Material);
-            }
-
-            if (effect.Instance != null)
-            {
-                ReleaseTemplateObject(effect.Instance);
-            }
-        }
-
-        internal void RecordEnemyRangedAttackFeedback(Vector3 origin, Vector3 target, SurvivorsEnemyRole role)
-        {
-            if (_feedbackRoot == null)
-            {
-                return;
-            }
-
-            Vector3 start = origin + Vector3.up * 0.42f;
-            Vector3 end = target + Vector3.up * 0.36f;
-            Vector3 direction = end - start;
-            float distance = direction.magnitude;
-            if (distance <= 0.05f)
-            {
-                return;
-            }
-
-            while (_enemyRangedAttackFeedbackEffects.Count >= EnemyRangedAttackFeedbackLimit)
-            {
-                ReleaseEnemyRangedAttackFeedbackEffect(0);
-            }
-
-            Color color = ResolveEnemyRangedAttackColor(role);
-            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            instance.name = "Survivors Enemy Ranged Attack Cue";
-            instance.transform.SetParent(_feedbackRoot, false);
-            instance.transform.position = (start + end) * 0.5f;
-            instance.transform.rotation = Quaternion.LookRotation(direction.normalized, Vector3.up);
-            Vector3 baseScale = new Vector3(0.1f, 0.1f, distance);
-            instance.transform.localScale = baseScale;
-
-            Collider collider = instance.GetComponent<Collider>();
-            if (collider != null)
-            {
-                ReleaseTemplateObject(collider);
-            }
-
-            Renderer renderer = instance.GetComponentInChildren<Renderer>();
-            Material material = ApplyColor(renderer, color);
-            _enemyRangedAttackFeedbackEffects.Add(new SurvivorsEnemyRangedAttackFeedbackEffect(instance, material, color, baseScale));
-            EnemyRangedAttackFeedbackCount++;
-        }
+        internal void RecordEnemyRangedAttackFeedback(Vector3 origin, Vector3 target, SurvivorsEnemyRole role) => CombatFeedback.RecordEnemyRangedAttackFeedback(origin, target, role);
 
         internal void RecordEnemyRangedAttackDodgeFeedback(SurvivorsEnemyActor enemy)
         {
@@ -6083,451 +5803,25 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void TickEnemyRangedAttackFeedbackEffects(float deltaTime)
-        {
-            if (_enemyRangedAttackFeedbackEffects.Count == 0)
-            {
-                return;
-            }
+        private void TickEnemyRangedAttackFeedbackEffects(float deltaTime) => CombatFeedback.TickEnemyRangedAttackFeedbackEffects(deltaTime);
 
-            float dt = Mathf.Max(0f, deltaTime);
-            for (int i = _enemyRangedAttackFeedbackEffects.Count - 1; i >= 0; i--)
-            {
-                SurvivorsEnemyRangedAttackFeedbackEffect effect = _enemyRangedAttackFeedbackEffects[i];
-                effect.ElapsedSeconds += dt;
-                if (effect.Instance == null || effect.ElapsedSeconds >= EnemyRangedAttackFeedbackLifetimeSeconds)
-                {
-                    ReleaseEnemyRangedAttackFeedbackEffect(i);
-                    continue;
-                }
+        private void RecordMajorThreatSlamTelegraphEffect(Vector3 position, SurvivorsEnemyRole role, float radius, float durationSeconds) => ThreatTelegraphs.RecordMajorThreatSlamTelegraphEffect(position, role, radius, durationSeconds);
 
-                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / EnemyRangedAttackFeedbackLifetimeSeconds);
-                float width = Mathf.Lerp(1.35f, 0.25f, normalizedAge);
-                effect.Instance.transform.localScale = new Vector3(effect.BaseScale.x * width, effect.BaseScale.y * width, effect.BaseScale.z);
-                if (effect.Material != null)
-                {
-                    Color color = effect.Color;
-                    color.a = Mathf.Lerp(0.86f, 0.05f, normalizedAge);
-                    effect.Material.color = color;
-                }
+        private void TickMajorThreatSlamTelegraphEffects(float deltaTime) => ThreatTelegraphs.TickMajorThreatSlamTelegraphEffects(deltaTime);
 
-                _enemyRangedAttackFeedbackEffects[i] = effect;
-            }
-        }
+        private void RecordIncomingThreatTelegraph(Vector3 position, SurvivorsEnemyRole role, string label, float radius, float durationSeconds) => ThreatTelegraphs.RecordIncomingThreatTelegraph(position, role, label, radius, durationSeconds);
 
-        private void ReleaseEnemyRangedAttackFeedbackEffect(int index)
-        {
-            if (index < 0 || index >= _enemyRangedAttackFeedbackEffects.Count)
-            {
-                return;
-            }
+        private void TickIncomingThreatTelegraphEffects(float deltaTime) => ThreatTelegraphs.TickIncomingThreatTelegraphEffects(deltaTime);
 
-            SurvivorsEnemyRangedAttackFeedbackEffect effect = _enemyRangedAttackFeedbackEffects[index];
-            _enemyRangedAttackFeedbackEffects.RemoveAt(index);
-            if (effect.Material != null)
-            {
-                ReleaseTemplateObject(effect.Material);
-            }
+        private static float ResolveIncomingThreatTelegraphRadius(SurvivorsEnemyRole role) => SurvivorsThreatTelegraphPresenter.ResolveIncomingThreatTelegraphRadius(role);
 
-            if (effect.Instance != null)
-            {
-                ReleaseTemplateObject(effect.Instance);
-            }
-        }
+        private void RecordMajorRewardDropFeedback(Vector3 position, SurvivorsEnemyRole role, float radius) => RewardDrops.RecordMajorRewardDropFeedback(position, role, radius);
 
-        private static Color ResolveEnemyRangedAttackColor(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return new Color(1f, 0.18f, 0.52f, 0.86f);
-                case SurvivorsEnemyRole.DreadElite:
-                    return new Color(0.42f, 0.86f, 1f, 0.82f);
-                case SurvivorsEnemyRole.Miniboss:
-                case SurvivorsEnemyRole.Elite:
-                    return new Color(1f, 0.56f, 0.2f, 0.84f);
-                default:
-                    return new Color(0.54f, 1f, 0.32f, 0.78f);
-            }
-        }
+        private void TickMajorRewardDropFeedbackEffects(float deltaTime) => RewardDrops.TickMajorRewardDropFeedbackEffects(deltaTime);
 
-        private void RecordMajorThreatSlamTelegraphEffect(Vector3 position, SurvivorsEnemyRole role, float radius, float durationSeconds)
-        {
-            if (_feedbackRoot == null)
-            {
-                return;
-            }
+        private Color ResolveMajorRewardDropColor(SurvivorsEnemyRole role) => RewardDrops.ResolveMajorRewardDropColor(role);
 
-            while (_majorThreatSlamTelegraphEffects.Count >= MajorThreatSlamTelegraphEffectLimit)
-            {
-                ReleaseMajorThreatSlamTelegraphEffect(0);
-            }
-
-            Color color = ResolveMajorThreatSlamTelegraphColor(role);
-            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            instance.name = "Survivors Major Threat Slam Telegraph";
-            instance.transform.SetParent(_feedbackRoot, false);
-            instance.transform.position = new Vector3(position.x, 0.115f, position.z);
-            float diameter = Mathf.Max(0.4f, radius * 2f);
-            Vector3 baseScale = new Vector3(diameter, 0.028f, diameter);
-            instance.transform.localScale = baseScale;
-
-            Collider collider = instance.GetComponent<Collider>();
-            if (collider != null)
-            {
-                ReleaseTemplateObject(collider);
-            }
-
-            Renderer renderer = instance.GetComponentInChildren<Renderer>();
-            Material material = ApplyColor(renderer, color);
-            float duration = Mathf.Max(0.08f, durationSeconds) + MajorThreatSlamTelegraphFadePaddingSeconds;
-            _majorThreatSlamTelegraphEffects.Add(new SurvivorsMajorThreatSlamTelegraphEffect(instance, material, color, baseScale, duration));
-            MajorThreatSlamTelegraphEffectCount++;
-        }
-
-        private void TickMajorThreatSlamTelegraphEffects(float deltaTime)
-        {
-            if (_majorThreatSlamTelegraphEffects.Count == 0)
-            {
-                return;
-            }
-
-            float dt = Mathf.Max(0f, deltaTime);
-            for (int i = _majorThreatSlamTelegraphEffects.Count - 1; i >= 0; i--)
-            {
-                SurvivorsMajorThreatSlamTelegraphEffect effect = _majorThreatSlamTelegraphEffects[i];
-                effect.ElapsedSeconds += dt;
-                if (effect.Instance == null || effect.ElapsedSeconds >= effect.DurationSeconds)
-                {
-                    ReleaseMajorThreatSlamTelegraphEffect(i);
-                    continue;
-                }
-
-                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / effect.DurationSeconds);
-                float charge = Mathf.Lerp(0.58f, 1.05f, normalizedAge);
-                float pulse = 1f + Mathf.Sin(effect.ElapsedSeconds * 26f) * 0.06f;
-                effect.Instance.transform.localScale = effect.BaseScale * Mathf.Max(0.45f, charge * pulse);
-                if (effect.Material != null)
-                {
-                    Color color = effect.Color;
-                    color.a = Mathf.Lerp(0.82f, 0.22f, normalizedAge);
-                    effect.Material.color = color;
-                }
-
-                _majorThreatSlamTelegraphEffects[i] = effect;
-            }
-        }
-
-        private void ReleaseMajorThreatSlamTelegraphEffect(int index)
-        {
-            if (index < 0 || index >= _majorThreatSlamTelegraphEffects.Count)
-            {
-                return;
-            }
-
-            SurvivorsMajorThreatSlamTelegraphEffect effect = _majorThreatSlamTelegraphEffects[index];
-            _majorThreatSlamTelegraphEffects.RemoveAt(index);
-            if (effect.Material != null)
-            {
-                ReleaseTemplateObject(effect.Material);
-            }
-
-            if (effect.Instance != null)
-            {
-                ReleaseTemplateObject(effect.Instance);
-            }
-        }
-
-        private void RecordIncomingThreatTelegraph(Vector3 position, SurvivorsEnemyRole role, string label, float radius, float durationSeconds)
-        {
-            if (_feedbackRoot == null)
-            {
-                return;
-            }
-
-            while (_incomingThreatTelegraphEffects.Count >= IncomingThreatTelegraphEffectLimit)
-            {
-                ReleaseIncomingThreatTelegraphEffect(0);
-            }
-
-            Color color = ResolveIncomingThreatTelegraphColor(role);
-            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            instance.name = "Survivors Incoming Threat Telegraph";
-            instance.transform.SetParent(_feedbackRoot, false);
-            instance.transform.position = new Vector3(position.x, 0.095f, position.z);
-            float diameter = Mathf.Max(1.2f, radius * 2f);
-            Vector3 baseScale = new Vector3(diameter, 0.024f, diameter);
-            instance.transform.localScale = baseScale;
-
-            Collider collider = instance.GetComponent<Collider>();
-            if (collider != null)
-            {
-                ReleaseTemplateObject(collider);
-            }
-
-            Renderer renderer = instance.GetComponentInChildren<Renderer>();
-            Material material = ApplyColor(renderer, color);
-            float duration = Mathf.Max(0.12f, durationSeconds) + IncomingThreatTelegraphFadePaddingSeconds;
-            _incomingThreatTelegraphEffects.Add(new SurvivorsIncomingThreatTelegraphEffect(instance, material, color, baseScale, duration));
-            IncomingThreatTelegraphEffectCount++;
-            LastIncomingThreatTelegraphLabel = string.IsNullOrWhiteSpace(label) ? ResolveMajorThreatWarningLabel(role) : label;
-        }
-
-        private void TickIncomingThreatTelegraphEffects(float deltaTime)
-        {
-            if (_incomingThreatTelegraphEffects.Count == 0)
-            {
-                return;
-            }
-
-            float dt = Mathf.Max(0f, deltaTime);
-            for (int i = _incomingThreatTelegraphEffects.Count - 1; i >= 0; i--)
-            {
-                SurvivorsIncomingThreatTelegraphEffect effect = _incomingThreatTelegraphEffects[i];
-                effect.ElapsedSeconds += dt;
-                if (effect.Instance == null || effect.ElapsedSeconds >= effect.DurationSeconds)
-                {
-                    ReleaseIncomingThreatTelegraphEffect(i);
-                    continue;
-                }
-
-                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / effect.DurationSeconds);
-                float pulse = 1f + Mathf.Sin(effect.ElapsedSeconds * 18f) * 0.08f;
-                float charge = Mathf.Lerp(0.88f, 1.16f, normalizedAge);
-                effect.Instance.transform.localScale = effect.BaseScale * Mathf.Max(0.42f, charge * pulse);
-                if (effect.Material != null)
-                {
-                    Color color = effect.Color;
-                    color.a = Mathf.Lerp(0.66f, 0.08f, normalizedAge);
-                    effect.Material.color = color;
-                }
-
-                _incomingThreatTelegraphEffects[i] = effect;
-            }
-        }
-
-        private void ReleaseIncomingThreatTelegraphEffect(int index)
-        {
-            if (index < 0 || index >= _incomingThreatTelegraphEffects.Count)
-            {
-                return;
-            }
-
-            SurvivorsIncomingThreatTelegraphEffect effect = _incomingThreatTelegraphEffects[index];
-            _incomingThreatTelegraphEffects.RemoveAt(index);
-            if (effect.Material != null)
-            {
-                ReleaseTemplateObject(effect.Material);
-            }
-
-            if (effect.Instance != null)
-            {
-                ReleaseTemplateObject(effect.Instance);
-            }
-        }
-
-        private static Color ResolveIncomingThreatTelegraphColor(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return new Color(1f, 0.12f, 0.48f, 0.66f);
-                case SurvivorsEnemyRole.Miniboss:
-                    return new Color(1f, 0.36f, 0.12f, 0.64f);
-                case SurvivorsEnemyRole.DreadElite:
-                    return new Color(0.38f, 0.86f, 1f, 0.62f);
-                default:
-                    return new Color(1f, 0.72f, 0.16f, 0.6f);
-            }
-        }
-
-        private static float ResolveIncomingThreatTelegraphRadius(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return 9.5f;
-                case SurvivorsEnemyRole.Miniboss:
-                    return 8f;
-                case SurvivorsEnemyRole.DreadElite:
-                    return 6.8f;
-                default:
-                    return 5.8f;
-            }
-        }
-
-        private static Color ResolveMajorThreatSlamTelegraphColor(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return new Color(1f, 0.1f, 0.5f, 0.82f);
-                case SurvivorsEnemyRole.Miniboss:
-                    return new Color(1f, 0.38f, 0.14f, 0.8f);
-                case SurvivorsEnemyRole.DreadElite:
-                    return new Color(0.42f, 0.88f, 1f, 0.78f);
-                default:
-                    return new Color(1f, 0.62f, 0.18f, 0.76f);
-            }
-        }
-
-        private void RecordMajorRewardDropFeedback(Vector3 position, SurvivorsEnemyRole role, float radius)
-        {
-            if (_feedbackRoot == null)
-            {
-                return;
-            }
-
-            while (_rewardDropFeedbackEffects.Count >= MajorRewardDropEffectLimit)
-            {
-                ReleaseMajorRewardDropFeedbackEffect(0);
-            }
-
-            string label = ResolveMajorRewardDropLabel(role);
-            Color color = ResolveMajorRewardDropColor(role);
-            GameObject instance = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            instance.name = "Survivors " + label;
-            instance.transform.SetParent(_feedbackRoot, false);
-            Vector3 basePosition = position + Vector3.up * Mathf.Max(0.56f, radius * 1.1f);
-            instance.transform.position = basePosition;
-            instance.transform.rotation = Quaternion.Euler(12f, 45f, 18f);
-            float size = role == SurvivorsEnemyRole.Boss
-                ? Mathf.Max(0.9f, radius * 0.95f)
-                : Mathf.Max(0.56f, radius * 0.82f);
-            Vector3 baseScale = new Vector3(size, size, size);
-            instance.transform.localScale = baseScale;
-
-            Collider collider = instance.GetComponent<Collider>();
-            if (collider != null)
-            {
-                ReleaseTemplateObject(collider);
-            }
-
-            Renderer renderer = instance.GetComponentInChildren<Renderer>();
-            Material material = ApplyColor(renderer, color);
-            _rewardDropFeedbackEffects.Add(new SurvivorsRewardDropFeedbackEffect(instance, material, color, basePosition, baseScale));
-            MajorRewardDropFeedbackCount++;
-            LastMajorRewardDropFeedbackLabel = label;
-        }
-
-        private void TickMajorRewardDropFeedbackEffects(float deltaTime)
-        {
-            if (_rewardDropFeedbackEffects.Count == 0)
-            {
-                return;
-            }
-
-            float dt = Mathf.Max(0f, deltaTime);
-            for (int i = _rewardDropFeedbackEffects.Count - 1; i >= 0; i--)
-            {
-                SurvivorsRewardDropFeedbackEffect effect = _rewardDropFeedbackEffects[i];
-                effect.ElapsedSeconds += dt;
-                if (effect.Instance == null || effect.ElapsedSeconds >= MajorRewardDropLifetimeSeconds)
-                {
-                    ReleaseMajorRewardDropFeedbackEffect(i);
-                    continue;
-                }
-
-                float normalizedAge = Mathf.Clamp01(effect.ElapsedSeconds / MajorRewardDropLifetimeSeconds);
-                float pulse = Mathf.Sin(normalizedAge * Mathf.PI);
-                effect.Instance.transform.position = effect.BasePosition + Vector3.up * (0.58f * pulse);
-                effect.Instance.transform.localScale = effect.BaseScale * Mathf.Lerp(1f, 1.48f, pulse);
-                effect.Instance.transform.Rotate(0f, 260f * dt, 0f, Space.World);
-                if (effect.Material != null)
-                {
-                    Color color = effect.Color;
-                    color.a = Mathf.Lerp(0.95f, 0.1f, normalizedAge);
-                    effect.Material.color = color;
-                }
-
-                _rewardDropFeedbackEffects[i] = effect;
-            }
-        }
-
-        private void ReleaseMajorRewardDropFeedbackEffect(int index)
-        {
-            if (index < 0 || index >= _rewardDropFeedbackEffects.Count)
-            {
-                return;
-            }
-
-            SurvivorsRewardDropFeedbackEffect effect = _rewardDropFeedbackEffects[index];
-            _rewardDropFeedbackEffects.RemoveAt(index);
-            if (effect.Material != null)
-            {
-                ReleaseTemplateObject(effect.Material);
-            }
-
-            if (effect.Instance != null)
-            {
-                ReleaseTemplateObject(effect.Instance);
-            }
-        }
-
-        private Color ResolveMajorRewardDropColor(SurvivorsEnemyRole role)
-        {
-            Color elite = ActiveUiTheme.GetEliteThreatColor(new Color(1f, 0.76f, 0.2f));
-            Color boss = ActiveUiTheme.GetBossThreatColor(new Color(1f, 0.2f, 0.45f));
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return WithAlpha(boss, 0.95f);
-                case SurvivorsEnemyRole.Miniboss:
-                    return WithAlpha(Color.Lerp(elite, boss, 0.62f), 0.95f);
-                case SurvivorsEnemyRole.DreadElite:
-                    return WithAlpha(Color.Lerp(elite, ActiveUiTheme.GetArenaAccentColor(new Color(0.38f, 0.9f, 1f)), 0.58f), 0.92f);
-                default:
-                    return WithAlpha(elite, 0.92f);
-            }
-        }
-
-        private static string ResolveMajorRewardDropLabel(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return "Boss Reward Cache";
-                case SurvivorsEnemyRole.Miniboss:
-                    return "Miniboss Reward Cache";
-                case SurvivorsEnemyRole.DreadElite:
-                    return "Dread Elite Reward Cache";
-                default:
-                    return "Elite Reward Cache";
-            }
-        }
-
-        private static Color ResolveEnemyDeathEffectColor(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Elite:
-                case SurvivorsEnemyRole.DreadElite:
-                    return new Color(1f, 0.62f, 0.18f, 0.72f);
-                case SurvivorsEnemyRole.Miniboss:
-                    return new Color(1f, 0.3f, 0.74f, 0.72f);
-                case SurvivorsEnemyRole.Boss:
-                    return new Color(1f, 0.15f, 0.22f, 0.76f);
-                default:
-                    return new Color(0.35f, 0.95f, 1f, 0.68f);
-            }
-        }
-
-        private static AudioClip CreateTone(string name, float frequency, float durationSeconds, float volume)
-        {
-            const int sampleRate = 22050;
-            int sampleCount = Mathf.Max(1, Mathf.CeilToInt(sampleRate * durationSeconds));
-            float[] samples = new float[sampleCount];
-            for (int i = 0; i < sampleCount; i++)
-            {
-                float t = i / (float)sampleRate;
-                float fade = Mathf.Clamp01(1f - i / (float)sampleCount);
-                samples[i] = Mathf.Sin(Mathf.PI * 2f * frequency * t) * volume * fade;
-            }
-
-            AudioClip clip = AudioClip.Create(name, sampleCount, 1, sampleRate, false);
-            clip.SetData(samples, 0);
-            return clip;
-        }
+        private static string ResolveMajorRewardDropLabel(SurvivorsEnemyRole role) => SurvivorsRewardDropPresenter.ResolveMajorRewardDropLabel(role);
 
         private void EnsureCamera()
         {
@@ -6552,7 +5846,11 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void ClearRun()
         {
-            _runStarted = false;
+            _runSession.Stop();
+            _audioPresentation?.ReleaseResources();
+            _rewardDrops?.Dispose();
+            _threatTelegraphs?.Dispose();
+            _combatFeedback?.Dispose();
             if (_weaponLoadout != null)
             {
                 _weaponLoadout.Dispose();
@@ -6567,31 +5865,6 @@ namespace Deucarian.TemplateGameSurvivors
             _enragedMajorThreats.Clear();
             _pickups.Clear();
             _projectiles.Clear();
-            while (_worldFeedbackEffects.Count > 0)
-            {
-                ReleaseWorldFeedbackEffect(_worldFeedbackEffects.Count - 1);
-            }
-
-            while (_enemyRangedAttackFeedbackEffects.Count > 0)
-            {
-                ReleaseEnemyRangedAttackFeedbackEffect(_enemyRangedAttackFeedbackEffects.Count - 1);
-            }
-
-            while (_majorThreatSlamTelegraphEffects.Count > 0)
-            {
-                ReleaseMajorThreatSlamTelegraphEffect(_majorThreatSlamTelegraphEffects.Count - 1);
-            }
-
-            while (_incomingThreatTelegraphEffects.Count > 0)
-            {
-                ReleaseIncomingThreatTelegraphEffect(_incomingThreatTelegraphEffects.Count - 1);
-            }
-
-            while (_rewardDropFeedbackEffects.Count > 0)
-            {
-                ReleaseMajorRewardDropFeedbackEffect(_rewardDropFeedbackEffects.Count - 1);
-            }
-
             _arenaTiles.Clear();
             _arenaLandmarks.Clear();
             _arenaLandmarkKeys.Clear();
@@ -6616,23 +5889,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void EnsureMetaProgressionLoaded()
         {
-            if (_metaProgression == null)
-            {
-                IPersistenceService persistence = _injectedMetaPersistence ??
-                    new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider()));
-                _ownsMetaProgressionService = _injectedMetaPersistence == null;
-                _metaProgression = new SurvivorsMetaProgressionService(
-                    persistence,
-                    _metaSaveSlotId,
-                    ResolveMetaProgressionDefinition());
-                _metaProfileLoaded = false;
-            }
-
-            if (!_metaProfileLoaded)
-            {
-                _metaProgression.Load();
-                _metaProfileLoaded = true;
-            }
+            _profileSession.EnsureLoaded(ResolveMetaProgressionDefinition());
         }
 
         private SurvivorsMetaProgressionDefinition ResolveMetaProgressionDefinition()
@@ -7902,10 +7159,9 @@ namespace Deucarian.TemplateGameSurvivors
         {
             string evolutionName = evolution == null ? "Evolution" : ResolveUpgradeDisplayName(evolution.Id);
             string passiveName = missingPassive == null ? "matching passive" : ResolveUpgradeDisplayName(missingPassive.Id);
-            _evolutionReadyFeedbackLabel = $"Evolution Goal: {passiveName} for {evolutionName}";
-            _evolutionReadyFeedbackTimer = EvolutionReadyFeedbackDurationSeconds;
+            _evolutionReadyBanner.Show($"Evolution Goal: {passiveName} for {evolutionName}", EvolutionReadyFeedbackDurationSeconds, Color.white);
             EvolutionGoalFeedbackCount++;
-            LastEvolutionGoalFeedbackLabel = _evolutionReadyFeedbackLabel;
+            LastEvolutionGoalFeedbackLabel = _evolutionReadyBanner.Label;
             PlayFeedback(_levelUpPulse, PlayerPosition, 22, _levelUpClip);
         }
 
@@ -7913,10 +7169,9 @@ namespace Deucarian.TemplateGameSurvivors
         {
             RecordMetricTime(ref _firstEvolutionEligibilityTimeSeconds);
             string name = ResolveUpgradeDisplayName(evolution.Id);
-            _evolutionReadyFeedbackLabel = $"Evolution Ready: {name}";
-            _evolutionReadyFeedbackTimer = EvolutionReadyFeedbackDurationSeconds;
+            _evolutionReadyBanner.Show($"Evolution Ready: {name}", EvolutionReadyFeedbackDurationSeconds, Color.white);
             EvolutionReadyFeedbackCount++;
-            LastEvolutionReadyFeedbackLabel = _evolutionReadyFeedbackLabel;
+            LastEvolutionReadyFeedbackLabel = _evolutionReadyBanner.Label;
             PlayFeedback(_levelUpPulse, PlayerPosition, 36, _levelUpClip);
         }
 
@@ -8116,58 +7371,17 @@ namespace Deucarian.TemplateGameSurvivors
         private void ApplyPersistentMetaBonuses()
         {
             EnsureMetaProgressionLoaded();
-            float previousDamageBonus = PersistentDamageBonus;
-            float previousMaxHealthBonus = PersistentMaxHealthBonus;
-            float previousPickupRangeBonus = PersistentPickupRangeBonus;
-            float previousExperienceGainBonus = PersistentExperienceGainMultiplierBonus;
-
-            PersistentDamageBonus = _metaProgression.GetPersistentDamageBonus(BasicSurvivorsGame.WeaponTarget.Value);
-            PersistentMaxHealthBonus = _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaMaxHealthEffectId, BasicSurvivorsGame.PlayerTarget.Value);
-            PersistentPickupRangeBonus = _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaPickupRangeEffectId, BasicSurvivorsGame.PickupTarget.Value);
-            PersistentExperienceGainMultiplierBonus = _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaExperienceGainEffectId, BasicSurvivorsGame.ExperienceTarget.Value);
-            PersistentDraftRerollBonus = Mathf.Max(0, Mathf.RoundToInt(_metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaDraftRerollEffectId, BasicSurvivorsGame.PlayerTarget.Value)));
-
-            DamageBonus += PersistentDamageBonus - previousDamageBonus;
-            PickupRangeBonus += PersistentPickupRangeBonus - previousPickupRangeBonus;
-            ExperienceGainMultiplierBonus += PersistentExperienceGainMultiplierBonus - previousExperienceGainBonus;
-            if (_playerHealth != null)
-            {
-                float maxHealthDelta = PersistentMaxHealthBonus - previousMaxHealthBonus;
-                if (Mathf.Abs(maxHealthDelta) > 0.001f)
-                {
-                    _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + maxHealthDelta, MaximumChangePolicy.FillToMaximum);
-                }
-            }
+            UpgradeModifiers.ApplyPersistent(new SurvivorsPersistentBonuses(
+                _metaProgression.GetPersistentDamageBonus(BasicSurvivorsGame.WeaponTarget.Value),
+                _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaMaxHealthEffectId, BasicSurvivorsGame.PlayerTarget.Value),
+                _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaPickupRangeEffectId, BasicSurvivorsGame.PickupTarget.Value),
+                _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaExperienceGainEffectId, BasicSurvivorsGame.ExperienceTarget.Value),
+                _metaProgression.GetPersistentUpgradeBonus(BasicSurvivorsGame.MetaDraftRerollEffectId, BasicSurvivorsGame.PlayerTarget.Value)));
         }
 
         private void ApplySelectedClassBonuses()
         {
-            if (_selectedClass == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _selectedClass.StartingStatModifiers.Count; i++)
-            {
-                SurvivorsClassStatModifierDefinition modifier = _selectedClass.StartingStatModifiers[i];
-                if (modifier == null)
-                {
-                    continue;
-                }
-
-                if (modifier.StatKind == SurvivorsClassStatKind.MoveSpeed)
-                {
-                    MoveSpeedBonus += modifier.Amount;
-                }
-                else if (modifier.StatKind == SurvivorsClassStatKind.Damage)
-                {
-                    DamageBonus += modifier.Amount;
-                }
-                else if (modifier.StatKind == SurvivorsClassStatKind.MaxHealth && _playerHealth != null)
-                {
-                    _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + modifier.Amount, MaximumChangePolicy.FillToMaximum);
-                }
-            }
+            UpgradeModifiers.ApplyClass(_selectedClass);
         }
 
         private void GrantMajorEnemyReward(SurvivorsEnemyRole role)
@@ -8338,8 +7552,7 @@ namespace Deucarian.TemplateGameSurvivors
                 LastClassUnlockRewardFeedbackLabel += $" +{reward.CurrencyAmount} {CurrencyRewardLabel} +{reward.TrackAmount} {ProgressionRewardLabel}";
             }
 
-            _classUnlockRewardFeedbackLabel = LastClassUnlockRewardFeedbackLabel;
-            _classUnlockRewardFeedbackTimer = ClassUnlockRewardFeedbackDurationSeconds;
+            _classUnlockRewardBanner.Show(LastClassUnlockRewardFeedbackLabel, ClassUnlockRewardFeedbackDurationSeconds, Color.white);
             PlayFeedback(_bossPulse, PlayerPosition, 52, _levelUpClip);
         }
 
@@ -8380,14 +7593,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void ReleaseMetaProgressionService()
         {
-            if (_metaProgression != null && _ownsMetaProgressionService)
-            {
-                _metaProgression.Dispose();
-            }
-
-            _metaProgression = null;
-            _ownsMetaProgressionService = false;
-            _metaProfileLoaded = false;
+            _profileSession.Release();
         }
 
         private void MovePlayer(Vector2 movementInput, float deltaTime)
@@ -9424,218 +8630,9 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void TickRunFlow()
-        {
-            if (_runFlow == null)
-            {
-                return;
-            }
-
-            _runFlow.Tick(RunTimeSeconds);
-            while (_runFlow.TryConsumeTimedEliteSpawn(RunTimeSeconds, out SurvivorsEnemyRole timedEliteRole))
-            {
-                SpawnEnemy(Vector3.zero, explicitPosition: false, timedEliteRole, gameplaySpawn: true, spawnSource: "timed-elite");
-            }
-
-            if (_runFlow.TryConsumeMinibossSpawn(RunTimeSeconds))
-            {
-                SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Miniboss, gameplaySpawn: true, spawnSource: "timed-miniboss");
-            }
-
-            if (_runFlow.TryConsumeBossSpawn(RunTimeSeconds))
-            {
-                SpawnEnemy(Vector3.zero, explicitPosition: false, SurvivorsEnemyRole.Boss, gameplaySpawn: true, spawnSource: "timed-boss");
-            }
-
-            if (_runFlow.TryConsumeSurvivalVictory(RunTimeSeconds))
-            {
-                EnterVictory();
-            }
-
-            TickEndlessThreatSpawns();
-        }
-
-        private void TickMajorThreatWarnings()
-        {
-            if (_runFlow == null || _runFlow.Definition == null)
-            {
-                return;
-            }
-
-            SurvivorsRunFlowDefinition definition = _runFlow.Definition;
-            TryBeginRecurringMajorThreatWarning(ref _firstEliteWarningShown, ref _timedEliteWarningTargetTimeSeconds, _runFlow.NextEliteSpawnTimeSeconds, SurvivorsEnemyRole.Elite);
-            TryBeginRecurringMajorThreatWarning(ref _firstDreadEliteWarningShown, ref _timedDreadEliteWarningTargetTimeSeconds, _runFlow.NextDreadEliteSpawnTimeSeconds, SurvivorsEnemyRole.DreadElite);
-            TryBeginMajorThreatWarning(ref _minibossWarningShown, definition.MinibossSpawnTimeSeconds, SurvivorsEnemyRole.Miniboss);
-            TryBeginMajorThreatWarning(ref _bossWarningShown, definition.BossSpawnTimeSeconds, SurvivorsEnemyRole.Boss);
-            if (_victoryClearedThisRun && State == SurvivorsRunState.Playing)
-            {
-                TryBeginMajorThreatWarning(ref _endlessEliteWarningShown, _nextEndlessEliteSpawnTimeSeconds, ResolveNextEndlessEliteRole());
-                TryBeginMajorThreatWarning(ref _endlessMinibossWarningShown, _nextEndlessMinibossSpawnTimeSeconds, SurvivorsEnemyRole.Miniboss);
-                TryBeginMajorThreatWarning(ref _endlessBossWarningShown, _nextEndlessBossSpawnTimeSeconds, SurvivorsEnemyRole.Boss);
-            }
-        }
-
-        private void TryBeginRecurringMajorThreatWarning(ref bool warningShown, ref float warningTargetTimeSeconds, float targetTimeSeconds, SurvivorsEnemyRole role)
-        {
-            if (targetTimeSeconds <= 0f)
-            {
-                warningShown = false;
-                warningTargetTimeSeconds = 0f;
-                return;
-            }
-
-            if (!Mathf.Approximately(warningTargetTimeSeconds, targetTimeSeconds))
-            {
-                warningShown = false;
-                warningTargetTimeSeconds = targetTimeSeconds;
-            }
-
-            TryBeginMajorThreatWarning(ref warningShown, targetTimeSeconds, role);
-        }
-
-        private void TryBeginMajorThreatWarning(ref bool warningShown, float targetTimeSeconds, SurvivorsEnemyRole role)
-        {
-            float leadSeconds = Mathf.Max(0f, CurrentTuning.MajorThreatWarningLeadSeconds);
-            if (warningShown || leadSeconds <= 0f || targetTimeSeconds <= 0f)
-            {
-                return;
-            }
-
-            float warningTime = Mathf.Max(0f, targetTimeSeconds - leadSeconds);
-            if (RunTimeSeconds < warningTime || RunTimeSeconds >= targetTimeSeconds)
-            {
-                return;
-            }
-
-            warningShown = true;
-            _majorThreatWarningLabel = ResolveMajorThreatWarningLabel(role);
-            _majorThreatWarningTargetTimeSeconds = targetTimeSeconds;
-            MajorThreatWarningCount++;
-            RecordIncomingThreatTelegraph(PlayerPosition, role, _majorThreatWarningLabel, ResolveIncomingThreatTelegraphRadius(role), targetTimeSeconds - RunTimeSeconds);
-            PlayFeedback(_bossPulse, PlayerPosition, role == SurvivorsEnemyRole.Boss ? 44 : 28, _dangerClip, role == SurvivorsEnemyRole.Boss ? AudioEventBossWarning : AudioEventEliteWarning, 0.35f);
-        }
-
-        private static string ResolveMajorThreatWarningLabel(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.DreadElite:
-                    return "DREAD ELITE INCOMING";
-                case SurvivorsEnemyRole.Miniboss:
-                    return "MINIBOSS INCOMING";
-                case SurvivorsEnemyRole.Boss:
-                    return "FINAL BOSS INCOMING";
-                default:
-                    return "ELITE INCOMING";
-            }
-        }
-
-        private void ResetEndlessThreatSchedule()
-        {
-            _endlessEliteWarningShown = false;
-            _endlessMinibossWarningShown = false;
-            _endlessBossWarningShown = false;
-            _nextEndlessEliteSpawnTimeSeconds = 0f;
-            _nextEndlessMinibossSpawnTimeSeconds = 0f;
-            _nextEndlessBossSpawnTimeSeconds = 0f;
-            _endlessEliteSpawnSequence = 0;
-        }
-
-        private void ScheduleEndlessThreats(float startTimeSeconds)
-        {
-            _endlessEliteSpawnSequence = 0;
-            ScheduleNextEndlessThreat(
-                ref _nextEndlessEliteSpawnTimeSeconds,
-                ref _endlessEliteWarningShown,
-                startTimeSeconds,
-                CurrentTuning.EndlessEliteSpawnIntervalSeconds);
-            ScheduleNextEndlessThreat(
-                ref _nextEndlessMinibossSpawnTimeSeconds,
-                ref _endlessMinibossWarningShown,
-                startTimeSeconds,
-                CurrentTuning.EndlessMinibossSpawnIntervalSeconds);
-            ScheduleNextEndlessThreat(
-                ref _nextEndlessBossSpawnTimeSeconds,
-                ref _endlessBossWarningShown,
-                startTimeSeconds,
-                CurrentTuning.EndlessBossSpawnIntervalSeconds);
-        }
-
-        private static void ScheduleNextEndlessThreat(
-            ref float targetTimeSeconds,
-            ref bool warningShown,
-            float startTimeSeconds,
-            float intervalSeconds)
-        {
-            warningShown = false;
-            targetTimeSeconds = intervalSeconds <= 0f
-                ? 0f
-                : Mathf.Max(0f, startTimeSeconds) + Mathf.Max(0.1f, intervalSeconds);
-        }
-
-        private void TickEndlessThreatSpawns()
-        {
-            if (!_victoryClearedThisRun || State != SurvivorsRunState.Playing)
-            {
-                return;
-            }
-
-            SurvivorsEnemyRole eliteRole = ResolveNextEndlessEliteRole();
-            if (TrySpawnEndlessThreat(eliteRole, _nextEndlessEliteSpawnTimeSeconds))
-            {
-                _endlessEliteSpawnSequence++;
-                ScheduleNextEndlessThreat(
-                    ref _nextEndlessEliteSpawnTimeSeconds,
-                    ref _endlessEliteWarningShown,
-                    RunTimeSeconds,
-                    CurrentTuning.EndlessEliteSpawnIntervalSeconds);
-            }
-
-            if (TrySpawnEndlessThreat(SurvivorsEnemyRole.Miniboss, _nextEndlessMinibossSpawnTimeSeconds))
-            {
-                ScheduleNextEndlessThreat(
-                    ref _nextEndlessMinibossSpawnTimeSeconds,
-                    ref _endlessMinibossWarningShown,
-                    RunTimeSeconds,
-                    CurrentTuning.EndlessMinibossSpawnIntervalSeconds);
-            }
-
-            if (TrySpawnEndlessThreat(SurvivorsEnemyRole.Boss, _nextEndlessBossSpawnTimeSeconds))
-            {
-                ScheduleNextEndlessThreat(
-                    ref _nextEndlessBossSpawnTimeSeconds,
-                    ref _endlessBossWarningShown,
-                    RunTimeSeconds,
-                    CurrentTuning.EndlessBossSpawnIntervalSeconds);
-            }
-        }
-
-        private bool TrySpawnEndlessThreat(SurvivorsEnemyRole role, float targetTimeSeconds)
-        {
-            if (targetTimeSeconds <= 0f || RunTimeSeconds < targetTimeSeconds)
-            {
-                return false;
-            }
-
-            if (SpawnEnemy(Vector3.zero, explicitPosition: false, role, gameplaySpawn: true, spawnSource: "endless-threat") == null)
-            {
-                return false;
-            }
-
-            EndlessThreatSpawnCount++;
-            return true;
-        }
-
-        private SurvivorsEnemyRole ResolveNextEndlessEliteRole()
-        {
-            return (_endlessEliteSpawnSequence % 2) == 0
-                ? SurvivorsEnemyRole.Elite
-                : SurvivorsEnemyRole.DreadElite;
-        }
-
         private void TryActivateEndlessSurge(SurvivorsEnemyRole role, Vector3 position, int baseExperienceReward)
         {
-            if (!_victoryClearedThisRun || !IsMajorRewardRole(role))
+            if (!_runSession.HasClearedVictory || !IsMajorRewardRole(role))
             {
                 return;
             }
@@ -9712,7 +8709,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private int ResolveEndlessExplorationBonusTier()
         {
-            if (!_victoryClearedThisRun)
+            if (!_runSession.HasClearedVictory)
             {
                 return 0;
             }
@@ -10053,18 +9050,12 @@ namespace Deucarian.TemplateGameSurvivors
 
             GrantRunRewards(victory: true);
             ClearRewardDrafts();
-            _victoryClearedThisRun = true;
-            State = SurvivorsRunState.Victory;
+            _runSession.Win();
             PlayFeedback(_levelUpPulse, PlayerPosition, 42, _levelUpClip, AudioEventVictory, 0.5f);
         }
 
-        private float ResolveEnemySpawnIntervalSeconds()
-        {
-            float interval = _runFlow == null
-                ? Mathf.Max(0.05f, CurrentTuning.EnemySpawnIntervalSeconds)
-                : _runFlow.ResolveSpawnInterval(CurrentTuning.EnemySpawnIntervalSeconds);
-            return ResolveEndlessSpawnInterval(interval);
-        }
+        private float ResolveEnemySpawnIntervalSeconds() =>
+            SurvivorsSwarmSpawnCoordinator.ResolveInterval(CurrentTuning, _runFlow, _runSession.HasClearedVictory);
 
         private SurvivorsRunFlowDefinition CreateRunFlowDefinition(SurvivorsTemplateTuning resolved)
         {
@@ -10078,22 +9069,10 @@ namespace Deucarian.TemplateGameSurvivors
             return BasicSurvivorsGame.CreateRunFlowDefinition(resolved);
         }
 
-        private int ResolveEnemyMaximumAlive()
-        {
-            int maximumAlive = _runFlow == null
-                ? Mathf.Max(1, CurrentTuning.EnemyMaximumAlive)
-                : _runFlow.ResolveMaximumAlive(CurrentTuning.EnemyMaximumAlive);
-            return _victoryClearedThisRun ? maximumAlive + EndlessEnemyAliveBonus : maximumAlive;
-        }
+        private int ResolveEnemyMaximumAlive() =>
+            SurvivorsSwarmSpawnCoordinator.ResolveMaximumAlive(CurrentTuning, _runFlow, _runSession.HasClearedVictory);
 
-        private int ResolveEnemySpawnPackSize()
-        {
-            int baseCount = Mathf.Max(1, CurrentTuning.EnemySpawnPackBaseCount);
-            int maxCount = Mathf.Max(baseCount, CurrentTuning.EnemySpawnPackMaxCount);
-            int escalationStep = Mathf.Max(1, CurrentTuning.EnemySpawnPackIncreaseEveryEscalations);
-            int escalationBonus = Mathf.Max(0, RunEscalationLevel) / escalationStep;
-            return Mathf.Clamp(baseCount + escalationBonus, 1, maxCount);
-        }
+        private int ResolveEnemySpawnPackSize() => SurvivorsSwarmSpawnCoordinator.ResolvePackSize(CurrentTuning, _runFlow);
 
         private SurvivorsEnemyProfile ResolveEnemyProfile(SurvivorsEnemyRole role)
         {
@@ -10182,26 +9161,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void TickEnemySpawning(float deltaTime)
         {
-            _enemySpawnTimer -= deltaTime;
-            int maximumAlive = ResolveEnemyMaximumAlive();
-            if (_enemySpawnTimer > 0f || _enemies.Count >= maximumAlive)
-            {
-                return;
-            }
-
-            int packCount = Mathf.Min(ResolveEnemySpawnPackSize(), maximumAlive - _enemies.Count);
-            for (int i = 0; i < packCount; i++)
-            {
-                SurvivorsEnemyRole role = _runFlow == null
-                    ? SurvivorsEnemyRole.Swarm
-                    : _runFlow.ResolveNextSwarmRole(RunTimeSeconds, _spawnSequence + 1 + i);
-                if (SpawnEnemy(Vector3.zero, explicitPosition: false, role, gameplaySpawn: true, spawnSource: "normal-pack") == null)
-                {
-                    break;
-                }
-            }
-
-            _enemySpawnTimer = ResolveEnemySpawnIntervalSeconds();
+            SwarmSpawning.Tick(deltaTime, RunTimeSeconds, CurrentTuning, _runFlow, _runSession.HasClearedVictory);
         }
 
         private SurvivorsEnemyActor SpawnGameplayEnemyOffscreen(
@@ -10573,7 +9533,7 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsWorldPositionInsideCameraViewportForTest(Vector3 position, float padding)
         {
             return TryResolveCameraGroundRect(Mathf.Max(0f, padding), out Rect visibleRect) &&
-                ContainsGroundPoint(visibleRect, position);
+                SurvivorsOffscreenSpawnPolicy.ContainsGroundPoint(visibleRect, position);
         }
 
         private Vector3 ResolveSafeOffscreenPosition(Vector3 center, float minimumDistance, float maximumDistance, long seed)
@@ -10588,45 +9548,10 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
         private Vector3 ResolveSafeOffscreenPosition(
-            Vector3 center,
-            float minimumDistance,
-            float maximumDistance,
-            long seed,
-            float padding,
-            float bandDepth)
+            Vector3 center, float minimumDistance, float maximumDistance, long seed, float padding, float bandDepth)
         {
-            float min = Mathf.Max(1f, minimumDistance);
-            float max = Mathf.Max(min + 0.1f, maximumDistance);
-            float resolvedSeed = Mathf.Abs((float)(seed % 100000L));
-            float angle = Mathf.Repeat(resolvedSeed * 137.508f, 360f) * Mathf.Deg2Rad;
-            Vector3 direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-            if (direction.sqrMagnitude <= 0.0001f)
-            {
-                direction = Vector3.forward;
-            }
-
-            direction.Normalize();
-            float span = Mathf.Max(0.1f, max - min);
-            float radialDistance = min + Mathf.Repeat(resolvedSeed * 0.381966f, 1f) * span;
-            float resolvedBandDepth = Mathf.Max(0.25f, bandDepth);
-            if (TryResolveCameraGroundRect(Mathf.Max(0f, padding), out Rect visibleRect))
-            {
-                float exitDistance = ResolveDistanceToExitRect(center, direction, visibleRect);
-                float bandOffset = 0.15f + Mathf.Repeat(resolvedSeed * 0.754877f, 1f) * resolvedBandDepth;
-                float distance = Mathf.Max(radialDistance, exitDistance + bandOffset);
-                Vector3 candidate = center + direction * distance;
-                if (ContainsGroundPoint(visibleRect, candidate))
-                {
-                    candidate = center + direction * (exitDistance + resolvedBandDepth + 0.5f);
-                }
-
-                candidate.y = center.y;
-                return candidate;
-            }
-
-            Vector3 fallback = center + direction * radialDistance;
-            fallback.y = center.y;
-            return fallback;
+            Rect? visible = TryResolveCameraGroundRect(Mathf.Max(0f, padding), out Rect rect) ? rect : (Rect?)null;
+            return SurvivorsOffscreenSpawnPolicy.Resolve(center, minimumDistance, maximumDistance, seed, bandDepth, visible);
         }
 
         private float ResolveGameplaySpawnMinimumDistance(SurvivorsEnemyRole role, float requested)
@@ -10683,77 +9608,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private bool TryResolveCameraGroundRect(float padding, out Rect rect)
         {
-            rect = default;
-            Camera camera = _camera != null ? _camera : Camera.main;
-            if (camera == null)
-            {
-                return false;
-            }
-
-            var ground = new Plane(Vector3.up, new Vector3(0f, PlayerPosition.y, 0f));
-            Vector3[] corners =
-            {
-                ResolveViewportGroundPoint(camera, ground, new Vector3(0f, 0f, 0f)),
-                ResolveViewportGroundPoint(camera, ground, new Vector3(0f, 1f, 0f)),
-                ResolveViewportGroundPoint(camera, ground, new Vector3(1f, 0f, 0f)),
-                ResolveViewportGroundPoint(camera, ground, new Vector3(1f, 1f, 0f))
-            };
-
-            float minX = corners[0].x;
-            float maxX = corners[0].x;
-            float minZ = corners[0].z;
-            float maxZ = corners[0].z;
-            for (int i = 1; i < corners.Length; i++)
-            {
-                minX = Mathf.Min(minX, corners[i].x);
-                maxX = Mathf.Max(maxX, corners[i].x);
-                minZ = Mathf.Min(minZ, corners[i].z);
-                maxZ = Mathf.Max(maxZ, corners[i].z);
-            }
-
-            float resolvedPadding = Mathf.Max(0f, padding);
-            rect = Rect.MinMaxRect(minX - resolvedPadding, minZ - resolvedPadding, maxX + resolvedPadding, maxZ + resolvedPadding);
-            return rect.width > 0.01f && rect.height > 0.01f;
-        }
-
-        private static Vector3 ResolveViewportGroundPoint(Camera camera, Plane ground, Vector3 viewportPoint)
-        {
-            Ray ray = camera.ViewportPointToRay(viewportPoint);
-            if (ground.Raycast(ray, out float distance))
-            {
-                return ray.GetPoint(distance);
-            }
-
-            Vector3 fallback = camera.ViewportToWorldPoint(new Vector3(viewportPoint.x, viewportPoint.y, Mathf.Max(1f, camera.nearClipPlane)));
-            fallback.y = 0f;
-            return fallback;
-        }
-
-        private static float ResolveDistanceToExitRect(Vector3 center, Vector3 direction, Rect rect)
-        {
-            const float Epsilon = 0.0001f;
-            float exit = float.PositiveInfinity;
-            if (Mathf.Abs(direction.x) > Epsilon)
-            {
-                float boundary = direction.x > 0f ? rect.xMax : rect.xMin;
-                exit = Mathf.Min(exit, (boundary - center.x) / direction.x);
-            }
-
-            if (Mathf.Abs(direction.z) > Epsilon)
-            {
-                float boundary = direction.z > 0f ? rect.yMax : rect.yMin;
-                exit = Mathf.Min(exit, (boundary - center.z) / direction.z);
-            }
-
-            return float.IsInfinity(exit) ? 0f : Mathf.Max(0f, exit);
-        }
-
-        private static bool ContainsGroundPoint(Rect rect, Vector3 position)
-        {
-            return position.x >= rect.xMin &&
-                position.x <= rect.xMax &&
-                position.z >= rect.yMin &&
-                position.z <= rect.yMax;
+            return SurvivorsCameraGroundProjection.TryResolve(_camera != null ? _camera : Camera.main, PlayerPosition.y, padding, out rect);
         }
 
         private int CountOffscreenMajorThreatMarkers()
@@ -10958,51 +9813,15 @@ namespace Deucarian.TemplateGameSurvivors
 
         private int GainExperience(int amount)
         {
-            int baseAmount = Mathf.Max(1, amount);
-            int gained = Mathf.Max(1, Mathf.RoundToInt(baseAmount * Mathf.Max(0.1f, 1f + ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus)));
-            ExperienceCollected += gained;
-            Experience += gained;
-            ResolveLevelUpsFromExperienceBudget();
+            int gained = _experienceProgression.Gain(amount,
+                ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus, CurrentTuning);
             TryOpenPendingLevelUpDraft();
-
             return gained;
         }
 
         private void ResolveLevelUpsFromExperienceBudget()
         {
-            int queueLimit = Mathf.Max(1, CurrentTuning.MaximumQueuedLevelUps);
-            if (CurrentTuning.LevelUpDraftCooldownSeconds > 0f &&
-                _levelUpDraftCooldownTimer > 0f &&
-                PendingLevelUps <= 0)
-            {
-                CapStoredExperienceForDraftThrottle();
-                return;
-            }
-
-            int guard = 0;
-            while (Experience >= RequiredExperienceForNextLevel && PendingLevelUps < queueLimit && guard++ < 256)
-            {
-                Experience -= RequiredExperienceForNextLevel;
-                Level++;
-                PendingLevelUps++;
-            }
-
-            if (CurrentTuning.LevelUpDraftCooldownSeconds > 0f && PendingLevelUps >= queueLimit)
-            {
-                CapStoredExperienceForDraftThrottle();
-            }
-        }
-
-        private void CapStoredExperienceForDraftThrottle()
-        {
-            int storedExperienceCap = Mathf.Max(0, RequiredExperienceForNextLevel - 1);
-            if (Experience <= storedExperienceCap)
-            {
-                return;
-            }
-
-            ThrottledExperienceOverflow += Experience - storedExperienceCap;
-            Experience = storedExperienceCap;
+            _experienceProgression.ResolveBudget(CurrentTuning);
         }
 
         private bool TryOpenPendingLevelUpDraft()
@@ -11010,7 +9829,7 @@ namespace Deucarian.TemplateGameSurvivors
             if (PendingLevelUps <= 0 ||
                 State != SurvivorsRunState.Playing ||
                 _rewardSelectionKind != SurvivorsRewardSelectionKind.None ||
-                _levelUpDraftCooldownTimer > 0f)
+                _experienceProgression.DraftCooldownRemaining > 0f)
             {
                 return false;
             }
@@ -11044,9 +9863,8 @@ namespace Deucarian.TemplateGameSurvivors
 
             ExperienceComboFeedbackCount++;
             ActivateGemRush();
-            _experienceComboFeedbackLabel = $"{_experienceComboPickupCount} Gem Rush: +{_experienceComboAmount} XP, rush {GemRushRemainingSeconds:0.#}s";
-            LastExperienceComboFeedbackLabel = _experienceComboFeedbackLabel;
-            _experienceComboFeedbackTimer = ExperienceComboFeedbackDurationSeconds;
+            _experienceComboBanner.Show($"{_experienceComboPickupCount} Gem Rush: +{_experienceComboAmount} XP, rush {GemRushRemainingSeconds:0.#}s", ExperienceComboFeedbackDurationSeconds, Color.white);
+            LastExperienceComboFeedbackLabel = _experienceComboBanner.Label;
         }
 
         private void ActivateGemRush()
@@ -11094,11 +9912,11 @@ namespace Deucarian.TemplateGameSurvivors
             _currentDraft = draft;
             _currentRelicDraft = null;
             _rewardSelectionKind = SurvivorsRewardSelectionKind.LevelUp;
-            State = SurvivorsRunState.LevelUp;
+            _runSession.OpenRewardSelection();
             _draftCardScrollPosition = Vector2.zero;
             LevelUpDraftOpenCount++;
             _draftOpenCount++;
-            _levelUpDraftCooldownTimer = Mathf.Max(0f, CurrentTuning.LevelUpDraftCooldownSeconds);
+            _experienceProgression.BeginDraft(CurrentTuning.LevelUpDraftCooldownSeconds);
             RecordMetricTime(ref _firstLevelUpDraftTimeSeconds);
             RecordRewardCardPresentation(_rewardSelectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
@@ -11132,7 +9950,7 @@ namespace Deucarian.TemplateGameSurvivors
             _currentDraft = draft;
             _currentRelicDraft = null;
             _rewardSelectionKind = selectionKind;
-            _pendingVictoryAfterRewardDraft = role == SurvivorsEnemyRole.Boss && !_victoryClearedThisRun;
+            _pendingVictoryAfterRewardDraft = role == SurvivorsEnemyRole.Boss && !_runSession.HasClearedVictory;
             _pendingBossRelicAfterRewardDraft = role == SurvivorsEnemyRole.Miniboss;
             _draftCardScrollPosition = Vector2.zero;
             if (role == SurvivorsEnemyRole.Boss)
@@ -11144,7 +9962,7 @@ namespace Deucarian.TemplateGameSurvivors
                 EliteUpgradeDraftOpenCount++;
             }
 
-            State = SurvivorsRunState.LevelUp;
+            _runSession.OpenRewardSelection();
             _draftOpenCount++;
             RecordRewardCardPresentation(selectionKind, _currentDraft);
             BeginRewardSelectionTimeout();
@@ -11194,7 +10012,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardSelectionKind = SurvivorsRewardSelectionKind.BossRelic;
             _pendingVictoryAfterRewardDraft = false;
             BossRelicDraftOpenCount++;
-            State = SurvivorsRunState.LevelUp;
+            _runSession.OpenRewardSelection();
             _draftCardScrollPosition = Vector2.zero;
             _draftOpenCount++;
             RecordRewardCardPresentation(_currentRelicDraft);
@@ -11273,9 +10091,7 @@ namespace Deucarian.TemplateGameSurvivors
             string affected = ResolveUpgradeAffectedLabel(selected);
             LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)}: {selected.Rarity} {category} - {name} ({affected})";
             RewardSelectionFeedbackCount++;
-            _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
-            _rewardFeedbackColor = ResolveRarityAccentColor(selected.Rarity);
-            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+            _rewardBanner.Show(LastRewardSelectionFeedbackLabel, RewardFeedbackDurationSeconds, ResolveRarityAccentColor(selected.Rarity));
             RecordBestRewardMoment(selected);
         }
 
@@ -11309,9 +10125,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             LastRewardSelectionFeedbackLabel = $"Boss Relic: {selected.DisplayName} - {FormatRelicEffectSummary(selected)}";
             RewardSelectionFeedbackCount++;
-            _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
-            _rewardFeedbackColor = ResolveRelicAccentColor(selected);
-            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+            _rewardBanner.Show(LastRewardSelectionFeedbackLabel, RewardFeedbackDurationSeconds, ResolveRelicAccentColor(selected));
             PlayAudioEvent(AudioEventRelic, _bossClip, 0.08f);
         }
 
@@ -11319,9 +10133,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)} skipped +{DraftSkipBloodShards} {CurrencyRewardLabel}";
             RewardSelectionFeedbackCount++;
-            _rewardFeedbackLabel = LastRewardSelectionFeedbackLabel;
-            _rewardFeedbackColor = new Color(0.72f, 0.84f, 0.9f);
-            _rewardFeedbackTimer = RewardFeedbackDurationSeconds;
+            _rewardBanner.Show(LastRewardSelectionFeedbackLabel, RewardFeedbackDurationSeconds, new Color(0.72f, 0.84f, 0.9f));
             PlayAudioEvent(AudioEventDraftSkip, _pickupClip, 0.08f);
         }
 
@@ -11343,20 +10155,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return highest;
-        }
-
-        private float ResolveEndlessSpawnInterval(float interval)
-        {
-            float resolved = Mathf.Max(0.05f, interval);
-            if (!_victoryClearedThisRun)
-            {
-                return resolved;
-            }
-
-            float minimum = _runFlow == null || _runFlow.Definition == null
-                ? 0.05f
-                : _runFlow.Definition.MinimumEnemySpawnIntervalSeconds;
-            return Mathf.Max(minimum, resolved * EndlessSpawnIntervalMultiplier);
         }
 
         private void TickRewardSelectionTimeout(float deltaTime)
@@ -11414,7 +10212,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             if (consumeLevelUp)
             {
-                PendingLevelUps = Mathf.Max(0, PendingLevelUps - 1);
+                _experienceProgression.ConsumeLevelUp();
             }
 
             if (selectedRewardUpgrade)
@@ -11447,11 +10245,11 @@ namespace Deucarian.TemplateGameSurvivors
                     return;
                 }
 
-                State = SurvivorsRunState.Playing;
+                _runSession.ResumePlaying();
             }
             else
             {
-                State = SurvivorsRunState.Playing;
+                _runSession.ResumePlaying();
                 ResolveLevelUpsFromExperienceBudget();
                 TryOpenPendingLevelUpDraft();
             }
@@ -11481,7 +10279,7 @@ namespace Deucarian.TemplateGameSurvivors
             _pendingVictoryAfterRewardDraft = false;
             _pendingBossRelicAfterRewardDraft = false;
             _currentDraftRerollIndex = 0;
-            State = SurvivorsRunState.Playing;
+            _runSession.ResumePlaying();
             ResolveLevelUpsFromExperienceBudget();
             if (TryOpenPendingLevelUpDraft())
             {
@@ -11672,26 +10470,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void ApplyRelic(SurvivorsRelicDefinition relic)
         {
-            if (relic == null)
-            {
-                return;
-            }
-
-            if (relic.EffectKind == SurvivorsRelicEffectKind.DamageBonus)
-            {
-                RelicDamageBonus += relic.Amount;
-                DamageBonus += relic.Amount;
-            }
-            else if (relic.EffectKind == SurvivorsRelicEffectKind.CooldownMultiplier)
-            {
-                RelicCooldownMultiplierBonus += relic.Amount;
-                WeaponCooldownMultiplierBonus = Mathf.Max(-0.75f, WeaponCooldownMultiplierBonus + relic.Amount);
-            }
-            else if (relic.EffectKind == SurvivorsRelicEffectKind.PickupRange)
-            {
-                RelicPickupRangeBonus += relic.Amount;
-                PickupRangeBonus += relic.Amount;
-            }
+            UpgradeModifiers.ApplyRelic(relic);
         }
 
         private void TriggerBossRelicSurge(SurvivorsRelicDefinition relic)
@@ -11737,165 +10516,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void ApplyUpgrade(RunUpgradeDefinition upgrade)
         {
-            for (int i = 0; i < upgrade.Effects.Count; i++)
-            {
-                RunUpgradeEffectDescriptor effect = upgrade.Effects[i];
-                if (effect.EffectId.Equals(BasicSurvivorsGame.DamageBonusEffect))
-                {
-                    DamageBonus += (float)effect.Amount;
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.FireRateEffect))
-                {
-                    WeaponCooldownMultiplierBonus = Mathf.Max(-0.75f, WeaponCooldownMultiplierBonus + (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.MoveSpeedEffect))
-                {
-                    MoveSpeedBonus += (float)effect.Amount;
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect))
-                {
-                    PickupRangeBonus += (float)effect.Amount;
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetSpeedEffect))
-                {
-                    PickupAttractionSpeedBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetPulseEffect))
-                {
-                    PickupMagnetPulseIntervalReductionBonus += Mathf.Max(0f, (float)effect.Amount);
-                    if (_pickupMagnetPulseTimer <= 0f)
-                    {
-                        _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
-                    }
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.MaxHealthEffect) && _playerHealth != null)
-                {
-                    _playerHealth.ChangeMaximumHealth(_playerHealth.MaximumHealth + effect.Amount, MaximumChangePolicy.FillToMaximum);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitBladeEffect))
-                {
-                    OrbitBladeBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitRadiusEffect))
-                {
-                    OrbitRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
-                    OrbitBladeBonus += 1;
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.MeleeTargetEffect))
-                {
-                    MeleeTargetBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.BurstCountEffect))
-                {
-                    BurstCountBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.BurstEchoEffect))
-                {
-                    BurstEchoBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.TargetedBurstEffect))
-                {
-                    TargetedBurstSigilBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileFanEffect))
-                {
-                    ProjectileFanBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectilePierceEffect))
-                {
-                    ProjectilePierceBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileChainEffect))
-                {
-                    ProjectileChainBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileForkEffect))
-                {
-                    ProjectileForkBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileReturnEffect))
-                {
-                    ProjectileReturnBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.HitscanPierceEffect))
-                {
-                    HitscanPierceBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadCountEffect))
-                {
-                    PayloadCountBonus += Mathf.Max(1, Mathf.RoundToInt((float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadRadiusEffect))
-                {
-                    PayloadExplosionRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadTriggerRadiusEffect))
-                {
-                    PayloadTriggerRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.PoisonEffect))
-                {
-                    PoisonDamageRatio += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.BleedEffect))
-                {
-                    BleedDamageRatio += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.ExecuteEffect))
-                {
-                    ExecuteThresholdNormalized = Mathf.Clamp01(ExecuteThresholdNormalized + (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalChanceEffect))
-                {
-                    CriticalChanceBonus = Mathf.Clamp01(CriticalChanceBonus + Mathf.Max(0f, (float)effect.Amount));
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalDamageEffect))
-                {
-                    CriticalDamageMultiplierBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.DraftLuckEffect))
-                {
-                    DraftLuckBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaDamageEffect))
-                {
-                    DeathNovaDamageBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaRadiusEffect))
-                {
-                    DeathNovaRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect))
-                {
-                    LifestealRatio += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierCapacityEffect))
-                {
-                    BarrierCapacityBonus += Mathf.Max(0f, (float)effect.Amount);
-                    RestoreBarrier((float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierRegenEffect))
-                {
-                    BarrierRegenPerSecondBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierOnDamageEffect))
-                {
-                    BarrierOnDamageRatio += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.ExperienceGainEffect))
-                {
-                    ExperienceGainMultiplierBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.AreaRadiusEffect))
-                {
-                    AreaRadiusBonus += Mathf.Max(0f, (float)effect.Amount);
-                }
-                else if (effect.EffectId.Equals(BasicSurvivorsGame.WeaponUnlockEffect))
-                {
-                    // Weapon unlocks are applied through run-build metadata so slot rules stay centralized.
-                }
-            }
-
+            UpgradeModifiers.Apply(upgrade);
             RecordRunBuildSelection(upgrade);
             RecordNewlyEligibleEvolutionFeedback();
         }
@@ -11947,7 +10568,7 @@ namespace Deucarian.TemplateGameSurvivors
                 Rect cardRect = horizontal
                     ? new Rect(rect.x + 30f + i * (cardWidth + cardGap), cardAreaTop, cardWidth, cardHeight)
                     : new Rect(0f, i * (cardHeight + cardGap), cardContentRect.width, cardHeight);
-                DraftCardPresentation card = IsRelicChoiceOpen
+                SurvivorsDraftCard card = IsRelicChoiceOpen
                     ? CreateRelicDraftCard(i, CurrentRelicChoices[i])
                     : CreateUpgradeDraftCard(i, CurrentDraftChoices[i]);
                 bool hover = cardRect.Contains(Event.current.mousePosition);
@@ -12028,11 +10649,11 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private DraftCardPresentation CreateUpgradeDraftCard(int index, RunUpgradeDefinition choice)
+        private SurvivorsDraftCard CreateUpgradeDraftCard(int index, RunUpgradeDefinition choice)
         {
             if (choice == null)
             {
-                return new DraftCardPresentation
+                return new SurvivorsDraftCard
                 {
                     Index = index,
                     Hotkey = (index + 1).ToString(),
@@ -12061,7 +10682,7 @@ namespace Deucarian.TemplateGameSurvivors
                 : ResolveRarityAccentColor(choice.Rarity);
             int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(choice.Id);
             int nextRank = Mathf.Min(choice.MaxRank, currentRank + 1);
-            return new DraftCardPresentation
+            return new SurvivorsDraftCard
             {
                 Index = index,
                 Hotkey = (index + 1).ToString(),
@@ -12081,10 +10702,10 @@ namespace Deucarian.TemplateGameSurvivors
             };
         }
 
-        private DraftCardPresentation CreateRelicDraftCard(int index, SurvivorsRelicDefinition relic)
+        private SurvivorsDraftCard CreateRelicDraftCard(int index, SurvivorsRelicDefinition relic)
         {
             Color accent = ActiveUiTheme.GetRarityAccentColor("Relic", ResolveRelicAccentColor(relic));
-            return new DraftCardPresentation
+            return new SurvivorsDraftCard
             {
                 Index = index,
                 Hotkey = (index + 1).ToString(),
@@ -12103,49 +10724,9 @@ namespace Deucarian.TemplateGameSurvivors
             };
         }
 
-        private void DrawDraftChoiceCard(Rect rect, DraftCardPresentation card, bool hover)
+        private void DrawDraftChoiceCard(Rect rect, SurvivorsDraftCard card, bool hover)
         {
-            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * (card.IsEvolution ? 5.5f : 3.2f)) * 0.14f;
-            Color accent = card.AccentColor;
-            DrawSolidRect(rect, new Color(0.022f, 0.027f, 0.038f, 0.96f));
-            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, rect.height), new Color(accent.r, accent.g, accent.b, hover ? 0.18f : 0.1f));
-            DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 8f), new Color(accent.r, accent.g, accent.b, hover ? 1f : 0.82f));
-            DrawSolidRect(new Rect(rect.x, rect.y, 4f, rect.height), new Color(accent.r, accent.g, accent.b, card.IsEvolution ? 0.94f : 0.78f));
-            DrawSolidRect(new Rect(rect.xMax - 4f, rect.y, 4f, rect.height), new Color(accent.r, accent.g, accent.b, hover ? 0.74f : 0.38f));
-            if (card.IsEvolution || hover)
-            {
-                DrawSolidRect(new Rect(rect.x + 8f, rect.y + 8f, rect.width - 16f, 2f), new Color(accent.r, accent.g, accent.b, 0.22f + pulse * 0.18f));
-            }
-
-            Rect hotkey = new Rect(rect.xMax - 54f, rect.y + 18f, 34f, 30f);
-            DrawSolidRect(hotkey, new Color(accent.r, accent.g, accent.b, 0.84f));
-            GUI.Label(hotkey, card.Hotkey, _draftCardHotkeyStyle);
-            Rect icon = new Rect(rect.x + 18f, rect.y + 22f, 58f, 58f);
-            DrawSolidRect(icon, new Color(0.04f, 0.05f, 0.065f, 0.92f));
-            DrawSolidRect(new Rect(icon.x, icon.yMax - 3f, icon.width, 3f), new Color(accent.r, accent.g, accent.b, 0.86f));
-            GUI.Label(icon, ActiveUiTheme.iconPlaceholderPrefix + "\n" + card.IconId, _draftCardMetaStyle);
-
-            float x = rect.x + 90f;
-            float width = rect.width - 116f;
-            GUI.Label(new Rect(x, rect.y + 20f, width - 42f, 20f), card.RarityLabel + "  |  " + card.CategoryLabel, _draftCardMetaStyle);
-            GUI.Label(new Rect(x, rect.y + 44f, width - 42f, 42f), card.Name, _draftCardNameStyle);
-            if (card.IsEvolution)
-            {
-                DrawSolidRect(new Rect(rect.x + 18f, rect.y + 92f, rect.width - 36f, 24f), new Color(accent.r, accent.g, accent.b, 0.22f));
-                GUI.Label(new Rect(rect.x + 24f, rect.y + 94f, rect.width - 48f, 20f), "EVOLUTION REWARD", _draftCardMetaStyle);
-            }
-
-            float y = card.IsEvolution ? rect.y + 124f : rect.y + 94f;
-            GUI.Label(new Rect(rect.x + 20f, y, rect.width - 40f, 22f), card.AffectedLabel + "   " + card.RankLabel, _hudSmallStyle);
-            y += 28f;
-            GUI.Label(new Rect(rect.x + 20f, y, rect.width - 40f, Mathf.Max(72f, rect.height * 0.25f)), card.Description, _draftCardDescriptionStyle);
-            y += Mathf.Max(82f, rect.height * 0.27f);
-            GUI.Label(new Rect(rect.x + 20f, y, rect.width - 40f, 48f), "Effect: " + card.EffectPreview, _hudSmallStyle);
-            y += 54f;
-            if (!string.IsNullOrWhiteSpace(card.RequirementHint))
-            {
-                GUI.Label(new Rect(rect.x + 20f, y, rect.width - 40f, 44f), card.RequirementHint, _hudSmallStyle);
-            }
+            SurvivorsDraftCardPresenter.Draw(rect, card, hover, ActiveUiTheme, _hudStyles);
         }
 
         private string ResolvePlayerUpgradeCategoryId(RunUpgradeDefinition choice, SurvivorsRunUpgradeCategory category, SurvivorsRunUpgradeMetadata metadata)
@@ -12393,22 +10974,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void ResetHudStyles()
         {
-            _hudTitleStyle = null;
-            _hudLabelStyle = null;
-            _hudSmallStyle = null;
-            _damagePopupStyle = null;
-            _playerDamagePopupStyle = null;
-            _lowHealthStyle = null;
-            _majorThreatWarningStyle = null;
-            _rewardFeedbackStyle = null;
-            _draftTitleStyle = null;
-            _draftCardNameStyle = null;
-            _draftCardMetaStyle = null;
-            _draftCardDescriptionStyle = null;
-            _draftCardHotkeyStyle = null;
-            _menuTitleStyle = null;
-            _menuTabStyle = null;
-            _transparentButtonStyle = null;
+            _hudStyles.Reset();
+            _damageFeedback.ResetStyles();
         }
 
         private IReadOnlyList<string> ResolvePlayerHudLines()
@@ -13016,127 +11583,9 @@ namespace Deucarian.TemplateGameSurvivors
             return "Level Up";
         }
 
-        private void EnsureHudStyles()
-        {
-            if (_hudTitleStyle != null)
-            {
-                return;
-            }
+        private void EnsureHudStyles() => _hudStyles.Ensure();
 
-            _hudTitleStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 17,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(0.84f, 0.94f, 1f) }
-            };
-            _hudLabelStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 12,
-                normal = { textColor = Color.white }
-            };
-            _hudSmallStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 11,
-                normal = { textColor = new Color(0.78f, 0.88f, 0.95f) },
-                wordWrap = true
-            };
-            _damagePopupStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 15,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(1f, 0.9f, 0.35f) }
-            };
-            _playerDamagePopupStyle = new GUIStyle(_damagePopupStyle)
-            {
-                fontSize = 17,
-                normal = { textColor = new Color(1f, 0.24f, 0.18f) }
-            };
-            _lowHealthStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                fontSize = 12,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(1f, 0.3f, 0.24f) }
-            };
-            _majorThreatWarningStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 19,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(1f, 0.78f, 0.24f) }
-            };
-            _rewardFeedbackStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 15,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white },
-                wordWrap = true
-            };
-            _draftTitleStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                fontSize = 26,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white }
-            };
-            _draftCardNameStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.UpperLeft,
-                fontSize = 19,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white },
-                wordWrap = true
-            };
-            _draftCardMetaStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                fontSize = 11,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = new Color(0.84f, 0.92f, 1f) },
-                wordWrap = true
-            };
-            _draftCardDescriptionStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.UpperLeft,
-                fontSize = 13,
-                normal = { textColor = new Color(0.88f, 0.93f, 0.97f) },
-                wordWrap = true
-            };
-            _draftCardHotkeyStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 17,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.black }
-            };
-            _menuTitleStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.MiddleLeft,
-                fontSize = 24,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.white }
-            };
-            _menuTabStyle = new GUIStyle(GUI.skin.button)
-            {
-                alignment = TextAnchor.MiddleCenter,
-                fontSize = 12,
-                fontStyle = FontStyle.Bold
-            };
-            _transparentButtonStyle = new GUIStyle(GUIStyle.none);
-        }
-
-        private void DrawHudBar(Rect rect, string label, float value, Color fill)
-        {
-            GUI.Box(rect, GUIContent.none);
-            Rect fillRect = new Rect(rect.x + 2f, rect.y + 2f, Mathf.Max(0f, rect.width - 4f) * Mathf.Clamp01(value), rect.height - 4f);
-            Color oldColor = GUI.color;
-            GUI.color = fill;
-            GUI.DrawTexture(fillRect, Texture2D.whiteTexture);
-            GUI.color = oldColor;
-            GUI.Label(rect, label + " " + Mathf.RoundToInt(Mathf.Clamp01(value) * 100f).ToString() + "%", _hudSmallStyle);
-        }
+        private void DrawHudBar(Rect rect, string label, float value, Color fill) => SurvivorsStatusHudPresenter.DrawBar(rect, label, value, fill, _hudSmallStyle);
 
         private void DrawTopCenterTimerHud()
         {
@@ -13165,7 +11614,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private string ResolveTopCenterTimerHudLabel()
         {
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 return string.Empty;
             }
@@ -13183,61 +11632,13 @@ namespace Deucarian.TemplateGameSurvivors
             return mode + "  TIME " + elapsed + "  LEFT " + FormatRunTime(Mathf.Max(0f, target - RunTimeSeconds));
         }
 
-        private void DrawLowHealthWarning()
-        {
-            if (!IsLowHealthWarningActive)
-            {
-                return;
-            }
+        private void DrawLowHealthWarning() => SurvivorsStatusHudPresenter.DrawLowHealth(IsLowHealthWarningActive, _lowHealthStyle);
 
-            float pulse = 0.75f + Mathf.Sin(Time.unscaledTime * 7f) * 0.25f;
-            Color oldColor = GUI.color;
-            GUI.color = new Color(1f, 0.04f, 0.04f, 0.12f + 0.08f * pulse);
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, 12f), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(0f, Screen.height - 12f, Screen.width, 12f), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(0f, 0f, 12f, Screen.height), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(Screen.width - 12f, 0f, 12f, Screen.height), Texture2D.whiteTexture);
-            GUI.color = new Color(1f, 1f, 1f, 0.95f);
-            GUI.Label(new Rect(24, 370, 318, 22), "LOW HEALTH", _lowHealthStyle);
-            GUI.color = oldColor;
-        }
+        private void DrawMajorThreatWarning() => SurvivorsStatusHudPresenter.DrawMajorThreat(
+            IsMajorThreatWarningActive, IsTopCenterTimerVisible, CurrentMajorThreatWarningLabel, MajorThreatWarningRemainingSeconds, _majorThreatWarningStyle);
 
-        private void DrawMajorThreatWarning()
-        {
-            if (!IsMajorThreatWarningActive)
-            {
-                return;
-            }
-
-            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 8f) * 0.28f;
-            float y = IsTopCenterTimerVisible ? 58f : 24f;
-            Rect panel = new Rect(Screen.width * 0.5f - 184f, y, 368f, 52f);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.22f, 0.05f, 0.04f, 0.56f + 0.18f * pulse);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(1f, 1f, 1f, 0.96f);
-            GUI.Label(panel, $"{CurrentMajorThreatWarningLabel}  {Mathf.CeilToInt(MajorThreatWarningRemainingSeconds)}s", _majorThreatWarningStyle);
-            GUI.color = oldColor;
-        }
-
-        private void DrawHordeRushWarning()
-        {
-            if (!IsHordeRushWarningActive)
-            {
-                return;
-            }
-
-            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 8.5f) * 0.28f;
-            float baseY = IsTopCenterTimerVisible ? 58f : 24f;
-            float y = IsMajorThreatWarningActive ? baseY + 60f : baseY;
-            Rect panel = new Rect(Screen.width * 0.5f - 170f, y, 340f, 46f);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.28f, 0.08f, 0.02f, 0.52f + 0.18f * pulse);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(1f, 1f, 1f, 0.96f);
-            GUI.Label(panel, $"{CurrentHordeRushWarningLabel}  {Mathf.CeilToInt(HordeRushWarningRemainingSeconds)}s", _majorThreatWarningStyle);
-            GUI.color = oldColor;
-        }
+        private void DrawHordeRushWarning() => SurvivorsStatusHudPresenter.DrawHordeRush(
+            IsHordeRushWarningActive, IsTopCenterTimerVisible, IsMajorThreatWarningActive, CurrentHordeRushWarningLabel, HordeRushWarningRemainingSeconds, _majorThreatWarningStyle);
 
         private void DrawMajorThreatHealthBar()
         {
@@ -13369,256 +11770,33 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
         }
 
-        private void DrawRewardSelectionFeedback()
-        {
-            if (_rewardFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_rewardFeedbackLabel))
-            {
-                return;
-            }
+        private void DrawRewardSelectionFeedback() => _rewardBanner.Draw(_rewardFeedbackStyle);
 
-            float width = Mathf.Min(500f, Mathf.Max(0f, Screen.width - 32f));
-            if (width <= 0f)
-            {
-                return;
-            }
+        private void DrawStreakRewardFeedback() => _streakRewardBanner.Draw(_rewardFeedbackStyle);
 
-            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 9f) * 0.28f;
-            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, 84f, width, 46f);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.015f, 0.02f, 0.028f, 0.74f);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(_rewardFeedbackColor.r, _rewardFeedbackColor.g, _rewardFeedbackColor.b, 0.2f + 0.14f * pulse);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(_rewardFeedbackColor.r, _rewardFeedbackColor.g, _rewardFeedbackColor.b, 0.96f);
-            GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 6f, panel.width - 24f, panel.height - 12f), _rewardFeedbackLabel, _rewardFeedbackStyle);
-            GUI.color = oldColor;
-        }
+        private void DrawClassUnlockRewardFeedback() => _classUnlockRewardBanner.Draw(_rewardFeedbackStyle);
 
-        private void DrawStreakRewardFeedback()
-        {
-            if (_streakRewardFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_streakRewardFeedbackLabel))
-            {
-                return;
-            }
+        private void DrawExperienceComboFeedback() => _experienceComboBanner.Draw(_rewardFeedbackStyle);
 
-            float width = Mathf.Min(360f, Mathf.Max(0f, Screen.width - 32f));
-            if (width <= 0f)
-            {
-                return;
-            }
-
-            float pulse = 0.72f + Mathf.Sin(Time.unscaledTime * 10f) * 0.28f;
-            float x = Mathf.Max(16f, Screen.width - width - 18f);
-            float y = Mathf.Min(144f, Mathf.Max(16f, Screen.height - 58f));
-            Rect panel = new Rect(x, y, width, 44f);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.02f, 0.018f, 0.024f, 0.72f);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(_streakRewardFeedbackColor.r, _streakRewardFeedbackColor.g, _streakRewardFeedbackColor.b, 0.22f + 0.12f * pulse);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(_streakRewardFeedbackColor.r, _streakRewardFeedbackColor.g, _streakRewardFeedbackColor.b, 0.95f);
-            GUI.DrawTexture(new Rect(panel.x, panel.y, 5f, panel.height), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 6f, panel.width - 24f, panel.height - 12f), _streakRewardFeedbackLabel, _rewardFeedbackStyle);
-            GUI.color = oldColor;
-        }
-
-        private void DrawClassUnlockRewardFeedback()
-        {
-            if (_classUnlockRewardFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_classUnlockRewardFeedbackLabel))
-            {
-                return;
-            }
-
-            float width = Mathf.Min(500f, Mathf.Max(0f, Screen.width - 32f));
-            if (width <= 0f)
-            {
-                return;
-            }
-
-            float pulse = 0.7f + Mathf.Sin(Time.unscaledTime * 8f) * 0.3f;
-            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, 188f, width, 44f);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.032f, 0.018f, 0.012f, 0.78f);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(1f, 0.62f, 0.24f, 0.22f + 0.16f * pulse);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(1f, 0.78f, 0.36f, 0.96f);
-            GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(panel.x, panel.y + panel.height - 3f, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 6f, panel.width - 24f, panel.height - 12f), _classUnlockRewardFeedbackLabel, _rewardFeedbackStyle);
-            GUI.color = oldColor;
-        }
-
-        private void DrawExperienceComboFeedback()
-        {
-            if (_experienceComboFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_experienceComboFeedbackLabel))
-            {
-                return;
-            }
-
-            float width = Mathf.Min(420f, Mathf.Max(0f, Screen.width - 32f));
-            if (width <= 0f)
-            {
-                return;
-            }
-
-            float pulse = 0.74f + Mathf.Sin(Time.unscaledTime * 11f) * 0.26f;
-            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, 136f, width, 42f);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.018f, 0.024f, 0.03f, 0.7f);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(0.22f, 0.9f, 1f, 0.2f + 0.16f * pulse);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(0.22f, 0.9f, 1f, 0.96f);
-            GUI.DrawTexture(new Rect(panel.x, panel.y + panel.height - 3f, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 5f, panel.width - 24f, panel.height - 10f), _experienceComboFeedbackLabel, _rewardFeedbackStyle);
-            GUI.color = oldColor;
-        }
-
-        private void DrawEvolutionReadyFeedback()
-        {
-            if (_evolutionReadyFeedbackTimer <= 0f || string.IsNullOrWhiteSpace(_evolutionReadyFeedbackLabel))
-            {
-                return;
-            }
-
-            float width = Mathf.Min(460f, Mathf.Max(0f, Screen.width - 32f));
-            if (width <= 0f)
-            {
-                return;
-            }
-
-            float pulse = 0.7f + Mathf.Sin(Time.unscaledTime * 9f) * 0.3f;
-            Rect panel = new Rect(Screen.width * 0.5f - width * 0.5f, 88f, width, 44f);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.03f, 0.018f, 0.04f, 0.76f);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(1f, 0.78f, 0.22f, 0.2f + 0.16f * pulse);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(1f, 0.78f, 0.22f, 0.96f);
-            GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(panel.x, panel.y + panel.height - 3f, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 6f, panel.width - 24f, panel.height - 12f), _evolutionReadyFeedbackLabel, _rewardFeedbackStyle);
-            GUI.color = oldColor;
-        }
+        private void DrawEvolutionReadyFeedback() => _evolutionReadyBanner.Draw(_rewardFeedbackStyle);
 
         private void DrawDamagePopups()
         {
-            if (_damagePopups.Count == 0)
-            {
-                return;
-            }
-
-            Camera popupCamera = _camera != null ? _camera : Camera.main;
-            if (popupCamera == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _damagePopups.Count; i++)
-            {
-                SurvivorsDamagePopup popup = _damagePopups[i];
-                float normalizedAge = Mathf.Clamp01(popup.ElapsedSeconds / DamagePopupLifetimeSeconds);
-                Vector3 world = popup.WorldPosition + Vector3.up * (DamagePopupRiseHeight * normalizedAge);
-                Vector3 screen = popupCamera.WorldToScreenPoint(world);
-                if (screen.z <= 0f)
-                {
-                    continue;
-                }
-
-                GUIStyle style = popup.PlayerDamage ? _playerDamagePopupStyle : _damagePopupStyle;
-                Color color = popup.Color;
-                color.a *= 1f - normalizedAge;
-                style.normal.textColor = color;
-                Rect rect = new Rect(screen.x - 40f, Screen.height - screen.y - 14f, 80f, 24f);
-                GUI.Label(rect, popup.Label, style);
-            }
+            _damageFeedback.Draw(_camera != null ? _camera : Camera.main);
         }
 
         private void TickDamagePopups(float deltaTime)
         {
-            if (_damagePopups.Count == 0)
-            {
-                return;
-            }
-
-            float dt = Mathf.Max(0f, deltaTime);
-            for (int i = _damagePopups.Count - 1; i >= 0; i--)
-            {
-                SurvivorsDamagePopup popup = _damagePopups[i];
-                popup.ElapsedSeconds += dt;
-                if (popup.ElapsedSeconds >= DamagePopupLifetimeSeconds)
-                {
-                    _damagePopups.RemoveAt(i);
-                }
-                else
-                {
-                    _damagePopups[i] = popup;
-                }
-            }
+            _damageFeedback.Tick(deltaTime);
         }
 
-        private void TickRewardFeedback(float deltaTime)
-        {
-            if (_rewardFeedbackTimer <= 0f)
-            {
-                return;
-            }
+        private void TickRewardFeedback(float deltaTime) => _rewardBanner.Tick(deltaTime);
 
-            _rewardFeedbackTimer = Mathf.Max(0f, _rewardFeedbackTimer - Mathf.Max(0f, deltaTime));
-            if (_rewardFeedbackTimer <= 0f)
-            {
-                _rewardFeedbackLabel = string.Empty;
-            }
-        }
+        private void TickStreakRewardFeedback(float deltaTime) => _streakRewardBanner.Tick(deltaTime);
 
-        private void TickStreakRewardFeedback(float deltaTime)
-        {
-            if (_streakRewardFeedbackTimer <= 0f)
-            {
-                return;
-            }
+        private void TickClassUnlockRewardFeedback(float deltaTime) => _classUnlockRewardBanner.Tick(deltaTime);
 
-            _streakRewardFeedbackTimer = Mathf.Max(0f, _streakRewardFeedbackTimer - Mathf.Max(0f, deltaTime));
-            if (_streakRewardFeedbackTimer <= 0f)
-            {
-                _streakRewardFeedbackLabel = string.Empty;
-            }
-        }
-
-        private void TickClassUnlockRewardFeedback(float deltaTime)
-        {
-            if (_classUnlockRewardFeedbackTimer <= 0f)
-            {
-                return;
-            }
-
-            _classUnlockRewardFeedbackTimer = Mathf.Max(0f, _classUnlockRewardFeedbackTimer - Mathf.Max(0f, deltaTime));
-            if (_classUnlockRewardFeedbackTimer <= 0f)
-            {
-                _classUnlockRewardFeedbackLabel = string.Empty;
-            }
-        }
-
-        private void TickEvolutionReadyFeedback(float deltaTime)
-        {
-            if (_evolutionReadyFeedbackTimer <= 0f)
-            {
-                return;
-            }
-
-            _evolutionReadyFeedbackTimer = Mathf.Max(0f, _evolutionReadyFeedbackTimer - Mathf.Max(0f, deltaTime));
-            if (_evolutionReadyFeedbackTimer <= 0f)
-            {
-                _evolutionReadyFeedbackLabel = string.Empty;
-            }
-        }
+        private void TickEvolutionReadyFeedback(float deltaTime) => _evolutionReadyBanner.Tick(deltaTime);
 
         private void TickExperienceComboFeedback(float deltaTime)
         {
@@ -13632,17 +11810,7 @@ namespace Deucarian.TemplateGameSurvivors
                     _experienceComboAmount = 0;
                 }
             }
-
-            if (_experienceComboFeedbackTimer <= 0f)
-            {
-                return;
-            }
-
-            _experienceComboFeedbackTimer = Mathf.Max(0f, _experienceComboFeedbackTimer - dt);
-            if (_experienceComboFeedbackTimer <= 0f)
-            {
-                _experienceComboFeedbackLabel = string.Empty;
-            }
+            _experienceComboBanner.Tick(dt);
         }
 
         private void RecordPlayerDamageFeedback(DamageResult damage, Vector3 position)
@@ -13659,26 +11827,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordDamagePopup(Vector3 worldPosition, float amount, bool playerDamage, bool critical)
         {
-            if (amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount))
-            {
-                return;
-            }
-
-            if (_damagePopups.Count >= DamagePopupLimit)
-            {
-                _damagePopups.RemoveAt(0);
-            }
-
-            int sequence = DamagePopupSpawnCount++;
-            float lane = ((sequence % 5) - 2) * 0.18f;
-            float lift = 1.1f + (sequence % 3) * 0.12f;
-            string label = (playerDamage ? "-" : string.Empty) + Mathf.CeilToInt(amount).ToString();
-            Color color = playerDamage
-                ? new Color(1f, 0.24f, 0.18f, 1f)
-                : critical
-                    ? new Color(1f, 0.68f, 0.12f, 1f)
-                    : new Color(1f, 0.92f, 0.42f, 1f);
-            _damagePopups.Add(new SurvivorsDamagePopup(label, worldPosition + new Vector3(lane, lift, 0f), color, playerDamage));
+            _damageFeedback.Record(worldPosition, amount, playerDamage, critical);
         }
 
         private static float ResolveDamagePopupAmount(DamageResult damage)
@@ -14201,7 +12350,7 @@ namespace Deucarian.TemplateGameSurvivors
             targetTimeSeconds = 0f;
             remainingSeconds = 0f;
 
-            if (!_runStarted)
+            if (!_runSession.Started)
             {
                 return false;
             }
@@ -14224,9 +12373,9 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (IsEndlessRun)
             {
-                ConsiderRunMilestone(ResolveEndlessMilestoneName(ResolveNextEndlessEliteRole()), _nextEndlessEliteSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
-                ConsiderRunMilestone("Endless Miniboss", _nextEndlessMinibossSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
-                ConsiderRunMilestone("Endless Boss", _nextEndlessBossSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone(ResolveEndlessMilestoneName(TimedEncounters.ResolveNextEndlessEliteRole()), TimedEncounters.NextEliteTime, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone("Endless Miniboss", TimedEncounters.NextMinibossTime, ref bestName, ref bestTargetTimeSeconds);
+                ConsiderRunMilestone("Endless Boss", TimedEncounters.NextBossTime, ref bestName, ref bestTargetTimeSeconds);
             }
             else if (_runFlow != null && _runFlow.Definition != null)
             {
@@ -14401,24 +12550,9 @@ namespace Deucarian.TemplateGameSurvivors
             return new Vector2(x, y);
         }
 
-        private static Material ApplyColor(Renderer renderer, Color color)
-        {
-            if (renderer == null)
-            {
-                return null;
-            }
+        private static Material ApplyColor(Renderer renderer, Color color) => SurvivorsPrimitivePresentation.ApplyColor(renderer, color);
 
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            Material material = new Material(shader) { color = color };
-            renderer.sharedMaterial = material;
-            return material;
-        }
-
-        private static Color WithAlpha(Color color, float alpha)
-        {
-            color.a = Mathf.Clamp01(alpha);
-            return color;
-        }
+        private static Color WithAlpha(Color color, float alpha) => SurvivorsPrimitivePresentation.WithAlpha(color, alpha);
 
         private static void ReleaseTemplateObject(UnityEngine.Object target)
         {
@@ -14431,1391 +12565,5 @@ namespace Deucarian.TemplateGameSurvivors
             ReleaseMetaProgressionService();
         }
 
-        private struct SurvivorsDamagePopup
-        {
-            public SurvivorsDamagePopup(string label, Vector3 worldPosition, Color color, bool playerDamage)
-            {
-                Label = label;
-                WorldPosition = worldPosition;
-                Color = color;
-                PlayerDamage = playerDamage;
-                ElapsedSeconds = 0f;
-            }
-
-            public string Label { get; }
-            public Vector3 WorldPosition { get; }
-            public Color Color { get; }
-            public bool PlayerDamage { get; }
-            public float ElapsedSeconds;
-        }
-
-        private struct SurvivorsWorldFeedbackEffect
-        {
-            public SurvivorsWorldFeedbackEffect(GameObject instance, Renderer renderer, Material material, Color color, Vector3 baseScale)
-            {
-                Instance = instance;
-                Renderer = renderer;
-                Material = material;
-                Color = color;
-                BaseScale = baseScale;
-                ElapsedSeconds = 0f;
-            }
-
-            public GameObject Instance { get; }
-            public Renderer Renderer { get; }
-            public Material Material { get; }
-            public Color Color { get; }
-            public Vector3 BaseScale { get; }
-            public float ElapsedSeconds;
-        }
-
-        private struct SurvivorsEnemyRangedAttackFeedbackEffect
-        {
-            public SurvivorsEnemyRangedAttackFeedbackEffect(GameObject instance, Material material, Color color, Vector3 baseScale)
-            {
-                Instance = instance;
-                Material = material;
-                Color = color;
-                BaseScale = baseScale;
-                ElapsedSeconds = 0f;
-            }
-
-            public GameObject Instance { get; }
-            public Material Material { get; }
-            public Color Color { get; }
-            public Vector3 BaseScale { get; }
-            public float ElapsedSeconds;
-        }
-
-        private struct SurvivorsMajorThreatSlamTelegraphEffect
-        {
-            public SurvivorsMajorThreatSlamTelegraphEffect(GameObject instance, Material material, Color color, Vector3 baseScale, float durationSeconds)
-            {
-                Instance = instance;
-                Material = material;
-                Color = color;
-                BaseScale = baseScale;
-                DurationSeconds = Mathf.Max(0.08f, durationSeconds);
-                ElapsedSeconds = 0f;
-            }
-
-            public GameObject Instance { get; }
-            public Material Material { get; }
-            public Color Color { get; }
-            public Vector3 BaseScale { get; }
-            public float DurationSeconds { get; }
-            public float ElapsedSeconds;
-        }
-
-        private struct SurvivorsIncomingThreatTelegraphEffect
-        {
-            public SurvivorsIncomingThreatTelegraphEffect(GameObject instance, Material material, Color color, Vector3 baseScale, float durationSeconds)
-            {
-                Instance = instance;
-                Material = material;
-                Color = color;
-                BaseScale = baseScale;
-                DurationSeconds = Mathf.Max(0.12f, durationSeconds);
-                ElapsedSeconds = 0f;
-            }
-
-            public GameObject Instance { get; }
-            public Material Material { get; }
-            public Color Color { get; }
-            public Vector3 BaseScale { get; }
-            public float DurationSeconds { get; }
-            public float ElapsedSeconds;
-        }
-
-        private struct SurvivorsRewardDropFeedbackEffect
-        {
-            public SurvivorsRewardDropFeedbackEffect(GameObject instance, Material material, Color color, Vector3 basePosition, Vector3 baseScale)
-            {
-                Instance = instance;
-                Material = material;
-                Color = color;
-                BasePosition = basePosition;
-                BaseScale = baseScale;
-                ElapsedSeconds = 0f;
-            }
-
-            public GameObject Instance { get; }
-            public Material Material { get; }
-            public Color Color { get; }
-            public Vector3 BasePosition { get; }
-            public Vector3 BaseScale { get; }
-            public float ElapsedSeconds;
-        }
-    }
-
-    public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
-    {
-        private SurvivorsTemplateController _controller;
-        private HealthState _health;
-        private float _moveSpeed;
-        private float _contactDamage;
-        private float _contactInterval;
-        private float _contactCooldown;
-        private float _rangedAttackRange;
-        private float _rangedAttackDamage;
-        private float _rangedAttackInterval;
-        private float _rangedAttackWindupSeconds;
-        private float _preferredRange;
-        private float _rangedAttackCooldown;
-        private float _rangedAttackWindupTimer;
-        private bool _rangedAttackTelegraphing;
-        private float _summonSupportCooldown;
-        private float _majorThreatSlamCooldown;
-        private float _majorThreatSlamTelegraphTimer;
-        private bool _majorThreatSlamTelegraphing;
-        private float _poisonDamagePerSecond;
-        private float _poisonRemainingSeconds;
-        private float _bleedDamagePerSecond;
-        private float _bleedRemainingSeconds;
-        private float _burnDamagePerSecond;
-        private float _burnRemainingSeconds;
-        private float _moveSpeedMultiplier = 1f;
-        private float _slowRemainingSeconds;
-        private Renderer _renderer;
-        private Material _runtimeMaterial;
-        private Color _baseTint;
-        private Vector3 _baseScale = Vector3.one;
-        private float _hitFlashTimer;
-        private float _hitFlashDuration;
-        private bool _hitFlashCritical;
-
-        public SpawnInstanceId InstanceId { get; private set; }
-        public bool IsAlive => _health != null && _health.IsAlive;
-        public bool IsHitFlashActive => _hitFlashTimer > 0f;
-        public SurvivorsEnemyRole Role { get; private set; }
-        public string ProfileId { get; private set; }
-        public string DisplayName { get; private set; } = string.Empty;
-        public float Radius { get; private set; }
-        public int ExperienceReward { get; private set; }
-        public float CurrentHealth => _health == null ? 0f : (float)_health.CurrentHealth;
-        public float MaxHealth => _health == null ? 0f : (float)_health.MaximumHealth;
-        public float HealthFraction => MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth;
-        public float LeashTimerSeconds { get; private set; }
-        public bool CanRecycle { get; private set; } = true;
-        public bool CanLeash { get; private set; } = true;
-        public bool CanReposition { get; private set; } = true;
-        public bool ShowOffscreenMarker { get; private set; }
-        public bool ShowOverheadLifeBar { get; private set; }
-        public bool ShowBossLifeBar { get; private set; }
-        public string MarkerStyle { get; private set; } = string.Empty;
-        public bool IsMovementSlowed => _slowRemainingSeconds > 0f && _moveSpeedMultiplier < 1f;
-        public float CurrentMoveSpeedMultiplier => IsMovementSlowed ? _moveSpeedMultiplier : 1f;
-        public bool IsBurning => _burnRemainingSeconds > 0f && _burnDamagePerSecond > 0f;
-        public float CurrentBurnDamagePerSecond => IsBurning ? _burnDamagePerSecond : 0f;
-
-        public void Initialize(SurvivorsTemplateController controller, SurvivorsEnemyProfile profile)
-        {
-            _controller = controller;
-            Role = profile.Role;
-            ProfileId = profile.Id;
-            DisplayName = string.IsNullOrWhiteSpace(profile.DisplayName) ? profile.Role.ToString() : profile.DisplayName;
-            _moveSpeed = Mathf.Max(0f, profile.MoveSpeed);
-            Radius = Mathf.Max(0.05f, profile.Radius);
-            _contactDamage = Mathf.Max(0f, profile.ContactDamage);
-            _contactInterval = Mathf.Max(0.05f, profile.ContactIntervalSeconds);
-            _contactCooldown = 0f;
-            _rangedAttackRange = Mathf.Max(0f, profile.RangedAttackRange);
-            _rangedAttackDamage = Mathf.Max(0f, profile.RangedAttackDamage);
-            _rangedAttackInterval = Mathf.Max(0.05f, profile.RangedAttackIntervalSeconds);
-            _rangedAttackWindupSeconds = controller == null ? 0f : Mathf.Max(0f, controller.CurrentTuning.EnemyRangedAttackWindupSeconds);
-            _preferredRange = Mathf.Max(0f, profile.PreferredRange);
-            _rangedAttackCooldown = Mathf.Min(0.75f, _rangedAttackInterval);
-            _rangedAttackWindupTimer = 0f;
-            _rangedAttackTelegraphing = false;
-            _summonSupportCooldown = ResolveInitialSummonSupportCooldown(profile.Role, controller == null ? null : controller.CurrentTuning);
-            _majorThreatSlamCooldown = ResolveInitialMajorThreatSlamCooldown(profile.Role, controller == null ? null : controller.CurrentTuning);
-            _majorThreatSlamTelegraphTimer = 0f;
-            _majorThreatSlamTelegraphing = false;
-            CanRecycle = profile.CanRecycle;
-            CanLeash = profile.CanLeash;
-            CanReposition = profile.CanReposition;
-            ShowOffscreenMarker = profile.ShowOffscreenMarker;
-            ShowOverheadLifeBar = profile.ShowOverheadLifeBar;
-            ShowBossLifeBar = profile.ShowBossLifeBar;
-            MarkerStyle = string.IsNullOrWhiteSpace(profile.MarkerStyle) ? profile.Role.ToString() : profile.MarkerStyle;
-            _poisonDamagePerSecond = 0f;
-            _poisonRemainingSeconds = 0f;
-            _bleedDamagePerSecond = 0f;
-            _bleedRemainingSeconds = 0f;
-            _burnDamagePerSecond = 0f;
-            _burnRemainingSeconds = 0f;
-            _moveSpeedMultiplier = 1f;
-            _slowRemainingSeconds = 0f;
-            ExperienceReward = Mathf.Max(1, profile.ExperienceReward);
-            string id = InstanceId.Value > 0 ? "combatant.survivors.enemy." + InstanceId.Value : "combatant.survivors.enemy.pending";
-            float maxHealth = Mathf.Max(1f, profile.MaxHealth);
-            _health = new HealthState(new CombatantId(id), maxHealth, maxHealth);
-            transform.localScale = Vector3.one * (Radius * 2f);
-            _baseScale = transform.localScale;
-            _hitFlashTimer = 0f;
-            _hitFlashDuration = 0f;
-            _hitFlashCritical = false;
-            LeashTimerSeconds = 0f;
-            ApplyTint(profile.Tint);
-        }
-
-        public void AddLeashTime(float deltaTime)
-        {
-            LeashTimerSeconds += Mathf.Max(0f, deltaTime);
-        }
-
-        public void ResetLeashTimer()
-        {
-            LeashTimerSeconds = 0f;
-        }
-
-        public void Simulate(float deltaTime)
-        {
-            if (!IsAlive || _controller == null || !_controller.IsPlaying)
-            {
-                return;
-            }
-
-            TickHitFlash(deltaTime);
-            TickMovementSlow(deltaTime);
-            TickDamageOverTime(deltaTime);
-            if (!IsAlive)
-            {
-                return;
-            }
-
-            Vector3 direction = _controller.PlayerPosition - transform.position;
-            direction.y = 0f;
-            float distance = direction.magnitude;
-            Vector3 moveDirection = Vector3.zero;
-            Vector3 facingDirection = Vector3.forward;
-            if (distance > 0.001f)
-            {
-                Vector3 normalized = direction / distance;
-                moveDirection = ResolveMoveDirection(normalized, distance);
-                facingDirection = normalized;
-            }
-
-            Vector3 separation = _controller.ResolveEnemyCrowdSeparation(this);
-            if (separation.sqrMagnitude > 0.001f)
-            {
-                moveDirection += separation;
-            }
-
-            if (moveDirection.sqrMagnitude > 0.001f)
-            {
-                Vector3 resolvedMove = moveDirection.normalized;
-                float catchUpMultiplier = _controller.ResolveEnemyCatchUpMoveSpeedMultiplier(this, distance);
-                transform.position += resolvedMove * (_moveSpeed * CurrentMoveSpeedMultiplier * catchUpMultiplier * deltaTime);
-                transform.forward = resolvedMove;
-            }
-            else if (distance > 0.001f)
-            {
-                transform.forward = facingDirection;
-            }
-
-            TickMajorThreatSlam(deltaTime, distance);
-            TickRangedAttack(deltaTime, distance);
-            TickSummonSupport(deltaTime);
-            _contactCooldown -= deltaTime;
-            if (_contactCooldown <= 0f && distance <= Radius + _controller.CurrentTuning.PlayerRadius)
-            {
-                _controller.ApplyDamageToPlayer(_contactDamage, "combatant.survivors.enemy." + InstanceId.Value);
-                _contactCooldown = _contactInterval;
-            }
-        }
-
-        public DamageResult ApplyDamage(float amount, string source)
-        {
-            return ApplyDamageInternal(amount, source, applyAugments: true);
-        }
-
-        public void ApplyDamageOverTime(float totalDamage, float durationSeconds, string statusId, string source)
-        {
-            float duration = Mathf.Max(0.1f, durationSeconds);
-            float perSecond = Mathf.Max(0f, totalDamage) / duration;
-            if (perSecond <= 0f)
-            {
-                return;
-            }
-
-            if (string.Equals(statusId, "status.survivors.burn", StringComparison.Ordinal))
-            {
-                _burnDamagePerSecond += perSecond;
-                _burnRemainingSeconds = Mathf.Max(_burnRemainingSeconds, duration);
-                ApplyHitFlashPresentation(_hitFlashDuration <= 0f ? 0f : Mathf.Clamp01(_hitFlashTimer / _hitFlashDuration));
-            }
-            else if (string.Equals(statusId, "status.survivors.bleed", StringComparison.Ordinal))
-            {
-                _bleedDamagePerSecond += perSecond;
-                _bleedRemainingSeconds = Mathf.Max(_bleedRemainingSeconds, duration);
-            }
-            else
-            {
-                _poisonDamagePerSecond += perSecond;
-                _poisonRemainingSeconds = Mathf.Max(_poisonRemainingSeconds, duration);
-            }
-        }
-
-        public bool ApplyMovementSlow(float multiplier, float durationSeconds)
-        {
-            if (!IsAlive)
-            {
-                return false;
-            }
-
-            float resolvedMultiplier = Mathf.Clamp(multiplier, 0.15f, 1f);
-            float duration = Mathf.Max(0f, durationSeconds);
-            if (resolvedMultiplier >= 1f || duration <= 0f)
-            {
-                return false;
-            }
-
-            _moveSpeedMultiplier = Mathf.Min(_moveSpeedMultiplier, resolvedMultiplier);
-            _slowRemainingSeconds = Mathf.Max(_slowRemainingSeconds, duration);
-            ApplyHitFlashPresentation(_hitFlashDuration <= 0f ? 0f : Mathf.Clamp01(_hitFlashTimer / _hitFlashDuration));
-            return true;
-        }
-
-        public void ExecuteFromAugment(string source)
-        {
-            if (!IsAlive)
-            {
-                return;
-            }
-
-            ApplyDamageInternal(Mathf.Max(1f, CurrentHealth), (string.IsNullOrWhiteSpace(source) ? "survivors" : source) + ".augment.execute", applyAugments: false);
-        }
-
-        private DamageResult ApplyDamageInternal(float amount, string source, bool applyAugments)
-        {
-            if (_controller == null || _health == null || !IsAlive)
-            {
-                return null;
-            }
-
-            DamageResolutionResult result = _controller.ResolveEnemyDamage(_health, amount, source, applyAugments);
-            if (result != null)
-            {
-                _controller.RecordEnemyDamageFeedback(this, result.Damage);
-            }
-
-            if (applyAugments && result != null && result.Damage != null && IsAlive)
-            {
-                _controller.ApplyDamageAugmentsToEnemy(this, result.Damage, source);
-            }
-
-            if (_health != null && !_health.IsAlive)
-            {
-                _controller.HandleEnemyKilled(this, source, applyAugments);
-            }
-
-            return result.Damage;
-        }
-
-        public void TriggerHitFlash(bool critical, float durationSeconds)
-        {
-            _hitFlashCritical = critical;
-            _hitFlashDuration = Mathf.Max(0.01f, durationSeconds);
-            _hitFlashTimer = _hitFlashDuration;
-            ApplyHitFlashPresentation(1f);
-        }
-
-        private void TickHitFlash(float deltaTime)
-        {
-            if (_hitFlashTimer <= 0f)
-            {
-                return;
-            }
-
-            _hitFlashTimer = Mathf.Max(0f, _hitFlashTimer - Mathf.Max(0f, deltaTime));
-            float intensity = _hitFlashDuration <= 0f ? 0f : Mathf.Clamp01(_hitFlashTimer / _hitFlashDuration);
-            ApplyHitFlashPresentation(intensity);
-        }
-
-        private void ApplyHitFlashPresentation(float intensity)
-        {
-            if (_runtimeMaterial != null)
-            {
-                Color baseTint = ResolvePresentationBaseTint();
-                Color flash = _hitFlashCritical
-                    ? new Color(1f, 0.86f, 0.25f)
-                    : Color.white;
-                _runtimeMaterial.color = Color.Lerp(baseTint, flash, Mathf.Clamp01(intensity));
-            }
-
-            transform.localScale = _baseScale * (1f + 0.18f * Mathf.Clamp01(intensity));
-        }
-
-        private Color ResolvePresentationBaseTint()
-        {
-            Color tint = IsMovementSlowed
-                ? Color.Lerp(_baseTint, new Color(0.52f, 0.88f, 1f), 0.48f)
-                : _baseTint;
-            return IsBurning
-                ? Color.Lerp(tint, new Color(1f, 0.42f, 0.12f), 0.42f)
-                : tint;
-        }
-
-        private Vector3 ResolveMoveDirection(Vector3 normalizedToPlayer, float distance)
-        {
-            if (_preferredRange <= 0f)
-            {
-                return normalizedToPlayer;
-            }
-
-            if (distance > _preferredRange * 1.12f)
-            {
-                return normalizedToPlayer;
-            }
-
-            if (distance < _preferredRange * 0.68f)
-            {
-                return -normalizedToPlayer;
-            }
-
-            return Vector3.zero;
-        }
-
-        private void TickMajorThreatSlam(float deltaTime, float distanceToPlayer)
-        {
-            if (_controller == null || !SurvivorsTemplateController.IsMajorThreatSlamRole(Role))
-            {
-                return;
-            }
-
-            SurvivorsTemplateTuning tuning = _controller.CurrentTuning;
-            float interval = Mathf.Max(0f, tuning.MajorThreatSlamIntervalSeconds);
-            float radius = Mathf.Max(0.5f, tuning.MajorThreatSlamRadius + Radius * 0.35f);
-            if (interval <= 0f || radius <= 0f)
-            {
-                return;
-            }
-
-            if (_majorThreatSlamTelegraphing)
-            {
-                _majorThreatSlamTelegraphTimer = Mathf.Max(0f, _majorThreatSlamTelegraphTimer - Mathf.Max(0f, deltaTime));
-                if (_majorThreatSlamTelegraphTimer <= 0f)
-                {
-                    _majorThreatSlamTelegraphing = false;
-                    _majorThreatSlamCooldown = interval;
-                    _controller.ResolveMajorThreatSlam(this);
-                }
-
-                return;
-            }
-
-            _majorThreatSlamCooldown = Mathf.Max(0f, _majorThreatSlamCooldown - Mathf.Max(0f, deltaTime));
-            if (_majorThreatSlamCooldown > 0f || distanceToPlayer > radius * 1.35f)
-            {
-                return;
-            }
-
-            _majorThreatSlamTelegraphing = true;
-            _majorThreatSlamTelegraphTimer = Mathf.Max(0.05f, tuning.MajorThreatSlamTelegraphSeconds);
-            _controller.RecordMajorThreatSlamTelegraph(this);
-        }
-
-        private static float ResolveInitialMajorThreatSlamCooldown(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
-        {
-            if (tuning == null || !SurvivorsTemplateController.IsMajorThreatSlamRole(role))
-            {
-                return 0f;
-            }
-
-            return Mathf.Max(0f, tuning.MajorThreatSlamIntervalSeconds);
-        }
-
-        private static float ResolveInitialSummonSupportCooldown(SurvivorsEnemyRole role, SurvivorsTemplateTuning tuning)
-        {
-            if (tuning == null || role != SurvivorsEnemyRole.Summoner)
-            {
-                return 0f;
-            }
-
-            return Mathf.Max(0f, tuning.SummonerSupportInitialDelaySeconds);
-        }
-
-        private void TickRangedAttack(float deltaTime, float distance)
-        {
-            if (_controller == null || _rangedAttackRange <= 0f || _rangedAttackDamage <= 0f)
-            {
-                _rangedAttackTelegraphing = false;
-                _rangedAttackWindupTimer = 0f;
-                return;
-            }
-
-            float dt = Mathf.Max(0f, deltaTime);
-            if (_rangedAttackTelegraphing)
-            {
-                _rangedAttackWindupTimer = Mathf.Max(0f, _rangedAttackWindupTimer - dt);
-                if (_rangedAttackWindupTimer > 0f)
-                {
-                    return;
-                }
-
-                _rangedAttackTelegraphing = false;
-                _rangedAttackCooldown = _rangedAttackInterval;
-                if (ResolveDistanceToPlayer() <= _rangedAttackRange)
-                {
-                    _controller.ApplyDamageToPlayer(_rangedAttackDamage, "combatant.survivors.enemy.ranged." + InstanceId.Value);
-                }
-                else
-                {
-                    _controller.RecordEnemyRangedAttackDodgeFeedback(this);
-                }
-
-                return;
-            }
-
-            _rangedAttackCooldown = Mathf.Max(0f, _rangedAttackCooldown - dt);
-            if (_rangedAttackCooldown > 0f || distance > _rangedAttackRange)
-            {
-                return;
-            }
-
-            _controller.RecordEnemyRangedAttackFeedback(transform.position, _controller.PlayerPosition, Role);
-            if (_rangedAttackWindupSeconds <= 0f)
-            {
-                _controller.ApplyDamageToPlayer(_rangedAttackDamage, "combatant.survivors.enemy.ranged." + InstanceId.Value);
-                _rangedAttackCooldown = _rangedAttackInterval;
-                return;
-            }
-
-            _rangedAttackTelegraphing = true;
-            _rangedAttackWindupTimer = _rangedAttackWindupSeconds;
-        }
-
-        private void TickSummonSupport(float deltaTime)
-        {
-            if (_controller == null || Role != SurvivorsEnemyRole.Summoner)
-            {
-                return;
-            }
-
-            SurvivorsTemplateTuning tuning = _controller.CurrentTuning;
-            float interval = Mathf.Max(0f, tuning.SummonerSupportIntervalSeconds);
-            if (interval <= 0f || tuning.SummonerSupportCount <= 0)
-            {
-                return;
-            }
-
-            _summonSupportCooldown = Mathf.Max(0f, _summonSupportCooldown - Mathf.Max(0f, deltaTime));
-            if (_summonSupportCooldown > 0f)
-            {
-                return;
-            }
-
-            int spawned = _controller.SpawnSummonerSupport(this);
-            _summonSupportCooldown = spawned > 0 ? interval : Mathf.Min(interval, 0.75f);
-        }
-
-        private float ResolveDistanceToPlayer()
-        {
-            if (_controller == null)
-            {
-                return float.MaxValue;
-            }
-
-            Vector3 delta = _controller.PlayerPosition - transform.position;
-            delta.y = 0f;
-            return delta.magnitude;
-        }
-
-        private void TickMovementSlow(float deltaTime)
-        {
-            if (_slowRemainingSeconds <= 0f)
-            {
-                return;
-            }
-
-            _slowRemainingSeconds = Mathf.Max(0f, _slowRemainingSeconds - Mathf.Max(0f, deltaTime));
-            if (_slowRemainingSeconds > 0f)
-            {
-                return;
-            }
-
-            _moveSpeedMultiplier = 1f;
-            ApplyHitFlashPresentation(_hitFlashDuration <= 0f ? 0f : Mathf.Clamp01(_hitFlashTimer / _hitFlashDuration));
-        }
-
-        private void TickDamageOverTime(float deltaTime)
-        {
-            if (_poisonRemainingSeconds > 0f && _poisonDamagePerSecond > 0f)
-            {
-                float tick = _poisonDamagePerSecond * deltaTime;
-                _poisonRemainingSeconds = Mathf.Max(0f, _poisonRemainingSeconds - deltaTime);
-                ApplyDamageInternal(tick, "survivors.status.poison", applyAugments: false);
-                if (_poisonRemainingSeconds <= 0f)
-                {
-                    _poisonDamagePerSecond = 0f;
-                }
-            }
-
-            if (!IsAlive)
-            {
-                return;
-            }
-
-            if (_bleedRemainingSeconds > 0f && _bleedDamagePerSecond > 0f)
-            {
-                float tick = _bleedDamagePerSecond * deltaTime;
-                _bleedRemainingSeconds = Mathf.Max(0f, _bleedRemainingSeconds - deltaTime);
-                ApplyDamageInternal(tick, "survivors.status.bleed", applyAugments: false);
-                if (_bleedRemainingSeconds <= 0f)
-                {
-                    _bleedDamagePerSecond = 0f;
-                }
-            }
-
-            if (!IsAlive)
-            {
-                return;
-            }
-
-            if (_burnRemainingSeconds > 0f && _burnDamagePerSecond > 0f)
-            {
-                float tick = _burnDamagePerSecond * deltaTime;
-                _burnRemainingSeconds = Mathf.Max(0f, _burnRemainingSeconds - deltaTime);
-                ApplyDamageInternal(tick, "survivors.status.burn", applyAugments: false);
-                if (_burnRemainingSeconds <= 0f)
-                {
-                    _burnDamagePerSecond = 0f;
-                    ApplyHitFlashPresentation(_hitFlashDuration <= 0f ? 0f : Mathf.Clamp01(_hitFlashTimer / _hitFlashDuration));
-                }
-            }
-        }
-
-        public void OverrideHealthForTest(float health)
-        {
-            string id = InstanceId.Value > 0 ? "combatant.survivors.enemy." + InstanceId.Value : "combatant.survivors.enemy.test";
-            float resolved = Mathf.Max(1f, health);
-            _health = new HealthState(new CombatantId(id), resolved, resolved);
-        }
-
-        public void OnWorldSpawned(WorldSpawnContext context)
-        {
-            InstanceId = context.InstanceId;
-        }
-
-        public void OnWorldDespawned(DespawnReason reason)
-        {
-            _controller = null;
-            _health = null;
-            ProfileId = null;
-            DisplayName = string.Empty;
-            _poisonDamagePerSecond = 0f;
-            _poisonRemainingSeconds = 0f;
-            _bleedDamagePerSecond = 0f;
-            _bleedRemainingSeconds = 0f;
-            _burnDamagePerSecond = 0f;
-            _burnRemainingSeconds = 0f;
-            _moveSpeedMultiplier = 1f;
-            _slowRemainingSeconds = 0f;
-            _rangedAttackWindupTimer = 0f;
-            _rangedAttackTelegraphing = false;
-            _summonSupportCooldown = 0f;
-            _hitFlashTimer = 0f;
-            _hitFlashDuration = 0f;
-            _hitFlashCritical = false;
-            LeashTimerSeconds = 0f;
-            if (_runtimeMaterial != null)
-            {
-                _runtimeMaterial.color = _baseTint;
-            }
-
-            transform.localScale = _baseScale;
-        }
-
-        public void ResetForWorldSpawn()
-        {
-            _controller = null;
-            _health = null;
-            _contactCooldown = 0f;
-            _rangedAttackRange = 0f;
-            _rangedAttackDamage = 0f;
-            _rangedAttackInterval = 0f;
-            _rangedAttackWindupSeconds = 0f;
-            _preferredRange = 0f;
-            _rangedAttackCooldown = 0f;
-            _rangedAttackWindupTimer = 0f;
-            _rangedAttackTelegraphing = false;
-            _summonSupportCooldown = 0f;
-            _poisonDamagePerSecond = 0f;
-            _poisonRemainingSeconds = 0f;
-            _bleedDamagePerSecond = 0f;
-            _bleedRemainingSeconds = 0f;
-            _burnDamagePerSecond = 0f;
-            _burnRemainingSeconds = 0f;
-            _moveSpeedMultiplier = 1f;
-            _slowRemainingSeconds = 0f;
-            _hitFlashTimer = 0f;
-            _hitFlashDuration = 0f;
-            _hitFlashCritical = false;
-            LeashTimerSeconds = 0f;
-            if (_runtimeMaterial != null)
-            {
-                _runtimeMaterial.color = _baseTint;
-            }
-
-            transform.localScale = _baseScale;
-            Role = SurvivorsEnemyRole.Swarm;
-            ProfileId = null;
-            DisplayName = string.Empty;
-            InstanceId = default;
-        }
-
-        private void ApplyTint(Color tint)
-        {
-            Renderer renderer = GetComponentInChildren<Renderer>();
-            if (renderer == null)
-            {
-                return;
-            }
-
-            Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            _renderer = renderer;
-            _baseTint = tint;
-            if (_runtimeMaterial == null || _runtimeMaterial.shader != shader)
-            {
-                _runtimeMaterial = new Material(shader);
-            }
-
-            _runtimeMaterial.color = tint;
-            _renderer.sharedMaterial = _runtimeMaterial;
-        }
-    }
-
-    public sealed class SurvivorsProjectileActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
-    {
-        private readonly HashSet<int> _hitEnemyIds = new HashSet<int>();
-        private readonly List<SurvivorsEnemyActor> _forkTargets = new List<SurvivorsEnemyActor>();
-        private SurvivorsTemplateController _controller;
-        private SurvivorsWeaponArchetypeDefinition _definition;
-        private Vector3 _direction;
-        private float _speed;
-        private float _damage;
-        private float _radius;
-        private float _lifetime;
-        private int _remainingChains;
-        private int _remainingPierces;
-        private int _remainingForks;
-        private int _remainingReturns;
-        private bool _returningToPlayer;
-        private Renderer _renderer;
-        private TrailRenderer _trail;
-        private Material _runtimeMaterial;
-
-        public SpawnInstanceId InstanceId { get; private set; }
-        public bool IsActive { get; private set; }
-
-        public void Initialize(
-            SurvivorsTemplateController controller,
-            SurvivorsWeaponArchetypeDefinition definition,
-            Vector3 direction,
-            float speed,
-            float damage,
-            float radius,
-            float lifetime,
-            int remainingChains,
-            int remainingPierces,
-            int remainingForks,
-            int remainingReturns,
-            HashSet<int> ignoredEnemyIds = null)
-        {
-            _controller = controller;
-            _definition = definition;
-            _direction = direction.sqrMagnitude <= 0.001f ? Vector3.forward : direction.normalized;
-            _speed = Mathf.Max(0f, speed);
-            _damage = Mathf.Max(0f, damage);
-            _radius = Mathf.Max(0.05f, radius);
-            _lifetime = Mathf.Max(0.05f, lifetime);
-            _remainingChains = Mathf.Max(0, remainingChains);
-            _remainingPierces = Mathf.Max(0, remainingPierces);
-            _remainingForks = Mathf.Max(0, remainingForks);
-            _remainingReturns = Mathf.Max(0, remainingReturns);
-            _returningToPlayer = false;
-            ApplyPresentation(definition == null
-                ? controller == null ? new Color(0.78f, 0.42f, 1f) : controller.ResolveProjectileFallbackColor()
-                : definition.Tint);
-            _hitEnemyIds.Clear();
-            if (ignoredEnemyIds != null)
-            {
-                foreach (int ignoredId in ignoredEnemyIds)
-                {
-                    _hitEnemyIds.Add(ignoredId);
-                }
-            }
-
-            IsActive = true;
-            transform.localScale = Vector3.one * (_radius * 2f);
-        }
-
-        public void Simulate(float deltaTime)
-        {
-            if (!IsActive || _controller == null)
-            {
-                return;
-            }
-
-            _lifetime -= deltaTime;
-            if (_lifetime <= 0f)
-            {
-                if (!TryStartReturnToPlayer())
-                {
-                    Release(DespawnReason.OutOfBounds);
-                }
-
-                return;
-            }
-
-            if (_returningToPlayer)
-            {
-                Vector3 toPlayer = _controller.PlayerPosition + Vector3.up * 0.4f - transform.position;
-                toPlayer.y = 0f;
-                if (toPlayer.sqrMagnitude <= 0.18f)
-                {
-                    Release(DespawnReason.Completed);
-                    return;
-                }
-
-                if (toPlayer.sqrMagnitude > 0.001f)
-                {
-                    _direction = toPlayer.normalized;
-                }
-            }
-
-            Vector3 previousPosition = transform.position;
-            Vector3 currentPosition = previousPosition + _direction * (_speed * deltaTime);
-            transform.position = currentPosition;
-            if (TryFindSegmentHit(previousPosition, currentPosition, out SurvivorsEnemyActor hitEnemy, out float hitRange, out Vector3 hitPosition))
-            {
-                transform.position = hitPosition;
-                int enemyId = hitEnemy.GetInstanceID();
-                _hitEnemyIds.Add(enemyId);
-                DamageResult damage = hitEnemy.ApplyDamage(_damage, _definition == null ? "combatant.survivors.player" : _definition.Id);
-                _controller.ApplyWeaponStatusEffectsToEnemy(hitEnemy, _definition, damage);
-                SpawnForkProjectiles(hitEnemy);
-                if (_remainingPierces > 0)
-                {
-                    _remainingPierces--;
-                    _controller.RecordProjectilePierceHit();
-                    transform.position += _direction * Mathf.Max(0.08f, hitRange);
-                    return;
-                }
-
-                if (_remainingChains > 0 && TryRetargetFrom(hitEnemy))
-                {
-                    _remainingChains--;
-                    _controller.RecordProjectileChainHit();
-                    return;
-                }
-
-                if (!TryStartReturnToPlayer())
-                {
-                    Release(DespawnReason.Completed);
-                }
-
-                return;
-            }
-        }
-
-        private bool TryFindSegmentHit(Vector3 start, Vector3 end, out SurvivorsEnemyActor hitEnemy, out float hitRange, out Vector3 hitPosition)
-        {
-            hitEnemy = null;
-            hitRange = 0f;
-            hitPosition = end;
-            if (_controller == null)
-            {
-                return false;
-            }
-
-            IReadOnlyList<SurvivorsEnemyActor> enemies = _controller.ActiveEnemies;
-            Vector3 segment = end - start;
-            segment.y = 0f;
-            float segmentLengthSquared = segment.sqrMagnitude;
-            float bestSegmentT = float.MaxValue;
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = enemies[i];
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    continue;
-                }
-
-                int enemyId = enemy.GetInstanceID();
-                if (_hitEnemyIds.Contains(enemyId))
-                {
-                    continue;
-                }
-
-                float candidateHitRange = _radius + enemy.Radius;
-                Vector3 enemyPosition = enemy.transform.position;
-                Vector3 closestPoint = end;
-                float segmentT = 1f;
-                if (segmentLengthSquared > 0.0001f)
-                {
-                    Vector3 enemyOffset = enemyPosition - start;
-                    enemyOffset.y = 0f;
-                    segmentT = Mathf.Clamp01(Vector3.Dot(enemyOffset, segment) / segmentLengthSquared);
-                    closestPoint = start + segment * segmentT;
-                }
-
-                Vector3 missOffset = enemyPosition - closestPoint;
-                missOffset.y = 0f;
-                if (missOffset.sqrMagnitude > candidateHitRange * candidateHitRange || segmentT >= bestSegmentT)
-                {
-                    continue;
-                }
-
-                bestSegmentT = segmentT;
-                hitEnemy = enemy;
-                hitRange = candidateHitRange;
-                hitPosition = closestPoint;
-            }
-
-            return hitEnemy != null;
-        }
-
-        private void SpawnForkProjectiles(SurvivorsEnemyActor lastHitEnemy)
-        {
-            if (_controller == null || _definition == null || _remainingForks <= 0)
-            {
-                return;
-            }
-
-            _forkTargets.Clear();
-            IReadOnlyList<SurvivorsEnemyActor> enemies = _controller.ActiveEnemies;
-            Vector3 origin = transform.position;
-            const float forkSearchRange = 5f;
-            float forkSearchRangeSquared = forkSearchRange * forkSearchRange;
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = enemies[i];
-                if (enemy == null || !enemy.IsAlive || _hitEnemyIds.Contains(enemy.GetInstanceID()))
-                {
-                    continue;
-                }
-
-                Vector3 offset = enemy.transform.position - origin;
-                offset.y = 0f;
-                if (offset.sqrMagnitude <= forkSearchRangeSquared)
-                {
-                    _forkTargets.Add(enemy);
-                }
-            }
-
-            _forkTargets.Sort((left, right) =>
-            {
-                float leftDistance = (left.transform.position - origin).sqrMagnitude;
-                float rightDistance = (right.transform.position - origin).sqrMagnitude;
-                return leftDistance.CompareTo(rightDistance);
-            });
-
-            int forkCount = Mathf.Min(_remainingForks, Mathf.Max(1, _forkTargets.Count));
-            _remainingForks = Mathf.Max(0, _remainingForks - 1);
-            for (int i = 0; i < forkCount; i++)
-            {
-                Vector3 forkDirection;
-                if (i < _forkTargets.Count && _forkTargets[i] != null)
-                {
-                    forkDirection = _forkTargets[i].transform.position - origin;
-                    forkDirection.y = 0f;
-                }
-                else
-                {
-                    float angle = (-18f + i * 36f) * Mathf.Deg2Rad;
-                    forkDirection = Quaternion.Euler(0f, angle * Mathf.Rad2Deg, 0f) * _direction;
-                }
-
-                if (forkDirection.sqrMagnitude <= 0.001f)
-                {
-                    forkDirection = _direction;
-                }
-
-                if (_controller.LaunchProjectileFrom(
-                    _definition,
-                    origin,
-                    forkDirection.normalized,
-                    _remainingChains,
-                    _remainingPierces,
-                    _remainingForks,
-                    _remainingReturns,
-                    _hitEnemyIds))
-                {
-                    _controller.RecordProjectileForkSpawn();
-                }
-            }
-
-            _forkTargets.Clear();
-        }
-
-        private bool TryRetargetFrom(SurvivorsEnemyActor lastHitEnemy)
-        {
-            if (_controller == null)
-            {
-                return false;
-            }
-
-            SurvivorsEnemyActor best = null;
-            float bestDistance = 5f * 5f;
-            IReadOnlyList<SurvivorsEnemyActor> enemies = _controller.ActiveEnemies;
-            Vector3 origin = lastHitEnemy == null ? transform.position : lastHitEnemy.transform.position;
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = enemies[i];
-                if (enemy == null || !enemy.IsAlive || _hitEnemyIds.Contains(enemy.GetInstanceID()))
-                {
-                    continue;
-                }
-
-                Vector3 offset = enemy.transform.position - origin;
-                offset.y = 0f;
-                float distance = offset.sqrMagnitude;
-                if (distance <= bestDistance)
-                {
-                    bestDistance = distance;
-                    best = enemy;
-                }
-            }
-
-            if (best == null)
-            {
-                return false;
-            }
-
-            Vector3 direction = best.transform.position - transform.position;
-            direction.y = 0f;
-            if (direction.sqrMagnitude <= 0.001f)
-            {
-                return false;
-            }
-
-            _direction = direction.normalized;
-            _lifetime = Mathf.Max(_lifetime, 0.7f);
-            return true;
-        }
-
-        private bool TryStartReturnToPlayer()
-        {
-            if (_returningToPlayer || _controller == null || _remainingReturns <= 0)
-            {
-                return false;
-            }
-
-            Vector3 direction = _controller.PlayerPosition + Vector3.up * 0.4f - transform.position;
-            direction.y = 0f;
-            if (direction.sqrMagnitude <= 0.001f)
-            {
-                return false;
-            }
-
-            _remainingReturns--;
-            _returningToPlayer = true;
-            _direction = direction.normalized;
-            _speed *= 1.2f;
-            _lifetime = Mathf.Max(_lifetime, 1.25f);
-            _controller.RecordProjectileReturnStart();
-            return true;
-        }
-
-        private void Release(DespawnReason reason)
-        {
-            IsActive = false;
-            if (_controller != null)
-            {
-                _controller.ReleaseProjectile(this, reason);
-            }
-        }
-
-        public void OnWorldSpawned(WorldSpawnContext context)
-        {
-            InstanceId = context.InstanceId;
-        }
-
-        public void OnWorldDespawned(DespawnReason reason)
-        {
-            _controller = null;
-            _definition = null;
-            _hitEnemyIds.Clear();
-            _forkTargets.Clear();
-            IsActive = false;
-        }
-
-        public void ResetForWorldSpawn()
-        {
-            _controller = null;
-            _definition = null;
-            _hitEnemyIds.Clear();
-            _forkTargets.Clear();
-            _remainingChains = 0;
-            _remainingPierces = 0;
-            _remainingForks = 0;
-            _remainingReturns = 0;
-            _returningToPlayer = false;
-            IsActive = false;
-            InstanceId = default;
-        }
-
-        private void ApplyPresentation(Color tint)
-        {
-            if (_renderer == null)
-            {
-                _renderer = GetComponentInChildren<Renderer>();
-            }
-
-            if (_renderer != null)
-            {
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                if (_runtimeMaterial == null || _runtimeMaterial.shader != shader)
-                {
-                    _runtimeMaterial = new Material(shader);
-                }
-
-                _runtimeMaterial.color = tint;
-                _renderer.sharedMaterial = _runtimeMaterial;
-            }
-
-            if (_trail == null)
-            {
-                _trail = GetComponent<TrailRenderer>();
-            }
-
-            if (_trail != null)
-            {
-                Color trailStart = tint;
-                trailStart.a = 0.95f;
-                _trail.startColor = trailStart;
-                _trail.endColor = _controller == null
-                    ? new Color(0.18f, 0.86f, 1f, 0f)
-                    : _controller.ResolveProjectileTrailEndColor();
-            }
-        }
-    }
-
-    public sealed class SurvivorsPickupActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
-    {
-        private SurvivorsTemplateController _controller;
-        private float _attractRange;
-        private float _attractionSpeed;
-        private float _collectRadius;
-        private bool _globalRecall;
-        private bool _rewardCacheAttraction;
-        private bool _attractionFeedbackSent;
-        private float _recallSpeedMultiplier;
-        private float _currentSpeed;
-        private Vector3 _baseScale;
-        private float _pulseSeconds;
-
-        public SpawnInstanceId InstanceId { get; private set; }
-        public bool IsActive { get; private set; }
-        public SurvivorsPickupKind Kind { get; private set; }
-        public int Amount { get; private set; }
-        public bool IsGlobalRecallActive => IsActive && _globalRecall;
-        public bool IsRewardCacheAttractionActive => IsActive && _rewardCacheAttraction;
-        public bool HasShownAttractionFeedback => _attractionFeedbackSent;
-
-        public void Initialize(SurvivorsTemplateController controller, SurvivorsPickupKind kind, int amount, float attractRange, float attractionSpeed, float collectRadius)
-        {
-            _controller = controller;
-            Kind = kind;
-            Amount = Mathf.Max(1, amount);
-            UpdateAttractionSettings(attractRange, attractionSpeed, collectRadius);
-            _globalRecall = false;
-            _rewardCacheAttraction = false;
-            _attractionFeedbackSent = false;
-            _recallSpeedMultiplier = 1f;
-            _currentSpeed = 0f;
-            _pulseSeconds = 0f;
-            IsActive = true;
-            _baseScale = ResolvePickupBaseScale(kind);
-            transform.localScale = _baseScale;
-        }
-
-        public void UpdateAttractionSettings(float attractRange, float attractionSpeed, float collectRadius)
-        {
-            _attractRange = Mathf.Max(0.1f, attractRange);
-            _attractionSpeed = Mathf.Max(0.1f, attractionSpeed);
-            _collectRadius = Mathf.Max(0.1f, collectRadius);
-        }
-
-        public void StartGlobalRecall(float speedMultiplier)
-        {
-            if (Kind != SurvivorsPickupKind.Experience)
-            {
-                return;
-            }
-
-            _globalRecall = true;
-            _recallSpeedMultiplier = Mathf.Max(1f, speedMultiplier);
-            _currentSpeed = Mathf.Max(_currentSpeed, _attractionSpeed * 1.5f);
-            BeginAttractionFeedback();
-        }
-
-        public bool StartRewardCacheAttraction(float speedMultiplier)
-        {
-            if (!IsActive)
-            {
-                return false;
-            }
-
-            _rewardCacheAttraction = true;
-            _recallSpeedMultiplier = Mathf.Max(_recallSpeedMultiplier, speedMultiplier);
-            _currentSpeed = Mathf.Max(_currentSpeed, _attractionSpeed * 1.25f);
-            BeginAttractionFeedback();
-            return true;
-        }
-
-        private static Vector3 ResolvePickupBaseScale(SurvivorsPickupKind kind)
-        {
-            switch (kind)
-            {
-                case SurvivorsPickupKind.Magnet:
-                    return Vector3.one * 0.58f;
-                case SurvivorsPickupKind.Health:
-                    return Vector3.one * 0.44f;
-                case SurvivorsPickupKind.BloodShard:
-                    return Vector3.one * 0.4f;
-                default:
-                    return Vector3.one * 0.34f;
-            }
-        }
-
-        public void Simulate(float deltaTime)
-        {
-            if (!IsActive || _controller == null)
-            {
-                return;
-            }
-
-            Vector3 playerPosition = _controller.PlayerPosition;
-            Vector3 offset = playerPosition - transform.position;
-            offset.y = 0f;
-            float distance = offset.magnitude;
-            bool forcedAttraction = _globalRecall || _rewardCacheAttraction;
-            bool shouldAttract = forcedAttraction || distance <= _attractRange;
-            if (shouldAttract && distance > 0.001f)
-            {
-                BeginAttractionFeedback();
-                float targetSpeed = _attractionSpeed * (forcedAttraction ? _recallSpeedMultiplier * Mathf.Clamp(1f + distance * 0.18f, 1f, 10f) : 1f);
-                _currentSpeed = Mathf.MoveTowards(_currentSpeed, targetSpeed, targetSpeed * 8f * deltaTime);
-                float travel = Mathf.Min(distance, _currentSpeed * deltaTime);
-                transform.position += offset.normalized * travel;
-                distance = Vector3.Distance(transform.position, playerPosition);
-            }
-            else
-            {
-                _currentSpeed = Mathf.MoveTowards(_currentSpeed, 0f, _attractionSpeed * 5f * deltaTime);
-            }
-
-            if (forcedAttraction)
-            {
-                transform.Rotate(0f, 420f * deltaTime, 0f, Space.Self);
-            }
-
-            TickPickupPresentation(deltaTime, shouldAttract);
-
-            if (distance <= _collectRadius)
-            {
-                IsActive = false;
-                _controller.CollectPickup(this);
-            }
-        }
-
-        private void BeginAttractionFeedback()
-        {
-            if (_attractionFeedbackSent || _controller == null)
-            {
-                return;
-            }
-
-            _attractionFeedbackSent = true;
-            _controller.RecordPickupAttractionFeedback(Kind, transform.position);
-        }
-
-        private void TickPickupPresentation(float deltaTime, bool attracting)
-        {
-            if (_baseScale == Vector3.zero)
-            {
-                _baseScale = transform.localScale == Vector3.zero ? Vector3.one * 0.34f : transform.localScale;
-            }
-
-            _pulseSeconds += Mathf.Max(0f, deltaTime);
-            float scale = 1f;
-            if (_globalRecall || _rewardCacheAttraction)
-            {
-                scale = 1.28f + Mathf.Sin(_pulseSeconds * 18f) * 0.16f;
-            }
-            else if (attracting)
-            {
-                scale = 1.12f + Mathf.Sin(_pulseSeconds * 12f) * 0.08f;
-            }
-
-            transform.localScale = _baseScale * Mathf.Max(0.5f, scale);
-        }
-
-        public void OnWorldSpawned(WorldSpawnContext context)
-        {
-            InstanceId = context.InstanceId;
-        }
-
-        public void OnWorldDespawned(DespawnReason reason)
-        {
-            _controller = null;
-            IsActive = false;
-            _rewardCacheAttraction = false;
-        }
-
-        public void ResetForWorldSpawn()
-        {
-            _controller = null;
-            IsActive = false;
-            InstanceId = default;
-            _globalRecall = false;
-            _rewardCacheAttraction = false;
-            _attractionFeedbackSent = false;
-            _currentSpeed = 0f;
-            _pulseSeconds = 0f;
-        }
-    }
-
-    public sealed class SurvivorsSpawnPoseResolver : ISpawnPoseResolver
-    {
-        private readonly SurvivorsTemplateController _controller;
-        private readonly Dictionary<long, Vector3> _explicitPoses = new Dictionary<long, Vector3>();
-
-        public SurvivorsSpawnPoseResolver(SurvivorsTemplateController controller)
-        {
-            _controller = controller;
-        }
-
-        public void RegisterExplicitPose(long sequence, Vector3 position)
-        {
-            _explicitPoses[sequence] = position;
-        }
-
-        public SpawnPoseResult TryResolvePose(WorldSpawnRequest request)
-        {
-            if (_explicitPoses.TryGetValue(request.Sequence, out Vector3 explicitPosition))
-            {
-                _explicitPoses.Remove(request.Sequence);
-                return SpawnPoseResult.Success(new SpawnPose(explicitPosition, Quaternion.identity));
-            }
-
-            if (!request.ChannelId.Equals(BasicSurvivorsGame.RadialSpawnChannelId))
-            {
-                return SpawnPoseResult.Failure("Unknown Survivors spawn channel: " + request.ChannelId);
-            }
-
-            if (_controller == null)
-            {
-                float angle = (request.Sequence * 137.50777f) * Mathf.Deg2Rad;
-                Vector3 fallbackPosition = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 12f;
-                return SpawnPoseResult.Success(new SpawnPose(fallbackPosition, Quaternion.identity));
-            }
-
-            Vector3 resolvedPosition = _controller.ResolveRuntimeEnemySpawnPositionForResolver(request.Sequence);
-            return SpawnPoseResult.Success(new SpawnPose(resolvedPosition, Quaternion.identity));
-        }
     }
 }
