@@ -103,6 +103,62 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsDraftCardFactory _draftCardFactory;
+        private SurvivorsDraftCardFactory DraftCards => _draftCardFactory ?? (_draftCardFactory = new SurvivorsDraftCardFactory(RunBuild, ShortWeaponName));
+
+        private SurvivorsDraftCard CreateUpgradeDraftCard(int index, RunUpgradeDefinition choice) =>
+            DraftCards.CreateUpgradeCard(index, choice, ActiveUiTheme, choice == null ? default : CaptureDraftPreviewValues());
+        private SurvivorsDraftCard CreateRelicDraftCard(int index, SurvivorsRelicDefinition relic) =>
+            DraftCards.CreateRelicCard(index, relic, ActiveUiTheme);
+
+        private SurvivorsDraftPreviewValues CaptureDraftPreviewValues() => new SurvivorsDraftPreviewValues
+        {
+            ProjectileDamage = ProjectileDamage,
+            WeaponCooldownSeconds = WeaponCooldownSeconds,
+            PlayerMoveSpeed = PlayerMoveSpeed,
+            CurrentPickupAttractRange = CurrentPickupAttractRange,
+            CurrentPickupAttractionSpeed = CurrentPickupAttractionSpeed,
+            CurrentPickupMagnetPulseIntervalSeconds = CurrentPickupMagnetPulseIntervalSeconds,
+            MaxHealth = MaxHealth,
+            OrbitRadiusBonus = OrbitRadiusBonus,
+            PayloadExplosionRadiusBonus = PayloadExplosionRadiusBonus,
+            PayloadTriggerRadiusBonus = PayloadTriggerRadiusBonus,
+            PoisonDamageRatio = PoisonDamageRatio,
+            BleedDamageRatio = BleedDamageRatio,
+            ExecuteThresholdNormalized = ExecuteThresholdNormalized,
+            CriticalChanceNormalized = CriticalChanceNormalized,
+            CriticalDamageMultiplier = CriticalDamageMultiplier,
+            DraftLuckBonus = DraftLuckBonus,
+            DeathNovaDamage = DeathNovaDamage,
+            DeathNovaRadius = DeathNovaRadius,
+            LifestealRatio = LifestealRatio,
+            BarrierCapacity = BarrierCapacity,
+            BarrierRegenPerSecondBonus = BarrierRegenPerSecondBonus,
+            BarrierOnDamageRatio = BarrierOnDamageRatio,
+            ExperienceGainMultiplierBonus = ExperienceGainMultiplierBonus,
+            AreaRadiusBonus = AreaRadiusBonus,
+            OrbitBladeBonus = OrbitBladeBonus,
+            MeleeTargetBonus = MeleeTargetBonus,
+            BurstCountBonus = BurstCountBonus,
+            BurstEchoBonus = BurstEchoBonus,
+            TargetedBurstSigilBonus = TargetedBurstSigilBonus,
+            ProjectileFanBonus = ProjectileFanBonus,
+            ProjectilePierceBonus = ProjectilePierceBonus,
+            ProjectileChainBonus = ProjectileChainBonus,
+            ProjectileForkBonus = ProjectileForkBonus,
+            ProjectileReturnBonus = ProjectileReturnBonus,
+            HitscanPierceBonus = HitscanPierceBonus,
+            PayloadCountBonus = PayloadCountBonus,
+            PickupMagnetPulseBaseIntervalSeconds = CurrentTuning.PickupMagnetPulseBaseIntervalSeconds,
+            PickupMagnetPulseMinimumIntervalSeconds = CurrentTuning.PickupMagnetPulseMinimumIntervalSeconds,
+        };
+
+        private string ResolveUpgradeAffectedLabel(RunUpgradeDefinition choice) => DraftCards.ResolveUpgradeAffectedLabel(choice);
+        private string FormatRelicEffectSummary(SurvivorsRelicDefinition relic) => DraftCards.FormatRelicEffectSummary(relic);
+        private static string FormatUpgradeCategoryLabel(SurvivorsRunUpgradeCategory category) => SurvivorsDraftCardFactory.FormatUpgradeCategoryLabel(category);
+        private static Color ResolveRarityAccentColor(RunUpgradeRarity rarity) => SurvivorsDraftCardFactory.ResolveRarityAccentColor(rarity);
+        private static Color ResolveRelicAccentColor(SurvivorsRelicDefinition relic) => SurvivorsDraftCardFactory.ResolveRelicAccentColor(relic);
+
         private SurvivorsEnemySpatialQueries _enemySpatialQueries;
         private SurvivorsEnemySpatialQueries EnemySpatialQueries => _enemySpatialQueries ?? (_enemySpatialQueries = new SurvivorsEnemySpatialQueries(_enemies, () => CurrentTuning));
         private SurvivorsEnemyNavigation _enemyNavigation;
@@ -6565,296 +6621,6 @@ namespace Deucarian.TemplateGameSurvivors
             RecordNewlyEligibleEvolutionFeedback();
         }
 
-        private SurvivorsDraftCard CreateUpgradeDraftCard(int index, RunUpgradeDefinition choice)
-        {
-            if (choice == null)
-            {
-                return new SurvivorsDraftCard
-                {
-                    Index = index,
-                    Hotkey = (index + 1).ToString(),
-                    Name = "Missing Choice",
-                    RarityLabel = "Missing",
-                    CategoryId = "MetaReward",
-                    CategoryLabel = ActiveUiTheme.GetCategoryDisplayName("MetaReward", "Meta/Reward"),
-                    AffectedLabel = "Affects Build",
-                    RankLabel = "No rank",
-                    Description = "Missing upgrade definition.",
-                    EffectPreview = "No effect preview.",
-                    RequirementHint = string.Empty,
-                    IconId = ActiveUiTheme.GetCategoryIconId("MetaReward", "reward"),
-                    StyleToken = ActiveUiTheme.GetRarityStyleToken("Common"),
-                    AccentColor = Color.white
-                };
-            }
-
-            TryGetUpgradeMetadata(choice.Id.Value, out SurvivorsRunUpgradeMetadata metadata);
-            SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(choice);
-            string categoryId = ResolvePlayerUpgradeCategoryId(choice, category, metadata);
-            bool isEvolution = category == SurvivorsRunUpgradeCategory.Evolution;
-            string rarityId = isEvolution ? "Evolution" : choice.Rarity.ToString();
-            Color fallbackAccent = isEvolution
-                ? new Color(1f, 0.38f, 0.56f)
-                : ResolveRarityAccentColor(choice.Rarity);
-            int currentRank = RunBuild.State == null ? 0 : RunBuild.State.GetRank(choice.Id);
-            int nextRank = Mathf.Min(choice.MaxRank, currentRank + 1);
-            return new SurvivorsDraftCard
-            {
-                Index = index,
-                Hotkey = (index + 1).ToString(),
-                Name = ResolveUpgradeDisplayName(choice.Id),
-                RarityLabel = ActiveUiTheme.GetRarityDisplayName(rarityId),
-                CategoryId = categoryId,
-                CategoryLabel = ActiveUiTheme.GetCategoryDisplayName(categoryId, FormatUpgradeCategoryLabel(category)),
-                AffectedLabel = ResolveUpgradeAffectedLabel(choice),
-                RankLabel = choice.MaxRank <= 1 ? "One-time unlock" : $"Rank {currentRank}->{nextRank}/{choice.MaxRank}",
-                Description = metadata == null ? ResolveUpgradeDisplayName(choice.Id) : metadata.Description,
-                EffectPreview = ResolveUpgradeEffectPreview(choice),
-                RequirementHint = ResolveUpgradeRequirementHint(choice, metadata, category),
-                IconId = ActiveUiTheme.GetCategoryIconId(categoryId, categoryId),
-                StyleToken = ActiveUiTheme.GetRarityStyleToken(rarityId),
-                IsEvolution = isEvolution,
-                AccentColor = ActiveUiTheme.GetRarityAccentColor(rarityId, fallbackAccent)
-            };
-        }
-
-        private SurvivorsDraftCard CreateRelicDraftCard(int index, SurvivorsRelicDefinition relic)
-        {
-            Color accent = ActiveUiTheme.GetRarityAccentColor("Relic", ResolveRelicAccentColor(relic));
-            return new SurvivorsDraftCard
-            {
-                Index = index,
-                Hotkey = (index + 1).ToString(),
-                Name = relic == null || string.IsNullOrWhiteSpace(relic.DisplayName) ? "Boss Relic" : relic.DisplayName,
-                RarityLabel = ActiveUiTheme.GetRarityDisplayName("Relic"),
-                CategoryId = "Relic",
-                CategoryLabel = ActiveUiTheme.GetCategoryDisplayName("Relic", "Relic"),
-                AffectedLabel = relic == null ? "Affects Build" : "Affects " + ShortWeaponName(relic.TargetId),
-                RankLabel = "Run relic",
-                Description = relic == null ? "Missing relic definition." : FormatRelicEffectSummary(relic),
-                EffectPreview = relic == null ? "No effect preview." : ResolveRelicEffectPreview(relic),
-                RequirementHint = "Unique boss relic for this run.",
-                IconId = ActiveUiTheme.GetCategoryIconId("Relic", "relic"),
-                StyleToken = ActiveUiTheme.GetRarityStyleToken("Relic"),
-                AccentColor = accent
-            };
-        }
-
-        private string ResolvePlayerUpgradeCategoryId(RunUpgradeDefinition choice, SurvivorsRunUpgradeCategory category, SurvivorsRunUpgradeMetadata metadata)
-        {
-            if (choice != null && IsPickupMagnetUpgrade(choice))
-            {
-                return "PickupMagnet";
-            }
-
-            if (category == SurvivorsRunUpgradeCategory.Weapon)
-            {
-                return "NewWeapon";
-            }
-
-            return category.ToString();
-        }
-
-        private bool IsPickupMagnetUpgrade(RunUpgradeDefinition choice)
-        {
-            if (choice == null || choice.Effects == null)
-            {
-                return false;
-            }
-
-            for (int i = 0; i < choice.Effects.Count; i++)
-            {
-                RunUpgradeEffectDescriptor effect = choice.Effects[i];
-                if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect) ||
-                    effect.EffectId.Equals(BasicSurvivorsGame.MagnetSpeedEffect) ||
-                    effect.EffectId.Equals(BasicSurvivorsGame.MagnetPulseEffect))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private string ResolveUpgradeEffectPreview(RunUpgradeDefinition choice)
-        {
-            if (choice == null || choice.Effects == null || choice.Effects.Count == 0)
-            {
-                return "No effect preview.";
-            }
-
-            string label = string.Empty;
-            if (IsEvolutionUpgrade(choice))
-            {
-                label = "Evolves into " + ResolveUpgradeDisplayName(choice.Id);
-            }
-
-            int shown = Mathf.Min(2, choice.Effects.Count);
-            for (int i = 0; i < shown; i++)
-            {
-                string preview = FormatUpgradeEffectPreview(choice, choice.Effects[i]);
-                if (string.IsNullOrWhiteSpace(preview))
-                {
-                    continue;
-                }
-
-                if (!string.IsNullOrWhiteSpace(label))
-                {
-                    label += "; ";
-                }
-
-                label += preview;
-            }
-
-            if (choice.Effects.Count > shown)
-            {
-                label += "; +" + (choice.Effects.Count - shown).ToString() + " more";
-            }
-
-            return string.IsNullOrWhiteSpace(label) ? "Adds behavior." : label;
-        }
-
-        private string ResolveRelicEffectPreview(SurvivorsRelicDefinition relic)
-        {
-            if (relic == null)
-            {
-                return "No effect preview.";
-            }
-
-            switch (relic.EffectKind)
-            {
-                case SurvivorsRelicEffectKind.DamageBonus:
-                    return $"+{relic.Amount:0.#} damage while this relic is held";
-                case SurvivorsRelicEffectKind.CooldownMultiplier:
-                    return $"{Mathf.Abs(relic.Amount):P0} faster attacks for {ShortWeaponName(relic.TargetId)}";
-                case SurvivorsRelicEffectKind.PickupRange:
-                    return $"+{relic.Amount:0.#} pickup radius and relic surge momentum";
-                default:
-                    return FormatRelicEffectSummary(relic);
-            }
-        }
-
-        private string FormatUpgradeEffectPreview(RunUpgradeDefinition choice, RunUpgradeEffectDescriptor effect)
-        {
-            float amount = (float)effect.Amount;
-            if (effect.EffectId.Equals(BasicSurvivorsGame.DamageBonusEffect)) return FormatComparison("Damage", ProjectileDamage, ProjectileDamage + amount);
-            if (effect.EffectId.Equals(BasicSurvivorsGame.FireRateEffect)) return FormatComparison("Cooldown", WeaponCooldownSeconds, Mathf.Max(0.12f, WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + amount)), "0.00s");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MoveSpeedEffect)) return FormatComparison("Move Speed", PlayerMoveSpeed, PlayerMoveSpeed + amount);
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetRangeEffect)) return FormatComparison("Pickup Radius", CurrentPickupAttractRange, CurrentPickupAttractRange + amount);
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetSpeedEffect)) return FormatComparison("Magnet Pull Speed", CurrentPickupAttractionSpeed, CurrentPickupAttractionSpeed + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MagnetPulseEffect)) return FormatPulseIntervalComparison(amount);
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MaxHealthEffect)) return FormatComparison("Max Health", MaxHealth, MaxHealth + amount);
-            if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitBladeEffect)) return FormatComparison("Orbit Blades", OrbitBladeBonus, OrbitBladeBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.OrbitRadiusEffect)) return FormatComparison("Orbit Radius", OrbitRadiusBonus, OrbitRadiusBonus + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.MeleeTargetEffect)) return FormatComparison("Slash Targets", MeleeTargetBonus, MeleeTargetBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BurstCountEffect)) return FormatComparison("Burst Pulses", BurstCountBonus, BurstCountBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BurstEchoEffect)) return FormatComparison("Echo Pulses", BurstEchoBonus, BurstEchoBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.TargetedBurstEffect)) return FormatComparison("Targeted Sigils", TargetedBurstSigilBonus, TargetedBurstSigilBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileFanEffect)) return FormatComparison("Projectiles", ProjectileFanBonus + 1, ProjectileFanBonus + 1 + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectilePierceEffect)) return FormatComparison("Pierce", ProjectilePierceBonus, ProjectilePierceBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileChainEffect)) return FormatComparison("Chain Count", ProjectileChainBonus, ProjectileChainBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileForkEffect)) return FormatComparison("Forks", ProjectileForkBonus, ProjectileForkBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ProjectileReturnEffect)) return FormatComparison("Returns", ProjectileReturnBonus, ProjectileReturnBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.HitscanPierceEffect)) return FormatComparison("Beam Pierce", HitscanPierceBonus, HitscanPierceBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadCountEffect)) return FormatComparison("Payloads", PayloadCountBonus, PayloadCountBonus + Mathf.Max(1, Mathf.RoundToInt(amount)), "0");
-            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadRadiusEffect)) return FormatComparison("Area Radius", PayloadExplosionRadiusBonus, PayloadExplosionRadiusBonus + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.PayloadTriggerRadiusEffect)) return FormatComparison("Trigger Range", PayloadTriggerRadiusBonus, PayloadTriggerRadiusBonus + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.PoisonEffect)) return FormatPercentComparison("Poison", PoisonDamageRatio, PoisonDamageRatio + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BleedEffect)) return FormatPercentComparison("Bleed", BleedDamageRatio, BleedDamageRatio + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ExecuteEffect)) return FormatPercentComparison("Execute Threshold", ExecuteThresholdNormalized, Mathf.Clamp01(ExecuteThresholdNormalized + amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalChanceEffect)) return FormatPercentComparison("Crit Chance", CriticalChanceNormalized, Mathf.Clamp01(CriticalChanceNormalized + Mathf.Max(0f, amount)));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.CriticalDamageEffect)) return FormatComparison("Crit Damage", CriticalDamageMultiplier, CriticalDamageMultiplier + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.DraftLuckEffect)) return FormatPercentComparison("Draft Luck", DraftLuckBonus, DraftLuckBonus + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaDamageEffect)) return FormatComparison("Death Nova Damage", DeathNovaDamage, DeathNovaDamage + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.DeathNovaRadiusEffect)) return FormatComparison("Death Nova Radius", DeathNovaRadius, DeathNovaRadius + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.LifestealEffect)) return FormatPercentComparison("Lifesteal", LifestealRatio, LifestealRatio + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierCapacityEffect)) return FormatComparison("Barrier", BarrierCapacity, BarrierCapacity + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierRegenEffect)) return FormatComparison("Barrier Regen", BarrierRegenPerSecondBonus, BarrierRegenPerSecondBonus + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.BarrierOnDamageEffect)) return FormatPercentComparison("Barrier On Damage", BarrierOnDamageRatio, BarrierOnDamageRatio + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.ExperienceGainEffect)) return FormatPercentComparison("XP Gain", ExperienceGainMultiplierBonus, ExperienceGainMultiplierBonus + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.AreaRadiusEffect)) return FormatComparison("Area Radius", AreaRadiusBonus, AreaRadiusBonus + Mathf.Max(0f, amount));
-            if (effect.EffectId.Equals(BasicSurvivorsGame.WeaponUnlockEffect))
-            {
-                string displayName = choice != null &&
-                    TryGetUpgradeMetadata(choice.Id.Value, out SurvivorsRunUpgradeMetadata metadata) &&
-                    !string.IsNullOrWhiteSpace(metadata.DisplayName)
-                        ? metadata.DisplayName
-                        : ShortWeaponName(effect.TargetId.Value);
-                return "Unlocks " + displayName;
-            }
-            if (choice != null && IsPickupMagnetUpgrade(choice)) return "Improves collector effects.";
-            return "Adds behavior.";
-        }
-
-        private string FormatPulseIntervalComparison(float reduction)
-        {
-            float before = CurrentPickupMagnetPulseIntervalSeconds;
-            float baseInterval = Mathf.Max(1f, CurrentTuning.PickupMagnetPulseBaseIntervalSeconds);
-            float minimum = Mathf.Max(1f, CurrentTuning.PickupMagnetPulseMinimumIntervalSeconds);
-            float after = before > 0f
-                ? Mathf.Max(minimum, before - Mathf.Max(0f, reduction))
-                : Mathf.Max(minimum, baseInterval - Mathf.Max(0f, reduction));
-            string beforeLabel = before > 0f ? before.ToString("0.#") + "s" : "inactive";
-            return "Pulse Interval: " + beforeLabel + " -> " + after.ToString("0.#") + "s";
-        }
-
-        private static string FormatComparison(string label, float before, float after, string format = "0.#")
-        {
-            return label + ": " + before.ToString(format) + " -> " + after.ToString(format);
-        }
-
-        private static string FormatComparison(string label, int before, int after, string format = "0")
-        {
-            return label + ": " + before.ToString(format) + " -> " + after.ToString(format);
-        }
-
-        private static string FormatPercentComparison(string label, float before, float after)
-        {
-            return label + ": " + before.ToString("P0") + " -> " + after.ToString("P0");
-        }
-
-        private string ResolveUpgradeRequirementHint(RunUpgradeDefinition choice, SurvivorsRunUpgradeMetadata metadata, SurvivorsRunUpgradeCategory category)
-        {
-            if (choice == null || metadata == null)
-            {
-                return string.Empty;
-            }
-
-            if (category == SurvivorsRunUpgradeCategory.Evolution)
-            {
-                string weapon = ShortWeaponName(metadata.AffectedContentId);
-                string rank = string.IsNullOrWhiteSpace(metadata.RequiredUpgradeId)
-                    ? "max weapon rank"
-                    : ResolveUpgradeDisplayName(new RunUpgradeId(metadata.RequiredUpgradeId)) + " rank " + ResolveRequiredUpgradeRank(metadata).ToString();
-                string passive = string.IsNullOrWhiteSpace(metadata.RequiredPassiveUpgradeId)
-                    ? "matching passive"
-                    : ResolveUpgradeDisplayName(new RunUpgradeId(metadata.RequiredPassiveUpgradeId));
-                return "Evolution path: " + weapon + " needs " + rank + " plus " + passive + ".";
-            }
-
-            if (!string.IsNullOrWhiteSpace(metadata.RequiredUpgradeId))
-            {
-                return "Requires " + ResolveUpgradeDisplayName(new RunUpgradeId(metadata.RequiredUpgradeId)) + " rank " + ResolveRequiredUpgradeRank(metadata).ToString() + ".";
-            }
-
-            if (!string.IsNullOrWhiteSpace(metadata.RequiredPassiveUpgradeId))
-            {
-                return "Requires " + ResolveUpgradeDisplayName(new RunUpgradeId(metadata.RequiredPassiveUpgradeId)) + ".";
-            }
-
-            if (!string.IsNullOrWhiteSpace(metadata.RequiredOwnedWeaponId))
-            {
-                return "Requires " + ShortWeaponName(metadata.RequiredOwnedWeaponId) + ".";
-            }
-
-            if (IsPickupMagnetUpgrade(choice))
-            {
-                return "Pickup build: improves gem reach without bypassing draft pacing.";
-            }
-
-            return string.Empty;
-        }
-
         private SurvivorsUiTheme ActiveUiTheme
         {
             get
@@ -7137,27 +6903,6 @@ namespace Deucarian.TemplateGameSurvivors
             return $"{index + 1}. {choice.Rarity} {FormatUpgradeCategoryLabel(category)}: {name}\n{affected}  Rank {currentRank}->{nextRank}/{choice.MaxRank} - {description}";
         }
 
-        private static string FormatUpgradeCategoryLabel(SurvivorsRunUpgradeCategory category)
-        {
-            switch (category)
-            {
-                case SurvivorsRunUpgradeCategory.Weapon:
-                    return "Weapon";
-                case SurvivorsRunUpgradeCategory.WeaponUpgrade:
-                    return "Weapon Upgrade";
-                case SurvivorsRunUpgradeCategory.Passive:
-                    return "Passive";
-                case SurvivorsRunUpgradeCategory.PassiveUpgrade:
-                    return "Passive Upgrade";
-                case SurvivorsRunUpgradeCategory.Mutation:
-                    return "Mutation";
-                case SurvivorsRunUpgradeCategory.Evolution:
-                    return "Evolution";
-                default:
-                    return category.ToString();
-            }
-        }
-
         private string FormatRelicChoiceLabel(int index, SurvivorsRelicDefinition relic)
         {
             if (relic == null)
@@ -7166,27 +6911,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return $"{index + 1}. Boss Relic: {relic.DisplayName}\n{FormatRelicEffectSummary(relic)}";
-        }
-
-        private string FormatRelicEffectSummary(SurvivorsRelicDefinition relic)
-        {
-            if (relic == null)
-            {
-                return "Missing effect";
-            }
-
-            string target = ShortWeaponName(relic.TargetId);
-            switch (relic.EffectKind)
-            {
-                case SurvivorsRelicEffectKind.DamageBonus:
-                    return $"+{relic.Amount:0.#} damage to {target}";
-                case SurvivorsRelicEffectKind.CooldownMultiplier:
-                    return $"{Mathf.Abs(relic.Amount):P0} faster cooldown on {target}";
-                case SurvivorsRelicEffectKind.PickupRange:
-                    return $"+{relic.Amount:0.#} pickup range";
-                default:
-                    return target;
-            }
         }
 
         private static string ResolveRewardKindLabel(SurvivorsRewardSelectionKind selectionKind)
@@ -7203,45 +6927,6 @@ namespace Deucarian.TemplateGameSurvivors
                     return "Boss Reward";
                 default:
                     return "Reward";
-            }
-        }
-
-        private static Color ResolveRarityAccentColor(RunUpgradeRarity rarity)
-        {
-            switch (rarity)
-            {
-                case RunUpgradeRarity.Common:
-                    return new Color(0.78f, 0.84f, 0.88f);
-                case RunUpgradeRarity.Uncommon:
-                    return new Color(0.34f, 0.94f, 0.56f);
-                case RunUpgradeRarity.Rare:
-                    return new Color(0.34f, 0.7f, 1f);
-                case RunUpgradeRarity.Epic:
-                    return new Color(0.9f, 0.46f, 1f);
-                case RunUpgradeRarity.Legendary:
-                    return new Color(1f, 0.76f, 0.2f);
-                default:
-                    return Color.white;
-            }
-        }
-
-        private static Color ResolveRelicAccentColor(SurvivorsRelicDefinition relic)
-        {
-            if (relic == null)
-            {
-                return Color.white;
-            }
-
-            switch (relic.EffectKind)
-            {
-                case SurvivorsRelicEffectKind.DamageBonus:
-                    return new Color(1f, 0.45f, 0.28f);
-                case SurvivorsRelicEffectKind.CooldownMultiplier:
-                    return new Color(0.34f, 0.88f, 1f);
-                case SurvivorsRelicEffectKind.PickupRange:
-                    return new Color(0.42f, 1f, 0.6f);
-                default:
-                    return new Color(1f, 0.76f, 0.2f);
             }
         }
 
@@ -7966,21 +7651,6 @@ namespace Deucarian.TemplateGameSurvivors
             return role == SurvivorsEnemyRole.DreadElite
                 ? "Endless Dread Elite"
                 : "Endless Elite";
-        }
-
-        private string ResolveUpgradeAffectedLabel(RunUpgradeDefinition choice)
-        {
-            if (choice == null || !TryGetUpgradeMetadata(choice.Id.Value, out SurvivorsRunUpgradeMetadata metadata))
-            {
-                return "Build";
-            }
-
-            if (string.IsNullOrWhiteSpace(metadata.AffectedContentId))
-            {
-                return "Build";
-            }
-
-            return "Affects " + ShortWeaponName(metadata.AffectedContentId);
         }
 
         private string ShortWeaponName(string weaponId)
