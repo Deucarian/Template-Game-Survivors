@@ -17,6 +17,14 @@ namespace Deucarian.TemplateGameSurvivors
             return material;
         }
 
+        public static void SetRendererColor(Renderer renderer, Color color)
+        {
+            if (renderer != null && renderer.sharedMaterial != null)
+            {
+                renderer.sharedMaterial.color = color;
+            }
+        }
+
         public static Color WithAlpha(Color color, float alpha)
         {
             color.a = Mathf.Clamp01(alpha);

@@ -44,10 +44,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const string AudioEventDefeat = "run.defeat";
         private const string AudioEventRunSummaryOpened = "run.summary.opened";
         private const string DirectionalLightName = "Survivors Directional Light";
-        private const float InfiniteArenaTileSize = 12f;
-        private const int InfiniteArenaGridRadius = 2;
-        private const int InfiniteArenaLandmarkCount = 8;
-        private const float InfiniteArenaLandmarkJitterRadius = 2.35f;
         private const float KillStreakWindowSeconds = 3.8f;
         private const int KillStreakExperienceInterval = 8;
         private const int KillStreakHealthInterval = 16;
@@ -140,9 +136,6 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsEnemyActor> _enemies = new List<SurvivorsEnemyActor>(64);
         private readonly List<SurvivorsPickupActor> _pickups = new List<SurvivorsPickupActor>(128);
         private readonly List<SurvivorsProjectileActor> _projectiles = new List<SurvivorsProjectileActor>(64);
-        private readonly List<Transform> _arenaTiles = new List<Transform>(25);
-        private readonly List<Transform> _arenaLandmarks = new List<Transform>(InfiniteArenaLandmarkCount);
-        private readonly List<long> _arenaLandmarkKeys = new List<long>(InfiniteArenaLandmarkCount);
         private readonly SurvivorsFeedbackBannerPresenter _rewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Reward);
         private readonly SurvivorsFeedbackBannerPresenter _streakRewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Streak);
         private readonly SurvivorsFeedbackBannerPresenter _classUnlockRewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.ClassUnlock);
@@ -160,6 +153,22 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsArenaPresenter _arena;
+        private SurvivorsArenaPresenter Arena => _arena ?? (_arena = new SurvivorsArenaPresenter(() => ActiveUiTheme, key => Waystones.IsDiscovered(key)));
+        private bool TryResolveClosestArenaLandmark(bool ignoreDiscovered, out Vector3 closest, out float distance, out Vector3 delta) =>
+            Arena.TryResolveClosestArenaLandmark(PlayerPosition, ignoreDiscovered, out closest, out distance, out delta);
+        private void UpdateArenaPresentation()
+        {
+            if (_playerObject != null) Arena.Update(PlayerPosition, CurrentTuning.WaystoneDiscoveryRadius, RunTimeSeconds);
+        }
+        private void TickArenaWaystoneDiscoveries()
+        {
+            for (int i = 0; i < Arena.LandmarkCount; i++)
+            {
+                if (Arena.TryGetLandmark(i, out long key, out Vector3 position)) Waystones.TryDiscover(key, position);
+            }
+        }
+
         private SurvivorsRoamingCacheEncounter _roamingCaches;
         private SurvivorsRoamingCacheEncounter RoamingCaches => _roamingCaches ?? (_roamingCaches = new SurvivorsRoamingCacheEncounter(this));
         private SurvivorsShrineEncounter _shrineTrials;
@@ -234,9 +243,6 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsRelicDefinition> _selectedRelics = new List<SurvivorsRelicDefinition>(8);
         private Transform _worldRoot;
         private Transform _prefabRoot;
-        private Transform _arenaTileRoot;
-        private Transform _arenaFollowRoot;
-        private Transform _waystoneCompassRoot;
         private GameObject _playerObject;
         private Renderer _playerRenderer;
         private Camera _camera;
@@ -818,16 +824,16 @@ namespace Deucarian.TemplateGameSurvivors
         public int EvolvedWeaponCount => _ownedEvolutionUpgradeIds.Count;
         public int MaxWeaponSlots => CurrentTuning.MaxWeaponSlots > 0 ? CurrentTuning.MaxWeaponSlots : DefaultMaxWeaponSlots;
         public int MaxPassiveSlots => CurrentTuning.MaxPassiveSlots > 0 ? CurrentTuning.MaxPassiveSlots : DefaultMaxPassiveSlots;
-        public int InfiniteArenaTileCountForTest => _arenaTiles.Count;
-        public int InfiniteArenaLandmarkCountForTest => _arenaLandmarks.Count;
-        public Vector3 ArenaPresentationCenterForTest => _arenaFollowRoot == null ? Vector3.zero : _arenaFollowRoot.position;
-        public Vector3 FirstInfiniteArenaTilePositionForTest => _arenaTiles.Count == 0 || _arenaTiles[0] == null ? Vector3.zero : _arenaTiles[0].position;
-        public Vector3 FirstInfiniteArenaLandmarkPositionForTest => _arenaLandmarks.Count == 0 || _arenaLandmarks[0] == null ? Vector3.zero : _arenaLandmarks[0].position;
+        public int InfiniteArenaTileCountForTest => Arena.TileCount;
+        public int InfiniteArenaLandmarkCountForTest => Arena.LandmarkCount;
+        public Vector3 ArenaPresentationCenterForTest => Arena.Center;
+        public Vector3 FirstInfiniteArenaTilePositionForTest => Arena.FirstTilePosition;
+        public Vector3 FirstInfiniteArenaLandmarkPositionForTest => Arena.FirstLandmarkPosition;
         public Vector3 ClosestInfiniteArenaLandmarkPositionForTest => ResolveClosestArenaLandmarkPositionForTest();
         public float CurrentWaystoneCompassDistanceForTest => TryResolveClosestArenaLandmark(ignoreDiscovered: true, out _, out float distance, out _) ? distance : 0f;
         public string CurrentWaystoneCompassHudLabel => ResolveWaystoneCompassHudLabel();
-        public bool IsWaystoneCompassArrowVisibleForTest => _waystoneCompassRoot != null && _waystoneCompassRoot.gameObject.activeSelf;
-        public Vector3 WaystoneCompassArrowForwardForTest => _waystoneCompassRoot == null ? Vector3.zero : _waystoneCompassRoot.forward;
+        public bool IsWaystoneCompassArrowVisibleForTest => Arena.CompassVisible;
+        public Vector3 WaystoneCompassArrowForwardForTest => Arena.CompassForward;
         public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
         public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + ArenaShrineSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + WaystoneChainSurgeMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus + WeaponLoadoutSurgeMoveSpeedBonus + PassiveLoadoutSurgeMoveSpeedBonus + BossRelicSurgeMoveSpeedBonus + GemRushMoveSpeedBonus + EvolutionChainSurgeMoveSpeedBonus + EndlessSurgeMoveSpeedBonus;
@@ -3173,53 +3179,6 @@ namespace Deucarian.TemplateGameSurvivors
                 : Vector3.zero;
         }
 
-        private bool TryResolveClosestArenaLandmark(bool ignoreDiscovered, out Vector3 closest, out float closestDistance, out Vector3 closestDelta)
-        {
-            closest = Vector3.zero;
-            closestDistance = 0f;
-            closestDelta = Vector3.zero;
-            if (_arenaLandmarks.Count == 0)
-            {
-                return false;
-            }
-
-            Vector3 player = PlayerPosition;
-            float closestDistanceSquared = float.MaxValue;
-            for (int i = 0; i < _arenaLandmarks.Count; i++)
-            {
-                Transform landmark = _arenaLandmarks[i];
-                if (landmark == null)
-                {
-                    continue;
-                }
-
-                if (ignoreDiscovered &&
-                    i < _arenaLandmarkKeys.Count &&
-                    Waystones.IsDiscovered(_arenaLandmarkKeys[i]))
-                {
-                    continue;
-                }
-
-                Vector3 delta = landmark.position - player;
-                delta.y = 0f;
-                float distanceSquared = delta.sqrMagnitude;
-                if (distanceSquared < closestDistanceSquared)
-                {
-                    closestDistanceSquared = distanceSquared;
-                    closest = landmark.position;
-                    closestDelta = delta;
-                }
-            }
-
-            if (closestDistanceSquared >= float.MaxValue)
-            {
-                return false;
-            }
-
-            closestDistance = Mathf.Sqrt(closestDistanceSquared);
-            return true;
-        }
-
         public bool IsUpgradeEligibleInCurrentBuildForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
@@ -5058,7 +5017,8 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (buildVisualsOnAwake)
             {
-                BuildArenaVisuals();
+                Arena.Build(_worldRoot);
+                UpdateArenaPresentation();
             }
 
             BuildFeedbackPresentation();
@@ -5099,99 +5059,6 @@ namespace Deucarian.TemplateGameSurvivors
             directionalLight.color = new Color(1f, 0.96f, 0.86f);
             directionalLight.intensity = 1.15f;
             directionalLight.shadows = LightShadows.Soft;
-        }
-
-        private void BuildArenaVisuals()
-        {
-            _arenaTiles.Clear();
-            _arenaLandmarks.Clear();
-            _arenaLandmarkKeys.Clear();
-
-            GameObject tileRoot = new GameObject("Survivors Infinite Arena Tiles");
-            tileRoot.transform.SetParent(_worldRoot, false);
-            _arenaTileRoot = tileRoot.transform;
-            BuildInfiniteArenaTiles();
-            BuildInfiniteArenaLandmarks();
-
-            GameObject followRoot = new GameObject("Survivors Moving Arena Readability");
-            followRoot.transform.SetParent(_worldRoot, false);
-            _arenaFollowRoot = followRoot.transform;
-
-            BuildWaystoneCompassArrow();
-            UpdateArenaPresentation();
-        }
-
-        private void BuildWaystoneCompassArrow()
-        {
-            GameObject root = new GameObject("Waystone Compass Arrow");
-            root.transform.SetParent(_arenaFollowRoot, false);
-            root.transform.localPosition = Vector3.zero;
-            _waystoneCompassRoot = root.transform;
-
-            CreateArenaPrimitive(
-                "Waystone Compass Shaft",
-                PrimitiveType.Cube,
-                new Vector3(0f, 0.18f, 3.08f),
-                new Vector3(0.16f, 0.08f, 1.36f),
-                ActiveUiTheme.GetArenaAccentColor(new Color(0.32f, 0.94f, 1f)),
-                _waystoneCompassRoot);
-
-            GameObject head = CreateArenaPrimitive(
-                "Waystone Compass Head",
-                PrimitiveType.Cube,
-                new Vector3(0f, 0.2f, 3.88f),
-                new Vector3(0.62f, 0.1f, 0.62f),
-                ActiveUiTheme.GetFeedbackAccentColor(new Color(0.92f, 1f, 0.42f)),
-                _waystoneCompassRoot);
-            head.transform.localRotation = Quaternion.Euler(0f, 45f, 0f);
-
-            CreateArenaPrimitive(
-                "Waystone Compass Pulse",
-                PrimitiveType.Cylinder,
-                new Vector3(0f, 0.13f, 3.88f),
-                new Vector3(1.05f, 0.025f, 1.05f),
-                ActiveUiTheme.GetArenaGridColor(new Color(0.12f, 0.58f, 0.72f)),
-                _waystoneCompassRoot);
-
-            root.SetActive(false);
-        }
-
-        private void BuildInfiniteArenaTiles()
-        {
-            for (int x = -InfiniteArenaGridRadius; x <= InfiniteArenaGridRadius; x++)
-            {
-                for (int z = -InfiniteArenaGridRadius; z <= InfiniteArenaGridRadius; z++)
-                {
-                    bool alternate = ((x + z) & 1) == 0;
-                    Color tileColor = alternate
-                        ? ActiveUiTheme.GetArenaFloorColor(new Color(0.045f, 0.055f, 0.058f))
-                        : ActiveUiTheme.GetArenaGridColor(new Color(0.055f, 0.065f, 0.05f));
-                    GameObject tile = CreateArenaPrimitive(
-                        "Infinite Arena Tile " + x.ToString() + "," + z.ToString(),
-                        PrimitiveType.Cube,
-                        new Vector3(x * InfiniteArenaTileSize, -0.08f, z * InfiniteArenaTileSize),
-                        new Vector3(InfiniteArenaTileSize, 0.035f, InfiniteArenaTileSize),
-                        tileColor,
-                        _arenaTileRoot);
-                    _arenaTiles.Add(tile.transform);
-                }
-            }
-        }
-
-        private void BuildInfiniteArenaLandmarks()
-        {
-            for (int i = 0; i < InfiniteArenaLandmarkCount; i++)
-            {
-                GameObject landmark = CreateArenaPrimitive(
-                    "Infinite Arena Waystone " + (i + 1).ToString(),
-                    PrimitiveType.Cylinder,
-                    Vector3.zero,
-                    new Vector3(0.42f, 0.52f, 0.42f),
-                    ResolveArenaLandmarkColor(i),
-                    _arenaTileRoot);
-                _arenaLandmarks.Add(landmark.transform);
-                _arenaLandmarkKeys.Add(0L);
-            }
         }
 
         private void RegisterKillStreak(Vector3 position)
@@ -5420,28 +5287,6 @@ namespace Deucarian.TemplateGameSurvivors
             return SpawnPickup(SurvivorsPickupKind.Health, position, CurrentTuning.HealthPickupHealAmount) != null;
         }
 
-        private GameObject CreateArenaPrimitive(string name, PrimitiveType primitive, Vector3 position, Vector3 scale, Color color)
-        {
-            return CreateArenaPrimitive(name, primitive, position, scale, color, _worldRoot);
-        }
-
-        private GameObject CreateArenaPrimitive(string name, PrimitiveType primitive, Vector3 position, Vector3 scale, Color color, Transform parent)
-        {
-            GameObject instance = GameObject.CreatePrimitive(primitive);
-            instance.name = name;
-            instance.transform.SetParent(parent == null ? _worldRoot : parent, false);
-            instance.transform.localPosition = position;
-            instance.transform.localScale = scale;
-            ApplyColor(instance.GetComponentInChildren<Renderer>(), color);
-            Collider collider = instance.GetComponent<Collider>();
-            if (collider != null)
-            {
-                collider.enabled = false;
-            }
-
-            return instance;
-        }
-
         private void BuildFeedbackPresentation()
         {
             GameObject root = new GameObject(FeedbackRootName);
@@ -5482,33 +5327,7 @@ namespace Deucarian.TemplateGameSurvivors
                 projectileTrail.endColor = ResolveProjectileTrailEndColor();
             }
 
-            for (int i = 0; i < _arenaTiles.Count; i++)
-            {
-                Color color = (i & 1) == 0
-                    ? ActiveUiTheme.GetArenaFloorColor(new Color(0.045f, 0.055f, 0.058f))
-                    : ActiveUiTheme.GetArenaGridColor(new Color(0.055f, 0.065f, 0.05f));
-                SetTransformColor(_arenaTiles[i], color);
-            }
-
-            for (int i = 0; i < _arenaLandmarks.Count; i++)
-            {
-                SetTransformColor(_arenaLandmarks[i], ResolveArenaLandmarkColor(i));
-            }
-
-            if (_waystoneCompassRoot != null)
-            {
-                Renderer[] compassRenderers = _waystoneCompassRoot.GetComponentsInChildren<Renderer>(true);
-                for (int i = 0; i < compassRenderers.Length; i++)
-                {
-                    Renderer renderer = compassRenderers[i];
-                    Color color = renderer != null && renderer.gameObject.name.IndexOf("Head", StringComparison.Ordinal) >= 0
-                        ? ActiveUiTheme.GetFeedbackAccentColor(new Color(0.92f, 1f, 0.42f))
-                        : renderer != null && renderer.gameObject.name.IndexOf("Pulse", StringComparison.Ordinal) >= 0
-                            ? ActiveUiTheme.GetArenaGridColor(new Color(0.12f, 0.58f, 0.72f))
-                            : ActiveUiTheme.GetArenaAccentColor(new Color(0.32f, 0.94f, 1f));
-                    SetRendererColor(renderer, color);
-                }
-            }
+            Arena.ApplyTheme();
 
             Color accent = ActiveUiTheme.GetFeedbackAccentColor(new Color(0.82f, 0.4f, 1f));
             Color arenaAccent = ActiveUiTheme.GetArenaAccentColor(new Color(0.2f, 0.82f, 1f));
@@ -5532,22 +5351,11 @@ namespace Deucarian.TemplateGameSurvivors
             return WithAlpha(ActiveUiTheme.GetArenaAccentColor(new Color(0.18f, 0.86f, 1f)), 0f);
         }
 
+        private static void SetRendererColor(Renderer renderer, Color color) => SurvivorsPrimitivePresentation.SetRendererColor(renderer, color);
+
         private static void SetPrefabColor(GameObject prefab, Color color)
         {
             SetRendererColor(prefab == null ? null : prefab.GetComponentInChildren<Renderer>(), color);
-        }
-
-        private static void SetTransformColor(Transform target, Color color)
-        {
-            SetRendererColor(target == null ? null : target.GetComponentInChildren<Renderer>(), color);
-        }
-
-        private static void SetRendererColor(Renderer renderer, Color color)
-        {
-            if (renderer != null && renderer.sharedMaterial != null)
-            {
-                renderer.sharedMaterial.color = color;
-            }
         }
 
         private static void SetParticleColor(ParticleSystem particles, Color color)
@@ -5717,6 +5525,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             _runSession.Stop();
             _audioPresentation?.ReleaseResources();
+            _arena?.Dispose();
             _rewardDrops?.Dispose();
             _threatTelegraphs?.Dispose();
             _combatFeedback?.Dispose();
@@ -5734,15 +5543,9 @@ namespace Deucarian.TemplateGameSurvivors
             _enragedMajorThreats.Clear();
             _pickups.Clear();
             _projectiles.Clear();
-            _arenaTiles.Clear();
-            _arenaLandmarks.Clear();
-            _arenaLandmarkKeys.Clear();
             Waystones.ClearDiscoveries();
             _ownedPassiveUpgradeIds.Clear();
             _ownedEvolutionUpgradeIds.Clear();
-            _arenaTileRoot = null;
-            _arenaFollowRoot = null;
-            _waystoneCompassRoot = null;
             if (_spawnService != null)
             {
                 _spawnService.Dispose();
@@ -7602,203 +7405,6 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
         private void RecordRoamingArenaTravel(Vector3 delta) => Traversal.RecordTravel(delta, State == SurvivorsRunState.Playing);
-
-        private void TickArenaWaystoneDiscoveries()
-        {
-            for (int i = 0; i < _arenaLandmarks.Count; i++)
-            {
-                Transform landmark = _arenaLandmarks[i];
-                if (landmark != null && i < _arenaLandmarkKeys.Count)
-                {
-                    Waystones.TryDiscover(_arenaLandmarkKeys[i], landmark.position);
-                }
-            }
-        }
-
-        private void UpdateArenaPresentation()
-        {
-            if (_playerObject == null)
-            {
-                return;
-            }
-
-            Vector3 player = PlayerPosition;
-            Vector3 playerGround = new Vector3(player.x, 0f, player.z);
-            if (_arenaFollowRoot != null)
-            {
-                _arenaFollowRoot.position = playerGround;
-            }
-
-            if (_arenaTiles.Count == 0)
-            {
-                return;
-            }
-
-            float anchorX = ResolveArenaPresentationAnchor(player.x);
-            float anchorZ = ResolveArenaPresentationAnchor(player.z);
-            int tileIndex = 0;
-            for (int x = -InfiniteArenaGridRadius; x <= InfiniteArenaGridRadius; x++)
-            {
-                for (int z = -InfiniteArenaGridRadius; z <= InfiniteArenaGridRadius; z++)
-                {
-                    if (tileIndex >= _arenaTiles.Count)
-                    {
-                        return;
-                    }
-
-                    Transform tile = _arenaTiles[tileIndex++];
-                    if (tile != null)
-                    {
-                        tile.position = new Vector3(anchorX + x * InfiniteArenaTileSize, -0.08f, anchorZ + z * InfiniteArenaTileSize);
-                    }
-                }
-            }
-
-            UpdateArenaLandmarks(anchorX, anchorZ);
-            UpdateWaystoneCompassPresentation();
-        }
-
-        private void UpdateWaystoneCompassPresentation()
-        {
-            if (_waystoneCompassRoot == null)
-            {
-                return;
-            }
-
-            float distance = 0f;
-            Vector3 delta = Vector3.zero;
-            bool visible = CurrentTuning.WaystoneDiscoveryRadius > 0f &&
-                TryResolveClosestArenaLandmark(ignoreDiscovered: true, out _, out distance, out delta);
-            if (!visible || delta.sqrMagnitude <= 0.0001f)
-            {
-                _waystoneCompassRoot.gameObject.SetActive(false);
-                return;
-            }
-
-            _waystoneCompassRoot.gameObject.SetActive(true);
-            float headingDegrees = Mathf.Atan2(delta.x, delta.z) * Mathf.Rad2Deg;
-            _waystoneCompassRoot.localRotation = Quaternion.Euler(0f, headingDegrees, 0f);
-
-            float nearDistance = Mathf.Max(1f, CurrentTuning.WaystoneDiscoveryRadius * 3.5f);
-            float proximityPulse = Mathf.Clamp01(1f - distance / nearDistance) * 0.16f;
-            float timePulse = Mathf.Sin(RunTimeSeconds * 7.5f) * 0.035f;
-            float scale = Mathf.Max(0.86f, 1f + proximityPulse + timePulse);
-            _waystoneCompassRoot.localScale = new Vector3(scale, scale, scale);
-        }
-
-        private void UpdateArenaLandmarks(float anchorX, float anchorZ)
-        {
-            if (_arenaLandmarks.Count == 0)
-            {
-                return;
-            }
-
-            int anchorCellX = Mathf.FloorToInt(anchorX / InfiniteArenaTileSize);
-            int anchorCellZ = Mathf.FloorToInt(anchorZ / InfiniteArenaTileSize);
-            for (int i = 0; i < _arenaLandmarks.Count; i++)
-            {
-                Transform landmark = _arenaLandmarks[i];
-                if (landmark == null)
-                {
-                    continue;
-                }
-
-                ResolveArenaLandmarkOffset(i, out int offsetX, out int offsetZ);
-                int cellX = anchorCellX + offsetX;
-                int cellZ = anchorCellZ + offsetZ;
-                long key = ResolveArenaLandmarkKey(cellX, cellZ);
-                if (i < _arenaLandmarkKeys.Count)
-                {
-                    _arenaLandmarkKeys[i] = key;
-                }
-                else
-                {
-                    _arenaLandmarkKeys.Add(key);
-                }
-
-                float jitterX = ResolveArenaLandmarkJitter(cellX, cellZ, i * 2 + 1) * InfiniteArenaLandmarkJitterRadius;
-                float jitterZ = ResolveArenaLandmarkJitter(cellX, cellZ, i * 2 + 2) * InfiniteArenaLandmarkJitterRadius;
-                landmark.position = new Vector3(
-                    cellX * InfiniteArenaTileSize + InfiniteArenaTileSize * 0.5f + jitterX,
-                    0.38f,
-                    cellZ * InfiniteArenaTileSize + InfiniteArenaTileSize * 0.5f + jitterZ);
-                landmark.rotation = Quaternion.Euler(0f, (cellX * 37f + cellZ * 19f + i * 31f) % 360f, 0f);
-            }
-        }
-
-        private static float ResolveArenaPresentationAnchor(float value)
-        {
-            return Mathf.Floor((value + InfiniteArenaTileSize * 0.5f) / InfiniteArenaTileSize) * InfiniteArenaTileSize;
-        }
-
-        private static void ResolveArenaLandmarkOffset(int index, out int offsetX, out int offsetZ)
-        {
-            switch (index % InfiniteArenaLandmarkCount)
-            {
-                case 0:
-                    offsetX = -1;
-                    offsetZ = -1;
-                    return;
-                case 1:
-                    offsetX = 0;
-                    offsetZ = -1;
-                    return;
-                case 2:
-                    offsetX = 1;
-                    offsetZ = -1;
-                    return;
-                case 3:
-                    offsetX = -1;
-                    offsetZ = 0;
-                    return;
-                case 4:
-                    offsetX = 1;
-                    offsetZ = 0;
-                    return;
-                case 5:
-                    offsetX = -1;
-                    offsetZ = 1;
-                    return;
-                case 6:
-                    offsetX = 0;
-                    offsetZ = 1;
-                    return;
-                default:
-                    offsetX = 1;
-                    offsetZ = 1;
-                    return;
-            }
-        }
-
-        private static float ResolveArenaLandmarkJitter(int cellX, int cellZ, int salt)
-        {
-            unchecked
-            {
-                int hash = cellX * 73856093 ^ cellZ * 19349663 ^ salt * 83492791;
-                int positive = hash & 0x7fffffff;
-                return (positive % 1001) / 1000f - 0.5f;
-            }
-        }
-
-        private static long ResolveArenaLandmarkKey(int cellX, int cellZ)
-        {
-            return ((long)cellX << 32) ^ (uint)cellZ;
-        }
-
-        private Color ResolveArenaLandmarkColor(int index)
-        {
-            switch (index % 4)
-            {
-                case 0:
-                    return ActiveUiTheme.GetArenaAccentColor(new Color(0.28f, 0.9f, 1f));
-                case 1:
-                    return ActiveUiTheme.GetBossThreatColor(new Color(0.95f, 0.38f, 0.56f));
-                case 2:
-                    return ActiveUiTheme.GetEliteThreatColor(new Color(0.98f, 0.82f, 0.24f));
-                default:
-                    return ActiveUiTheme.GetFeedbackAccentColor(new Color(0.48f, 0.92f, 0.42f));
-            }
-        }
 
         private void TryActivateEndlessSurge(SurvivorsEnemyRole role, Vector3 position, int baseExperienceReward)
         {
