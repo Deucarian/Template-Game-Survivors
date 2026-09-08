@@ -90,6 +90,29 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsPickupRewardPort.ShowFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
         void ISurvivorsPickupRewardPort.PlayPulse(Vector3 position, int count, bool boss, bool pickupAudio) => PlayFeedback(boss ? _bossPulse : _levelUpPulse, position, count, pickupAudio ? _pickupClip : boss ? _bossClip : _levelUpClip);
 
+        private SurvivorsRuntimeWorld _runtimeWorld;
+        private SurvivorsRuntimeCamera _runtimeCamera;
+        private SurvivorsRuntimeCamera RuntimeCamera => _runtimeCamera ?? (_runtimeCamera = new SurvivorsRuntimeCamera());
+        private void BuildRuntimeWorld()
+        {
+            _runtimeWorld = new SurvivorsRuntimeWorld(transform, SurvivorsRuntimeWorldPalette.Capture(ActiveUiTheme));
+            _poseResolver = new SurvivorsSpawnPoseResolver(this);
+            _runtimeWorld.BuildSpawning(_poseResolver, CurrentTuning.EnemyMaximumAlive);
+            if (buildVisualsOnAwake)
+            {
+                Arena.Build(_worldRoot);
+                UpdateArenaPresentation();
+            }
+            BuildFeedbackPresentation();
+            EnsureCamera();
+        }
+        private void EnsureCamera() => RuntimeCamera.Ensure(PlayerPosition, Camera.main);
+        private void LateUpdate()
+        {
+            UpdateArenaPresentation();
+            _runtimeCamera?.Follow(_playerObject == null ? null : _playerObject.transform, Time.deltaTime);
+        }
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -118,7 +141,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const string AudioEventVictory = "run.victory";
         private const string AudioEventDefeat = "run.defeat";
         private const string AudioEventRunSummaryOpened = "run.summary.opened";
-        private const string DirectionalLightName = "Survivors Directional Light";
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
@@ -608,17 +630,17 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<string> _announcedEvolutionGoalUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _announcedEvolutionReadyUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
-        private Transform _worldRoot;
-        private Transform _prefabRoot;
-        private GameObject _playerObject;
-        private Renderer _playerRenderer;
-        private Camera _camera;
-        private GameObject _enemyPrefab;
-        private GameObject _experiencePickupPrefab;
-        private GameObject _magnetPickupPrefab;
-        private GameObject _healthPickupPrefab;
-        private GameObject _bloodShardPickupPrefab;
-        private GameObject _projectilePrefab;
+        private Transform _worldRoot => _runtimeWorld?.Root;
+        private Transform _prefabRoot => _runtimeWorld?.PrefabRoot;
+        private GameObject _playerObject => _runtimeWorld?.Player;
+        private Renderer _playerRenderer => _runtimeWorld?.PlayerRenderer;
+        private Camera _camera => _runtimeCamera?.Camera;
+        private GameObject _enemyPrefab => _runtimeWorld?.EnemyPrefab;
+        private GameObject _experiencePickupPrefab => _runtimeWorld?.ExperiencePrefab;
+        private GameObject _magnetPickupPrefab => _runtimeWorld?.MagnetPrefab;
+        private GameObject _healthPickupPrefab => _runtimeWorld?.HealthPrefab;
+        private GameObject _bloodShardPickupPrefab => _runtimeWorld?.BloodShardPrefab;
+        private GameObject _projectilePrefab => _runtimeWorld?.ProjectilePrefab;
         private Transform _feedbackRoot;
         private ParticleSystem _spawnPulse;
         private ParticleSystem _firePulse;
@@ -649,7 +671,7 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _menuTabStyle => _hudStyles.MenuTabStyle;
         private GUIStyle _transparentButtonStyle => _hudStyles.TransparentButtonStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
-        private WorldSpawnService _spawnService;
+        private WorldSpawnService _spawnService => _runtimeWorld?.Spawning;
         private CombatCatalog _combatCatalog;
         private DeterministicRandom _combatRandom;
         private WeaponDefinition _weaponDefinition;
@@ -1465,18 +1487,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void LateUpdate()
-        {
-            UpdateArenaPresentation();
-            if (_camera == null || _playerObject == null)
-            {
-                return;
-            }
-
-            Vector3 target = _playerObject.transform.position + new Vector3(0f, 13.5f, -9.5f);
-            _camera.transform.position = Vector3.Lerp(_camera.transform.position, target, 14f * Time.deltaTime);
-            _camera.transform.rotation = Quaternion.Euler(58f, 0f, 0f);
-        }
 
         private void OnGUI()
         {
@@ -4356,89 +4366,8 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void BuildRuntimeWorld()
-        {
-            _worldRoot = new GameObject("SurvivorsRuntimeWorld").transform;
-            _worldRoot.SetParent(transform, false);
-            _prefabRoot = new GameObject("SurvivorsTemplatePrefabSources").transform;
-            _prefabRoot.SetParent(_worldRoot, false);
-            _prefabRoot.gameObject.SetActive(false);
-            _playerObject = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            _playerObject.name = "Survivors Player";
-            _playerObject.transform.SetParent(_worldRoot, false);
-            _playerObject.transform.localScale = new Vector3(0.85f, 1f, 0.85f);
-            _playerRenderer = _playerObject.GetComponentInChildren<Renderer>();
-            ApplyColor(_playerRenderer, ActiveUiTheme.GetPlayerColor(new Color(0.78f, 0.91f, 1f)));
 
-            _enemyPrefab = CreatePrimitivePrefab("Survivors Swarm Enemy Prefab", PrimitiveType.Capsule, new Color(0.88f, 0.22f, 0.32f), typeof(SurvivorsEnemyActor));
-            _experiencePickupPrefab = CreatePrimitivePrefab("Survivors XP Gem Prefab", PrimitiveType.Sphere, ActiveUiTheme.GetExperiencePickupColor(new Color(0.22f, 0.83f, 1f)), typeof(SurvivorsPickupActor));
-            _magnetPickupPrefab = CreatePrimitivePrefab("Survivors Magnet Prefab", PrimitiveType.Sphere, ActiveUiTheme.GetArenaAccentColor(new Color(1f, 0.86f, 0.18f)), typeof(SurvivorsPickupActor));
-            _healthPickupPrefab = CreatePrimitivePrefab("Survivors Vital Shard Prefab", PrimitiveType.Sphere, ActiveUiTheme.GetHealthPickupColor(new Color(1f, 0.24f, 0.42f)), typeof(SurvivorsPickupActor));
-            _bloodShardPickupPrefab = CreatePrimitivePrefab("Survivors Blood Shard Prefab", PrimitiveType.Sphere, ActiveUiTheme.GetCurrencyPickupColor(new Color(0.96f, 0.08f, 0.18f)), typeof(SurvivorsPickupActor));
-            _projectilePrefab = CreatePrimitivePrefab("Survivors Arcane Bolt Prefab", PrimitiveType.Sphere, ResolveProjectileFallbackColor(), typeof(SurvivorsProjectileActor));
 
-            BuildSceneLighting();
-
-            _poseResolver = new SurvivorsSpawnPoseResolver(this);
-            var spawnables = new[]
-            {
-                new SpawnableDefinition(BasicSurvivorsGame.SwarmEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 24, Mathf.Max(CurrentTuning.EnemyMaximumAlive + 96, 256), "survivors-enemy-pool"),
-                new SpawnableDefinition(BasicSurvivorsGame.MinibossEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 1, 8, "survivors-miniboss-pool"),
-                new SpawnableDefinition(BasicSurvivorsGame.BossEnemySpawnableId, new GameObjectPrefabProvider(_enemyPrefab), 1, 4, "survivors-boss-pool"),
-                new SpawnableDefinition(BasicSurvivorsGame.ExperiencePickupSpawnableId, new GameObjectPrefabProvider(_experiencePickupPrefab), 16, 256, "survivors-xp-pool"),
-                new SpawnableDefinition(BasicSurvivorsGame.MagnetPickupSpawnableId, new GameObjectPrefabProvider(_magnetPickupPrefab), 2, 16, "survivors-magnet-pool"),
-                new SpawnableDefinition(BasicSurvivorsGame.HealthPickupSpawnableId, new GameObjectPrefabProvider(_healthPickupPrefab), 4, 32, "survivors-health-pool"),
-                new SpawnableDefinition(BasicSurvivorsGame.BloodShardPickupSpawnableId, new GameObjectPrefabProvider(_bloodShardPickupPrefab), 4, 48, "survivors-blood-shard-pool"),
-                new SpawnableDefinition(BasicSurvivorsGame.ProjectileSpawnableId, new GameObjectPrefabProvider(_projectilePrefab), 12, 96, "survivors-projectile-pool")
-            };
-            _spawnService = new WorldSpawnService(new SpawnableCatalog(spawnables), _poseResolver, _worldRoot, rootName: "SurvivorsWorldSpawning");
-            _spawnService.Warmup();
-
-            if (buildVisualsOnAwake)
-            {
-                Arena.Build(_worldRoot);
-                UpdateArenaPresentation();
-            }
-
-            BuildFeedbackPresentation();
-            EnsureCamera();
-        }
-
-        private GameObject CreatePrimitivePrefab(string name, PrimitiveType primitive, Color color, Type actorType)
-        {
-            GameObject prefab = GameObject.CreatePrimitive(primitive);
-            prefab.name = name;
-            prefab.transform.SetParent(_prefabRoot, false);
-            prefab.transform.localScale = Vector3.one;
-            ApplyColor(prefab.GetComponentInChildren<Renderer>(), color);
-            prefab.AddComponent(actorType);
-            if (actorType == typeof(SurvivorsProjectileActor))
-            {
-                var trail = prefab.AddComponent<TrailRenderer>();
-                trail.time = 0.18f;
-                trail.startWidth = 0.2f;
-                trail.endWidth = 0.02f;
-                trail.material = new Material(Shader.Find("Sprites/Default"));
-                trail.startColor = WithAlpha(ActiveUiTheme.GetFeedbackAccentColor(new Color(0.86f, 0.48f, 1f)), 0.95f);
-                trail.endColor = WithAlpha(ActiveUiTheme.GetArenaAccentColor(new Color(0.18f, 0.86f, 1f)), 0f);
-            }
-
-            prefab.SetActive(false);
-            return prefab;
-        }
-
-        private void BuildSceneLighting()
-        {
-            GameObject lightObject = new GameObject(DirectionalLightName);
-            lightObject.transform.SetParent(_worldRoot, false);
-            lightObject.transform.localRotation = Quaternion.Euler(52f, -34f, 0f);
-
-            Light directionalLight = lightObject.AddComponent<Light>();
-            directionalLight.type = LightType.Directional;
-            directionalLight.color = new Color(1f, 0.96f, 0.86f);
-            directionalLight.intensity = 1.15f;
-            directionalLight.shadows = LightShadows.Soft;
-        }
 
         private void SpawnMajorRewardPickupCache(Vector3 position, SurvivorsEnemyRole role, float radius)
         {
@@ -4627,19 +4556,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            SetRendererColor(_playerRenderer, ActiveUiTheme.GetPlayerColor(new Color(0.78f, 0.91f, 1f)));
-            SetPrefabColor(_experiencePickupPrefab, ActiveUiTheme.GetExperiencePickupColor(new Color(0.22f, 0.83f, 1f)));
-            SetPrefabColor(_magnetPickupPrefab, ActiveUiTheme.GetArenaAccentColor(new Color(1f, 0.86f, 0.18f)));
-            SetPrefabColor(_healthPickupPrefab, ActiveUiTheme.GetHealthPickupColor(new Color(1f, 0.24f, 0.42f)));
-            SetPrefabColor(_bloodShardPickupPrefab, ActiveUiTheme.GetCurrencyPickupColor(new Color(0.96f, 0.08f, 0.18f)));
-            SetPrefabColor(_projectilePrefab, ResolveProjectileFallbackColor());
-
-            TrailRenderer projectileTrail = _projectilePrefab == null ? null : _projectilePrefab.GetComponent<TrailRenderer>();
-            if (projectileTrail != null)
-            {
-                projectileTrail.startColor = WithAlpha(ActiveUiTheme.GetFeedbackAccentColor(new Color(0.86f, 0.48f, 1f)), 0.95f);
-                projectileTrail.endColor = ResolveProjectileTrailEndColor();
-            }
+            _runtimeWorld.ApplyPalette(SurvivorsRuntimeWorldPalette.Capture(ActiveUiTheme));
 
             Arena.ApplyTheme();
 
@@ -4667,10 +4584,6 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static void SetRendererColor(Renderer renderer, Color color) => SurvivorsPrimitivePresentation.SetRendererColor(renderer, color);
 
-        private static void SetPrefabColor(GameObject prefab, Color color)
-        {
-            SetRendererColor(prefab == null ? null : prefab.GetComponentInChildren<Renderer>(), color);
-        }
 
         private static void SetParticleColor(ParticleSystem particles, Color color)
         {
@@ -4814,26 +4727,6 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static string ResolveMajorRewardDropLabel(SurvivorsEnemyRole role) => SurvivorsRewardDropPresenter.ResolveMajorRewardDropLabel(role);
 
-        private void EnsureCamera()
-        {
-            _camera = Camera.main;
-            if (_camera == null)
-            {
-                GameObject cameraObject = new GameObject("Main Camera");
-                _camera = cameraObject.AddComponent<Camera>();
-                cameraObject.AddComponent<AudioListener>();
-                cameraObject.tag = "MainCamera";
-            }
-            else if (_camera.GetComponent<AudioListener>() == null)
-            {
-                _camera.gameObject.AddComponent<AudioListener>();
-            }
-
-            _camera.orthographic = true;
-            _camera.orthographicSize = 8.2f;
-            _camera.transform.position = PlayerPosition + new Vector3(0f, 13.5f, -9.5f);
-            _camera.transform.rotation = Quaternion.Euler(58f, 0f, 0f);
-        }
 
         private void ClearRun()
         {
@@ -4859,17 +4752,9 @@ namespace Deucarian.TemplateGameSurvivors
             _projectiles.Clear();
             Waystones.ClearDiscoveries();
             RunBuild.ClearOwnedSelections();
-            if (_spawnService != null)
-            {
-                _spawnService.Dispose();
-                _spawnService = null;
-            }
-
-            if (_worldRoot != null)
-            {
-                ReleaseTemplateObject(_worldRoot.gameObject);
-                _worldRoot = null;
-            }
+            _runtimeWorld?.ReleaseSpawns();
+            _runtimeWorld?.Dispose();
+            _runtimeWorld = null;
         }
 
         private void EnsureMetaProgressionLoaded()
@@ -6770,6 +6655,8 @@ namespace Deucarian.TemplateGameSurvivors
         {
             ClearRun();
             ReleaseMetaProgressionService();
+            _runtimeCamera?.Dispose();
+            _runtimeCamera = null;
         }
 
     }
