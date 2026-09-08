@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -119,6 +119,66 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsRunResultPresenter _resultScreen;
+        private SurvivorsRunResultPresenter ResultScreen => _resultScreen ?? (_resultScreen = new SurvivorsRunResultPresenter(this, () => ActiveUiTheme, _hudStyles));
+        private void DrawRunResultOverlay(bool victory) => ResultScreen.Draw(victory);
+        SurvivorsRunResultView ISurvivorsRunResultPort.ReadSummary() => new SurvivorsRunResultView(
+            _lastRunSummaryTitle, $"Rewards {BloodShardsEarnedThisRun} {CurrencyRewardLabel} / {LegacyExperienceEarnedThisRun} {ProgressionDisplayName}",
+            LastRunSummaryLines, CurrentTuning.EndlessContinuationEnabled);
+        IReadOnlyList<SurvivorsResultClassChoice> ISurvivorsRunResultPort.ReadClasses()
+        {
+            IReadOnlyList<SurvivorsClassDefinition> options = ResolveResultClassOptions(ResultClassOptionCount);
+            var rows = new SurvivorsResultClassChoice[options.Count];
+            for (int i = 0; i < options.Count; i++)
+            {
+                SurvivorsClassDefinition option = options[i];
+                rows[i] = new SurvivorsResultClassChoice(FormatResultClassOptionLabel(i, option), IsResultClassUnlocked(option),
+                    option != null && string.Equals(SelectedClassId, option.Id, StringComparison.Ordinal));
+            }
+            return rows;
+        }
+        SurvivorsResultMetaView ISurvivorsRunResultPort.ReadMeta()
+        {
+            IReadOnlyList<SurvivorsPersistentUpgradeDefinition> options = ResolveResultMetaUpgradeOptions(ResultMetaUpgradeOptionCount);
+            var labels = new string[options.Count];
+            for (int i = 0; i < options.Count; i++) labels[i] = FormatPersistentUpgradeOptionLabel(i, options[i]);
+            return new SurvivorsResultMetaView($"Meta Upgrades - {MetaBloodShards} {CurrencyDisplayName} banked",
+                $"No affordable meta upgrades yet. Bank more {CurrencyDisplayName} from runs, elites, bosses, or skips.", labels);
+        }
+        void ISurvivorsRunResultPort.SelectClass(int index) => TrySelectResultClass(index);
+        void ISurvivorsRunResultPort.PurchaseMeta(int index) => TryPurchaseResultMetaUpgrade(index);
+        void ISurvivorsRunResultPort.Continue() => ContinueAfterVictory();
+        void ISurvivorsRunResultPort.Restart() => RestartRun();
+        void ISurvivorsRunResultPort.ChangeMode() => OpenRunModeSelection();
+        void ISurvivorsRunResultPort.PlaySelect() => PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+
+        private SurvivorsDraftScreenPresenter _draftScreen;
+        private SurvivorsDraftScreenPresenter DraftScreen => _draftScreen ?? (_draftScreen = new SurvivorsDraftScreenPresenter(
+            DraftSession, () => ActiveUiTheme, _hudStyles,
+            index => IsRelicChoiceOpen ? CreateRelicDraftCard(index, CurrentRelicChoices[index]) : CreateUpgradeDraftCard(index, CurrentDraftChoices[index]),
+            ResolveRewardOverlayTitle, ResolveRewardTitleAccentColor, () => DraftSkipBloodShards));
+        private void DrawLevelUpOverlay() => DraftScreen.Draw();
+
+        private SurvivorsRunModePresenter _runModePresenter;
+        private SurvivorsRunModePresenter RunModePresenter => _runModePresenter ?? (_runModePresenter = new SurvivorsRunModePresenter(this, () => ActiveUiTheme, _hudStyles));
+        private void DrawRunModeSelectionOverlay() => RunModePresenter.Draw();
+        bool ISurvivorsRunModePort.CanStart => CanStartConfiguredRun;
+        bool ISurvivorsRunModePort.StrictAuthored => IsStrictAuthoredSample;
+        string ISurvivorsRunModePort.AuthoredStatus => _authoredContentStatus;
+        IReadOnlyList<SurvivorsUiTheme> ISurvivorsRunModePort.Themes => _availableUiThemes;
+        int ISurvivorsRunModePort.SelectedThemeIndex => _selectedUiThemeIndex;
+        SurvivorsRunModeCardView ISurvivorsRunModePort.ReadCard(SurvivorsPacingProfile profile)
+        {
+            SurvivorsTemplateTuning preview = CreateConfiguredTuning(profile);
+            return new SurvivorsRunModeCardView(profile, preview, $"Boss {FormatRunTime(preview.BossSpawnTimeSeconds)}   Victory {FormatRunTime(preview.SurvivalVictoryTimeSeconds)}");
+        }
+        void ISurvivorsRunModePort.Start(SurvivorsPacingProfile profile) => SelectRunMode(profile);
+        void ISurvivorsRunModePort.OpenTutorial() => OpenTutorialOverlay(markUnseen: false);
+        void ISurvivorsRunModePort.EnsureThemes() => EnsureUiTheme();
+        void ISurvivorsRunModePort.SelectTheme(int index) => SelectUiTheme(index);
+        void ISurvivorsRunModePort.Hover() => PlayAudioEvent(AudioEventUiHover, _pickupClip, 0.08f);
+        void ISurvivorsRunModePort.Select() => PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+
         private SurvivorsMenuSession _menus;
         private SurvivorsMenuSession Menus => _menus ?? (_menus = new SurvivorsMenuSession(this));
         private SurvivorsBuildMenuPresenter _buildMenuPresenter;
@@ -170,7 +230,7 @@ namespace Deucarian.TemplateGameSurvivors
         SurvivorsTemplateTuning ISurvivorsDraftSessionPort.Tuning => CurrentTuning;
         int ISurvivorsDraftSessionPort.RerollCharges => TotalDraftRerollCharges;
         int ISurvivorsDraftSessionPort.RelicSeed => CurrentTuning.RunSeed + MinibossKilledCount + SelectedRelicCount + 97;
-        void ISurvivorsDraftSessionPort.ResetScroll() => _draftCardScrollPosition = Vector2.zero;
+        void ISurvivorsDraftSessionPort.ResetScroll() => DraftScreen.ResetScroll();
         void ISurvivorsDraftSessionPort.ApplyUpgrade(RunUpgradeDefinition upgrade) => ApplyUpgrade(upgrade);
         void ISurvivorsDraftSessionPort.RecordDirectUpgrade(RunUpgradeDefinition upgrade) => RecordBestRewardMoment(upgrade);
         void ISurvivorsDraftSessionPort.PresentSelectedUpgrade(SurvivorsRewardSelectionKind kind, RunUpgradeDefinition selected)
@@ -488,9 +548,6 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly SurvivorsProfileSession _profileSession = new SurvivorsProfileSession(
             () => new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider())));
         private bool _debugOverlayVisible;
-        private Vector2 _runSummaryScrollPosition;
-        private Vector2 _draftCardScrollPosition;
-        private Vector2 _modeSelectionScrollPosition;
         private int _selectedUiThemeIndex;
         private string _lastRunSummaryTitle = string.Empty;
         private RunUpgradeRarity _highestChosenRarity;
@@ -1409,119 +1466,6 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(panel.x + 12f, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? panel.y + 400f : panel.y + 422f, 318f, 22f), ResolveDashHudLabel(), _hudSmallStyle);
         }
 
-        private void DrawRunModeSelectionOverlay()
-        {
-            Rect rect = SurvivorsScreenLayout.ResolveCenteredPanelRect(820f, 430f, 340f, 360f, 20f);
-            float width = rect.width;
-            GUI.Box(rect, "Choose Run Mode");
-            GUI.Label(new Rect(rect.x + 28f, rect.y + 34f, width - 56f, 28f), "Deucarian Survivors Run", _hudTitleStyle);
-            GUI.Label(new Rect(rect.x + 28f, rect.y + 64f, width - 56f, 22f), "Pick Standard / Human Playtest for the full 30-minute arc or Sprint Run for the compact five-minute loop.", _hudLabelStyle);
-
-            float viewOffset = 98f;
-            float viewBottomPadding = 154f;
-            if (IsStrictAuthoredSample && !CanStartConfiguredRun)
-            {
-                GUI.Label(new Rect(rect.x + 28f, rect.y + 86f, width - 56f, 34f), _authoredContentStatus, _hudSmallStyle);
-                viewOffset = 122f;
-                viewBottomPadding = 178f;
-            }
-
-            Rect viewRect = new Rect(rect.x + 28f, rect.y + viewOffset, width - 56f, rect.height - viewBottomPadding);
-            float contentWidth = Mathf.Max(1f, viewRect.width - 18f);
-            bool narrow = contentWidth < 700f;
-            float cardGap = 16f;
-            float cardWidth = narrow ? contentWidth : (contentWidth - cardGap) * 0.5f;
-            float cardHeight = narrow ? 132f : 190f;
-            float selectorY = narrow ? cardHeight * 2f + cardGap + 12f : cardHeight + 14f;
-            float selectorHeight = contentWidth < 360f ? 64f : 46f;
-            float contentHeight = Mathf.Max(viewRect.height, selectorY + selectorHeight);
-
-            _modeSelectionScrollPosition = GUI.BeginScrollView(viewRect, _modeSelectionScrollPosition, new Rect(0f, 0f, contentWidth, contentHeight));
-            Rect standardRect = new Rect(0f, 0f, cardWidth, cardHeight);
-            Rect sprintRect = narrow
-                ? new Rect(0f, standardRect.yMax + cardGap, cardWidth, cardHeight)
-                : new Rect(standardRect.xMax + cardGap, 0f, cardWidth, cardHeight);
-            bool previousEnabled = GUI.enabled;
-            GUI.enabled = previousEnabled && CanStartConfiguredRun;
-            if (DrawRunModeCard(standardRect, SurvivorsPacingProfile.HumanPlaytest, "Start Standard"))
-            {
-                SelectStandardRun();
-            }
-
-            if (DrawRunModeCard(sprintRect, SurvivorsPacingProfile.SprintRun, "Start Sprint"))
-            {
-                SelectSprintRun();
-            }
-            GUI.enabled = previousEnabled;
-
-            DrawThemeSelector(new Rect(0f, selectorY, contentWidth, 42f));
-            GUI.EndScrollView();
-
-            if (GUI.Button(new Rect(rect.x + 28f, rect.yMax - 42f, Mathf.Min(180f, width - 56f), 30f), ActiveUiTheme.showTutorialButtonLabel + " (T)"))
-            {
-                OpenTutorialOverlay(markUnseen: false);
-            }
-        }
-
-        private bool DrawRunModeCard(Rect rect, SurvivorsPacingProfile profile, string buttonLabel)
-        {
-            SurvivorsTemplateTuning preview = CreateConfiguredTuning(profile);
-            GUI.Box(rect, string.Empty);
-            GUI.Label(new Rect(rect.x + 16f, rect.y + 16f, rect.width - 32f, 24f), FormatRunModeSelectionTitle(profile, preview), _hudLabelStyle);
-            GUI.Label(new Rect(rect.x + 16f, rect.y + 44f, rect.width - 32f, 20f), preview.RunModeDurationLabel, _hudSmallStyle);
-            GUI.Label(new Rect(rect.x + 16f, rect.y + 70f, rect.width - 32f, 42f), preview.RunModeDescription, _hudSmallStyle);
-            if (rect.height > 150f)
-            {
-                GUI.Label(new Rect(rect.x + 16f, rect.y + 118f, rect.width - 32f, 20f), $"Boss {FormatRunTime(preview.BossSpawnTimeSeconds)}   Victory {FormatRunTime(preview.SurvivalVictoryTimeSeconds)}", _hudSmallStyle);
-                GUI.Label(new Rect(rect.x + 16f, rect.y + 140f, rect.width - 32f, 20f), $"Profile {GetPacingProfileDisplayNameForCard(profile)}", _hudSmallStyle);
-            }
-
-            bool hovered = rect.Contains(Event.current.mousePosition);
-            if (hovered)
-            {
-                PlayAudioEvent(AudioEventUiHover, _pickupClip, 0.08f);
-            }
-
-            bool clicked = GUI.Button(new Rect(rect.x + 16f, rect.yMax - 38f, rect.width - 32f, 30f), buttonLabel);
-            if (clicked)
-            {
-                PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-            }
-
-            return clicked;
-        }
-
-        private void DrawThemeSelector(Rect rect)
-        {
-            EnsureUiTheme();
-            bool stacked = rect.width < 360f;
-            GUI.Label(new Rect(rect.x, rect.y, stacked ? rect.width : Mathf.Min(96f, rect.width), 24f), ActiveUiTheme.themeSelectorTitle, _hudLabelStyle);
-            float x = stacked ? rect.x : rect.x + 104f;
-            float y = stacked ? rect.y + 24f : rect.y;
-            float availableWidth = Mathf.Max(1f, rect.xMax - x);
-            float width = Mathf.Max(96f, Mathf.Min(180f, (availableWidth - 8f) / Mathf.Max(1, _availableUiThemes.Count)));
-            for (int i = 0; i < _availableUiThemes.Count; i++)
-            {
-                SurvivorsUiTheme option = _availableUiThemes[i];
-                if (option == null)
-                {
-                    continue;
-                }
-
-                Rect button = new Rect(x + i * (width + 8f), y, width, 32f);
-                Color oldColor = GUI.backgroundColor;
-                GUI.backgroundColor = i == _selectedUiThemeIndex
-                    ? ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f))
-                    : new Color(0.72f, 0.72f, 0.76f);
-                if (GUI.Button(button, option.themeName))
-                {
-                    SelectUiTheme(i);
-                }
-
-                GUI.backgroundColor = oldColor;
-            }
-        }
-
         private bool SelectUiTheme(int index)
         {
             EnsureUiTheme();
@@ -1566,23 +1510,6 @@ namespace Deucarian.TemplateGameSurvivors
             EnsureUiTheme();
             int resolvedStep = SurvivorsTutorialContent.ClampTutorialStepIndex(step);
             return ActiveUiTheme.GetTutorialStepLines(resolvedStep, SurvivorsTutorialContent.ResolveDefaultTutorialStepLines(resolvedStep));
-        }
-
-        private static string GetPacingProfileDisplayNameForCard(SurvivorsPacingProfile profile)
-        {
-            return BasicSurvivorsGame.GetPacingProfileDisplayName(profile);
-        }
-
-        private static string FormatRunModeSelectionTitle(SurvivorsPacingProfile profile, SurvivorsTemplateTuning preview)
-        {
-            if (profile == SurvivorsPacingProfile.HumanPlaytest)
-            {
-                return "Standard / Human Playtest";
-            }
-
-            return preview == null || string.IsNullOrWhiteSpace(preview.RunModeDisplayName)
-                ? BasicSurvivorsGame.GetPacingProfileDisplayName(profile)
-                : preview.RunModeDisplayName;
         }
 
         public void ConfigureRunModeSelection(bool enabled)
@@ -1930,9 +1857,9 @@ namespace Deucarian.TemplateGameSurvivors
             Menus.BuildOpen = false;
             Menus.BuildTab = BuildMenuTab.CurrentBuild;
             BuildMenuPresenter.ResetScroll();
-            _runSummaryScrollPosition = Vector2.zero;
-            _draftCardScrollPosition = Vector2.zero;
-            _modeSelectionScrollPosition = Vector2.zero;
+            ResultScreen.ResetScroll();
+            DraftScreen.ResetScroll();
+            RunModePresenter.ResetScroll();
             Menus.TutorialOpen = false;
             Menus.TutorialIndex = 0;
             Menus.ModeSelectionOpen = true;
@@ -1982,9 +1909,9 @@ namespace Deucarian.TemplateGameSurvivors
             Menus.BuildOpen = false;
             Menus.BuildTab = BuildMenuTab.CurrentBuild;
             BuildMenuPresenter.ResetScroll();
-            _runSummaryScrollPosition = Vector2.zero;
-            _draftCardScrollPosition = Vector2.zero;
-            _modeSelectionScrollPosition = Vector2.zero;
+            ResultScreen.ResetScroll();
+            DraftScreen.ResetScroll();
+            RunModePresenter.ResetScroll();
             Menus.TutorialOpen = false;
             Menus.TutorialIndex = 0;
             _audioEvents.Reset();
@@ -7020,134 +6947,6 @@ namespace Deucarian.TemplateGameSurvivors
             RecordNewlyEligibleEvolutionFeedback();
         }
 
-        private void DrawLevelUpOverlay()
-        {
-            bool upgradeDraftOpen = !IsRelicChoiceOpen;
-            int choiceCount = IsRelicChoiceOpen ? CurrentRelicChoices.Count : CurrentDraftChoices.Count;
-            SurvivorsScreenLayout.DrawDimOverlay(0.72f);
-            Rect rect = SurvivorsScreenLayout.ResolveCenteredPanelRect(1120f, 690f, 320f, 420f, 20f);
-            SurvivorsScreenLayout.DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.96f));
-            SurvivorsScreenLayout.DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), ResolveRewardTitleAccentColor());
-            string title = ResolveRewardOverlayTitle();
-            GUI.Label(new Rect(rect.x + 30f, rect.y + 20f, rect.width - 60f, 38f), title, _draftTitleStyle);
-            GUI.Label(
-                new Rect(rect.x + 30f, rect.y + 58f, rect.width - 60f, 22f),
-                RewardSelectionRemainingSeconds > 0f ? $"Auto-pick in {RewardSelectionRemainingSeconds:0}s" : "Choose one card. Mouse, 1/2/3, R reroll, Shift+number banish, S skip.",
-                _hudSmallStyle);
-
-            if (choiceCount <= 0)
-            {
-                GUI.Label(new Rect(rect.x + 30f, rect.y + 110f, rect.width - 60f, 28f), "No rewards available.", _hudLabelStyle);
-                return;
-            }
-
-            bool horizontal = rect.width >= 760f;
-            float cardAreaTop = rect.y + 100f;
-            float cardAreaBottom = upgradeDraftOpen ? rect.yMax - 86f : rect.yMax - 34f;
-            float cardGap = 16f;
-            float cardWidth = horizontal
-                ? (rect.width - 60f - cardGap * Mathf.Max(0, choiceCount - 1)) / choiceCount
-                : rect.width - 60f;
-            float cardHeight = horizontal
-                ? cardAreaBottom - cardAreaTop
-                : Mathf.Max(220f, Mathf.Min(330f, cardAreaBottom - cardAreaTop - 12f));
-            Rect cardViewRect = horizontal
-                ? Rect.zero
-                : new Rect(rect.x + 30f, cardAreaTop, cardWidth, Mathf.Max(1f, cardAreaBottom - cardAreaTop));
-            Rect cardContentRect = horizontal
-                ? Rect.zero
-                : new Rect(0f, 0f, cardWidth - 18f, choiceCount * cardHeight + Mathf.Max(0, choiceCount - 1) * cardGap);
-            if (!horizontal)
-            {
-                _draftCardScrollPosition = GUI.BeginScrollView(cardViewRect, _draftCardScrollPosition, cardContentRect);
-            }
-
-            for (int i = 0; i < choiceCount; i++)
-            {
-                Rect cardRect = horizontal
-                    ? new Rect(rect.x + 30f + i * (cardWidth + cardGap), cardAreaTop, cardWidth, cardHeight)
-                    : new Rect(0f, i * (cardHeight + cardGap), cardContentRect.width, cardHeight);
-                SurvivorsDraftCard card = IsRelicChoiceOpen
-                    ? CreateRelicDraftCard(i, CurrentRelicChoices[i])
-                    : CreateUpgradeDraftCard(i, CurrentDraftChoices[i]);
-                bool hover = cardRect.Contains(Event.current.mousePosition);
-                DrawDraftChoiceCard(cardRect, card, hover);
-                Rect selectRect = upgradeDraftOpen
-                    ? new Rect(cardRect.x, cardRect.y, cardRect.width, Mathf.Max(24f, cardRect.height - 48f))
-                    : cardRect;
-                if (GUI.Button(selectRect, GUIContent.none, _transparentButtonStyle))
-                {
-                    if (SelectUpgrade(i))
-                    {
-                        return;
-                    }
-                }
-
-                if (upgradeDraftOpen)
-                {
-                    bool previousEnabled = GUI.enabled;
-                    GUI.enabled = previousEnabled && CanBanishCurrentDraft();
-                    Rect banishRect = new Rect(cardRect.x + 14f, cardRect.yMax - 40f, Mathf.Min(112f, cardRect.width - 28f), 28f);
-                    if (GUI.Button(banishRect, ActiveUiTheme.banishButtonLabel))
-                    {
-                        if (BanishDraftChoice(i))
-                        {
-                            GUI.enabled = previousEnabled;
-                            return;
-                        }
-                    }
-
-                    GUI.enabled = previousEnabled;
-                }
-            }
-
-            if (!horizontal)
-            {
-                GUI.EndScrollView();
-            }
-
-            if (upgradeDraftOpen)
-            {
-                float footerY = rect.yMax - 58f;
-                float footerX = rect.x + 30f;
-                float footerWidth = rect.width - 60f;
-                float footerGap = 10f;
-                bool compactFooter = footerWidth < 560f;
-                float buttonWidth = compactFooter ? (footerWidth - footerGap) * 0.5f : 170f;
-                bool previousEnabled = GUI.enabled;
-                GUI.enabled = previousEnabled && CanRerollCurrentDraft();
-                if (GUI.Button(new Rect(footerX, footerY, buttonWidth, 34f), $"{ActiveUiTheme.rerollButtonLabel} ({DraftRerollsRemaining})"))
-                {
-                    if (RerollCurrentDraft())
-                    {
-                        GUI.enabled = previousEnabled;
-                        return;
-                    }
-                }
-
-                GUI.enabled = previousEnabled && CanSkipCurrentDraft();
-                float skipX = footerX + buttonWidth + footerGap;
-                float skipWidth = compactFooter ? buttonWidth : 210f;
-                if (GUI.Button(new Rect(skipX, footerY, skipWidth, 34f), $"{ActiveUiTheme.skipButtonLabel} (+{DraftSkipBloodShards})"))
-                {
-                    if (SkipCurrentDraft())
-                    {
-                        GUI.enabled = previousEnabled;
-                        return;
-                    }
-                }
-
-                GUI.enabled = previousEnabled;
-                if (!compactFooter)
-                {
-                    GUI.Label(
-                        new Rect(rect.x + 438f, footerY + 7f, rect.width - 468f, 20f),
-                        $"Banishes {DraftBanishesRemaining}",
-                        _hudSmallStyle);
-                }
-            }
-        }
-
         private SurvivorsDraftCard CreateUpgradeDraftCard(int index, RunUpgradeDefinition choice)
         {
             if (choice == null)
@@ -7221,11 +7020,6 @@ namespace Deucarian.TemplateGameSurvivors
                 StyleToken = ActiveUiTheme.GetRarityStyleToken("Relic"),
                 AccentColor = accent
             };
-        }
-
-        private void DrawDraftChoiceCard(Rect rect, SurvivorsDraftCard card, bool hover)
-        {
-            SurvivorsDraftCardPresenter.Draw(rect, card, hover, ActiveUiTheme, _hudStyles);
         }
 
         private string ResolvePlayerUpgradeCategoryId(RunUpgradeDefinition choice, SurvivorsRunUpgradeCategory category, SurvivorsRunUpgradeMetadata metadata)
@@ -7598,150 +7392,6 @@ namespace Deucarian.TemplateGameSurvivors
 
             RunUpgradeRarity rarity = ResolveHighestRarity(DraftSession.CurrentDraft.Choices);
             return ActiveUiTheme.GetRarityAccentColor(rarity, ResolveRarityAccentColor(rarity));
-        }
-
-        private void DrawRunResultOverlay(bool victory)
-        {
-            SurvivorsScreenLayout.DrawDimOverlay(0.72f);
-            Rect rect = SurvivorsScreenLayout.ResolveCenteredPanelRect(760f, 700f, 320f, 400f, 20f);
-            Color accent = ActiveUiTheme.GetHudAccentColor(new Color(0.2f, 0.78f, 1f));
-            SurvivorsScreenLayout.DrawSolidRect(rect, new Color(0.014f, 0.018f, 0.027f, 0.97f));
-            SurvivorsScreenLayout.DrawSolidRect(new Rect(rect.x, rect.y, rect.width, 4f), new Color(accent.r, accent.g, accent.b, 0.95f));
-            string title = string.IsNullOrWhiteSpace(_lastRunSummaryTitle)
-                ? ActiveUiTheme.runSummaryTitle + " - " + (victory ? "Victory" : "Defeat")
-                : _lastRunSummaryTitle;
-            GUI.Label(new Rect(rect.x + 24f, rect.y + 18f, rect.width - 48f, 34f), title, _menuTitleStyle);
-
-            IReadOnlyList<string> lines = LastRunSummaryLines;
-            int lineCount = lines == null ? 0 : lines.Count;
-            Rect viewRect = new Rect(rect.x + 24f, rect.y + 64f, rect.width - 48f, rect.height - 130f);
-            float lineHeight = 22f;
-            float summaryHeight = Mathf.Max(58f, Mathf.Max(1, lineCount) * lineHeight + 12f);
-            float contentWidth = Mathf.Max(1f, viewRect.width - 18f);
-            float classOptionsY = summaryHeight + 8f;
-            float metaOptionsY = classOptionsY + 82f;
-            float contentHeight = Mathf.Max(viewRect.height, metaOptionsY + 132f);
-            _runSummaryScrollPosition = GUI.BeginScrollView(viewRect, _runSummaryScrollPosition, new Rect(0f, 0f, contentWidth, contentHeight));
-            if (lineCount == 0)
-            {
-                GUI.Label(new Rect(0f, 0f, contentWidth, 22f), $"Rewards {BloodShardsEarnedThisRun} {CurrencyRewardLabel} / {LegacyExperienceEarnedThisRun} {ProgressionDisplayName}", _hudLabelStyle);
-            }
-            else
-            {
-                for (int i = 0; i < lineCount; i++)
-                {
-                    GUI.Label(new Rect(0f, i * lineHeight, contentWidth, lineHeight), lines[i], _hudSmallStyle);
-                }
-            }
-
-            DrawResultClassOptions(new Rect(0f, classOptionsY, contentWidth, 66f));
-            DrawResultMetaUpgradeOptions(new Rect(0f, metaOptionsY, contentWidth, 96f));
-            GUI.EndScrollView();
-
-            float buttonY = rect.yMax - 48f;
-            if (victory)
-            {
-                int buttonCount = CurrentTuning.EndlessContinuationEnabled ? 3 : 2;
-                float gap = 10f;
-                float buttonWidth = (rect.width - 48f - gap * (buttonCount - 1)) / buttonCount;
-                float x = rect.x + 24f;
-                if (CurrentTuning.EndlessContinuationEnabled && GUI.Button(new Rect(x, buttonY, buttonWidth, 36f), ActiveUiTheme.continueButtonLabel))
-                {
-                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-                    ContinueAfterVictory();
-                }
-
-                if (CurrentTuning.EndlessContinuationEnabled)
-                {
-                    x += buttonWidth + gap;
-                }
-
-                if (GUI.Button(new Rect(x, buttonY, buttonWidth, 36f), ActiveUiTheme.restartSameButtonLabel))
-                {
-                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-                    RestartRun();
-                }
-
-                x += buttonWidth + gap;
-                if (GUI.Button(new Rect(x, buttonY, buttonWidth, 36f), ActiveUiTheme.changeModeButtonLabel))
-                {
-                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-                    OpenRunModeSelection();
-                }
-            }
-            else
-            {
-                float gap = 10f;
-                float buttonWidth = (rect.width - 48f - gap) * 0.5f;
-                if (GUI.Button(new Rect(rect.x + 24f, buttonY, buttonWidth, 36f), ActiveUiTheme.restartSameButtonLabel))
-                {
-                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-                    RestartRun();
-                }
-
-                if (GUI.Button(new Rect(rect.x + 24f + buttonWidth + gap, buttonY, buttonWidth, 36f), ActiveUiTheme.changeModeButtonLabel))
-                {
-                    PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-                    OpenRunModeSelection();
-                }
-            }
-        }
-
-        private void DrawResultClassOptions(Rect rect)
-        {
-            IReadOnlyList<SurvivorsClassDefinition> options = ResolveResultClassOptions(ResultClassOptionCount);
-            GUI.Label(new Rect(rect.x, rect.y, rect.width, 20f), "Next Run Class", _hudLabelStyle);
-            if (options.Count == 0)
-            {
-                GUI.Label(new Rect(rect.x, rect.y + 24f, rect.width, 20f), "No class definitions found.", _hudSmallStyle);
-                return;
-            }
-
-            float gap = 8f;
-            float buttonWidth = (rect.width - gap * (options.Count - 1)) / options.Count;
-            for (int i = 0; i < options.Count; i++)
-            {
-                SurvivorsClassDefinition option = options[i];
-                bool unlocked = IsResultClassUnlocked(option);
-                bool selected = option != null && string.Equals(SelectedClassId, option.Id, StringComparison.Ordinal);
-                Rect buttonRect = new Rect(rect.x + i * (buttonWidth + gap), rect.y + 24f, buttonWidth, 42f);
-
-                bool previousEnabled = GUI.enabled;
-                Color previousBackgroundColor = GUI.backgroundColor;
-                GUI.enabled = previousEnabled && unlocked && !selected;
-                GUI.backgroundColor = selected
-                    ? new Color(0.48f, 0.84f, 0.62f)
-                    : (unlocked ? new Color(0.8f, 0.58f, 1f) : new Color(0.38f, 0.38f, 0.38f));
-
-                if (GUI.Button(buttonRect, FormatResultClassOptionLabel(i, option)))
-                {
-                    TrySelectResultClass(i);
-                }
-
-                GUI.backgroundColor = previousBackgroundColor;
-                GUI.enabled = previousEnabled;
-            }
-        }
-
-        private void DrawResultMetaUpgradeOptions(Rect rect)
-        {
-            IReadOnlyList<SurvivorsPersistentUpgradeDefinition> options = ResolveResultMetaUpgradeOptions(ResultMetaUpgradeOptionCount);
-            GUI.Label(new Rect(rect.x, rect.y, rect.width, 20f), $"Meta Upgrades - {MetaBloodShards} {CurrencyDisplayName} banked", _hudLabelStyle);
-            if (options.Count == 0)
-            {
-                GUI.Label(new Rect(rect.x, rect.y + 24f, rect.width, 20f), $"No affordable meta upgrades yet. Bank more {CurrencyDisplayName} from runs, elites, bosses, or skips.", _hudSmallStyle);
-                return;
-            }
-
-            for (int i = 0; i < options.Count; i++)
-            {
-                Rect buttonRect = new Rect(rect.x, rect.y + 24f + i * 28f, rect.width, 24f);
-                if (GUI.Button(buttonRect, FormatPersistentUpgradeOptionLabel(i, options[i])))
-                {
-                    TryPurchaseResultMetaUpgrade(i);
-                    return;
-                }
-            }
         }
 
         private string FormatActiveWeaponList()
