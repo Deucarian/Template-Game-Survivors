@@ -135,6 +135,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Encounter bonus observations | `Existing horde/cache/shrine/waystone owners` | Live tuning and the original encounter timers; no duplicate surge state in the facade |
 
+| Draft presentation command order | `SurvivorsDraftFeedback` | Stateless semantic commands, repeated live eligibility queries and original audio/particle adapters |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -248,5 +250,7 @@ Ten cases preserve catalog-ID order, current prerequisite reads, rank/choice for
 Seven cases preserve membership-before-despawn, repeated live instance IDs, destroyed Unity objects, query snapshots and later target liveness.
 
 Two further encounter cases preserve active/expired bonus windows and live nonnegative clamps.
+
+Six cases preserve draft metric/card precedence, all opening pulse branches and selection feedback/reward order.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.

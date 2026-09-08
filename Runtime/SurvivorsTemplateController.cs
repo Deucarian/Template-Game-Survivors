@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort, ISurvivorsActorMembershipPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort, ISurvivorsActorMembershipPort, ISurvivorsDraftFeedbackPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -1342,6 +1342,22 @@ namespace Deucarian.TemplateGameSurvivors
         bool ISurvivorsActorMembershipPort.HasSpawnService => _spawnService != null;
         void ISurvivorsActorMembershipPort.Despawn(SpawnInstanceId id, DespawnReason reason) => _spawnService.Despawn(id, reason);
 
+        private SurvivorsDraftFeedback _draftFeedback;
+        private SurvivorsDraftFeedback DraftFeedback => _draftFeedback ?? (_draftFeedback = new SurvivorsDraftFeedback(this));
+        void ISurvivorsDraftFeedbackPort.RecordSelection(SurvivorsRewardSelectionKind kind, RunUpgradeDefinition selected) => RecordRewardSelectionFeedback(kind, selected);
+        void ISurvivorsDraftFeedbackPort.PlayChoiceAudio() => PlayAudioEvent(AudioEventDraftChoiceSelected, _levelUpClip, 0.06f);
+        bool ISurvivorsDraftFeedbackPort.IsEvolution(RunUpgradeDefinition selected) => IsEvolutionUpgrade(selected);
+        void ISurvivorsDraftFeedbackPort.PlayEvolutionAudio() => PlayAudioEvent(AudioEventEvolution, _levelUpClip, 0.08f);
+        void ISurvivorsDraftFeedbackPort.TriggerLevelPulse(RunUpgradeDefinition selected) => TriggerLevelUpPulse(selected);
+        bool ISurvivorsDraftFeedbackPort.IsRewardUpgradeKind(SurvivorsRewardSelectionKind kind) => IsRewardUpgradeSelectionKind(kind);
+        void ISurvivorsDraftFeedbackPort.TriggerJackpot(RunUpgradeDefinition selected, SurvivorsRewardSelectionKind kind) => TriggerRewardJackpot(selected, kind);
+        void ISurvivorsDraftFeedbackPort.TriggerSurge(RunUpgradeDefinition selected, SurvivorsRewardSelectionKind kind) => TriggerRewardUpgradeSurge(selected, kind);
+        void ISurvivorsDraftFeedbackPort.RecordFirstLevelUpDraft() => Telemetry.Record(SurvivorsRunMetric.FirstLevelUpDraft, RunTimeSeconds);
+        void ISurvivorsDraftFeedbackPort.RecordRelicCards(SurvivorsRelicDraft draft) => RecordRewardCardPresentation(draft);
+        void ISurvivorsDraftFeedbackPort.RecordUpgradeCards(SurvivorsRewardSelectionKind kind, RunUpgradeDraft draft) => RecordRewardCardPresentation(kind, draft);
+        void ISurvivorsDraftFeedbackPort.PlayLevelUpAudio() => PlayAudioEvent(AudioEventLevelUp, _levelUpClip, 0.12f);
+        void ISurvivorsDraftFeedbackPort.PlayOpeningPulse(bool levelUp, int count) => PlayFeedback(levelUp ? _levelUpPulse : _bossPulse, PlayerPosition, count, levelUp ? _levelUpClip : _bossClip, AudioEventDraftOpened, 0.1f);
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -1631,41 +1647,9 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsDraftSessionPort.ResetScroll() => DraftScreen.ResetScroll();
         void ISurvivorsDraftSessionPort.ApplyUpgrade(RunUpgradeDefinition upgrade) => ApplyUpgrade(upgrade);
         void ISurvivorsDraftSessionPort.RecordDirectUpgrade(RunUpgradeDefinition upgrade) => RecordBestRewardMoment(upgrade);
-        void ISurvivorsDraftSessionPort.PresentSelectedUpgrade(SurvivorsRewardSelectionKind kind, RunUpgradeDefinition selected)
-        {
-            RecordRewardSelectionFeedback(kind, selected);
-            PlayAudioEvent(AudioEventDraftChoiceSelected, _levelUpClip, 0.06f);
-            if (IsEvolutionUpgrade(selected))
-            {
-                PlayAudioEvent(AudioEventEvolution, _levelUpClip, 0.08f);
-            }
-            if (kind == SurvivorsRewardSelectionKind.LevelUp && !IsEvolutionUpgrade(selected))
-            {
-                TriggerLevelUpPulse(selected);
-            }
-
-            if (IsRewardUpgradeSelectionKind(kind) && !IsEvolutionUpgrade(selected))
-            {
-                TriggerRewardJackpot(selected, kind);
-                TriggerRewardUpgradeSurge(selected, kind);
-            }
-
-        }
-        void ISurvivorsDraftSessionPort.PresentDraft(SurvivorsRewardSelectionKind kind, RunUpgradeDraft upgradeDraft, SurvivorsRelicDraft relicDraft, bool opening)
-        {
-            if (opening && kind == SurvivorsRewardSelectionKind.LevelUp) Telemetry.Record(SurvivorsRunMetric.FirstLevelUpDraft, RunTimeSeconds);
-            if (relicDraft != null) RecordRewardCardPresentation(relicDraft);
-            else RecordRewardCardPresentation(kind, upgradeDraft);
-        }
-        void ISurvivorsDraftSessionPort.PlayDraftOpened(SurvivorsRewardSelectionKind kind, SurvivorsEnemyRole role)
-        {
-            if (kind == SurvivorsRewardSelectionKind.LevelUp)
-            {
-                PlayAudioEvent(AudioEventLevelUp, _levelUpClip, 0.12f);
-                PlayFeedback(_levelUpPulse, PlayerPosition, 34, _levelUpClip, AudioEventDraftOpened, 0.1f);
-            }
-            else PlayFeedback(_bossPulse, PlayerPosition, kind == SurvivorsRewardSelectionKind.BossRelic ? 44 : role == SurvivorsEnemyRole.Boss ? 72 : 54, _bossClip, AudioEventDraftOpened, 0.1f);
-        }
+        void ISurvivorsDraftSessionPort.PresentSelectedUpgrade(SurvivorsRewardSelectionKind kind, RunUpgradeDefinition selected) => DraftFeedback.PresentSelectedUpgrade(kind, selected);
+        void ISurvivorsDraftSessionPort.PresentDraft(SurvivorsRewardSelectionKind kind, RunUpgradeDraft upgradeDraft, SurvivorsRelicDraft relicDraft, bool opening) => DraftFeedback.PresentDraft(kind, upgradeDraft, relicDraft, opening);
+        void ISurvivorsDraftSessionPort.PlayDraftOpened(SurvivorsRewardSelectionKind kind, SurvivorsEnemyRole role) => DraftFeedback.PlayDraftOpened(kind, role);
         void ISurvivorsDraftSessionPort.PlayReroll() => PlayFeedback(_levelUpPulse, PlayerPosition, 18, _levelUpClip, AudioEventDraftReroll, 0.08f);
         void ISurvivorsDraftSessionPort.PlayBanish() => PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip, AudioEventDraftBanish, 0.08f);
         void ISurvivorsDraftSessionPort.GrantSkipReward(SurvivorsRewardSelectionKind kind)
