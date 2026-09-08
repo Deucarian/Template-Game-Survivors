@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -853,13 +853,10 @@ namespace Deucarian.TemplateGameSurvivors
             LastEvolutionReadyFeedbackLabel = string.Empty;
             LastClassUnlockRewardFeedbackLabel = string.Empty;
             _classUnlockRewardBanner.Reset();
-            PlayerDamageFeedbackCount = 0;
-            EnemyHitFlashFeedbackCount = 0;
-            CriticalHitFeedbackCount = 0;
+            DamageFeedback.ResetPlayerFeedback();
+            DamageFeedback.ResetEnemyFeedback();
             DeathNova.Reset();
-            EnemyRangedAttackDodgeFeedbackCount = 0;
-            EnemyRangedAttackDodgeExperienceGemDropCount = 0;
-            LastEnemyRangedAttackDodgeFeedbackLabel = string.Empty;
+            RangedDodgeRewards.Reset();
             MajorRewardPickupCache.ResetDiagnostics();
             MajorThreatAbilities.ResetDiagnostics();
             PickupCollection.ResetDiagnostics();
@@ -869,8 +866,7 @@ namespace Deucarian.TemplateGameSurvivors
             ShrineTrials.Reset();
             Waystones.Reset();
             Waystones.ClearDiscoveries();
-            StreakRewardFeedbackCount = 0;
-            LastStreakRewardFeedbackLabel = string.Empty;
+            StreakFeedback.Reset();
             RunSummary.Clear();
             ResetRunMetrics();
             UpgradeModifiers.Reset();
@@ -1042,6 +1038,37 @@ namespace Deucarian.TemplateGameSurvivors
             buildSlotLabel: ResolveBuildSlotHudLabel(),
             dashLabel: ResolveDashHudLabel());
         }
+
+        internal void RecordEnemyDamageFeedback(SurvivorsEnemyActor enemy, DamageResult damage) { if (enemy == null) return; DamageFeedback.RecordEnemyDamageFeedback(enemy, damage); }
+
+        private void RecordPlayerDamageFeedback(DamageResult damage, Vector3 position) => DamageFeedback.RecordPlayerDamageFeedback(damage, position);
+
+        private void RecordDamagePopup(Vector3 worldPosition, float amount, bool playerDamage, bool critical) => DamageFeedback.RecordDamagePopup(worldPosition, amount, playerDamage, critical);
+
+        private static float ResolveDamagePopupAmount(DamageResult damage) => SurvivorsDamageFeedback.ResolveDamagePopupAmount(damage);
+
+        internal void RecordEnemyRangedAttackDodgeFeedback(SurvivorsEnemyActor enemy) { if (enemy == null) return; RangedDodgeRewards.RecordEnemyRangedAttackDodgeFeedback(enemy); }
+
+        private Vector3 ResolveRangedDodgeRewardPosition(SurvivorsEnemyActor enemy) => RangedDodgeRewards.ResolveRangedDodgeRewardPosition(enemy == null ? null : (ISurvivorsFeedbackEnemy)enemy);
+
+        private static string ResolveRangedDodgeFallbackLabel(SurvivorsEnemyRole role) => SurvivorsRangedDodgeRewards.ResolveRangedDodgeFallbackLabel(role);
+
+        private void RecordStreakRewardFeedback(string label, Color color) => StreakFeedback.RecordStreakRewardFeedback(label, color);
+
+        private SurvivorsDamageFeedback _hitFeedback;
+        private SurvivorsDamageFeedback DamageFeedback => _hitFeedback ?? (_hitFeedback = new SurvivorsDamageFeedback(this));
+        private SurvivorsRangedDodgeRewards _rangedDodgeRewards;
+        private SurvivorsRangedDodgeRewards RangedDodgeRewards => _rangedDodgeRewards ?? (_rangedDodgeRewards = new SurvivorsRangedDodgeRewards(this));
+        private SurvivorsStreakFeedbackHistory _streakFeedback;
+        private SurvivorsStreakFeedbackHistory StreakFeedback => _streakFeedback ?? (_streakFeedback = new SurvivorsStreakFeedbackHistory(_streakRewardBanner.Show));
+        void ISurvivorsDamageFeedbackPort.RecordPopup(Vector3 position, float amount, bool playerDamage, bool critical) => _damageFeedback.Record(position, amount, playerDamage, critical);
+        void ISurvivorsDamageFeedbackPort.PlayCombatHitAudio() => PlayAudioEvent(AudioEventCombatHit, _fireClip, 0.08f);
+        void ISurvivorsDamageFeedbackPort.TryEnrage(ISurvivorsFeedbackEnemy enemy) => TryTriggerMajorThreatEnrage((SurvivorsEnemyActor)enemy);
+        SurvivorsTemplateTuning ISurvivorsRangedDodgePort.Tuning => CurrentTuning;
+        Vector3 ISurvivorsRangedDodgePort.PlayerPosition => PlayerPosition;
+        bool ISurvivorsRangedDodgePort.TrySpawnExperience(Vector3 position, int amount) => SpawnPickup(SurvivorsPickupKind.Experience, position, amount) != null;
+        void ISurvivorsRangedDodgePort.ShowStreakFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
+        void ISurvivorsRangedDodgePort.PlayDodgePulse(Vector3 position, int count) => PlayFeedback(_pickupPulse, position, count, _pickupClip);
 
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
@@ -1741,7 +1768,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ClassUnlockRewardCount => RunRewards.ClassUnlockRewardCount;
         public string LastClassUnlockRewardFeedbackLabel { get; private set; } = string.Empty;
         public int DamagePopupSpawnCount => _damageFeedback.SpawnCount;
-        public int PlayerDamageFeedbackCount { get; private set; }
+        public int PlayerDamageFeedbackCount => DamageFeedback.PlayerDamageFeedbackCount;
         public int LowHealthClutchPulseCount => PlayerVitals.LowHealthClutchPulseCount;
         public int LowHealthClutchPulseHitCount => PlayerVitals.LowHealthClutchPulseHitCount;
         public string LastLowHealthClutchPulseFeedbackLabel => PlayerVitals.LastLowHealthClutchPulseFeedbackLabel;
@@ -1749,15 +1776,15 @@ namespace Deucarian.TemplateGameSurvivors
         public int DashEnemyShoveCount => PlayerMotion.DashEnemyShoveCount;
         public int DashDamageHitCount => PlayerMotion.DashDamageHitCount;
         public string LastDashFeedbackLabel => PlayerMotion.LastDashFeedbackLabel;
-        public int EnemyHitFlashFeedbackCount { get; private set; }
-        public int CriticalHitFeedbackCount { get; private set; }
+        public int EnemyHitFlashFeedbackCount => DamageFeedback.EnemyHitFlashFeedbackCount;
+        public int CriticalHitFeedbackCount => DamageFeedback.CriticalHitFeedbackCount;
         public int DeathNovaTriggerCount => DeathNova.DeathNovaTriggerCount;
         public int DeathNovaHitCount => DeathNova.DeathNovaHitCount;
         public int EnemyDeathEffectCount => CombatFeedback.EnemyDeathEffectCount;
         public int EnemyRangedAttackFeedbackCount => CombatFeedback.EnemyRangedAttackFeedbackCount;
-        public int EnemyRangedAttackDodgeFeedbackCount { get; private set; }
-        public int EnemyRangedAttackDodgeExperienceGemDropCount { get; private set; }
-        public string LastEnemyRangedAttackDodgeFeedbackLabel { get; private set; } = string.Empty;
+        public int EnemyRangedAttackDodgeFeedbackCount => RangedDodgeRewards.EnemyRangedAttackDodgeFeedbackCount;
+        public int EnemyRangedAttackDodgeExperienceGemDropCount => RangedDodgeRewards.EnemyRangedAttackDodgeExperienceGemDropCount;
+        public string LastEnemyRangedAttackDodgeFeedbackLabel => RangedDodgeRewards.LastEnemyRangedAttackDodgeFeedbackLabel;
         public int MajorRewardDropFeedbackCount => RewardDrops.MajorRewardDropFeedbackCount;
         public int MajorRewardCacheDropCount => MajorRewardPickupCache.MajorRewardCacheDropCount;
         public int MajorRewardCacheExperienceGemDropCount => MajorRewardPickupCache.MajorRewardCacheExperienceGemDropCount;
@@ -1853,8 +1880,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int StreakHealthDropCount => KillStreakRewards.StreakHealthDropCount;
         public int StreakMagnetDropCount => KillStreakRewards.StreakMagnetDropCount;
         public int StreakBloodShardDropCount => KillStreakRewards.StreakBloodShardDropCount;
-        public int StreakRewardFeedbackCount { get; private set; }
-        public string LastStreakRewardFeedbackLabel { get; private set; } = string.Empty;
+        public int StreakRewardFeedbackCount => StreakFeedback.StreakRewardFeedbackCount;
+        public string LastStreakRewardFeedbackLabel => StreakFeedback.LastStreakRewardFeedbackLabel;
         public int StreakSurgeTier => KillStreakRewards.StreakSurgeTier;
         public int StreakSurgeActivationCount => KillStreakRewards.StreakSurgeActivationCount;
         public int CurrentKillStreak => KillStreakRewards.CurrentKillStreak;
@@ -3192,30 +3219,6 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        internal void RecordEnemyDamageFeedback(SurvivorsEnemyActor enemy, DamageResult damage)
-        {
-            if (enemy == null)
-            {
-                return;
-            }
-
-            float resolvedDamage = ResolveDamagePopupAmount(damage);
-            if (resolvedDamage <= 0f)
-            {
-                return;
-            }
-
-            RecordDamagePopup(enemy.transform.position, resolvedDamage, playerDamage: false, critical: damage.Critical.IsCritical);
-            enemy.TriggerHitFlash(damage.Critical.IsCritical, EnemyHitFlashSeconds);
-            EnemyHitFlashFeedbackCount++;
-            if (damage.Critical.IsCritical)
-            {
-                CriticalHitFeedbackCount++;
-            }
-
-            PlayAudioEvent(AudioEventCombatHit, _fireClip, 0.08f);
-            TryTriggerMajorThreatEnrage(enemy);
-        }
 
 
 
@@ -3500,17 +3503,6 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void RecordStreakRewardFeedback(string label, Color color)
-        {
-            if (string.IsNullOrWhiteSpace(label))
-            {
-                return;
-            }
-
-            StreakRewardFeedbackCount++;
-            LastStreakRewardFeedbackLabel = label;
-            _streakRewardBanner.Show(label, StreakRewardFeedbackDurationSeconds, color);
-        }
 
         private bool TryDropHealthPickup(Vector3 position)
         {
@@ -3551,67 +3543,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         internal void RecordEnemyRangedAttackFeedback(Vector3 origin, Vector3 target, SurvivorsEnemyRole role) => CombatFeedback.RecordEnemyRangedAttackFeedback(origin, target, role);
 
-        internal void RecordEnemyRangedAttackDodgeFeedback(SurvivorsEnemyActor enemy)
-        {
-            if (enemy == null)
-            {
-                return;
-            }
 
-            int experienceReward = Mathf.Max(0, CurrentTuning.EnemyRangedAttackDodgeExperienceReward);
-            bool spawnedExperience = false;
-            if (experienceReward > 0)
-            {
-                Vector3 rewardPosition = ResolveRangedDodgeRewardPosition(enemy);
-                spawnedExperience = SpawnPickup(SurvivorsPickupKind.Experience, rewardPosition, experienceReward) != null;
-                if (spawnedExperience)
-                {
-                    EnemyRangedAttackDodgeExperienceGemDropCount++;
-                }
-            }
 
-            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
-                ? ResolveRangedDodgeFallbackLabel(enemy.Role)
-                : enemy.DisplayName;
-            LastEnemyRangedAttackDodgeFeedbackLabel = spawnedExperience
-                ? $"{name} shot dodged: +{experienceReward} XP"
-                : $"{name} shot dodged";
-            EnemyRangedAttackDodgeFeedbackCount++;
-            RecordStreakRewardFeedback(LastEnemyRangedAttackDodgeFeedbackLabel, new Color(0.52f, 0.95f, 1f));
-            PlayFeedback(_pickupPulse, PlayerPosition, spawnedExperience ? 14 : 8, _pickupClip);
-        }
-
-        private Vector3 ResolveRangedDodgeRewardPosition(SurvivorsEnemyActor enemy)
-        {
-            Vector3 player = PlayerPosition;
-            Vector3 away = enemy == null ? Vector3.forward : player - enemy.transform.position;
-            away.y = 0f;
-            if (away.sqrMagnitude <= 0.001f)
-            {
-                away = Vector3.forward;
-            }
-
-            float offset = Mathf.Max(CurrentTuning.PickupCollectRadius + 0.35f, 0.75f);
-            return player + away.normalized * offset;
-        }
-
-        private static string ResolveRangedDodgeFallbackLabel(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Spitter:
-                    return "Spitter";
-                case SurvivorsEnemyRole.Elite:
-                case SurvivorsEnemyRole.DreadElite:
-                    return "Elite";
-                case SurvivorsEnemyRole.Miniboss:
-                    return "Miniboss";
-                case SurvivorsEnemyRole.Boss:
-                    return "Boss";
-                default:
-                    return "Ranged shot";
-            }
-        }
 
         private void TickEnemyRangedAttackFeedbackEffects(float deltaTime) => CombatFeedback.TickEnemyRangedAttackFeedbackEffects(deltaTime);
 
@@ -4217,38 +4150,8 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void TickEvolutionReadyFeedback(float deltaTime) => _evolutionReadyBanner.Tick(deltaTime);
 
-        private void RecordPlayerDamageFeedback(DamageResult damage, Vector3 position)
-        {
-            float resolvedDamage = ResolveDamagePopupAmount(damage);
-            if (resolvedDamage <= 0f)
-            {
-                return;
-            }
 
-            PlayerDamageFeedbackCount++;
-            RecordDamagePopup(position, resolvedDamage, playerDamage: true, critical: damage.Critical.IsCritical);
-        }
 
-        private void RecordDamagePopup(Vector3 worldPosition, float amount, bool playerDamage, bool critical)
-        {
-            _damageFeedback.Record(worldPosition, amount, playerDamage, critical);
-        }
-
-        private static float ResolveDamagePopupAmount(DamageResult damage)
-        {
-            if (damage == null || !damage.Succeeded)
-            {
-                return 0f;
-            }
-
-            double amount = damage.HealthDamage > 0d ? damage.HealthDamage : damage.FinalDamage;
-            if (amount <= 0d || double.IsNaN(amount) || double.IsInfinity(amount))
-            {
-                return 0f;
-            }
-
-            return (float)Math.Min(float.MaxValue, amount);
-        }
 
 
 

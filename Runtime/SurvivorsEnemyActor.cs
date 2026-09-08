@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable, ISurvivorsDefeatTarget, ISurvivorsDamageAugmentTarget, ISurvivorsDeathNovaTarget
+    public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable, ISurvivorsDefeatTarget, ISurvivorsDamageAugmentTarget, ISurvivorsDeathNovaTarget, ISurvivorsFeedbackEnemy
     {
         private SurvivorsTemplateController _controller;
         private SurvivorsEnemyPresentation _presentation;
@@ -43,6 +43,7 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _majorThreatSlamTelegraphing;
 
         Vector3 ISurvivorsDeathNovaTarget.Position => transform.position;
+        Vector3 ISurvivorsFeedbackEnemy.Position => transform.position;
         bool ISurvivorsDeathNovaTarget.IsAlive => this != null && IsAlive;
         Vector3 ISurvivorsDefeatTarget.Position => transform.position;
         public SpawnInstanceId InstanceId { get; private set; }

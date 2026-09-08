@@ -115,6 +115,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Player, debug and timer rendering | `SurvivorsPlayerHudPresenter / SurvivorsDebugHudPresenter / SurvivorsTopTimerHud` | Copied bars/debug values, current authored compact labels and responsive geometry; no gameplay or screen routing |
 
+| Hit, dodge and streak feedback | `SurvivorsDamageFeedback / SurvivorsRangedDodgeRewards / SurvivorsStreakFeedbackHistory` | Independent retained counters and labels; ordered combat/presentation/reward commands without actor or clock ownership |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -208,5 +210,7 @@ Twelve cases preserve admission rechecks, stopped/live mode behavior, reset/rele
 Twelve cases preserve live label rereads, banner-before-best-moment order, equal-rarity replacement, evolution override, null card entries, audio order and the two original independent reset phases.
 
 Eighteen cases preserve width/row limits, raw bar ratios, debug label order/precision, optional evolution rows, stopped/endless timer branches and weapon/relic/compass display rules.
+
+Twenty-nine cases preserve hit/critical counting, Unity-null boundaries, live dodge labels and reward order, and separate streak history reset.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
