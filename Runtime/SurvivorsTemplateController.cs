@@ -422,6 +422,86 @@ namespace Deucarian.TemplateGameSurvivors
         private void TickPayloadHazardChain(float deltaTime) => PayloadHazards.TickPayloadHazardChain(deltaTime);
         private void TryTriggerDeathNova(Vector3 position, string source, bool applyAugments) => DeathNova.TryTriggerDeathNova(position, source, applyAugments);
 
+        private IReadOnlyList<string> ResolveBuildMenuCurrentBuildLines() => SurvivorsBuildMenuTextModel.CurrentBuild(ResolveBuildHudSummaryLines());
+        private IReadOnlyList<string> ResolveBuildMenuControlsLines() => SurvivorsBuildMenuTextModel.Controls();
+        private IReadOnlyList<string> ResolveBuildMenuStatsLines() => SurvivorsBuildMenuTextModel.Stats(CaptureBuildMenuStatsValues());
+        private IReadOnlyList<string> ResolveBuildMenuRunInfoLines() => SurvivorsBuildMenuTextModel.RunInfo(CaptureBuildMenuRunInfoValues());
+        private IReadOnlyList<string> ResolvePlayerHudLines() => SurvivorsPlayerHudTextModel.BuildLines(CapturePlayerHudValues());
+
+        private SurvivorsBuildMenuStatsValues CaptureBuildMenuStatsValues() => new SurvivorsBuildMenuStatsValues(
+            damageBonusTotal: DamageBonus + PersistentDamageBonus + RelicDamageBonus,
+            surgeDamageBonus: StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus,
+            weaponCooldownSeconds: WeaponCooldownSeconds,
+            playerMoveSpeed: PlayerMoveSpeed,
+            currentHealth: CurrentHealth,
+            maxHealth: MaxHealth,
+            barrierValue: BarrierValue,
+            barrierCapacity: BarrierCapacity,
+            contactInvulnerabilitySeconds: CurrentTuning.PlayerContactInvulnerabilitySeconds,
+            currentPickupAttractRange: CurrentPickupAttractRange,
+            currentPickupAttractionSpeed: CurrentPickupAttractionSpeed,
+            experienceGainBonus: ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus,
+            draftLuckBonus: DraftLuckBonus,
+            areaRadiusBonus: AreaRadiusBonus,
+            orbitRadiusBonus: OrbitRadiusBonus,
+            deathNovaDamage: DeathNovaDamage,
+            deathNovaRadius: DeathNovaRadius,
+            payloadExplosionRadiusBonus: PayloadExplosionRadiusBonus,
+            payloadTriggerRadiusBonus: PayloadTriggerRadiusBonus,
+            poisonDamageRatio: PoisonDamageRatio,
+            bleedDamageRatio: BleedDamageRatio,
+            executeThresholdNormalized: ExecuteThresholdNormalized,
+            lifestealRatio: LifestealRatio,
+            criticalChanceNormalized: CriticalChanceNormalized,
+            criticalDamageMultiplier: CriticalDamageMultiplier,
+            projectileFanBonus: ProjectileFanBonus,
+            projectilePierceBonus: ProjectilePierceBonus,
+            projectileChainBonus: ProjectileChainBonus,
+            projectileForkBonus: ProjectileForkBonus,
+            projectileReturnBonus: ProjectileReturnBonus,
+            payloadCountBonus: PayloadCountBonus,
+            pickupPulseLabel: FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds));
+
+        private SurvivorsBuildMenuRunInfoValues CaptureBuildMenuRunInfoValues() => new SurvivorsBuildMenuRunInfoValues(
+            isEndlessRun: IsEndlessRun,
+            currentRunModeDisplayName: CurrentRunModeDisplayName,
+            pacingProfileLabel: BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile),
+            runTimeSeconds: RunTimeSeconds,
+            survivalVictoryTimeSeconds: CurrentTuning.SurvivalVictoryTimeSeconds,
+            currentRunMilestoneHudLabel: CurrentRunMilestoneHudLabel,
+            phaseLabel: ResolveRunPhaseHudLabel(),
+            runEscalationLevel: RunEscalationLevel,
+            level: Level,
+            killedCount: KilledCount,
+            activeEnemyCount: ActiveEnemyCount,
+            currentEnemyMaximumAlive: CurrentEnemyMaximumAlive,
+            activeEliteCount: ActiveEliteCount,
+            activeMinibossCount: ActiveMinibossCount,
+            activeBossCount: ActiveBossCount,
+            currencyEarned: BloodShardsEarnedThisRun + BonusBloodShardsEarnedThisRun,
+            progressionEarned: LegacyExperienceEarnedThisRun + BonusLegacyExperienceEarnedThisRun,
+            draftRerollsRemaining: DraftRerollsRemaining,
+            draftBanishesRemaining: DraftBanishesRemaining,
+            draftSkipBloodShards: DraftSkipBloodShards,
+            waystoneDiscoveryCount: WaystoneDiscoveryCount,
+            roamingCacheDropCount: RoamingCacheDropCount,
+            arenaShrineTrialCount: ArenaShrineTrialCount,
+            metaBloodShards: MetaBloodShards,
+            lifetimeLegacyExperience: LifetimeLegacyExperience,
+            currencyDisplayName: CurrencyDisplayName,
+            progressionDisplayName: ProgressionDisplayName,
+            currencyRewardLabel: CurrencyRewardLabel);
+
+        private SurvivorsPlayerHudValues CapturePlayerHudValues() => new SurvivorsPlayerHudValues(
+            milestoneLabel: CurrentRunMilestoneHudLabel,
+            buildSlotLabel: ResolveBuildSlotHudLabel(),
+            activeWeaponLabel: FormatActiveWeaponList(),
+            currentPickupAttractRange: CurrentPickupAttractRange,
+            currentPickupAttractionSpeed: CurrentPickupAttractionSpeed,
+            pickupPulseLabel: FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds),
+            evolutionLabel: ResolveEvolutionObjectiveHudLabel());
+
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -5030,25 +5110,6 @@ namespace Deucarian.TemplateGameSurvivors
             _damageFeedback.ResetStyles();
         }
 
-        private IReadOnlyList<string> ResolvePlayerHudLines()
-        {
-            var lines = new List<string>(6)
-            {
-                CurrentRunMilestoneHudLabel,
-                ResolveBuildSlotHudLabel(),
-                "Weapons: " + FormatActiveWeaponList(),
-                $"Pickup {CurrentPickupAttractRange:0.#}   Pull {CurrentPickupAttractionSpeed:0.#}   Pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}"
-            };
-
-            string evolution = ResolveEvolutionObjectiveHudLabel();
-            if (!string.IsNullOrWhiteSpace(evolution))
-            {
-                lines.Add(evolution);
-            }
-
-            lines.Add("Tab/B Build Menu");
-            return lines;
-        }
 
         private IReadOnlyList<string> ResolveBuildMenuLines(BuildMenuTab tab)
         {
@@ -5065,68 +5126,9 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private IReadOnlyList<string> ResolveBuildMenuCurrentBuildLines()
-        {
-            var lines = new List<string>(ResolveBuildHudSummaryLines());
-            if (lines.Count == 0)
-            {
-                lines.Add("No build data yet.");
-            }
 
-            return lines;
-        }
 
-        private IReadOnlyList<string> ResolveBuildMenuStatsLines()
-        {
-            return new List<string>
-            {
-                $"Damage +{DamageBonus + PersistentDamageBonus + RelicDamageBonus:0.#}   Surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus:0.#}",
-                $"Cooldown {WeaponCooldownSeconds:0.00}s   Move speed {PlayerMoveSpeed:0.0}",
-                $"Health {CurrentHealth:0}/{MaxHealth:0}   Barrier {BarrierValue:0.#}/{BarrierCapacity:0.#}   Armor: contact safety {CurrentTuning.PlayerContactInvulnerabilitySeconds:0.##}s",
-                $"Pickup radius {CurrentPickupAttractRange:0.#}   Magnet range {CurrentPickupAttractRange:0.#}   Magnet speed {CurrentPickupAttractionSpeed:0.#}   Pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}",
-                $"XP gain +{ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus:P0}   Draft luck +{DraftLuckBonus:P0}",
-                $"Area/radius +{AreaRadiusBonus:0.#}   Orbit +{OrbitRadiusBonus:0.#}   Death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
-                $"Projectiles fan +{ProjectileFanBonus}   pierce +{ProjectilePierceBonus}   chain +{ProjectileChainBonus}   fork +{ProjectileForkBonus}   return +{ProjectileReturnBonus}",
-                $"Payloads +{PayloadCountBonus}   payload radius +{PayloadExplosionRadiusBonus:0.#}   trigger +{PayloadTriggerRadiusBonus:0.#}",
-                $"Status poison {PoisonDamageRatio:P0}   bleed {BleedDamageRatio:P0}   execute {ExecuteThresholdNormalized:P0}   lifesteal {LifestealRatio:P0}",
-                $"Crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}"
-            };
-        }
 
-        private IReadOnlyList<string> ResolveBuildMenuRunInfoLines()
-        {
-            string remaining = IsEndlessRun
-                ? "Endless"
-                : FormatRunTime(Mathf.Max(0f, CurrentTuning.SurvivalVictoryTimeSeconds - RunTimeSeconds));
-            return new List<string>
-            {
-                $"Mode: {CurrentRunModeDisplayName} ({BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)})",
-                $"Elapsed {FormatRunTime(RunTimeSeconds)}   Remaining {remaining}",
-                $"Milestone: {CurrentRunMilestoneHudLabel}",
-                $"Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}   Level {Level}   Kills {KilledCount}",
-                $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Elites {ActiveEliteCount}   Minibosses {ActiveMinibossCount}   Bosses {ActiveBossCount}",
-                $"Run rewards: {BloodShardsEarnedThisRun + BonusBloodShardsEarnedThisRun} {CurrencyDisplayName}, {LegacyExperienceEarnedThisRun + BonusLegacyExperienceEarnedThisRun} {ProgressionDisplayName}",
-                $"Meta bank: {MetaBloodShards} {CurrencyDisplayName}   {ProgressionDisplayName} {LifetimeLegacyExperience}",
-                $"Rerolls {DraftRerollsRemaining}   Banishes {DraftBanishesRemaining}   Skip reward +{DraftSkipBloodShards} {CurrencyRewardLabel}",
-                $"Waystones {WaystoneDiscoveryCount}   Roaming caches {RoamingCacheDropCount}   Arena trials {ArenaShrineTrialCount}"
-            };
-        }
-
-        private IReadOnlyList<string> ResolveBuildMenuControlsLines()
-        {
-            return new List<string>
-            {
-                "Move: WASD or arrow keys",
-                "Arc Step: Space",
-                "Draft choice: mouse or 1/2/3",
-                "Draft tools: R reroll, S skip, Shift+1/2/3 banish",
-                "Build menu: Esc, Tab, or B opens and closes",
-                "Build menu tabs: 1 Current Build, 2 Stats, 3 Run Info, 4 Controls",
-                "Debug overlay: F1",
-                "Victory: C continues Standard into endless if available",
-                "Result screen: Restart Same or Change Mode buttons"
-            };
-        }
 
         private Color ResolveRewardTitleAccentColor()
         {

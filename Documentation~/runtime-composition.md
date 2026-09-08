@@ -87,6 +87,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Payload hazard chains and death novas | `SurvivorsPayloadHazardRewards / SurvivorsDeathNova` | Independent snare window/cooldown, successful-drop accounting and two-pass live-target damage over the borrowed actor list |
 
+| Player HUD and build menu text | `SurvivorsPlayerHudTextModel / SurvivorsBuildMenuTextModel` | Copied current stats/run labels and selected-tab-only projection; no rendering or gameplay commands |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -152,5 +154,7 @@ Eighteen cases cover cache distribution and failure accounting, reward-before-re
 Twelve cases preserve critical RNG consumption, damage-source classification, heal/barrier/status/execute ordering, named evolved effects and destroyed-Unity-target guards before interface conversion.
 
 Five cases cover disabled and failed rewards, chain timing, horizontal body-radius capture, mutation during feedback, repeated liveness checks and destroyed actor targets.
+
+Eight cases preserve row ordering, metric precision, active surge labels, authored mode/class text and controls copy.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
