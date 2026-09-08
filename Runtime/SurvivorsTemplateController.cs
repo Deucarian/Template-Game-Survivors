@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -820,26 +820,9 @@ namespace Deucarian.TemplateGameSurvivors
             EnemySpawner.ResetDiagnostics();
             Defeats.Reset();
             ProjectileLauncher.ResetDiagnostics();
-            OrbitHitCount = 0;
-            MeleeSwingCount = 0;
-            MeleeHitCount = 0;
-            BurstPulseCount = 0;
-            BurstHitCount = 0;
-            HitscanFireCount = 0;
-            HitscanHitCount = 0;
-            TempestPrismArcHitCount = 0;
-            LastTempestPrismArcFeedbackLabel = string.Empty;
-            ProjectilePierceHitCount = 0;
-            ProjectileChainHitCount = 0;
-            ProjectileForkSpawnCount = 0;
-            ProjectileReturnStartCount = 0;
-            OrbitKnockbackCount = 0;
-            LastOrbitKnockbackFeedbackLabel = string.Empty;
+            _weaponDiagnostics.ResetHitDiagnostics();
             DamageAugments.Reset();
-            PayloadThrowCount = 0;
-            PayloadPlacedCount = 0;
-            PayloadDetonationCount = 0;
-            PayloadExplosionHitCount = 0;
+            _weaponDiagnostics.ResetPayloadDiagnostics();
             PayloadHazards.Reset();
             EnemySupportSpawning.ResetDiagnostics();
             RunRewards.Reset();
@@ -1240,6 +1223,53 @@ namespace Deucarian.TemplateGameSurvivors
         SurvivorsRunMetricsPickupValues ISurvivorsActiveRunMetricsReadPort.CapturePickups() => new SurvivorsRunMetricsPickupValues(
             CurrentPickupAttractRange, CurrentPickupAttractionSpeed, CurrentPickupMagnetPulseIntervalSeconds,
             ActiveOffscreenThreatMarkerCount, NormalEnemyRecycleCount, MajorThreatRepositionCount);
+
+        internal void RecordOrbitHit() => _weaponDiagnostics.RecordOrbitHit();
+
+        internal void RecordMeleeSwing() => _weaponDiagnostics.RecordMeleeSwing();
+
+        internal void RecordMeleeHit() => _weaponDiagnostics.RecordMeleeHit();
+
+        internal void RecordBurstPulse() => _weaponDiagnostics.RecordBurstPulse();
+
+        internal void RecordBurstHit() => _weaponDiagnostics.RecordBurstHit();
+
+        internal void RecordHitscanFire() => _weaponDiagnostics.RecordHitscanFire();
+
+        internal void RecordHitscanHit() => _weaponDiagnostics.RecordHitscanHit();
+
+        internal void RecordProjectilePierceHit() => _weaponDiagnostics.RecordProjectilePierceHit();
+
+        internal void RecordProjectileChainHit() => _weaponDiagnostics.RecordProjectileChainHit();
+
+        internal void RecordProjectileForkSpawn() => _weaponDiagnostics.RecordProjectileForkSpawn();
+
+        internal void RecordProjectileReturnStart() => _weaponDiagnostics.RecordProjectileReturnStart();
+
+        internal void RecordPayloadThrow() => _weaponDiagnostics.RecordPayloadThrow();
+
+        internal void RecordPayloadPlaced() => _weaponDiagnostics.RecordPayloadPlaced();
+
+        internal void RecordPayloadDetonation() => _weaponDiagnostics.RecordPayloadDetonation();
+
+        internal void RecordPayloadExplosionHit() => _weaponDiagnostics.RecordPayloadExplosionHit();
+
+        private readonly SurvivorsWeaponDiagnostics _weaponDiagnostics = new SurvivorsWeaponDiagnostics();
+        private SurvivorsOrbitKnockback _orbitKnockback;
+        private SurvivorsOrbitKnockback OrbitKnockback => _orbitKnockback ??
+            (_orbitKnockback = new SurvivorsOrbitKnockback(this, _weaponDiagnostics));
+        bool ISurvivorsOrbitKnockbackPort.CrimsonAegisActive
+            => IsEvolutionActive(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId);
+        float ISurvivorsOrbitKnockbackPort.OrbitKnockbackDistance => CurrentTuning.OrbitKnockbackDistance;
+        float ISurvivorsOrbitKnockbackPort.CrimsonAegisOrbitKnockbackDistance => CurrentTuning.CrimsonAegisOrbitKnockbackDistance;
+        Vector3 ISurvivorsOrbitKnockbackPort.PlayerPosition => PlayerPosition;
+        Vector3 ISurvivorsOrbitKnockbackPort.PlayerForward => PlayerForward;
+        internal bool ApplyOrbitKnockback(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition)
+            => OrbitKnockback.Apply(enemy, definition);
+        internal void RecordTempestPrismArcHit(SurvivorsEnemyActor source, SurvivorsEnemyActor target)
+            => _weaponDiagnostics.RecordTempestPrismArcHit(
+                source == null ? null : source.DisplayName,
+                target == null ? null : target.DisplayName);
 
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
@@ -1835,29 +1865,29 @@ namespace Deucarian.TemplateGameSurvivors
         public int SpawnedCount => EnemySpawner.SpawnedCount;
         public int KilledCount => Defeats.KilledCount;
         public int ProjectileLaunchCount => ProjectileLauncher.ProjectileLaunchCount;
-        public int OrbitHitCount { get; private set; }
-        public int MeleeSwingCount { get; private set; }
-        public int MeleeHitCount { get; private set; }
-        public int BurstPulseCount { get; private set; }
-        public int BurstHitCount { get; private set; }
-        public int HitscanFireCount { get; private set; }
-        public int HitscanHitCount { get; private set; }
-        public int TempestPrismArcHitCount { get; private set; }
-        public string LastTempestPrismArcFeedbackLabel { get; private set; } = string.Empty;
-        public int ProjectilePierceHitCount { get; private set; }
-        public int ProjectileChainHitCount { get; private set; }
-        public int ProjectileForkSpawnCount { get; private set; }
-        public int ProjectileReturnStartCount { get; private set; }
-        public int OrbitKnockbackCount { get; private set; }
-        public string LastOrbitKnockbackFeedbackLabel { get; private set; } = string.Empty;
+        public int OrbitHitCount => _weaponDiagnostics.OrbitHitCount;
+        public int MeleeSwingCount => _weaponDiagnostics.MeleeSwingCount;
+        public int MeleeHitCount => _weaponDiagnostics.MeleeHitCount;
+        public int BurstPulseCount => _weaponDiagnostics.BurstPulseCount;
+        public int BurstHitCount => _weaponDiagnostics.BurstHitCount;
+        public int HitscanFireCount => _weaponDiagnostics.HitscanFireCount;
+        public int HitscanHitCount => _weaponDiagnostics.HitscanHitCount;
+        public int TempestPrismArcHitCount => _weaponDiagnostics.TempestPrismArcHitCount;
+        public string LastTempestPrismArcFeedbackLabel => _weaponDiagnostics.LastTempestPrismArcFeedbackLabel;
+        public int ProjectilePierceHitCount => _weaponDiagnostics.ProjectilePierceHitCount;
+        public int ProjectileChainHitCount => _weaponDiagnostics.ProjectileChainHitCount;
+        public int ProjectileForkSpawnCount => _weaponDiagnostics.ProjectileForkSpawnCount;
+        public int ProjectileReturnStartCount => _weaponDiagnostics.ProjectileReturnStartCount;
+        public int OrbitKnockbackCount => _weaponDiagnostics.OrbitKnockbackCount;
+        public string LastOrbitKnockbackFeedbackLabel => _weaponDiagnostics.LastOrbitKnockbackFeedbackLabel;
         public int FrostFanSlowApplicationCount => DamageAugments.FrostFanSlowApplicationCount;
         public string LastFrostFanSlowFeedbackLabel => DamageAugments.LastFrostFanSlowFeedbackLabel;
         public int CinderBurnApplicationCount => DamageAugments.CinderBurnApplicationCount;
         public string LastCinderBurnFeedbackLabel => DamageAugments.LastCinderBurnFeedbackLabel;
-        public int PayloadThrowCount { get; private set; }
-        public int PayloadPlacedCount { get; private set; }
-        public int PayloadDetonationCount { get; private set; }
-        public int PayloadExplosionHitCount { get; private set; }
+        public int PayloadThrowCount => _weaponDiagnostics.PayloadThrowCount;
+        public int PayloadPlacedCount => _weaponDiagnostics.PayloadPlacedCount;
+        public int PayloadDetonationCount => _weaponDiagnostics.PayloadDetonationCount;
+        public int PayloadExplosionHitCount => _weaponDiagnostics.PayloadExplosionHitCount;
         public int PayloadHazardTickCount => PayloadHazards.PayloadHazardTickCount;
         public int PayloadHazardSnareCount => PayloadHazards.PayloadHazardSnareCount;
         public string LastPayloadHazardSnareFeedbackLabel => PayloadHazards.LastPayloadHazardSnareFeedbackLabel;
@@ -3096,137 +3126,23 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        internal void RecordOrbitHit()
-        {
-            OrbitHitCount++;
-        }
 
-        internal bool ApplyOrbitKnockback(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition)
-        {
-            if (enemy == null || definition == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-            {
-                return false;
-            }
 
-            bool crimsonAegis = IsCrimsonAegisOrbitDefinition(definition) &&
-                IsEvolutionActive(BasicSurvivorsGame.CrimsonAegisEvolutionUpgradeId);
-            float distance = crimsonAegis
-                ? Mathf.Max(CurrentTuning.OrbitKnockbackDistance, CurrentTuning.CrimsonAegisOrbitKnockbackDistance)
-                : CurrentTuning.OrbitKnockbackDistance;
-            distance = Mathf.Max(0f, distance);
-            if (distance <= 0f)
-            {
-                return false;
-            }
 
-            Vector3 enemyPosition = enemy.transform.position;
-            Vector3 away = enemyPosition - PlayerPosition;
-            away.y = 0f;
-            if (away.sqrMagnitude <= 0.0001f)
-            {
-                away = PlayerForward;
-            }
 
-            if (away.sqrMagnitude <= 0.0001f)
-            {
-                return false;
-            }
 
-            Vector3 direction = away.normalized;
-            enemy.transform.position += direction * distance;
-            enemy.transform.forward = direction;
-            OrbitKnockbackCount++;
-            string name = string.IsNullOrWhiteSpace(definition.DisplayName) ? "Orbit" : definition.DisplayName;
-            LastOrbitKnockbackFeedbackLabel = crimsonAegis
-                ? $"Crimson Aegis pushed {enemy.DisplayName}"
-                : $"{name} pushed {enemy.DisplayName}";
-            return true;
-        }
 
-        private static bool IsCrimsonAegisOrbitDefinition(SurvivorsWeaponArchetypeDefinition definition)
-        {
-            return definition != null &&
-                (string.Equals(definition.Id, BasicSurvivorsGame.OrbitWardWeaponContentId, StringComparison.Ordinal) ||
-                 string.Equals(definition.Id, BasicSurvivorsGame.ThornHaloWeaponContentId, StringComparison.Ordinal));
-        }
 
-        internal void RecordMeleeSwing()
-        {
-            MeleeSwingCount++;
-        }
 
-        internal void RecordMeleeHit()
-        {
-            MeleeHitCount++;
-        }
 
-        internal void RecordBurstPulse()
-        {
-            BurstPulseCount++;
-        }
 
-        internal void RecordBurstHit()
-        {
-            BurstHitCount++;
-        }
 
-        internal void RecordHitscanFire()
-        {
-            HitscanFireCount++;
-        }
 
-        internal void RecordHitscanHit()
-        {
-            HitscanHitCount++;
-        }
 
-        internal void RecordTempestPrismArcHit(SurvivorsEnemyActor source, SurvivorsEnemyActor target)
-        {
-            TempestPrismArcHitCount++;
-            string sourceName = source == null || string.IsNullOrWhiteSpace(source.DisplayName) ? "target" : source.DisplayName;
-            string targetName = target == null || string.IsNullOrWhiteSpace(target.DisplayName) ? "nearby enemy" : target.DisplayName;
-            LastTempestPrismArcFeedbackLabel = $"Tempest Prism arced from {sourceName} to {targetName}";
-        }
 
-        internal void RecordProjectilePierceHit()
-        {
-            ProjectilePierceHitCount++;
-        }
 
-        internal void RecordProjectileChainHit()
-        {
-            ProjectileChainHitCount++;
-        }
 
-        internal void RecordProjectileForkSpawn()
-        {
-            ProjectileForkSpawnCount++;
-        }
 
-        internal void RecordProjectileReturnStart()
-        {
-            ProjectileReturnStartCount++;
-        }
-
-        internal void RecordPayloadThrow()
-        {
-            PayloadThrowCount++;
-        }
-
-        internal void RecordPayloadPlaced()
-        {
-            PayloadPlacedCount++;
-        }
-
-        internal void RecordPayloadDetonation()
-        {
-            PayloadDetonationCount++;
-        }
-
-        internal void RecordPayloadExplosionHit()
-        {
-            PayloadExplosionHitCount++;
-        }
 
 
 

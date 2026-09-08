@@ -127,6 +127,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Run metric descriptions | `SurvivorsRunMetricsReadModel` | Reused formatted buffer over telemetry and copied active-run observations |
 
+| Weapon diagnostics and orbit displacement | `SurvivorsWeaponDiagnostics / SurvivorsOrbitKnockback` | One observation store and narrow live displacement policy; no loadout or actor health duplication |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -232,5 +234,7 @@ Six cases preserve progression/evolution callback and live-label order, independ
 Eight cases preserve burst limits, late live position reads, pre-start tuning, scenario restart and encounter-clear command order.
 
 Eleven cases preserve row order, pre-start/active values, conditional sections and independent buffer clearing.
+
+Thirteen cases preserve distinct hit/trigger routes, reset partitions, role/health gates, planar displacement and fallback direction.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
