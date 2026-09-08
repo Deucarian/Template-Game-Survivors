@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -29,6 +29,41 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsBuildHudModel BuildHudModel => _buildHudModel ?? (_buildHudModel = new SurvivorsBuildHudModel(RunBuild, BuildContentLabels, ResolveEvolutionObjectiveHudLabel));
         private SurvivorsBuildHudPresenter _buildHudPresenter;
         private SurvivorsBuildHudPresenter BuildHudPresenter => _buildHudPresenter ?? (_buildHudPresenter = new SurvivorsBuildHudPresenter(ResolveBuildHudSummaryLines, _hudStyles));
+
+        public bool TryPurchasePersistentUpgrade(string id) => PersistentProgression.TryPurchasePersistentUpgrade(id, _runSession.Started);
+
+        private bool TryPurchaseResultMetaUpgrade(int index) => PersistentProgression.TryPurchaseResultMetaUpgrade(index, ResultMetaUpgradeOptionCount, _runSession.Started);
+
+        private IReadOnlyList<SurvivorsPersistentUpgradeDefinition> ResolveResultMetaUpgradeOptions(int limit) => PersistentProgression.ResolveResultMetaUpgradeOptions(limit);
+
+        private IReadOnlyList<SurvivorsClassDefinition> ResolveResultClassOptions(int limit) => PersistentProgression.ResolveResultClassOptions(limit);
+
+        private bool TrySelectResultClass(int index) => PersistentProgression.TrySelectResultClass(index, ResultClassOptionCount, _runSession.Started, State);
+
+        private bool IsResultClassUnlocked(SurvivorsClassDefinition definition) => PersistentProgression.IsResultClassUnlocked(definition);
+
+        private int ResolveNextPersistentUpgradeCost(SurvivorsPersistentUpgradeDefinition upgrade, int currentRank) => SurvivorsPersistentProgression.ResolveNextPersistentUpgradeCost(upgrade, currentRank);
+
+        private void GrantMajorEnemyReward(SurvivorsEnemyRole role) => RunRewards.GrantMajorEnemyReward(role);
+
+        private void GrantRunRewards(bool victory) => RunRewards.GrantRunRewards(victory, new SurvivorsRunRewardInput(RunTimeSeconds, Level, MinibossKilledCount, BossKilledCount, CurrentTuning.RunRewardMultiplier));
+
+        private SurvivorsPersistentProgression _persistentProgression;
+        private SurvivorsPersistentProgression PersistentProgression => _persistentProgression ?? (_persistentProgression = new SurvivorsPersistentProgression(this));
+        private SurvivorsRunRewards _runRewards;
+        private SurvivorsRunRewards RunRewards => _runRewards ?? (_runRewards = new SurvivorsRunRewards(this));
+        SurvivorsMetaProgressionService ISurvivorsProgressionContentPort.EnsureProgression()
+        { EnsureMetaProgressionLoaded(); return _metaProgression; }
+        SurvivorsMetaProgressionDefinition ISurvivorsProgressionContentPort.ProgressionDefinition => ResolveMetaProgressionDefinition();
+        SurvivorsClassLibraryDefinition ISurvivorsProgressionContentPort.EnsureClasses()
+        { EnsureClassLibraryLoaded(); return _classLibrary; }
+        void ISurvivorsPersistentProgressionPort.ApplyPersistentBonuses() => ApplyPersistentMetaBonuses();
+        void ISurvivorsPersistentProgressionPort.SetSelectedClass(SurvivorsClassDefinition selected) => _selectedClass = selected;
+        void ISurvivorsPersistentProgressionPort.ShowMetaPurchase(string id) => RecordMetaUpgradePurchaseFeedback(id);
+        void ISurvivorsPersistentProgressionPort.ShowClassSelection(SurvivorsClassDefinition selected) => RecordResultClassSelectionFeedback(selected);
+        void ISurvivorsRunRewardPort.ShowClassUnlock() => RecordClassUnlockRewardFeedback();
+        void ISurvivorsRunRewardPort.ShowRunSummary(bool victory)
+        { RebuildLastRunSummaryLines(victory); PlayAudioEvent(AudioEventRunSummaryOpened, _levelUpClip, 0.25f); }
 
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -116,8 +151,6 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<string> _lastRunSummaryLines = new List<string>(8);
         private readonly List<string> _runMetricsLines = new List<string>(16);
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
-        private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
-        private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
         private SurvivorsBuildSurgeRewards _buildSurges;
         private SurvivorsBuildSurgeRewards BuildSurges => _buildSurges ?? (_buildSurges = new SurvivorsBuildSurgeRewards(RunBuild, this));
         private void TriggerWeaponEvolutionSurge(RunUpgradeDefinition upgrade) => BuildSurges.TriggerWeaponEvolutionSurge(upgrade);
@@ -385,7 +418,7 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsDraftSessionPort.PlayBanish() => PlayFeedback(_bossPulse, PlayerPosition, 12, _dangerClip, AudioEventDraftBanish, 0.08f);
         void ISurvivorsDraftSessionPort.GrantSkipReward(SurvivorsRewardSelectionKind kind)
         {
-            _bonusBloodShardsEarnedThisRun += DraftSkipBloodShards;
+            RunRewards.AddBloodShards(DraftSkipBloodShards);
             RecordRewardSkipFeedback(kind);
         }
         void ISurvivorsDraftSessionPort.EnterVictory() => EnterVictory();
@@ -659,9 +692,6 @@ namespace Deucarian.TemplateGameSurvivors
         private RunUpgradeRarity _highestChosenRarity;
         private string _highestChosenRarityLabel = string.Empty;
         private string _bestMomentLabel = string.Empty;
-        private bool _runRewardsGranted;
-        private int _bonusBloodShardsEarnedThisRun;
-        private int _bonusLegacyExperienceEarnedThisRun;
         private float _firstKillTimeSeconds;
         private float _firstExperiencePickupTimeSeconds;
         private float _firstLevelUpDraftTimeSeconds;
@@ -736,9 +766,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int EliteKilledCount { get; private set; }
         public int MinibossKilledCount { get; private set; }
         public int BossKilledCount { get; private set; }
-        public int EliteRewardGrantCount { get; private set; }
-        public int MinibossRewardGrantCount { get; private set; }
-        public int BossRewardGrantCount { get; private set; }
+        public int EliteRewardGrantCount => RunRewards.EliteRewardGrantCount;
+        public int MinibossRewardGrantCount => RunRewards.MinibossRewardGrantCount;
+        public int BossRewardGrantCount => RunRewards.BossRewardGrantCount;
         public int BossRelicDraftOpenCount => DraftSession.RelicOpenCount;
         public int EliteUpgradeDraftOpenCount => DraftSession.EliteOpenCount;
         public int BossUpgradeDraftOpenCount => DraftSession.BossOpenCount;
@@ -788,7 +818,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int DraftRerollCount => DraftSession.RerollCount;
         public int DraftBanishCount => DraftSession.BanishCount;
         public int DraftSkipCount => DraftSession.SkipCount;
-        public int ClassUnlockRewardCount { get; private set; }
+        public int ClassUnlockRewardCount => RunRewards.ClassUnlockRewardCount;
         public string LastClassUnlockRewardFeedbackLabel { get; private set; } = string.Empty;
         public int DamagePopupSpawnCount => _damageFeedback.SpawnCount;
         public int PlayerDamageFeedbackCount { get; private set; }
@@ -823,9 +853,9 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastWeaponEvolutionSurgeFeedbackLabel => BuildSurges.LastWeaponEvolutionSurgeFeedbackLabel;
         public string LastEvolutionMagnetRecallFeedbackLabel => BuildSurges.LastEvolutionMagnetRecallFeedbackLabel;
         public string LastEvolutionChainSurgeFeedbackLabel => BuildSurges.LastEvolutionChainSurgeFeedbackLabel;
-        public int MetaUpgradePurchaseCount { get; private set; }
+        public int MetaUpgradePurchaseCount => PersistentProgression.MetaUpgradePurchaseCount;
         public string LastMetaUpgradePurchaseFeedbackLabel { get; private set; } = string.Empty;
-        public int ResultClassSelectionCount { get; private set; }
+        public int ResultClassSelectionCount => PersistentProgression.ResultClassSelectionCount;
         public string LastResultClassSelectionFeedbackLabel { get; private set; } = string.Empty;
         public int MajorThreatWarningCount => TimedEncounters.MajorThreatWarningCount;
         public int MajorThreatEnrageCount { get; private set; }
@@ -982,11 +1012,11 @@ namespace Deucarian.TemplateGameSurvivors
         public float EndlessSurgeCooldownMultiplierBonus => IsEndlessSurgeActive ? Mathf.Min(0f, CurrentTuning.EndlessSurgeCooldownMultiplierBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
         public float EndlessSurgePickupRangeBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgePickupRangeBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
         public int EndlessExplorationBonusTier => ExplorationBonuses.Tier;
-        public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
-        public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
-        public int BloodShardsEarnedThisRun { get; private set; }
-        public int LegacyExperienceEarnedThisRun { get; private set; }
-        public SurvivorsRunRewardSummary LastRunResult { get; private set; }
+        public int BonusBloodShardsEarnedThisRun => RunRewards.BonusBloodShards;
+        public int BonusLegacyExperienceEarnedThisRun => RunRewards.BonusLegacyExperience;
+        public int BloodShardsEarnedThisRun => RunRewards.BloodShardsEarned;
+        public int LegacyExperienceEarnedThisRun => RunRewards.LegacyExperienceEarned;
+        public SurvivorsRunRewardSummary LastRunResult => RunRewards.LastRunResult;
         public IReadOnlyList<string> LastRunSummaryLines => _lastRunSummaryLines;
         public float RunTimeSeconds => _runSession.ElapsedSeconds;
         public float MoveSpeedBonus => UpgradeModifiers.MoveSpeedBonus;
@@ -2080,12 +2110,9 @@ namespace Deucarian.TemplateGameSurvivors
             EliteKilledCount = 0;
             MinibossKilledCount = 0;
             BossKilledCount = 0;
-            EliteRewardGrantCount = 0;
-            MinibossRewardGrantCount = 0;
-            BossRewardGrantCount = 0;
-            MetaUpgradePurchaseCount = 0;
+            RunRewards.Reset();
+            PersistentProgression.ResetRunDiagnostics();
             LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
-            ResultClassSelectionCount = 0;
             LastResultClassSelectionFeedbackLabel = string.Empty;
             EvolutionGoalFeedbackCount = 0;
             LastEvolutionGoalFeedbackLabel = string.Empty;
@@ -2108,7 +2135,6 @@ namespace Deucarian.TemplateGameSurvivors
             EndlessSurgeBloodShardDropCount = 0;
             EndlessSurgePulseHitCount = 0;
             LastEndlessSurgeFeedbackLabel = string.Empty;
-            ClassUnlockRewardCount = 0;
             LastClassUnlockRewardFeedbackLabel = string.Empty;
             _classUnlockRewardBanner.Reset();
             PlayerDamageFeedbackCount = 0;
@@ -2148,9 +2174,6 @@ namespace Deucarian.TemplateGameSurvivors
             Waystones.ClearDiscoveries();
             StreakRewardFeedbackCount = 0;
             LastStreakRewardFeedbackLabel = string.Empty;
-            BloodShardsEarnedThisRun = 0;
-            LegacyExperienceEarnedThisRun = 0;
-            LastRunResult = null;
             _lastRunSummaryLines.Clear();
             _lastRunSummaryTitle = string.Empty;
             ResetRunMetrics();
@@ -2171,7 +2194,6 @@ namespace Deucarian.TemplateGameSurvivors
             _lastGameplaySpawnPosition = Vector3.zero;
             _lastGameplaySpawnPadding = 0f;
             _lastGameplaySpawnWasInsideCameraViewport = false;
-            _runRewardsGranted = false;
             TimedEncounters.Reset();
             HordeRush.Reset();
             KillStreakRewards.Reset();
@@ -2179,8 +2201,6 @@ namespace Deucarian.TemplateGameSurvivors
             ExperienceRhythm.Reset();
             _rewardBanner.Reset();
             _streakRewardBanner.Reset();
-            _bonusBloodShardsEarnedThisRun = 0;
-            _bonusLegacyExperienceEarnedThisRun = 0;
             SwarmSpawning.Reset();
             _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
             Traversal.Reset();
@@ -2663,22 +2683,6 @@ namespace Deucarian.TemplateGameSurvivors
             return TrySelectResultClass(index);
         }
 
-        public bool TryPurchasePersistentUpgrade(string id)
-        {
-            EnsureMetaProgressionLoaded();
-            bool purchased = _metaProgression.TryPurchasePersistentUpgrade(id);
-            if (purchased && _runSession.Started)
-            {
-                ApplyPersistentMetaBonuses();
-            }
-
-            if (purchased)
-            {
-                RecordMetaUpgradePurchaseFeedback(id);
-            }
-
-            return purchased;
-        }
 
         public int GetPersistentUpgradeRankForTest(string id)
         {
@@ -2686,124 +2690,11 @@ namespace Deucarian.TemplateGameSurvivors
             return _metaProgression.GetPersistentUpgradeRank(id);
         }
 
-        private bool TryPurchaseResultMetaUpgrade(int index)
-        {
-            IReadOnlyList<SurvivorsPersistentUpgradeDefinition> options = ResolveResultMetaUpgradeOptions(ResultMetaUpgradeOptionCount);
-            if (index < 0 || index >= options.Count)
-            {
-                return false;
-            }
 
-            return TryPurchasePersistentUpgrade(options[index].Id.Value);
-        }
 
-        private IReadOnlyList<SurvivorsPersistentUpgradeDefinition> ResolveResultMetaUpgradeOptions(int limit)
-        {
-            _resultMetaUpgradeOptions.Clear();
-            if (limit <= 0)
-            {
-                return _resultMetaUpgradeOptions;
-            }
 
-            EnsureMetaProgressionLoaded();
-            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
-            for (int i = 0; i < definition.PersistentUpgrades.Count && _resultMetaUpgradeOptions.Count < limit; i++)
-            {
-                SurvivorsPersistentUpgradeDefinition upgrade = definition.PersistentUpgrades[i];
-                if (upgrade == null)
-                {
-                    continue;
-                }
 
-                int currentRank = _metaProgression.GetPersistentUpgradeRank(upgrade.Id.Value);
-                int nextCost = ResolveNextPersistentUpgradeCost(upgrade, currentRank);
-                if (currentRank < upgrade.MaxRank && nextCost > 0 && MetaBloodShards >= nextCost)
-                {
-                    _resultMetaUpgradeOptions.Add(upgrade);
-                }
-            }
 
-            return _resultMetaUpgradeOptions;
-        }
-
-        private IReadOnlyList<SurvivorsClassDefinition> ResolveResultClassOptions(int limit)
-        {
-            _resultClassOptions.Clear();
-            if (limit <= 0)
-            {
-                return _resultClassOptions;
-            }
-
-            EnsureMetaProgressionLoaded();
-            EnsureClassLibraryLoaded();
-            if (_classLibrary == null)
-            {
-                return _resultClassOptions;
-            }
-
-            for (int i = 0; i < _classLibrary.Classes.Count && _resultClassOptions.Count < limit; i++)
-            {
-                SurvivorsClassDefinition definition = _classLibrary.Classes[i];
-                if (definition != null)
-                {
-                    _resultClassOptions.Add(definition);
-                }
-            }
-
-            return _resultClassOptions;
-        }
-
-        private bool TrySelectResultClass(int index)
-        {
-            if (_runSession.Started && State != SurvivorsRunState.GameOver && State != SurvivorsRunState.Victory)
-            {
-                return false;
-            }
-
-            IReadOnlyList<SurvivorsClassDefinition> options = ResolveResultClassOptions(ResultClassOptionCount);
-            if (index < 0 || index >= options.Count)
-            {
-                return false;
-            }
-
-            SurvivorsClassDefinition selected = options[index];
-            if (!IsResultClassUnlocked(selected))
-            {
-                return false;
-            }
-
-            bool changed = _metaProgression.TrySetSelectedClass(selected.Id, _classLibrary);
-            _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
-            if (changed)
-            {
-                RecordResultClassSelectionFeedback(selected);
-            }
-
-            return changed;
-        }
-
-        private bool IsResultClassUnlocked(SurvivorsClassDefinition definition)
-        {
-            if (definition == null)
-            {
-                return false;
-            }
-
-            EnsureMetaProgressionLoaded();
-            EnsureClassLibraryLoaded();
-            return _metaProgression != null && _metaProgression.IsClassUnlocked(definition.Id, _classLibrary);
-        }
-
-        private int ResolveNextPersistentUpgradeCost(SurvivorsPersistentUpgradeDefinition upgrade, int currentRank)
-        {
-            if (upgrade == null || currentRank < 0 || currentRank >= upgrade.MaxRank || upgrade.RankCosts.Count == 0)
-            {
-                return 0;
-            }
-
-            int costIndex = Mathf.Clamp(currentRank, 0, upgrade.RankCosts.Count - 1);
-            return Mathf.Max(0, upgrade.RankCosts[costIndex]);
-        }
 
         private string FormatPersistentUpgradeOptionLabel(int index, SurvivorsPersistentUpgradeDefinition upgrade)
         {
@@ -2918,7 +2809,6 @@ namespace Deucarian.TemplateGameSurvivors
                 return;
             }
 
-            ResultClassSelectionCount++;
             LastResultClassSelectionFeedbackLabel = "Next Run Class: " + selected.DisplayName;
             _rewardBanner.Show(LastResultClassSelectionFeedbackLabel, RewardFeedbackDurationSeconds, new Color(0.8f, 0.58f, 1f));
         }
@@ -2934,7 +2824,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             int rank = _metaProgression.GetPersistentUpgradeRank(id);
-            MetaUpgradePurchaseCount++;
             LastMetaUpgradePurchaseFeedbackLabel = $"Meta Upgrade: {displayName} rank {rank}";
             _rewardBanner.Show(LastMetaUpgradePurchaseFeedbackLabel, RewardFeedbackDurationSeconds, new Color(0.45f, 0.95f, 0.76f));
         }
@@ -3806,7 +3695,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void CollectBloodShardPickup(int amount)
         {
             int gained = Mathf.Max(1, amount);
-            _bonusBloodShardsEarnedThisRun += gained;
+            RunRewards.AddBloodShards(gained);
             BloodShardPickupCollectedCount++;
             BloodShardsCollectedFromPickups += gained;
         }
@@ -5359,104 +5248,9 @@ namespace Deucarian.TemplateGameSurvivors
             UpgradeModifiers.ApplyClass(_selectedClass);
         }
 
-        private void GrantMajorEnemyReward(SurvivorsEnemyRole role)
-        {
-            string rewardId = BasicSurvivorsGame.MinibossRewardId;
-            if (role == SurvivorsEnemyRole.Boss)
-            {
-                rewardId = BasicSurvivorsGame.BossRewardId;
-            }
-            else if (IsEliteRole(role))
-            {
-                rewardId = BasicSurvivorsGame.EliteRewardId;
-            }
 
-            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
-            if (!definition.TryGetReward(rewardId, out SurvivorsRewardDefinition reward))
-            {
-                return;
-            }
 
-            _bonusBloodShardsEarnedThisRun += reward.CurrencyAmount;
-            _bonusLegacyExperienceEarnedThisRun += reward.TrackAmount;
-            if (role == SurvivorsEnemyRole.Boss)
-            {
-                BossRewardGrantCount++;
-            }
-            else if (IsEliteRole(role))
-            {
-                EliteRewardGrantCount++;
-            }
-            else
-            {
-                MinibossRewardGrantCount++;
-            }
-        }
 
-        private void GrantRunRewards(bool victory)
-        {
-            if (_runRewardsGranted)
-            {
-                return;
-            }
-
-            EnsureMetaProgressionLoaded();
-            bool grantVictoryClassUnlockReward = ShouldGrantVictoryClassUnlockReward(victory);
-            if (grantVictoryClassUnlockReward)
-            {
-                AddClassUnlockRewardToRunBonus();
-            }
-
-            LastRunResult = SurvivorsRunRewardCalculator.Calculate(
-                RunTimeSeconds,
-                Level,
-                MinibossKilledCount,
-                BossKilledCount,
-                victory,
-                _bonusBloodShardsEarnedThisRun,
-                _bonusLegacyExperienceEarnedThisRun);
-            ApplyRunRewardMultiplier(LastRunResult, CurrentTuning.RunRewardMultiplier);
-            BloodShardsEarnedThisRun = LastRunResult.BloodShardsEarned;
-            LegacyExperienceEarnedThisRun = LastRunResult.LegacyExperienceEarned;
-            if (_metaProgression.GrantRunRewards(LastRunResult).Succeeded)
-            {
-                _runRewardsGranted = true;
-                if (grantVictoryClassUnlockReward)
-                {
-                    GrantVictoryClassUnlockReward();
-                }
-            }
-
-            RebuildLastRunSummaryLines(victory);
-            PlayAudioEvent(AudioEventRunSummaryOpened, _levelUpClip, 0.25f);
-        }
-
-        private static void ApplyRunRewardMultiplier(SurvivorsRunRewardSummary summary, float multiplier)
-        {
-            if (summary == null)
-            {
-                return;
-            }
-
-            float resolvedMultiplier = Mathf.Max(0f, multiplier);
-            if (Mathf.Approximately(resolvedMultiplier, 1f))
-            {
-                return;
-            }
-
-            summary.BloodShardsEarned = ScaleReward(summary.BloodShardsEarned, resolvedMultiplier);
-            summary.LegacyExperienceEarned = ScaleReward(summary.LegacyExperienceEarned, resolvedMultiplier);
-        }
-
-        private static int ScaleReward(int amount, float multiplier)
-        {
-            if (amount <= 0 || multiplier <= 0f)
-            {
-                return 0;
-            }
-
-            return Mathf.Max(1, Mathf.RoundToInt(amount * multiplier));
-        }
 
         private void RebuildLastRunSummaryLines(bool victory)
         {
@@ -5508,15 +5302,6 @@ namespace Deucarian.TemplateGameSurvivors
             return "First run data captured";
         }
 
-        private void GrantVictoryClassUnlockReward()
-        {
-            EnsureClassLibraryLoaded();
-            if (_metaProgression != null && _metaProgression.UnlockClass(BasicSurvivorsGame.EmberVanguardClassId, _classLibrary))
-            {
-                ClassUnlockRewardCount++;
-                RecordClassUnlockRewardFeedback();
-            }
-        }
 
         private void RecordClassUnlockRewardFeedback()
         {
@@ -5541,30 +5326,7 @@ namespace Deucarian.TemplateGameSurvivors
                     : fallback;
         }
 
-        private bool ShouldGrantVictoryClassUnlockReward(bool victory)
-        {
-            if (!victory)
-            {
-                return false;
-            }
 
-            EnsureClassLibraryLoaded();
-            return _metaProgression != null &&
-                _classLibrary != null &&
-                !_metaProgression.IsClassUnlocked(BasicSurvivorsGame.EmberVanguardClassId, _classLibrary);
-        }
-
-        private void AddClassUnlockRewardToRunBonus()
-        {
-            SurvivorsMetaProgressionDefinition definition = ResolveMetaProgressionDefinition();
-            if (!definition.TryGetReward(BasicSurvivorsGame.EmberVanguardUnlockRewardId, out SurvivorsRewardDefinition reward))
-            {
-                return;
-            }
-
-            _bonusBloodShardsEarnedThisRun += reward.CurrencyAmount;
-            _bonusLegacyExperienceEarnedThisRun += reward.TrackAmount;
-        }
 
         private void ReleaseMetaProgressionService()
         {
