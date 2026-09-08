@@ -91,6 +91,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | First events and observed minute checkpoints | `SurvivorsRunTelemetry` | One event-time and checkpoint store, explicit event commands and observed level captures; no summary formatting |
 
+| Major threat abilities and support spawning | `SurvivorsMajorThreatAbilities / SurvivorsEnemySupportSpawning` | Enrage membership and diagnostics, role-specific slam/support policy, live capacity and shared sequence reads through narrow spawn commands |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -160,5 +162,7 @@ Five cases cover disabled and failed rewards, chain timing, horizontal body-radi
 Eight cases preserve row ordering, metric precision, active surge labels, authored mode/class text and controls copy.
 
 Three cases preserve pre-start zero values, reset-to-unseen behavior, first-event locking at zero and all crossed minute checkpoints without interpolation.
+
+Twenty-five cases preserve Playing versus terminal-only gates, full-distance slam hits, actual health/barrier accounting, failure-sensitive seed order and separate membership/diagnostic resets.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
