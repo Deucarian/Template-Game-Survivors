@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort, ISurvivorsActorMembershipPort, ISurvivorsDraftFeedbackPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort, ISurvivorsActorMembershipPort, ISurvivorsDraftFeedbackPort, ISurvivorsPlayerStatReadPort, ISurvivorsHealthPickupDropPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -1358,6 +1358,50 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsDraftFeedbackPort.PlayLevelUpAudio() => PlayAudioEvent(AudioEventLevelUp, _levelUpClip, 0.12f);
         void ISurvivorsDraftFeedbackPort.PlayOpeningPulse(bool levelUp, int count) => PlayFeedback(levelUp ? _levelUpPulse : _bossPulse, PlayerPosition, count, levelUp ? _levelUpClip : _bossClip, AudioEventDraftOpened, 0.1f);
 
+        private SurvivorsPlayerStats _playerStats;
+        private SurvivorsPlayerStats PlayerStats => _playerStats ?? (_playerStats = new SurvivorsPlayerStats(this));
+        private SurvivorsHealthPickupDrops _healthPickupDrops;
+        private SurvivorsHealthPickupDrops HealthPickupDrops => _healthPickupDrops ?? (_healthPickupDrops = new SurvivorsHealthPickupDrops(this));
+
+        SurvivorsTemplateTuning ISurvivorsPlayerStatReadPort.Tuning => CurrentTuning;
+        SurvivorsUpgradeModifiers ISurvivorsPlayerStatReadPort.Modifiers => UpgradeModifiers;
+        SurvivorsRunState ISurvivorsPlayerStatReadPort.State => State;
+        float ISurvivorsPlayerStatReadPort.MaxHealth => MaxHealth;
+        float ISurvivorsPlayerStatReadPort.CurrentHealth => CurrentHealth;
+        SurvivorsPlayerSurgeValues ISurvivorsPlayerStatReadPort.MovementSurges => new SurvivorsPlayerSurgeValues(
+            StreakSurgeMoveSpeedBonus,
+            RoamingCacheSurgeMoveSpeedBonus,
+            ArenaShrineSurgeMoveSpeedBonus,
+            WaystoneFocusMoveSpeedBonus,
+            WaystoneChainSurgeMoveSpeedBonus,
+            HordeRushClearSurgeMoveSpeedBonus,
+            WeaponLoadoutSurgeMoveSpeedBonus,
+            PassiveLoadoutSurgeMoveSpeedBonus,
+            BossRelicSurgeMoveSpeedBonus,
+            GemRushMoveSpeedBonus,
+            EvolutionChainSurgeMoveSpeedBonus,
+            EndlessSurgeMoveSpeedBonus);
+        SurvivorsPlayerSurgeValues ISurvivorsPlayerStatReadPort.PickupSurges => new SurvivorsPlayerSurgeValues(
+            StreakSurgePickupRangeBonus,
+            RoamingCacheSurgePickupRangeBonus,
+            ArenaShrineSurgePickupRangeBonus,
+            WaystoneFocusPickupRangeBonus,
+            WaystoneChainSurgePickupRangeBonus,
+            HordeRushClearSurgePickupRangeBonus,
+            WeaponLoadoutSurgePickupRangeBonus,
+            PassiveLoadoutSurgePickupRangeBonus,
+            BossRelicSurgePickupRangeBonus,
+            GemRushPickupRangeBonus,
+            EvolutionChainSurgePickupRangeBonus,
+            EndlessSurgePickupRangeBonus);
+
+        bool ISurvivorsHealthPickupDropPort.IsHealthBound => PlayerVitals.IsBound;
+        int ISurvivorsHealthPickupDropPort.HealAmount => CurrentTuning.HealthPickupHealAmount;
+        float ISurvivorsHealthPickupDropPort.CurrentHealth => CurrentHealth;
+        float ISurvivorsHealthPickupDropPort.MaxHealth => MaxHealth;
+        bool ISurvivorsHealthPickupDropPort.SpawnHealthPickup(Vector3 position, int amount)
+            => SpawnPickup(SurvivorsPickupKind.Health, position, amount) != null;
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -2303,14 +2347,14 @@ namespace Deucarian.TemplateGameSurvivors
         public Vector3 WaystoneCompassArrowForwardForTest => Arena.CompassForward;
         public IReadOnlyList<string> ActiveWeaponIds => RunWeapons.ActiveWeaponIds;
         public int ActiveOrbitBladeCount => RunWeapons.ActiveOrbitBladeCount;
-        public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + ArenaShrineSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + WaystoneChainSurgeMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus + WeaponLoadoutSurgeMoveSpeedBonus + PassiveLoadoutSurgeMoveSpeedBonus + BossRelicSurgeMoveSpeedBonus + GemRushMoveSpeedBonus + EvolutionChainSurgeMoveSpeedBonus + EndlessSurgeMoveSpeedBonus;
+        public float PlayerMoveSpeed => PlayerStats.PlayerMoveSpeed;
         public float DashCooldownRemainingSeconds => PlayerMotion.CooldownRemaining;
         public float PlayerSafetyRemainingSeconds => PlayerVitals.SafetyRemaining;
         public bool IsPlayerSafetyActive => PlayerVitals.SafetyRemaining > 0f;
         public float ProjectileDamage => ResolveDisplayedWeaponDamage();
         public float WeaponCooldownSeconds => ResolveDisplayedWeaponCooldownSeconds();
-        public float CurrentPickupAttractRange => Mathf.Max(0f, CurrentTuning.PickupAttractRange + PickupRangeBonus + StreakSurgePickupRangeBonus + RoamingCacheSurgePickupRangeBonus + ArenaShrineSurgePickupRangeBonus + WaystoneFocusPickupRangeBonus + WaystoneChainSurgePickupRangeBonus + HordeRushClearSurgePickupRangeBonus + WeaponLoadoutSurgePickupRangeBonus + PassiveLoadoutSurgePickupRangeBonus + BossRelicSurgePickupRangeBonus + GemRushPickupRangeBonus + EvolutionChainSurgePickupRangeBonus + EndlessSurgePickupRangeBonus);
-        public float CurrentPickupAttractionSpeed => Mathf.Max(0.1f, CurrentTuning.PickupAttractionSpeed + PickupAttractionSpeedBonus);
+        public float CurrentPickupAttractRange => PlayerStats.CurrentPickupAttractRange;
+        public float CurrentPickupAttractionSpeed => PlayerStats.CurrentPickupAttractionSpeed;
         public float CurrentPickupMagnetPulseIntervalSeconds => ResolvePickupMagnetPulseIntervalSeconds();
         public float LevelUpDraftCooldownRemainingSeconds => Mathf.Max(0f, _experienceProgression.DraftCooldownRemaining);
         public int LevelAtOneMinute => Telemetry.LevelAtOneMinute;
@@ -2320,13 +2364,13 @@ namespace Deucarian.TemplateGameSurvivors
         public int LevelAtFiveMinutes => Telemetry.LevelAtFiveMinutes;
         public int MagnetPulseActivationCount => PickupCollection.MagnetPulseActivationCount;
         public string LastMagnetPulseFeedbackLabel => PickupCollection.LastMagnetPulseFeedbackLabel;
-        public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
-        public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
-        public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
-        public float DeathNovaRadius => DeathNovaDamage <= 0f ? 0f : Mathf.Max(0f, BaseDeathNovaRadius + DeathNovaRadiusBonus + AreaRadiusBonus * 0.5f);
+        public float CriticalChanceNormalized => PlayerStats.CriticalChanceNormalized;
+        public float CriticalDamageMultiplier => PlayerStats.CriticalDamageMultiplier;
+        public float DeathNovaDamage => PlayerStats.DeathNovaDamage;
+        public float DeathNovaRadius => PlayerStats.DeathNovaRadius;
         public float CurrentHealth => PlayerVitals.CurrentHealth;
         public float MaxHealth => PlayerVitals.MaxHealth;
-        public float BarrierCapacity => Mathf.Max(0f, CurrentTuning.StartingBarrierCapacity + BarrierCapacityBonus);
+        public float BarrierCapacity => PlayerStats.BarrierCapacity;
         public Vector3 PlayerPosition => _playerObject == null ? transform.position : _playerObject.transform.position;
         public Vector3 PlayerForward => _playerObject == null ? Vector3.forward : _playerObject.transform.forward;
         public CombatCatalog CombatCatalog => EnemyDamage.Catalog;
@@ -2393,7 +2437,7 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsVictory => State == SurvivorsRunState.Victory;
         public bool HasClearedVictoryThisRun => _runSession.HasClearedVictory;
         public bool IsEndlessRun => State == SurvivorsRunState.Playing && _runSession.HasClearedVictory;
-        public bool IsLowHealthWarningActive => (State == SurvivorsRunState.Playing || State == SurvivorsRunState.LevelUp) && MaxHealth > 0f && CurrentHealth / MaxHealth <= LowHealthWarningThreshold;
+        public bool IsLowHealthWarningActive => PlayerStats.IsLowHealthWarningActive;
         public bool IsMajorThreatWarningActive => !string.IsNullOrEmpty(TimedEncounters.WarningLabel) && RunTimeSeconds < TimedEncounters.WarningTargetTime;
         public string CurrentMajorThreatWarningLabel => IsMajorThreatWarningActive ? TimedEncounters.WarningLabel : string.Empty;
         public float MajorThreatWarningRemainingSeconds => IsMajorThreatWarningActive ? Mathf.Max(0f, TimedEncounters.WarningTargetTime - RunTimeSeconds) : 0f;
@@ -3113,15 +3157,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private bool TryDropHealthPickup(Vector3 position)
-        {
-            if (!PlayerVitals.IsBound || CurrentTuning.HealthPickupHealAmount <= 0 || CurrentHealth >= MaxHealth - 0.01f)
-            {
-                return false;
-            }
-
-            return SpawnPickup(SurvivorsPickupKind.Health, position, CurrentTuning.HealthPickupHealAmount) != null;
-        }
+        private bool TryDropHealthPickup(Vector3 position) => HealthPickupDrops.TryDropHealthPickup(position);
 
 
 
