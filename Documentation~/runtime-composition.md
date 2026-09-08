@@ -39,6 +39,9 @@ The controller retains its original script GUID, six serialized fields, public m
 | Player movement and dash cadence | `SurvivorsPlayerMotion` | Analog input, bounded motion/safety/travel/pressure ports, cooldown and dash diagnostics; world transform adapter remains in composition |
 | Dash path pressure | `SurvivorsDashPressure` | Snapshot of existing enemy references, segment projection, ordered damage/death/knockback behavior and per-hit accounting callback |
 
+| Active run build | `SurvivorsRunBuildState` | Owns class-filtered catalog, rank state, first-entry metadata, acquired passive/evolution sets and slot/prerequisite eligibility; typed acquisition callbacks |
+| Draft rarity profiles | `SurvivorsDraftRarityPolicy` | Live authored early/mid/late/reward weights, luck floors and weighted catalog copies with original upgrade effects |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -66,5 +69,7 @@ Exploration tests cover lane geometry and endless scaling, failed-cache cadence,
 Arena tests cover positive/negative cell boundaries, signed cell-key identity, landmark offsets, horizontal nearest-target selection, discovered-target suppression and exact tile/landmark counts and positions. Rebuilding the arena replaces its previous hierarchy and releases generated materials; disposal remains safe after the parent has already been destroyed. Presentation reads discovered keys and does not award exploration rewards.
 
 Player tests cover barrier absorption starting contact safety, blocked damage feedback, exactly one clutch on threshold crossing, damage accounting before defeat, actual pickup healing and barrier caps, analog/diagonal movement, dash travel-before-safety-before-pressure ordering, pause/cooldown behavior and segment endpoints. Maximum-health effects retain their existing double precision input. The owner uses the shared Combat resolver and does not duplicate damage formulas.
+
+Build policy tests preserve first matching class gates and the all-rejected catalog fallback, duplicate metadata precedence, full-slot rank upgrades, one passive acquisition callback, weapon ownership checks, reduced evolution rank and passive prerequisites, acquisition callback order and reset boundaries. Rarity tests cover late-before-mid thresholds, live tuning/luck, disabled rarity weights, common floors and effect-preserving catalog copies.
 
 This decomposition is in progress. Combat augments and further momentum rewards, full build/draft orchestration, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.

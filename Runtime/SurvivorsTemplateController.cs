@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -56,8 +56,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const float StreakSurgeMoveSpeedBonusPerTier = 0.16f;
         private const float StreakSurgeCooldownReductionPerTier = 0.025f;
         private const float StreakSurgePickupRangeBonusPerTier = 0.18f;
-        private const int DefaultMaxWeaponSlots = 6;
-        private const int DefaultMaxPassiveSlots = 6;
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
@@ -82,15 +80,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const int RewardDraftRarityLockSeedSalt = 23831;
         private const int ResultMetaUpgradeOptionCount = 3;
         private const int ResultClassOptionCount = 4;
-
-        private enum DraftRarityProfile
-        {
-            NormalEarly = 0,
-            NormalMid = 1,
-            NormalLate = 2,
-            Elite = 3,
-            Boss = 4
-        }
 
         private enum BuildMenuTab
         {
@@ -153,6 +142,29 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsRunBuildState _runBuild;
+        private SurvivorsRunBuildState RunBuild => _runBuild ?? (_runBuild = new SurvivorsRunBuildState(this));
+        private SurvivorsDraftRarityPolicy _draftRarity;
+        private SurvivorsDraftRarityPolicy DraftRarity => _draftRarity ?? (_draftRarity = new SurvivorsDraftRarityPolicy(() => CurrentTuning, () => DraftLuckBonus));
+        private bool TryGetRunUpgrade(string id, out RunUpgradeDefinition definition) => RunBuild.TryGetRunUpgrade(id, out definition);
+        private bool TryGetUpgradeMetadata(string id, out SurvivorsRunUpgradeMetadata metadata) => RunBuild.TryGetUpgradeMetadata(id, out metadata);
+        private string ResolveUpgradeDisplayName(RunUpgradeId id) => RunBuild.ResolveUpgradeDisplayName(id);
+        private int ResolveRequiredUpgradeRank(SurvivorsRunUpgradeMetadata metadata) => RunBuild.ResolveRequiredUpgradeRank(metadata);
+        private bool IsUpgradeEligibleForCurrentBuild(RunUpgradeDefinition upgrade) => RunBuild.IsUpgradeEligibleForCurrentBuild(upgrade);
+        private SurvivorsRunUpgradeCategory ResolveCurrentUpgradeCategory(RunUpgradeDefinition upgrade) => RunBuild.ResolveCurrentUpgradeCategory(upgrade);
+        private void RecordRunBuildSelection(RunUpgradeDefinition upgrade) => RunBuild.RecordRunBuildSelection(upgrade);
+        SurvivorsTemplateTuning ISurvivorsRunBuildPort.Tuning => CurrentTuning;
+        int ISurvivorsRunBuildPort.WeaponCount => ActiveWeaponCount;
+        bool ISurvivorsRunBuildPort.HasWeapon(string id) => _weaponLoadout != null && _weaponLoadout.ContainsWeapon(id);
+        void ISurvivorsRunBuildPort.AddWeapon(string id) => TryAddWeaponToLoadout(id);
+        void ISurvivorsRunBuildPort.PassiveAdded(RunUpgradeDefinition upgrade) => TryTriggerPassiveLoadoutSurge(upgrade);
+        void ISurvivorsRunBuildPort.RecordEvolutionTime() => RecordMetricTime(ref _firstEvolutionAcquiredTimeSeconds);
+        void ISurvivorsRunBuildPort.EvolutionAdded(RunUpgradeDefinition upgrade)
+        {
+            TriggerWeaponEvolutionSurge(upgrade);
+            TriggerEvolutionChainSurge(upgrade);
+        }
+
         private SurvivorsPlayerVitals _playerVitals;
         private SurvivorsPlayerVitals PlayerVitals => _playerVitals ?? (_playerVitals = new SurvivorsPlayerVitals(this));
         private SurvivorsPlayerMotion _playerMotion;
@@ -276,9 +288,6 @@ namespace Deucarian.TemplateGameSurvivors
             PlayFeedback(_levelUpPulse, position, Mathf.Clamp(24 + hitCount * 5, 28, 78), _pickupClip);
         }
         private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
-        private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
-        private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
-        private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _announcedEvolutionGoalUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _announcedEvolutionReadyUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _selectedRelicIds = new HashSet<string>(StringComparer.Ordinal);
@@ -325,8 +334,6 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _transparentButtonStyle => _hudStyles.TransparentButtonStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService;
-        private RunUpgradeCatalog _upgradeCatalog;
-        private RunUpgradeState _upgradeState;
         private RunUpgradeDraft _currentDraft;
         private SurvivorsRelicDraft _currentRelicDraft;
         private SurvivorsRewardSelectionKind _rewardSelectionKind;
@@ -579,7 +586,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int MajorRewardCacheExperienceGemDropCount { get; private set; }
         public int MajorRewardCacheSpecialDropCount { get; private set; }
         public int MajorRewardCacheAttractedPickupCount { get; private set; }
-        public int WeaponEvolutionFeedbackCount { get; private set; }
+        public int WeaponEvolutionFeedbackCount => RunBuild.WeaponEvolutionFeedbackCount;
         public int WeaponEvolutionSurgeCount { get; private set; }
         public int WeaponEvolutionSurgeHitCount { get; private set; }
         public int EvolutionMagnetRecallCount { get; private set; }
@@ -857,10 +864,10 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
-        public int ActivePassiveCount => _ownedPassiveUpgradeIds.Count;
-        public int EvolvedWeaponCount => _ownedEvolutionUpgradeIds.Count;
-        public int MaxWeaponSlots => CurrentTuning.MaxWeaponSlots > 0 ? CurrentTuning.MaxWeaponSlots : DefaultMaxWeaponSlots;
-        public int MaxPassiveSlots => CurrentTuning.MaxPassiveSlots > 0 ? CurrentTuning.MaxPassiveSlots : DefaultMaxPassiveSlots;
+        public int ActivePassiveCount => RunBuild.PassiveIds.Count;
+        public int EvolvedWeaponCount => RunBuild.EvolutionIds.Count;
+        public int MaxWeaponSlots => RunBuild.MaxWeaponSlots;
+        public int MaxPassiveSlots => RunBuild.MaxPassiveSlots;
         public int InfiniteArenaTileCountForTest => Arena.TileCount;
         public int InfiniteArenaLandmarkCountForTest => Arena.LandmarkCount;
         public Vector3 ArenaPresentationCenterForTest => Arena.Center;
@@ -2167,17 +2174,13 @@ namespace Deucarian.TemplateGameSurvivors
             _combatRandom = new DeterministicRandom(resolved.RunSeed + 4049);
             _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
             _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
-            _upgradeState = new RunUpgradeState();
             _relicDefinitions = CreateRelicDefinitions();
             _upgradeClassGates = CreateClassUpgradeGates();
             _classLibrary = CreateClassLibraryDefinition();
             EnsureMetaProgressionLoaded();
             _metaProgression.EnsureDefaultClassUnlocks(_classLibrary);
             _selectedClass = _metaProgression.ResolveSelectedClass(_classLibrary);
-            _upgradeCatalog = CreateRunUpgradeCatalogForSelectedClass();
-            BuildUpgradeMetadataIndex();
-            _ownedPassiveUpgradeIds.Clear();
-            _ownedEvolutionUpgradeIds.Clear();
+            RunBuild.Initialize(CreateBaseRunUpgradeCatalog(), CreateRunUpgradeMetadata(), _selectedClass, _upgradeClassGates);
             _selectedRelicIds.Clear();
             _selectedRelics.Clear();
             PlayerVitals.Initialize(resolved.PlayerMaxHealth);
@@ -2232,7 +2235,6 @@ namespace Deucarian.TemplateGameSurvivors
             EliteRewardGrantCount = 0;
             MinibossRewardGrantCount = 0;
             BossRewardGrantCount = 0;
-            WeaponEvolutionFeedbackCount = 0;
             WeaponEvolutionSurgeCount = 0;
             WeaponEvolutionSurgeHitCount = 0;
             EvolutionMagnetRecallCount = 0;
@@ -3195,7 +3197,7 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsUpgradeAvailableInRunForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
-            return _upgradeCatalog != null && !string.IsNullOrWhiteSpace(upgradeId) && _upgradeCatalog.TryGet(new RunUpgradeId(upgradeId), out _);
+            return RunBuild.Catalog != null && !string.IsNullOrWhiteSpace(upgradeId) && RunBuild.Catalog.TryGet(new RunUpgradeId(upgradeId), out _);
         }
 
         private Vector3 ResolveClosestArenaLandmarkPositionForTest()
@@ -3262,24 +3264,24 @@ namespace Deucarian.TemplateGameSurvivors
         public int GetRunUpgradeRankForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
-            return string.IsNullOrWhiteSpace(upgradeId) ? 0 : _upgradeState.GetRank(new RunUpgradeId(upgradeId));
+            return string.IsNullOrWhiteSpace(upgradeId) ? 0 : RunBuild.State.GetRank(new RunUpgradeId(upgradeId));
         }
 
         public int GetNormalMidDraftRarityWeightForTest(RunUpgradeRarity rarity)
         {
             EnsureRunStartedForTest();
-            return ResolveDraftRarityWeight(DraftRarityProfile.NormalMid, rarity);
+            return DraftRarity.ResolveDraftRarityWeight(DraftRarityProfile.NormalMid, rarity);
         }
 
         public bool HasEvolvedUpgradeForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
-            return !string.IsNullOrWhiteSpace(upgradeId) && _ownedEvolutionUpgradeIds.Contains(upgradeId);
+            return RunBuild.HasEvolution(upgradeId);
         }
 
         internal bool IsEvolutionActive(string upgradeId)
         {
-            return !string.IsNullOrWhiteSpace(upgradeId) && _ownedEvolutionUpgradeIds.Contains(upgradeId);
+            return RunBuild.HasEvolution(upgradeId);
         }
 
         public IReadOnlyList<string> DebugDescribeCurrentBuild()
@@ -3402,15 +3404,15 @@ namespace Deucarian.TemplateGameSurvivors
         public IReadOnlyList<string> DebugDescribeEligibleEvolutionPool()
         {
             EnsureRunStartedForTest();
-            if (_upgradeCatalog == null)
+            if (RunBuild.Catalog == null)
             {
                 return Array.Empty<string>();
             }
 
             var lines = new List<string>();
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
                 if (definition != null && IsEvolutionUpgrade(definition) && IsUpgradeEligibleForCurrentBuild(definition))
                 {
                     lines.Add(FormatDebugUpgradeLine(-1, definition));
@@ -3587,14 +3589,14 @@ namespace Deucarian.TemplateGameSurvivors
         public bool ApplyUpgradeByIdForTest(string id)
         {
             EnsureRunStartedForTest();
-            if (_upgradeCatalog == null || _upgradeState == null || string.IsNullOrWhiteSpace(id))
+            if (RunBuild.Catalog == null || RunBuild.State == null || string.IsNullOrWhiteSpace(id))
             {
                 return false;
             }
 
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition upgrade = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition upgrade = RunBuild.Catalog.Definitions[i];
                 if (upgrade == null || !string.Equals(upgrade.Id.Value, id, StringComparison.Ordinal))
                 {
                     continue;
@@ -3605,7 +3607,7 @@ namespace Deucarian.TemplateGameSurvivors
                     return false;
                 }
 
-                RunUpgradeSelectionResult selection = _upgradeState.Select(_upgradeCatalog, upgrade.Id);
+                RunUpgradeSelectionResult selection = RunBuild.State.Select(RunBuild.Catalog, upgrade.Id);
                 if (!selection.Succeeded)
                 {
                     return false;
@@ -3639,7 +3641,7 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
-            RunUpgradeSelectionResult selection = _upgradeState.Select(_upgradeCatalog, selected.Id);
+            RunUpgradeSelectionResult selection = RunBuild.State.Select(RunBuild.Catalog, selected.Id);
             if (!selection.Succeeded)
             {
                 return false;
@@ -3724,7 +3726,7 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             RunUpgradeDefinition banished = _currentDraft.Choices[index];
-            if (banished == null || !_upgradeState.Banish(banished.Id))
+            if (banished == null || !RunBuild.State.Banish(banished.Id))
             {
                 return false;
             }
@@ -5446,8 +5448,7 @@ namespace Deucarian.TemplateGameSurvivors
             _pickups.Clear();
             _projectiles.Clear();
             Waystones.ClearDiscoveries();
-            _ownedPassiveUpgradeIds.Clear();
-            _ownedEvolutionUpgradeIds.Clear();
+            RunBuild.ClearOwnedSelections();
             if (_spawnService != null)
             {
                 _spawnService.Dispose();
@@ -5538,41 +5539,9 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private RunUpgradeCatalog CreateRunUpgradeCatalogForSelectedClass()
-        {
-            RunUpgradeCatalog fullCatalog = CreateBaseRunUpgradeCatalog();
-            var definitions = new List<RunUpgradeDefinition>(fullCatalog.Definitions.Count);
-            for (int i = 0; i < fullCatalog.Definitions.Count; i++)
-            {
-                RunUpgradeDefinition definition = fullCatalog.Definitions[i];
-                if (definition != null && IsUpgradeAllowedForSelectedClass(definition.Id.Value))
-                {
-                    definitions.Add(definition);
-                }
-            }
-
-            return definitions.Count == 0 ? fullCatalog : new RunUpgradeCatalog(definitions);
-        }
-
-        private void BuildUpgradeMetadataIndex()
-        {
-            _upgradeMetadataById.Clear();
-            IReadOnlyList<SurvivorsRunUpgradeMetadata> metadata = CreateRunUpgradeMetadata();
-            for (int i = 0; i < metadata.Count; i++)
-            {
-                SurvivorsRunUpgradeMetadata entry = metadata[i];
-                if (entry == null || string.IsNullOrWhiteSpace(entry.UpgradeId) || _upgradeMetadataById.ContainsKey(entry.UpgradeId))
-                {
-                    continue;
-                }
-
-                _upgradeMetadataById.Add(entry.UpgradeId, entry);
-            }
-        }
-
         private RunUpgradeCatalog CreateEligibleDraftCatalog()
         {
-            return CreateEligibleDraftCatalog(ResolveNormalDraftRarityProfile());
+            return CreateEligibleDraftCatalog(DraftRarity.ResolveNormalDraftRarityProfile(Level));
         }
 
         private RunUpgradeCatalog CreateEligibleDraftCatalog(DraftRarityProfile profile)
@@ -5585,15 +5554,15 @@ namespace Deucarian.TemplateGameSurvivors
             RunUpgradeRarity minimumRarity,
             bool requireMinimumRarity)
         {
-            if (_upgradeCatalog == null)
+            if (RunBuild.Catalog == null)
             {
                 return null;
             }
 
-            var eligible = new List<RunUpgradeDefinition>(_upgradeCatalog.Definitions.Count);
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            var eligible = new List<RunUpgradeDefinition>(RunBuild.Catalog.Definitions.Count);
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
                 if (definition != null &&
                     (!requireMinimumRarity || definition.Rarity >= minimumRarity) &&
                     IsUpgradeEligibleForCurrentBuild(definition))
@@ -5602,22 +5571,22 @@ namespace Deucarian.TemplateGameSurvivors
                 }
             }
 
-            return CreateWeightedDraftCatalog(eligible, profile);
+            return DraftRarity.CreateWeightedDraftCatalog(eligible, profile);
         }
 
         private RunUpgradeCatalog CreateEligibleRewardDraftCatalog(SurvivorsEnemyRole role, bool requireEvolutionChoice)
         {
-            if (_upgradeCatalog == null)
+            if (RunBuild.Catalog == null)
             {
                 return null;
             }
 
             RunUpgradeRarity minimumRarity = role == SurvivorsEnemyRole.Boss ? RunUpgradeRarity.Rare : RunUpgradeRarity.Uncommon;
-            var allEligible = new List<RunUpgradeDefinition>(_upgradeCatalog.Definitions.Count);
-            var preferred = new List<RunUpgradeDefinition>(_upgradeCatalog.Definitions.Count);
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            var allEligible = new List<RunUpgradeDefinition>(RunBuild.Catalog.Definitions.Count);
+            var preferred = new List<RunUpgradeDefinition>(RunBuild.Catalog.Definitions.Count);
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
                 if (definition == null || !IsUpgradeEligibleForCurrentBuild(definition))
                 {
                     continue;
@@ -5637,192 +5606,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             List<RunUpgradeDefinition> selected = preferred.Count >= CurrentTuning.DraftChoiceCount ? preferred : allEligible;
             DraftRarityProfile profile = role == SurvivorsEnemyRole.Boss ? DraftRarityProfile.Boss : DraftRarityProfile.Elite;
-            return CreateWeightedDraftCatalog(selected, profile);
-        }
-
-        private DraftRarityProfile ResolveNormalDraftRarityProfile()
-        {
-            if (Level >= Mathf.Max(1, CurrentTuning.DraftLateRarityLevel))
-            {
-                return DraftRarityProfile.NormalLate;
-            }
-
-            if (Level >= Mathf.Max(1, CurrentTuning.DraftMidRarityLevel))
-            {
-                return DraftRarityProfile.NormalMid;
-            }
-
-            return DraftRarityProfile.NormalEarly;
-        }
-
-        private RunUpgradeCatalog CreateWeightedDraftCatalog(IReadOnlyList<RunUpgradeDefinition> definitions, DraftRarityProfile profile)
-        {
-            if (definitions == null || definitions.Count == 0)
-            {
-                return null;
-            }
-
-            var weighted = new List<RunUpgradeDefinition>(definitions.Count);
-            for (int i = 0; i < definitions.Count; i++)
-            {
-                RunUpgradeDefinition definition = definitions[i];
-                if (definition == null)
-                {
-                    continue;
-                }
-
-                int rarityWeight = ResolveDraftRarityWeight(profile, definition.Rarity);
-                if (rarityWeight <= 0)
-                {
-                    continue;
-                }
-
-                weighted.Add(CloneUpgradeWithDraftWeight(definition, ResolveWeightedDraftWeight(definition.Weight, rarityWeight)));
-            }
-
-            return weighted.Count == 0 ? null : new RunUpgradeCatalog(weighted);
-        }
-
-        private int ResolveWeightedDraftWeight(int baseWeight, int rarityWeight)
-        {
-            long resolved = (long)Mathf.Max(1, baseWeight) * Mathf.Max(0, rarityWeight);
-            resolved = Mathf.Max(1, Mathf.RoundToInt(resolved / 100f));
-            return resolved > int.MaxValue ? int.MaxValue : (int)resolved;
-        }
-
-        private RunUpgradeDefinition CloneUpgradeWithDraftWeight(RunUpgradeDefinition definition, int weight)
-        {
-            return new RunUpgradeDefinition(
-                definition.Id,
-                definition.Rarity,
-                Mathf.Max(1, weight),
-                definition.MaxRank,
-                definition.Effects,
-                definition.Prerequisites,
-                definition.Exclusions);
-        }
-
-        private int ResolveDraftRarityWeight(DraftRarityProfile profile, RunUpgradeRarity rarity)
-        {
-            return ApplyDraftLuckToRarityWeight(ResolveBaseDraftRarityWeight(profile, rarity), rarity);
-        }
-
-        private int ResolveBaseDraftRarityWeight(DraftRarityProfile profile, RunUpgradeRarity rarity)
-        {
-            switch (profile)
-            {
-                case DraftRarityProfile.NormalEarly:
-                    return ResolveNormalEarlyRarityWeight(rarity);
-                case DraftRarityProfile.NormalMid:
-                    return ResolveNormalMidRarityWeight(rarity);
-                case DraftRarityProfile.NormalLate:
-                    return ResolveNormalLateRarityWeight(rarity);
-                case DraftRarityProfile.Elite:
-                    return ResolveEliteRarityWeight(rarity);
-                case DraftRarityProfile.Boss:
-                    return ResolveBossRarityWeight(rarity);
-                default:
-                    return 100;
-            }
-        }
-
-        private int ApplyDraftLuckToRarityWeight(int baseWeight, RunUpgradeRarity rarity)
-        {
-            if (baseWeight <= 0 || DraftLuckBonus <= 0f)
-            {
-                return baseWeight;
-            }
-
-            float luck = Mathf.Max(0f, DraftLuckBonus);
-            float multiplier;
-            switch (rarity)
-            {
-                case RunUpgradeRarity.Common:
-                    multiplier = Mathf.Max(0.35f, 1f - luck * 0.35f);
-                    break;
-                case RunUpgradeRarity.Uncommon:
-                    multiplier = 1f + luck * 0.15f;
-                    break;
-                case RunUpgradeRarity.Rare:
-                    multiplier = 1f + luck;
-                    break;
-                case RunUpgradeRarity.Epic:
-                    multiplier = 1f + luck * 1.6f;
-                    break;
-                case RunUpgradeRarity.Legendary:
-                    multiplier = 1f + luck * 2.2f;
-                    break;
-                default:
-                    multiplier = 1f;
-                    break;
-            }
-
-            return Mathf.Max(1, Mathf.RoundToInt(baseWeight * multiplier));
-        }
-
-        private int ResolveNormalEarlyRarityWeight(RunUpgradeRarity rarity)
-        {
-            switch (rarity)
-            {
-                case RunUpgradeRarity.Common: return CurrentTuning.NormalEarlyCommonWeight;
-                case RunUpgradeRarity.Uncommon: return CurrentTuning.NormalEarlyUncommonWeight;
-                case RunUpgradeRarity.Rare: return CurrentTuning.NormalEarlyRareWeight;
-                case RunUpgradeRarity.Epic: return CurrentTuning.NormalEarlyEpicWeight;
-                case RunUpgradeRarity.Legendary: return CurrentTuning.NormalEarlyLegendaryWeight;
-                default: return 0;
-            }
-        }
-
-        private int ResolveNormalMidRarityWeight(RunUpgradeRarity rarity)
-        {
-            switch (rarity)
-            {
-                case RunUpgradeRarity.Common: return CurrentTuning.NormalMidCommonWeight;
-                case RunUpgradeRarity.Uncommon: return CurrentTuning.NormalMidUncommonWeight;
-                case RunUpgradeRarity.Rare: return CurrentTuning.NormalMidRareWeight;
-                case RunUpgradeRarity.Epic: return CurrentTuning.NormalMidEpicWeight;
-                case RunUpgradeRarity.Legendary: return CurrentTuning.NormalMidLegendaryWeight;
-                default: return 0;
-            }
-        }
-
-        private int ResolveNormalLateRarityWeight(RunUpgradeRarity rarity)
-        {
-            switch (rarity)
-            {
-                case RunUpgradeRarity.Common: return CurrentTuning.NormalLateCommonWeight;
-                case RunUpgradeRarity.Uncommon: return CurrentTuning.NormalLateUncommonWeight;
-                case RunUpgradeRarity.Rare: return CurrentTuning.NormalLateRareWeight;
-                case RunUpgradeRarity.Epic: return CurrentTuning.NormalLateEpicWeight;
-                case RunUpgradeRarity.Legendary: return CurrentTuning.NormalLateLegendaryWeight;
-                default: return 0;
-            }
-        }
-
-        private int ResolveEliteRarityWeight(RunUpgradeRarity rarity)
-        {
-            switch (rarity)
-            {
-                case RunUpgradeRarity.Common: return CurrentTuning.EliteCommonWeight;
-                case RunUpgradeRarity.Uncommon: return CurrentTuning.EliteUncommonWeight;
-                case RunUpgradeRarity.Rare: return CurrentTuning.EliteRareWeight;
-                case RunUpgradeRarity.Epic: return CurrentTuning.EliteEpicWeight;
-                case RunUpgradeRarity.Legendary: return CurrentTuning.EliteLegendaryWeight;
-                default: return 0;
-            }
-        }
-
-        private int ResolveBossRarityWeight(RunUpgradeRarity rarity)
-        {
-            switch (rarity)
-            {
-                case RunUpgradeRarity.Common: return CurrentTuning.BossCommonWeight;
-                case RunUpgradeRarity.Uncommon: return CurrentTuning.BossUncommonWeight;
-                case RunUpgradeRarity.Rare: return CurrentTuning.BossRareWeight;
-                case RunUpgradeRarity.Epic: return CurrentTuning.BossEpicWeight;
-                case RunUpgradeRarity.Legendary: return CurrentTuning.BossLegendaryWeight;
-                default: return 0;
-            }
+            return DraftRarity.CreateWeightedDraftCatalog(selected, profile);
         }
 
         private IReadOnlyList<RunUpgradeId> CreateNormalDraftRarityLocks(
@@ -5845,7 +5629,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             RunUpgradeDraft lockDraft = RunUpgradeDraftService.Generate(
                 highRarityCatalog,
-                _upgradeState,
+                RunBuild.State,
                 new RunUpgradeDraftRequest(
                     1,
                     ResolveDraftSeed(SurvivorsRewardSelectionKind.LevelUp) + NormalDraftRarityLockSeedSalt,
@@ -5897,19 +5681,19 @@ namespace Deucarian.TemplateGameSurvivors
             out RunUpgradeId passiveLock)
         {
             passiveLock = default;
-            if (_upgradeCatalog == null ||
-                _upgradeState == null ||
+            if (RunBuild.Catalog == null ||
+                RunBuild.State == null ||
                 ActivePassiveCount >= MaxPassiveSlots ||
                 CurrentTuning.DraftChoiceCount <= 0)
             {
                 return false;
             }
 
-            var candidates = new List<RunUpgradeDefinition>(_upgradeCatalog.Definitions.Count);
+            var candidates = new List<RunUpgradeDefinition>(RunBuild.Catalog.Definitions.Count);
             var seenPassiveIds = new HashSet<RunUpgradeId>();
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition evolution = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition evolution = RunBuild.Catalog.Definitions[i];
                 if (!TryResolveEvolutionMissingPassive(evolution, out RunUpgradeDefinition passive) ||
                     !seenPassiveIds.Add(passive.Id))
                 {
@@ -5919,7 +5703,7 @@ namespace Deucarian.TemplateGameSurvivors
                 candidates.Add(passive);
             }
 
-            RunUpgradeCatalog passiveCatalog = CreateWeightedDraftCatalog(candidates, profile);
+            RunUpgradeCatalog passiveCatalog = DraftRarity.CreateWeightedDraftCatalog(candidates, profile);
             if (passiveCatalog == null || passiveCatalog.Definitions.Count == 0)
             {
                 return false;
@@ -5927,7 +5711,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             RunUpgradeDraft lockDraft = RunUpgradeDraftService.Generate(
                 passiveCatalog,
-                _upgradeState,
+                RunBuild.State,
                 new RunUpgradeDraftRequest(
                     1,
                     ResolveDraftSeed(SurvivorsRewardSelectionKind.LevelUp) + EvolutionPrimerPassiveDraftLockSeedSalt,
@@ -5947,7 +5731,7 @@ namespace Deucarian.TemplateGameSurvivors
             out RunUpgradeId passiveLock)
         {
             passiveLock = default;
-            if (_upgradeCatalog == null ||
+            if (RunBuild.Catalog == null ||
                 ActivePassiveCount > 0 ||
                 ActivePassiveCount >= MaxPassiveSlots ||
                 CurrentTuning.DraftChoiceCount <= 0)
@@ -5955,17 +5739,17 @@ namespace Deucarian.TemplateGameSurvivors
                 return false;
             }
 
-            var candidates = new List<RunUpgradeDefinition>(_upgradeCatalog.Definitions.Count);
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            var candidates = new List<RunUpgradeDefinition>(RunBuild.Catalog.Definitions.Count);
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
                 if (definition == null ||
                     definition.Rarity > RunUpgradeRarity.Uncommon ||
                     !IsUpgradeEligibleForCurrentBuild(definition) ||
                     !TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata) ||
                     metadata.Category != SurvivorsRunUpgradeCategory.Passive ||
                     !metadata.UsesPassiveSlot ||
-                    _upgradeState.GetRank(definition.Id) > 0)
+                    RunBuild.State.GetRank(definition.Id) > 0)
                 {
                     continue;
                 }
@@ -5973,7 +5757,7 @@ namespace Deucarian.TemplateGameSurvivors
                 candidates.Add(definition);
             }
 
-            RunUpgradeCatalog passiveCatalog = CreateWeightedDraftCatalog(candidates, profile);
+            RunUpgradeCatalog passiveCatalog = DraftRarity.CreateWeightedDraftCatalog(candidates, profile);
             if (passiveCatalog == null || passiveCatalog.Definitions.Count == 0)
             {
                 return false;
@@ -5981,7 +5765,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             RunUpgradeDraft lockDraft = RunUpgradeDraftService.Generate(
                 passiveCatalog,
-                _upgradeState,
+                RunBuild.State,
                 new RunUpgradeDraftRequest(
                     1,
                     ResolveDraftSeed(SurvivorsRewardSelectionKind.LevelUp) + EarlyPassiveDraftLockSeedSalt,
@@ -6033,15 +5817,15 @@ namespace Deucarian.TemplateGameSurvivors
 
         private IReadOnlyList<RunUpgradeId> CreateEligibleEvolutionChoiceLocks(int maxCount)
         {
-            if (_upgradeCatalog == null || maxCount <= 0)
+            if (RunBuild.Catalog == null || maxCount <= 0)
             {
                 return Array.Empty<RunUpgradeId>();
             }
 
-            var locks = new List<RunUpgradeId>(Mathf.Min(maxCount, _upgradeCatalog.Definitions.Count));
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count && locks.Count < maxCount; i++)
+            var locks = new List<RunUpgradeId>(Mathf.Min(maxCount, RunBuild.Catalog.Definitions.Count));
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count && locks.Count < maxCount; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
                 if (definition != null && IsEvolutionUpgrade(definition) && IsUpgradeEligibleForCurrentBuild(definition))
                 {
                     locks.Add(definition.Id);
@@ -6098,7 +5882,7 @@ namespace Deucarian.TemplateGameSurvivors
                 : SurvivorsRewardSelectionKind.EliteUpgrade;
             RunUpgradeDraft lockDraft = RunUpgradeDraftService.Generate(
                 highRarityCatalog,
-                _upgradeState,
+                RunBuild.State,
                 new RunUpgradeDraftRequest(
                     1,
                     ResolveDraftSeed(selectionKind) + RewardDraftRarityLockSeedSalt,
@@ -6139,24 +5923,24 @@ namespace Deucarian.TemplateGameSurvivors
         {
             passive = null;
             if (evolution == null ||
-                _upgradeState == null ||
+                RunBuild.State == null ||
                 !TryGetUpgradeMetadata(evolution.Id.Value, out SurvivorsRunUpgradeMetadata evolutionMetadata) ||
                 !evolutionMetadata.IsEvolution ||
                 string.IsNullOrWhiteSpace(evolutionMetadata.RequiredUpgradeId) ||
                 string.IsNullOrWhiteSpace(evolutionMetadata.RequiredPassiveUpgradeId) ||
-                _upgradeState.GetRank(evolution.Id) > 0)
+                RunBuild.State.GetRank(evolution.Id) > 0)
             {
                 return false;
             }
 
             int requiredRank = ResolveRequiredUpgradeRank(evolutionMetadata);
-            if (_upgradeState.GetRank(new RunUpgradeId(evolutionMetadata.RequiredUpgradeId)) < requiredRank)
+            if (RunBuild.State.GetRank(new RunUpgradeId(evolutionMetadata.RequiredUpgradeId)) < requiredRank)
             {
                 return false;
             }
 
             var requiredPassiveId = new RunUpgradeId(evolutionMetadata.RequiredPassiveUpgradeId);
-            if (_upgradeState.GetRank(requiredPassiveId) > 0 ||
+            if (RunBuild.State.GetRank(requiredPassiveId) > 0 ||
                 !TryGetRunUpgrade(evolutionMetadata.RequiredPassiveUpgradeId, out passive) ||
                 !IsUpgradeEligibleForCurrentBuild(passive) ||
                 !TryGetUpgradeMetadata(passive.Id.Value, out SurvivorsRunUpgradeMetadata passiveMetadata) ||
@@ -6207,7 +5991,7 @@ namespace Deucarian.TemplateGameSurvivors
             switch (selectionKind)
             {
                 case SurvivorsRewardSelectionKind.LevelUp:
-                    DraftRarityProfile normalProfile = ResolveNormalDraftRarityProfile();
+                    DraftRarityProfile normalProfile = DraftRarity.ResolveNormalDraftRarityProfile(Level);
                     draftCatalog = CreateEligibleDraftCatalog(normalProfile);
                     if (resolvedLocks == null || resolvedLocks.Count == 0)
                     {
@@ -6239,7 +6023,7 @@ namespace Deucarian.TemplateGameSurvivors
 
             draft = RunUpgradeDraftService.Generate(
                 draftCatalog,
-                _upgradeState,
+                RunBuild.State,
                 new RunUpgradeDraftRequest(
                     choiceCount,
                     ResolveDraftSeed(selectionKind),
@@ -6273,44 +6057,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             return CurrentTuning.RunSeed + Level + SelectedUpgradeCount + MinibossKilledCount + (BossKilledCount * 11) + seedSalt;
-        }
-
-        private bool TryGetRunUpgrade(string upgradeId, out RunUpgradeDefinition definition)
-        {
-            definition = null;
-            return _upgradeCatalog != null &&
-                !string.IsNullOrWhiteSpace(upgradeId) &&
-                _upgradeCatalog.TryGet(new RunUpgradeId(upgradeId), out definition);
-        }
-
-        private bool TryGetUpgradeMetadata(string upgradeId, out SurvivorsRunUpgradeMetadata metadata)
-        {
-            metadata = null;
-            return !string.IsNullOrWhiteSpace(upgradeId) && _upgradeMetadataById.TryGetValue(upgradeId, out metadata);
-        }
-
-        private string ResolveUpgradeDisplayName(RunUpgradeId upgradeId)
-        {
-            return TryGetUpgradeMetadata(upgradeId.Value, out SurvivorsRunUpgradeMetadata metadata) &&
-                !string.IsNullOrWhiteSpace(metadata.DisplayName)
-                    ? metadata.DisplayName
-                    : BasicSurvivorsGame.GetUpgradeDisplayName(upgradeId);
-        }
-
-        private int ResolveRequiredUpgradeRank(SurvivorsRunUpgradeMetadata metadata)
-        {
-            if (metadata == null)
-            {
-                return 1;
-            }
-
-            int requiredRank = Mathf.Max(1, metadata.RequiredUpgradeRank);
-            if (metadata.IsEvolution)
-            {
-                requiredRank = Mathf.Max(1, requiredRank - Mathf.Max(0, CurrentTuning.EvolutionRequiredRankReduction));
-            }
-
-            return requiredRank;
         }
 
         private bool CanRerollCurrentDraft()
@@ -6348,115 +6094,6 @@ namespace Deucarian.TemplateGameSurvivors
         {
             return selectionKind == SurvivorsRewardSelectionKind.EliteUpgrade ||
                 selectionKind == SurvivorsRewardSelectionKind.BossUpgrade;
-        }
-
-        private bool IsUpgradeEligibleForCurrentBuild(RunUpgradeDefinition upgrade)
-        {
-            if (upgrade == null || _upgradeCatalog == null || _upgradeState == null)
-            {
-                return false;
-            }
-
-            if (RunUpgradeDraftService.GetAvailability(_upgradeCatalog, _upgradeState, upgrade) != RunUpgradeSelectionStatus.Selected)
-            {
-                return false;
-            }
-
-            if (!TryGetUpgradeMetadata(upgrade.Id.Value, out SurvivorsRunUpgradeMetadata metadata))
-            {
-                return true;
-            }
-
-            if (metadata.UsesPassiveSlot && _upgradeState.GetRank(upgrade.Id) <= 0 && ActivePassiveCount >= MaxPassiveSlots)
-            {
-                return false;
-            }
-
-            if (metadata.UsesWeaponSlot && _upgradeState.GetRank(upgrade.Id) <= 0)
-            {
-                if (ActiveWeaponCount >= MaxWeaponSlots)
-                {
-                    return false;
-                }
-
-                if (!string.IsNullOrWhiteSpace(metadata.AffectedContentId) && HasWeaponInLoadoutForTest(metadata.AffectedContentId))
-                {
-                    return false;
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(metadata.RequiredOwnedWeaponId) && !HasWeaponInLoadoutForTest(metadata.RequiredOwnedWeaponId))
-            {
-                return false;
-            }
-
-            if (!string.IsNullOrWhiteSpace(metadata.RequiredUpgradeId))
-            {
-                int requiredRank = ResolveRequiredUpgradeRank(metadata);
-                if (_upgradeState.GetRank(new RunUpgradeId(metadata.RequiredUpgradeId)) < requiredRank)
-                {
-                    return false;
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(metadata.RequiredPassiveUpgradeId) &&
-                _upgradeState.GetRank(new RunUpgradeId(metadata.RequiredPassiveUpgradeId)) <= 0)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        private SurvivorsRunUpgradeCategory ResolveCurrentUpgradeCategory(RunUpgradeDefinition upgrade)
-        {
-            if (upgrade == null || !TryGetUpgradeMetadata(upgrade.Id.Value, out SurvivorsRunUpgradeMetadata metadata))
-            {
-                return SurvivorsRunUpgradeCategory.WeaponUpgrade;
-            }
-
-            if (metadata.Category == SurvivorsRunUpgradeCategory.Passive && _upgradeState.GetRank(upgrade.Id) > 0)
-            {
-                return SurvivorsRunUpgradeCategory.PassiveUpgrade;
-            }
-
-            if (metadata.Category == SurvivorsRunUpgradeCategory.Weapon && _upgradeState.GetRank(upgrade.Id) > 0)
-            {
-                return SurvivorsRunUpgradeCategory.WeaponUpgrade;
-            }
-
-            return metadata.Category;
-        }
-
-        private void RecordRunBuildSelection(RunUpgradeDefinition upgrade)
-        {
-            if (upgrade == null || !TryGetUpgradeMetadata(upgrade.Id.Value, out SurvivorsRunUpgradeMetadata metadata))
-            {
-                return;
-            }
-
-            if (metadata.UsesPassiveSlot)
-            {
-                bool addedPassive = _ownedPassiveUpgradeIds.Add(upgrade.Id.Value);
-                if (addedPassive)
-                {
-                    TryTriggerPassiveLoadoutSurge(upgrade);
-                }
-            }
-
-            if (metadata.UsesWeaponSlot)
-            {
-                TryAddWeaponToLoadout(metadata.AffectedContentId);
-            }
-
-            if (metadata.IsEvolution)
-            {
-                RecordMetricTime(ref _firstEvolutionAcquiredTimeSeconds);
-                _ownedEvolutionUpgradeIds.Add(upgrade.Id.Value);
-                WeaponEvolutionFeedbackCount++;
-                TriggerWeaponEvolutionSurge(upgrade);
-                TriggerEvolutionChainSurge(upgrade);
-            }
         }
 
         private void TriggerWeaponEvolutionSurge(RunUpgradeDefinition upgrade)
@@ -6693,21 +6330,21 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordNewlyEligibleEvolutionFeedback()
         {
-            if (_upgradeCatalog == null)
+            if (RunBuild.Catalog == null)
             {
                 return;
             }
 
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
                 if (definition == null || !IsEvolutionUpgrade(definition))
                 {
                     continue;
                 }
 
                 string upgradeId = definition.Id.Value;
-                if (_ownedEvolutionUpgradeIds.Contains(upgradeId) || _announcedEvolutionReadyUpgradeIds.Contains(upgradeId))
+                if (RunBuild.HasEvolution(upgradeId) || _announcedEvolutionReadyUpgradeIds.Contains(upgradeId))
                 {
                     continue;
                 }
@@ -6747,25 +6384,6 @@ namespace Deucarian.TemplateGameSurvivors
             EvolutionReadyFeedbackCount++;
             LastEvolutionReadyFeedbackLabel = _evolutionReadyBanner.Label;
             PlayFeedback(_levelUpPulse, PlayerPosition, 36, _levelUpClip);
-        }
-
-        private bool IsUpgradeAllowedForSelectedClass(string upgradeId)
-        {
-            if (string.IsNullOrWhiteSpace(upgradeId) || _upgradeClassGates == null)
-            {
-                return true;
-            }
-
-            for (int i = 0; i < _upgradeClassGates.Count; i++)
-            {
-                SurvivorsClassUpgradeGateDefinition gate = _upgradeClassGates[i];
-                if (gate != null && string.Equals(gate.UpgradeId, upgradeId, StringComparison.Ordinal))
-                {
-                    return gate.IsAvailableToClass(_selectedClass);
-                }
-            }
-
-            return true;
         }
 
         private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> ResolveStartingWeaponDefinitions(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> allDefinitions)
@@ -7074,8 +6692,8 @@ namespace Deucarian.TemplateGameSurvivors
             _lastRunSummaryLines.Add($"Meta bank: {MetaBloodShards} {CurrencyDisplayName}, {LifetimeLegacyExperience} {ProgressionDisplayName}");
             _lastRunSummaryLines.Add($"Damage taken: {DamageTakenThisRun:0.#}   Final health: {CurrentHealth:0.#}/{MaxHealth:0.#}");
             _lastRunSummaryLines.Add($"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}");
-            _lastRunSummaryLines.Add($"Passives {ActivePassiveCount}/{MaxPassiveSlots}: {FormatRunSummaryUpgradeList(_ownedPassiveUpgradeIds, includeRanks: true)}");
-            _lastRunSummaryLines.Add($"Evolutions {EvolvedWeaponCount}: {FormatRunSummaryUpgradeList(_ownedEvolutionUpgradeIds, includeRanks: false)}");
+            _lastRunSummaryLines.Add($"Passives {ActivePassiveCount}/{MaxPassiveSlots}: {FormatRunSummaryUpgradeList(RunBuild.PassiveIds, includeRanks: true)}");
+            _lastRunSummaryLines.Add($"Evolutions {EvolvedWeaponCount}: {FormatRunSummaryUpgradeList(RunBuild.EvolutionIds, includeRanks: false)}");
             _lastRunSummaryLines.Add($"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}");
             _lastRunSummaryLines.Add($"Pickup build: radius {CurrentPickupAttractRange:0.#}, magnet range {CurrentPickupAttractRange:0.#}, pull speed {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, recalls {MagnetRecallCount}");
             _lastRunSummaryLines.Add("Top weapon by damage: not tracked yet");
@@ -8771,7 +8389,7 @@ namespace Deucarian.TemplateGameSurvivors
             Color fallbackAccent = isEvolution
                 ? new Color(1f, 0.38f, 0.56f)
                 : ResolveRarityAccentColor(choice.Rarity);
-            int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(choice.Id);
+            int currentRank = RunBuild.State == null ? 0 : RunBuild.State.GetRank(choice.Id);
             int nextRank = Mathf.Min(choice.MaxRank, currentRank + 1);
             return new SurvivorsDraftCard
             {
@@ -9416,26 +9034,26 @@ namespace Deucarian.TemplateGameSurvivors
             return string.Join(", ", labels);
         }
 
-        private string FormatRunSummaryUpgradeList(HashSet<string> upgradeIds, bool includeRanks)
+        private string FormatRunSummaryUpgradeList(IReadOnlyCollection<string> upgradeIds, bool includeRanks)
         {
-            if (upgradeIds == null || upgradeIds.Count == 0 || _upgradeCatalog == null)
+            if (upgradeIds == null || upgradeIds.Count == 0 || RunBuild.Catalog == null)
             {
                 return "None yet";
             }
 
             var labels = new List<string>(upgradeIds.Count);
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
-                if (definition == null || !upgradeIds.Contains(definition.Id.Value))
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
+                if (definition == null || !System.Linq.Enumerable.Contains(upgradeIds, definition.Id.Value, StringComparer.Ordinal))
                 {
                     continue;
                 }
 
                 string label = ResolveUpgradeDisplayName(definition.Id);
-                if (includeRanks && _upgradeState != null)
+                if (includeRanks && RunBuild.State != null)
                 {
-                    int rank = Mathf.Max(1, _upgradeState.GetRank(definition.Id));
+                    int rank = Mathf.Max(1, RunBuild.State.GetRank(definition.Id));
                     label += " " + rank.ToString() + "/" + definition.MaxRank.ToString();
                 }
 
@@ -9447,16 +9065,16 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void AppendSelectedUpgradeRankLines(List<string> lines)
         {
-            if (lines == null || _upgradeCatalog == null || _upgradeState == null)
+            if (lines == null || RunBuild.Catalog == null || RunBuild.State == null)
             {
                 return;
             }
 
             bool addedHeader = false;
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
-                int rank = definition == null ? 0 : _upgradeState.GetRank(definition.Id);
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
+                int rank = definition == null ? 0 : RunBuild.State.GetRank(definition.Id);
                 if (rank <= 0)
                 {
                     continue;
@@ -9497,7 +9115,7 @@ namespace Deucarian.TemplateGameSurvivors
             string prefix = index >= 0 ? $"{index + 1}. " : string.Empty;
             string name = ResolveUpgradeDisplayName(definition.Id);
             SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(definition);
-            int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(definition.Id);
+            int currentRank = RunBuild.State == null ? 0 : RunBuild.State.GetRank(definition.Id);
             int nextRank = Mathf.Min(definition.MaxRank, currentRank + 1);
             string description = TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
                 ? metadata.Description
@@ -9519,7 +9137,7 @@ namespace Deucarian.TemplateGameSurvivors
             string description = TryGetUpgradeMetadata(choice.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
                 ? metadata.Description
                 : name;
-            int currentRank = _upgradeState == null ? 0 : _upgradeState.GetRank(choice.Id);
+            int currentRank = RunBuild.State == null ? 0 : RunBuild.State.GetRank(choice.Id);
             int nextRank = Mathf.Min(choice.MaxRank, currentRank + 1);
             return $"{index + 1}. {choice.Rarity} {FormatUpgradeCategoryLabel(category)}: {name}\n{affected}  Rank {currentRank}->{nextRank}/{choice.MaxRank} - {description}";
         }
@@ -9989,15 +9607,15 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void AppendSelectedBuildRanks(Action<RunUpgradeDefinition, SurvivorsRunUpgradeMetadata, int> append)
         {
-            if (append == null || _upgradeCatalog == null || _upgradeState == null)
+            if (append == null || RunBuild.Catalog == null || RunBuild.State == null)
             {
                 return;
             }
 
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
-                int rank = definition == null ? 0 : _upgradeState.GetRank(definition.Id);
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
+                int rank = definition == null ? 0 : RunBuild.State.GetRank(definition.Id);
                 if (rank <= 0 || !TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata))
                 {
                     continue;
@@ -10018,14 +9636,14 @@ namespace Deucarian.TemplateGameSurvivors
         {
             displayName = string.Empty;
             upgradeId = default;
-            if (_upgradeCatalog == null)
+            if (RunBuild.Catalog == null)
             {
                 return false;
             }
 
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition definition = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
                 if (definition == null ||
                     !TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata) ||
                     metadata.Category != SurvivorsRunUpgradeCategory.Weapon ||
@@ -10117,14 +9735,14 @@ namespace Deucarian.TemplateGameSurvivors
 
         private string ResolveEvolutionGoalHudLabel()
         {
-            if (_upgradeCatalog == null)
+            if (RunBuild.Catalog == null)
             {
                 return string.Empty;
             }
 
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition evolution = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition evolution = RunBuild.Catalog.Definitions[i];
                 if (TryResolveEvolutionMissingPassive(evolution, out RunUpgradeDefinition passive))
                 {
                     return $"Goal {ResolveUpgradeDisplayName(passive.Id)} -> {ResolveUpgradeDisplayName(evolution.Id)}";
@@ -10136,14 +9754,14 @@ namespace Deucarian.TemplateGameSurvivors
 
         private string ResolveEvolutionReadyHudLabel()
         {
-            if (_upgradeCatalog == null)
+            if (RunBuild.Catalog == null)
             {
                 return string.Empty;
             }
 
-            for (int i = 0; i < _upgradeCatalog.Definitions.Count; i++)
+            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
             {
-                RunUpgradeDefinition evolution = _upgradeCatalog.Definitions[i];
+                RunUpgradeDefinition evolution = RunBuild.Catalog.Definitions[i];
                 if (evolution != null && IsEvolutionUpgrade(evolution) && IsUpgradeEligibleForCurrentBuild(evolution))
                 {
                     return $"Ready {ResolveUpgradeDisplayName(evolution.Id)} -> elite/boss reward";
