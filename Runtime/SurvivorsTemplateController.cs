@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -348,6 +348,49 @@ namespace Deucarian.TemplateGameSurvivors
             new SurvivorsSurgeHudState(IsEvolutionChainSurgeActive, EvolutionChainSurgeRemainingSeconds, 0),
             new SurvivorsSurgeHudState(IsEndlessSurgeActive, EndlessSurgeRemainingSeconds, EndlessSurgeTier));
 
+        private void SpawnMajorRewardPickupCache(Vector3 position, SurvivorsEnemyRole role, float radius) => MajorRewardPickupCache.SpawnMajorRewardPickupCache(position, role, radius);
+
+        private bool StartMajorRewardCacheAttraction(SurvivorsPickupActor pickup) => MajorRewardPickupCache.StartMajorRewardCacheAttraction(pickup);
+
+        private int StartMagnetRecall() => PickupCollection.StartMagnetRecall();
+
+        private float ResolvePickupMagnetPulseIntervalSeconds() => PickupCollection.ResolvePickupMagnetPulseIntervalSeconds();
+
+        private void TickPickupMagnetPulse(float deltaTime) => PickupCollection.TickPickupMagnetPulse(deltaTime);
+
+        internal void CollectPickup(SurvivorsPickupActor pickup) => PickupCollection.CollectPickup(pickup);
+
+        internal void RecordPickupAttractionFeedback(SurvivorsPickupKind kind, Vector3 position) => PickupCollection.RecordPickupAttractionFeedback(kind, position);
+
+        private SurvivorsMajorRewardPickupCache _majorRewardPickupCache;
+        private SurvivorsMajorRewardPickupCache MajorRewardPickupCache => _majorRewardPickupCache ?? (_majorRewardPickupCache = new SurvivorsMajorRewardPickupCache(this));
+        private SurvivorsPickupCollection _pickupCollection;
+        private SurvivorsPickupCollection PickupCollection => _pickupCollection ?? (_pickupCollection = new SurvivorsPickupCollection(_pickups, this));
+        SurvivorsTemplateTuning ISurvivorsMajorRewardPickupCachePort.Tuning => CurrentTuning;
+        int ISurvivorsMajorRewardPickupCachePort.RunEscalationLevel => RunEscalationLevel;
+        bool ISurvivorsMajorRewardPickupCachePort.IsMajorRewardRole(SurvivorsEnemyRole role) => IsMajorRewardRole(role);
+        SurvivorsPickupActor ISurvivorsMajorRewardPickupCachePort.SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount) => SpawnPickup(kind, position, amount);
+        string ISurvivorsMajorRewardPickupCachePort.ResolveMajorRewardDropLabel(SurvivorsEnemyRole role) => ResolveMajorRewardDropLabel(role);
+        Color ISurvivorsMajorRewardPickupCachePort.ResolveMajorRewardDropColor(SurvivorsEnemyRole role) => ResolveMajorRewardDropColor(role);
+        void ISurvivorsMajorRewardPickupCachePort.RecordStreakRewardFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
+        SurvivorsTemplateTuning ISurvivorsPickupCollectionPort.Tuning => CurrentTuning;
+        float ISurvivorsPickupCollectionPort.PickupMagnetPulseIntervalReductionBonus => PickupMagnetPulseIntervalReductionBonus;
+        Vector3 ISurvivorsPickupCollectionPort.PlayerPosition => PlayerPosition;
+        void ISurvivorsPickupCollectionPort.RecordFirstExperiencePickupTime() => RecordMetricTime(ref _firstExperiencePickupTimeSeconds);
+        int ISurvivorsPickupCollectionPort.GainExperience(int amount) => GainExperience(amount);
+        void ISurvivorsPickupCollectionPort.RecordExperienceCombo(int gained) => RecordExperienceCombo(gained);
+        void ISurvivorsPickupCollectionPort.RestoreHealthFromPickup(int amount) => PlayerVitals.RestoreHealthFromPickup(amount);
+        void ISurvivorsPickupCollectionPort.AddBloodShards(int amount) => RunRewards.AddBloodShards(amount);
+        void ISurvivorsPickupCollectionPort.PlayCollectionFeedback(Vector3 position, SurvivorsPickupKind kind, int burstCount)
+        {
+            string audioEventId = kind == SurvivorsPickupKind.Experience ? AudioEventXpPickup : AudioEventUiSelect;
+            PlayFeedback(_pickupPulse, position, burstCount, _pickupClip, audioEventId, 0.12f);
+        }
+        void ISurvivorsPickupCollectionPort.PlayAttractionFeedback(Vector3 position) => PlayFeedback(_pickupPulse, position, 6, null);
+        void ISurvivorsPickupCollectionPort.PlayMagnetRecallFeedback(Vector3 position, int burstCount) => PlayFeedback(_pickupPulse, position, burstCount, _pickupClip, AudioEventMagnetPulse, 0.4f);
+        void ISurvivorsPickupCollectionPort.RecordStreakRewardFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
+        void ISurvivorsPickupCollectionPort.DespawnCompletedPickup(SpawnInstanceId id) => _spawnService?.Despawn(id, DespawnReason.Completed);
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -390,7 +433,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const float InfernoHeartBurnDurationMultiplier = 1.45f;
         private const float EnemyHitFlashSeconds = 0.13f;
         private const float BaseDeathNovaRadius = 1.65f;
-        private const float MajorRewardPickupCacheRadiusPadding = 0.55f;
         private const int ResultMetaUpgradeOptionCount = 3;
         private const int ResultClassOptionCount = 4;
 
@@ -982,8 +1024,6 @@ namespace Deucarian.TemplateGameSurvivors
         private int _levelAtThreeMinutes;
         private int _levelAtFourMinutes;
         private int _levelAtFiveMinutes;
-        private float _pickupMagnetPulseTimer;
-        private string _lastMagnetPulseFeedbackLabel = string.Empty;
         private SurvivorsThreatHudModel _threatHud;
         private SurvivorsThreatHudModel ThreatHud => _threatHud ??
             (_threatHud = new SurvivorsThreatHudModel(new SurvivorsEnemyHudSource(_enemies)));
@@ -1113,10 +1153,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int EnemyRangedAttackDodgeExperienceGemDropCount { get; private set; }
         public string LastEnemyRangedAttackDodgeFeedbackLabel { get; private set; } = string.Empty;
         public int MajorRewardDropFeedbackCount => RewardDrops.MajorRewardDropFeedbackCount;
-        public int MajorRewardCacheDropCount { get; private set; }
-        public int MajorRewardCacheExperienceGemDropCount { get; private set; }
-        public int MajorRewardCacheSpecialDropCount { get; private set; }
-        public int MajorRewardCacheAttractedPickupCount { get; private set; }
+        public int MajorRewardCacheDropCount => MajorRewardPickupCache.MajorRewardCacheDropCount;
+        public int MajorRewardCacheExperienceGemDropCount => MajorRewardPickupCache.MajorRewardCacheExperienceGemDropCount;
+        public int MajorRewardCacheSpecialDropCount => MajorRewardPickupCache.MajorRewardCacheSpecialDropCount;
+        public int MajorRewardCacheAttractedPickupCount => MajorRewardPickupCache.MajorRewardCacheAttractedPickupCount;
         public int WeaponEvolutionFeedbackCount => RunBuild.WeaponEvolutionFeedbackCount;
         public int WeaponEvolutionSurgeCount => BuildSurges.WeaponEvolutionSurgeCount;
         public int WeaponEvolutionSurgeHitCount => BuildSurges.WeaponEvolutionSurgeHitCount;
@@ -1142,7 +1182,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int IncomingThreatTelegraphEffectCount => ThreatTelegraphs.IncomingThreatTelegraphEffectCount;
         public string LastMajorThreatSlamFeedbackLabel { get; private set; } = string.Empty;
         public string LastIncomingThreatTelegraphLabel => ThreatTelegraphs.LastIncomingThreatTelegraphLabel;
-        public int ExperiencePickupFeedbackCount { get; private set; }
+        public int ExperiencePickupFeedbackCount => PickupCollection.ExperiencePickupFeedbackCount;
         public int ExperienceComboFeedbackCount => ExperienceRhythm.ExperienceComboFeedbackCount;
         public int GemRushActivationCount => ExperienceRhythm.GemRushActivationCount;
         public string LastExperienceComboFeedbackLabel => ExperienceRhythm.LastExperienceComboFeedbackLabel;
@@ -1153,19 +1193,19 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastEvolutionReadyFeedbackLabel { get; private set; } = string.Empty;
         public int HealthPickupCollectedCount => PlayerVitals.HealthPickupCollectedCount;
         public float HealthRestoredByPickups => PlayerVitals.HealthRestoredByPickups;
-        public int BloodShardPickupCollectedCount { get; private set; }
-        public int BloodShardsCollectedFromPickups { get; private set; }
-        public int PickupAttractionFeedbackCount { get; private set; }
-        public int MagnetRecallFeedbackCount { get; private set; }
+        public int BloodShardPickupCollectedCount => PickupCollection.BloodShardPickupCollectedCount;
+        public int BloodShardsCollectedFromPickups => PickupCollection.BloodShardsCollectedFromPickups;
+        public int PickupAttractionFeedbackCount => PickupCollection.PickupAttractionFeedbackCount;
+        public int MagnetRecallFeedbackCount => PickupCollection.MagnetRecallFeedbackCount;
         public int RewardCardPresentationCount { get; private set; }
         public int RewardSelectionFeedbackCount { get; private set; }
         public string LastRewardCardPresentationLabel { get; private set; } = string.Empty;
         public string LastRewardSelectionFeedbackLabel { get; private set; } = string.Empty;
         public string LastMajorRewardDropFeedbackLabel => RewardDrops.LastMajorRewardDropFeedbackLabel;
-        public string LastMajorRewardCacheFeedbackLabel { get; private set; } = string.Empty;
+        public string LastMajorRewardCacheFeedbackLabel => MajorRewardPickupCache.LastMajorRewardCacheFeedbackLabel;
         public int ExperienceCollected => _experienceProgression.ExperienceCollected;
         public int SelectedUpgradeCount => DraftSession.SelectedUpgradeCount;
-        public int MagnetRecallCount { get; private set; }
+        public int MagnetRecallCount => PickupCollection.MagnetRecallCount;
         public int RoamingCacheDropCount => RoamingCaches.RoamingCacheDropCount;
         public int RoamingCacheExperienceGemDropCount => RoamingCaches.RoamingCacheExperienceGemDropCount;
         public int RoamingCacheMagnetDropCount => RoamingCaches.RoamingCacheMagnetDropCount;
@@ -1376,23 +1416,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveOffscreenThreatMarkerCount => CountOffscreenMajorThreatMarkers();
         public string CurrentOffscreenThreatMarkerLabel => ResolveFirstOffscreenMajorThreatMarkerLabel();
         public string LastOffscreenThreatMarkerLabel => ThreatHud.LastMarkerLabel;
-        public int ActiveMajorRewardCacheAttractedPickupCount
-        {
-            get
-            {
-                int count = 0;
-                for (int i = 0; i < _pickups.Count; i++)
-                {
-                    SurvivorsPickupActor pickup = _pickups[i];
-                    if (pickup != null && pickup.IsRewardCacheAttractionActive)
-                    {
-                        count++;
-                    }
-                }
-
-                return count;
-            }
-        }
+        public int ActiveMajorRewardCacheAttractedPickupCount => PickupCollection.ActiveMajorRewardCacheAttractedPickupCount;
 
         public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
         public int ActivePassiveCount => RunBuild.PassiveIds.Count;
@@ -1426,8 +1450,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int LevelAtThreeMinutes => _levelAtThreeMinutes;
         public int LevelAtFourMinutes => _levelAtFourMinutes;
         public int LevelAtFiveMinutes => _levelAtFiveMinutes;
-        public int MagnetPulseActivationCount { get; private set; }
-        public string LastMagnetPulseFeedbackLabel => _lastMagnetPulseFeedbackLabel;
+        public int MagnetPulseActivationCount => PickupCollection.MagnetPulseActivationCount;
+        public string LastMagnetPulseFeedbackLabel => PickupCollection.LastMagnetPulseFeedbackLabel;
         public float CriticalChanceNormalized => Mathf.Clamp01(CriticalChanceBonus);
         public float CriticalDamageMultiplier => Mathf.Clamp(1.5f + CriticalDamageMultiplierBonus, 1f, 100f);
         public float DeathNovaDamage => Mathf.Max(0f, DeathNovaDamageBonus);
@@ -1584,13 +1608,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         void ISurvivorsUpgradeEffectSink.RestoreBarrier(float amount) => PlayerVitals.RestoreBarrier(amount);
 
-        void ISurvivorsUpgradeEffectSink.ScheduleMagnetPulse()
-        {
-            if (_pickupMagnetPulseTimer <= 0f)
-            {
-                _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
-            }
-        }
+        void ISurvivorsUpgradeEffectSink.ScheduleMagnetPulse() => PickupCollection.ScheduleMagnetPulse();
 
         private void Awake()
         {
@@ -2136,10 +2154,7 @@ namespace Deucarian.TemplateGameSurvivors
             EnemyRangedAttackDodgeFeedbackCount = 0;
             EnemyRangedAttackDodgeExperienceGemDropCount = 0;
             LastEnemyRangedAttackDodgeFeedbackLabel = string.Empty;
-            MajorRewardCacheDropCount = 0;
-            MajorRewardCacheExperienceGemDropCount = 0;
-            MajorRewardCacheSpecialDropCount = 0;
-            MajorRewardCacheAttractedPickupCount = 0;
+            MajorRewardPickupCache.ResetDiagnostics();
             MajorThreatEnrageCount = 0;
             MajorThreatEnrageSupportSpawnCount = 0;
             LastMajorThreatEnrageFeedbackLabel = string.Empty;
@@ -2147,17 +2162,11 @@ namespace Deucarian.TemplateGameSurvivors
             MajorThreatSlamCastCount = 0;
             MajorThreatSlamHitCount = 0;
             LastMajorThreatSlamFeedbackLabel = string.Empty;
-            ExperiencePickupFeedbackCount = 0;
-            BloodShardPickupCollectedCount = 0;
-            BloodShardsCollectedFromPickups = 0;
-            PickupAttractionFeedbackCount = 0;
-            MagnetRecallFeedbackCount = 0;
+            PickupCollection.ResetDiagnostics();
             RewardCardPresentationCount = 0;
             RewardSelectionFeedbackCount = 0;
             LastRewardCardPresentationLabel = string.Empty;
             LastRewardSelectionFeedbackLabel = string.Empty;
-            LastMajorRewardCacheFeedbackLabel = string.Empty;
-            MagnetRecallCount = 0;
             ExplorationFeedback.Reset();
             RoamingCaches.Reset();
             ShrineTrials.Reset();
@@ -2175,8 +2184,6 @@ namespace Deucarian.TemplateGameSurvivors
             _experienceProgression.Reset();
             PlayerVitals.SetBarrier(0f);
             _enemyNavigation?.ResetDiagnostics();
-            MagnetPulseActivationCount = 0;
-            _lastMagnetPulseFeedbackLabel = string.Empty;
             ThreatHud.Reset();
             GameplayEnemySpawnSafetyCheckCountForTest = 0;
             GameplaySpawnInsideCameraViewViolationCountForTest = 0;
@@ -2193,7 +2200,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardBanner.Reset();
             _streakRewardBanner.Reset();
             SwarmSpawning.Reset();
-            _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
+            PickupCollection.ResetPulseSchedule();
             Traversal.Reset();
             EndlessSurges.Reset();
             _announcedEvolutionGoalUpgradeIds.Clear();
@@ -3261,72 +3268,8 @@ namespace Deucarian.TemplateGameSurvivors
             StartMagnetRecall();
         }
 
-        private float ResolvePickupMagnetPulseIntervalSeconds()
-        {
-            if (PickupMagnetPulseIntervalReductionBonus <= 0f)
-            {
-                return -1f;
-            }
 
-            float baseInterval = Mathf.Max(1f, CurrentTuning.PickupMagnetPulseBaseIntervalSeconds);
-            float minimum = Mathf.Max(1f, CurrentTuning.PickupMagnetPulseMinimumIntervalSeconds);
-            return Mathf.Max(minimum, baseInterval - PickupMagnetPulseIntervalReductionBonus);
-        }
 
-        private void TickPickupMagnetPulse(float deltaTime)
-        {
-            float interval = ResolvePickupMagnetPulseIntervalSeconds();
-            if (interval <= 0f || _pickups.Count == 0)
-            {
-                _pickupMagnetPulseTimer = interval;
-                return;
-            }
-
-            if (_pickupMagnetPulseTimer <= 0f)
-            {
-                _pickupMagnetPulseTimer = interval;
-            }
-
-            _pickupMagnetPulseTimer -= Mathf.Max(0f, deltaTime);
-            if (_pickupMagnetPulseTimer > 0f)
-            {
-                return;
-            }
-
-            _pickupMagnetPulseTimer = interval;
-            int recalled = StartMagnetRecall();
-            if (recalled <= 0)
-            {
-                return;
-            }
-
-            MagnetPulseActivationCount++;
-            _lastMagnetPulseFeedbackLabel = $"Vacuum Pulse: {recalled} XP gems pulled";
-            RecordStreakRewardFeedback(_lastMagnetPulseFeedbackLabel, new Color(0.42f, 0.88f, 1f));
-        }
-
-        private int StartMagnetRecall()
-        {
-            MagnetRecallCount++;
-            int recalled = 0;
-            for (int i = 0; i < _pickups.Count; i++)
-            {
-                SurvivorsPickupActor pickup = _pickups[i];
-                if (pickup != null && pickup.Kind == SurvivorsPickupKind.Experience)
-                {
-                    pickup.StartGlobalRecall(CurrentTuning.MagnetRecallSpeedMultiplier);
-                    recalled++;
-                }
-            }
-
-            if (recalled > 0)
-            {
-                MagnetRecallFeedbackCount++;
-                PlayFeedback(_pickupPulse, PlayerPosition, Mathf.Clamp(12 + recalled * 3, 18, 72), _pickupClip, AudioEventMagnetPulse, 0.4f);
-            }
-
-            return recalled;
-        }
 
         internal void ApplyDamageAugmentsToEnemy(SurvivorsEnemyActor enemy, DamageResult damage, string source)
         {
@@ -3550,75 +3493,9 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        internal void CollectPickup(SurvivorsPickupActor pickup)
-        {
-            if (pickup == null)
-            {
-                return;
-            }
 
-            if (pickup.Kind == SurvivorsPickupKind.Magnet)
-            {
-                TriggerMagnetRecall();
-            }
-            else if (pickup.Kind == SurvivorsPickupKind.Health)
-            {
-                PlayerVitals.RestoreHealthFromPickup(Mathf.Max(1, pickup.Amount));
-            }
-            else if (pickup.Kind == SurvivorsPickupKind.BloodShard)
-            {
-                CollectBloodShardPickup(Mathf.Max(1, pickup.Amount));
-            }
-            else
-            {
-                RecordMetricTime(ref _firstExperiencePickupTimeSeconds);
-                int gained = GainExperience(Mathf.Max(1, pickup.Amount));
-                RecordExperienceCombo(gained);
-                ExperiencePickupFeedbackCount++;
-            }
 
-            string audioEventId = pickup.Kind == SurvivorsPickupKind.Experience ? AudioEventXpPickup : AudioEventUiSelect;
-            PlayFeedback(_pickupPulse, pickup.transform.position, ResolvePickupFeedbackBurstCount(pickup.Kind), _pickupClip, audioEventId, 0.12f);
-            _pickups.Remove(pickup);
-            if (_spawnService != null && pickup.InstanceId.Value > 0)
-            {
-                _spawnService.Despawn(pickup.InstanceId, DespawnReason.Completed);
-            }
-        }
 
-        private void CollectBloodShardPickup(int amount)
-        {
-            int gained = Mathf.Max(1, amount);
-            RunRewards.AddBloodShards(gained);
-            BloodShardPickupCollectedCount++;
-            BloodShardsCollectedFromPickups += gained;
-        }
-
-        private static int ResolvePickupFeedbackBurstCount(SurvivorsPickupKind kind)
-        {
-            switch (kind)
-            {
-                case SurvivorsPickupKind.Magnet:
-                    return 28;
-                case SurvivorsPickupKind.Health:
-                    return 22;
-                case SurvivorsPickupKind.BloodShard:
-                    return 18;
-                default:
-                    return 10;
-            }
-        }
-
-        internal void RecordPickupAttractionFeedback(SurvivorsPickupKind kind, Vector3 position)
-        {
-            if (kind == SurvivorsPickupKind.Magnet)
-            {
-                return;
-            }
-
-            PickupAttractionFeedbackCount++;
-            PlayFeedback(_pickupPulse, position, 6, null);
-        }
 
         internal IReadOnlyList<SurvivorsEnemyActor> ActiveEnemies => _enemies;
 
@@ -4245,144 +4122,11 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void SpawnMajorRewardPickupCache(Vector3 position, SurvivorsEnemyRole role, float radius)
-        {
-            if (!IsMajorRewardRole(role))
-            {
-                return;
-            }
 
-            int gemCount = ResolveMajorRewardCacheExperienceGemCount(role);
-            int xpPerGem = ResolveMajorRewardCacheExperiencePerGem(role);
-            float cacheRadius = Mathf.Max(0.9f, radius + MajorRewardPickupCacheRadiusPadding);
-            int spawnedExperience = 0;
-            int attractedPickupCount = 0;
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.18f) / gemCount) * Mathf.PI * 2f;
-                float ringOffset = 0.18f * (i % 2);
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (cacheRadius + ringOffset);
-                SurvivorsPickupActor pickup = SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem);
-                if (pickup != null)
-                {
-                    spawnedExperience += xpPerGem;
-                    MajorRewardCacheExperienceGemDropCount++;
-                    if (StartMajorRewardCacheAttraction(pickup))
-                    {
-                        attractedPickupCount++;
-                    }
-                }
-            }
 
-            int specialDropCount = SpawnMajorRewardSpecialPickups(position, role, cacheRadius, out int attractedSpecialDropCount);
-            attractedPickupCount += attractedSpecialDropCount;
-            if (spawnedExperience <= 0 && specialDropCount <= 0)
-            {
-                return;
-            }
 
-            MajorRewardCacheDropCount++;
-            MajorRewardCacheSpecialDropCount += specialDropCount;
-            MajorRewardCacheAttractedPickupCount += attractedPickupCount;
-            string rewardLabel = ResolveMajorRewardDropLabel(role);
-            string specialLabel = specialDropCount > 0 ? $" + {specialDropCount} special" : string.Empty;
-            string pullLabel = attractedPickupCount > 0 ? $" pull x{attractedPickupCount}" : string.Empty;
-            string label = $"{rewardLabel}: Cache +{spawnedExperience} XP{specialLabel}{pullLabel}";
-            LastMajorRewardCacheFeedbackLabel = label;
-            RecordStreakRewardFeedback(label, ResolveMajorRewardDropColor(role));
-        }
 
-        private int ResolveMajorRewardCacheExperienceGemCount(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return 12;
-                case SurvivorsEnemyRole.Miniboss:
-                    return 8;
-                case SurvivorsEnemyRole.DreadElite:
-                    return 7;
-                default:
-                    return 5;
-            }
-        }
 
-        private int ResolveMajorRewardCacheExperiencePerGem(SurvivorsEnemyRole role)
-        {
-            float multiplier;
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    multiplier = 5.5f;
-                    break;
-                case SurvivorsEnemyRole.Miniboss:
-                    multiplier = 3.25f;
-                    break;
-                case SurvivorsEnemyRole.DreadElite:
-                    multiplier = 2.35f;
-                    break;
-                default:
-                    multiplier = 1.85f;
-                    break;
-            }
-
-            float escalationMultiplier = 1f + RunEscalationLevel * 0.1f;
-            return Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * multiplier * escalationMultiplier));
-        }
-
-        private int SpawnMajorRewardSpecialPickups(Vector3 position, SurvivorsEnemyRole role, float cacheRadius, out int attractedPickupCount)
-        {
-            attractedPickupCount = 0;
-            int specialDropCount = 0;
-            Vector3 magnetPosition = position + new Vector3(cacheRadius * 0.62f, 0f, -cacheRadius * 0.36f);
-            SurvivorsPickupActor magnet = SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1);
-            if (magnet != null)
-            {
-                specialDropCount++;
-                if (StartMajorRewardCacheAttraction(magnet))
-                {
-                    attractedPickupCount++;
-                }
-            }
-
-            int shardAmount = ResolveMajorRewardCacheBloodShardAmount(role);
-            if (shardAmount > 0)
-            {
-                Vector3 shardPosition = position + new Vector3(-cacheRadius * 0.58f, 0f, cacheRadius * 0.42f);
-                SurvivorsPickupActor shard = SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount);
-                if (shard != null)
-                {
-                    specialDropCount++;
-                    if (StartMajorRewardCacheAttraction(shard))
-                    {
-                        attractedPickupCount++;
-                    }
-                }
-            }
-
-            return specialDropCount;
-        }
-
-        private bool StartMajorRewardCacheAttraction(SurvivorsPickupActor pickup)
-        {
-            return pickup != null && pickup.StartRewardCacheAttraction(CurrentTuning.MajorRewardCacheAttractionSpeedMultiplier);
-        }
-
-        private int ResolveMajorRewardCacheBloodShardAmount(SurvivorsEnemyRole role)
-        {
-            int baseAmount = Mathf.Max(1, CurrentTuning.BloodShardPickupAmount);
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return baseAmount + 4;
-                case SurvivorsEnemyRole.Miniboss:
-                    return baseAmount + 2;
-                case SurvivorsEnemyRole.DreadElite:
-                    return baseAmount + 1;
-                default:
-                    return 0;
-            }
-        }
 
         private void RecordStreakRewardFeedback(string label, Color color)
         {
