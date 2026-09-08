@@ -141,6 +141,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Reward title and accent projection | `SurvivorsDraftHeader` | Live draft and theme reads with relic, empty, evolution and rarity precedence |
 
+| Serialized composition and compatibility bindings | `SurvivorsTemplateController and named partial declarations` | Original field initialization order, Unity messages, guarded public forwards and ordered owner setup/cleanup |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -261,4 +263,12 @@ Twenty-two cases preserve floating-point addition/read order, clamps, disabled s
 
 Seven cases preserve title mappings, late theme reads, draft replacement during observation and null/empty distinctions.
 
-This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
+A source-equivalence audit preserves all 1,620 retained members and all 137 retained field initializers in their original relative order; the existing public facade and six serialized fields remain compatible.
+
+## Component compatibility boundary
+
+The original component is now 396 lines and retains its script GUID, six serialized declarations and all owner-reference field initializers. Eighteen named partial declarations contain compatibility forwards, copied observations, Unity-null guards and explicit domain ports. Their names identify the bound responsibility; they do not introduce independent component instances or a second mutable state store. Every component source file is below 500 lines. The aggregate remains a large migration surface because existing public diagnostics, test entry points and actor callers remain source compatible.
+
+The component still orders run initialization, owner resets, class/profile resolution, world construction and final cleanup. These are composition decisions: gameplay timing, draft eligibility, combat, reward transactions, encounter membership, stat arithmetic and rendering policy live in the corresponding owners. The 37 removed private helpers and aliases had no callers. No public facade member was removed to meet a file limit.
+
+This completes the targeted controller responsibility inventory. It does not claim that every pre-existing source file in the package meets A9. BasicSurvivorsGame, authored-content/parser files, the weapon archetype runtime and other untouched oversized legacy files remain separate existing debt; the final package inventory records their exact current line counts. No unrelated balance/content extraction is implied by the component migration.
