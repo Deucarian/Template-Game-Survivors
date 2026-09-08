@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -1216,6 +1216,31 @@ namespace Deucarian.TemplateGameSurvivors
             return true;
         }
 
+        private SurvivorsRunMetricsReadModel _runMetricsReadModel;
+        private SurvivorsRunMetricsReadModel RunMetricsReadModel => _runMetricsReadModel ?? (_runMetricsReadModel = new SurvivorsRunMetricsReadModel(this));
+        public IReadOnlyList<string> DebugDescribeRunMetrics() => RunMetricsReadModel.Describe();
+
+        string ISurvivorsRunMetricsReadPort.ModeName => CurrentRunModeDisplayName;
+        SurvivorsPacingProfile ISurvivorsRunMetricsReadPort.PacingProfile => CurrentPacingProfile;
+        float ISurvivorsRunMetricsReadPort.TargetDuration => CurrentTuning.TargetDurationSeconds;
+        float ISurvivorsRunMetricsReadPort.BossSpawnTime => CurrentTuning.BossSpawnTimeSeconds;
+        float ISurvivorsRunMetricsReadPort.VictoryTime => CurrentTuning.SurvivalVictoryTimeSeconds;
+        bool ISurvivorsRunMetricsReadPort.Started => _runSession.Started;
+        bool ISurvivorsRunMetricsReadPort.ModeSelectionOpen => Menus.ModeSelectionOpen;
+        ISurvivorsActiveRunMetricsReadPort ISurvivorsRunMetricsReadPort.Active => this;
+
+        float ISurvivorsActiveRunMetricsReadPort.RunTimeSeconds => RunTimeSeconds;
+        SurvivorsRunState ISurvivorsActiveRunMetricsReadPort.State => State;
+        SurvivorsRunTelemetry ISurvivorsActiveRunMetricsReadPort.Telemetry => Telemetry;
+        SurvivorsRunMetricsDraftValues ISurvivorsActiveRunMetricsReadPort.CaptureDrafts() => new SurvivorsRunMetricsDraftValues(
+            LevelUpDraftOpenCount, DraftSession.OpenCount, PendingLevelUps,
+            ActiveWeaponCount, MaxWeaponSlots, ActivePassiveCount, MaxPassiveSlots, EvolvedWeaponCount);
+        SurvivorsRunMetricsCombatValues ISurvivorsActiveRunMetricsReadPort.CaptureCombat() => new SurvivorsRunMetricsCombatValues(
+            KilledCount, ExperienceCollected, Experience, RequiredExperienceForNextLevel, ThrottledExperienceOverflow, PlayerVitals.DamageTaken);
+        SurvivorsRunMetricsPickupValues ISurvivorsActiveRunMetricsReadPort.CapturePickups() => new SurvivorsRunMetricsPickupValues(
+            CurrentPickupAttractRange, CurrentPickupAttractionSpeed, CurrentPickupMagnetPulseIntervalSeconds,
+            ActiveOffscreenThreatMarkerCount, NormalEnemyRecycleCount, MajorThreatRepositionCount);
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -1280,7 +1305,6 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsRewardDropPresenter _rewardDrops;
         private SurvivorsRewardDropPresenter RewardDrops => _rewardDrops ?? (_rewardDrops = new SurvivorsRewardDropPresenter(() => _feedbackRoot, () => ActiveUiTheme));
         private readonly SurvivorsDamagePopupPresenter _damageFeedback = new SurvivorsDamagePopupPresenter();
-        private readonly List<string> _runMetricsLines = new List<string>(16);
         private SurvivorsBuildSurgeRewards _buildSurges;
         private SurvivorsBuildSurgeRewards BuildSurges => _buildSurges ?? (_buildSurges = new SurvivorsBuildSurgeRewards(RunBuild, this));
         private void TriggerWeaponEvolutionSurge(RunUpgradeDefinition upgrade) => BuildSurges.TriggerWeaponEvolutionSurge(upgrade);
@@ -2975,45 +2999,8 @@ namespace Deucarian.TemplateGameSurvivors
             return lines;
         }
 
-        public IReadOnlyList<string> DebugDescribeRunMetrics()
-        {
-            _runMetricsLines.Clear();
-            _runMetricsLines.Add($"Mode {CurrentRunModeDisplayName} ({BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)})");
-            _runMetricsLines.Add($"Target {FormatMetricTime(CurrentTuning.TargetDurationSeconds)} - boss {FormatMetricTime(CurrentTuning.BossSpawnTimeSeconds)} - victory {FormatMetricTime(CurrentTuning.SurvivalVictoryTimeSeconds)}");
-            if (!_runSession.Started)
-            {
-                _runMetricsLines.Add(Menus.ModeSelectionOpen ? "Run mode selection open" : "Run not started");
-                return _runMetricsLines;
-            }
 
-            _runMetricsLines.Add($"Runtime {FormatMetricTime(RunTimeSeconds)} - state {State}");
-            AppendMetricTime(_runMetricsLines, "First kill", Telemetry.FirstKillTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First XP pickup", Telemetry.FirstExperiencePickupTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First level-up draft", Telemetry.FirstLevelUpDraftTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First elite spawn", Telemetry.FirstEliteSpawnTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First elite kill", Telemetry.FirstEliteKillTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First miniboss spawn", Telemetry.FirstMinibossSpawnTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First miniboss kill", Telemetry.FirstMinibossKillTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First boss spawn", Telemetry.FirstBossSpawnTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First boss kill", Telemetry.FirstBossKillTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First evolution ready", Telemetry.FirstEvolutionEligibilityTimeSeconds);
-            AppendMetricTime(_runMetricsLines, "First evolution acquired", Telemetry.FirstEvolutionAcquiredTimeSeconds);
-            _runMetricsLines.Add($"Levels 1m {FormatMetricLevel(Telemetry.LevelAtOneMinute)}, 2m {FormatMetricLevel(Telemetry.LevelAtTwoMinutes)}, 3m {FormatMetricLevel(Telemetry.LevelAtThreeMinutes)}, 4m {FormatMetricLevel(Telemetry.LevelAtFourMinutes)}, 5m {FormatMetricLevel(Telemetry.LevelAtFiveMinutes)}");
-            _runMetricsLines.Add($"Drafts level {LevelUpDraftOpenCount}, total {DraftSession.OpenCount}, pending {PendingLevelUps}, weapons {ActiveWeaponCount}/{MaxWeaponSlots}, passives {ActivePassiveCount}/{MaxPassiveSlots}, evolutions {EvolvedWeaponCount}");
-            _runMetricsLines.Add($"Kills {KilledCount}, XP {ExperienceCollected}, stored {Experience}/{RequiredExperienceForNextLevel}, overflow {ThrottledExperienceOverflow}, damage taken {PlayerVitals.DamageTaken:0.#}");
-            _runMetricsLines.Add($"Pickup range {CurrentPickupAttractRange:0.#}, pull {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, markers {ActiveOffscreenThreatMarkerCount}, recycles {NormalEnemyRecycleCount}, major repositions {MajorThreatRepositionCount}");
-            return _runMetricsLines;
-        }
 
-        private static string FormatMetricLevel(int level)
-        {
-            return level > 0 ? level.ToString() : "not yet";
-        }
-
-        private static void AppendMetricTime(List<string> lines, string label, float seconds)
-        {
-            lines.Add(label + ": " + FormatMetricTime(seconds));
-        }
 
 
         private void ResetRunMetrics()
@@ -3021,7 +3008,7 @@ namespace Deucarian.TemplateGameSurvivors
             DraftSession.ResetOpenCount();
             Telemetry.Reset();
             PlayerVitals.ResetDamageTaken();
-            _runMetricsLines.Clear();
+            _runMetricsReadModel?.Clear();
         }
 
 
