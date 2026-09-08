@@ -965,6 +965,84 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsRewardFeedbackPort.PlayRelicAudio() => PlayAudioEvent(AudioEventRelic, _bossClip, 0.08f);
         void ISurvivorsRewardFeedbackPort.PlaySkipAudio() => PlayAudioEvent(AudioEventDraftSkip, _pickupClip, 0.08f);
 
+        private SurvivorsHudVitals CaptureHudVitals() => new SurvivorsHudVitals(
+            MaxHealth, CurrentHealth, BarrierCapacity, BarrierValue,
+            Experience, RequiredExperienceForNextLevel, Level);
+        private void DrawPlayerHud()
+        {
+            IReadOnlyList<string> lines = ResolvePlayerHudLines();
+            SurvivorsPlayerHudPresenter.Draw(Screen.width, lines, CurrentRunModeDisplayName,
+                CaptureHudVitals(), _hudStyles);
+        }
+        private void DrawDebugOverlay() => SurvivorsDebugHudPresenter.Draw(
+            Screen.height, CaptureDebugHudValues(), _hudStyles);
+        private SurvivorsTopTimerValues CaptureTopTimerValues()
+        {
+            if (!_runSession.Started) return default;
+            return new SurvivorsTopTimerValues(true, IsEndlessRun,
+                CurrentTuning.SurvivalVictoryTimeSeconds, RunTimeSeconds,
+                CurrentRunModeDisplayName, CurrentPacingProfile);
+        }
+        private void DrawTopCenterTimerHud() => SurvivorsTopTimerHud.Draw(
+            Screen.width, CaptureTopTimerValues(), _majorThreatWarningStyle);
+        private Rect ResolveTopCenterTimerRect() => SurvivorsTopTimerHud.Panel(Screen.width);
+        private string ResolveTopCenterTimerHudLabel() => SurvivorsTopTimerHud.Label(CaptureTopTimerValues());
+        private SurvivorsCompactHudLabels _compactHudLabels;
+        private SurvivorsCompactHudLabels CompactHudLabels => _compactHudLabels ??
+            (_compactHudLabels = new SurvivorsCompactHudLabels(BuildContentLabels));
+        private string ResolveWeaponHudLabel() => CompactHudLabels.Weapons(ActiveWeaponIds);
+        private string FormatSelectedRelicList() => SurvivorsCompactHudLabels.Relics(RelicInventory.Selected);
+        private string ResolveWaystoneCompassHudLabel()
+        {
+            if (CurrentTuning.WaystoneDiscoveryRadius <= 0f)
+                return SurvivorsCompactHudLabels.Waystone(false, WaystoneDiscoveryCount, false, 0f, Vector3.zero, false);
+            if (TryResolveClosestArenaLandmark(ignoreDiscovered: true, out _, out float distance, out Vector3 delta))
+                return SurvivorsCompactHudLabels.Waystone(true, WaystoneDiscoveryCount, true, distance, delta, false);
+            bool any = TryResolveClosestArenaLandmark(ignoreDiscovered: false, out _, out _, out _);
+            return SurvivorsCompactHudLabels.Waystone(true, WaystoneDiscoveryCount, false, 0f, Vector3.zero, any);
+        }
+        private SurvivorsDebugHudValues CaptureDebugHudValues()
+        {
+            string evolution = ResolveEvolutionObjectiveHudLabel();
+            string waystone = ResolveWaystoneCompassHudLabel();
+            return new SurvivorsDebugHudValues(
+            vitals: CaptureHudVitals(),
+            evolutionObjective: evolution,
+            waystoneCompass: waystone,
+            runTimeSeconds: RunTimeSeconds,
+            survivalVictoryTimeSeconds: CurrentTuning.SurvivalVictoryTimeSeconds,
+            runPhaseLabel: ResolveRunPhaseHudLabel(),
+            runEscalationLevel: RunEscalationLevel,
+            milestoneLabel: CurrentRunMilestoneHudLabel,
+            activeEnemyCount: ActiveEnemyCount,
+            enemyMaximumAlive: CurrentEnemyMaximumAlive,
+            killedCount: KilledCount,
+            splitterCount: ActiveSplitterCount,
+            summonerCount: ActiveSummonerCount,
+            eliteCount: ActiveEliteCount,
+            minibossCount: ActiveMinibossCount,
+            bossCount: ActiveBossCount,
+            currencyDisplayName: CurrencyDisplayName,
+            metaBloodShards: MetaBloodShards,
+            poisonDamageRatio: PoisonDamageRatio,
+            bleedDamageRatio: BleedDamageRatio,
+            executeThresholdNormalized: ExecuteThresholdNormalized,
+            weaponLabel: ResolveWeaponHudLabel(),
+            modeDisplayName: CurrentRunModeDisplayName,
+            pacingProfile: CurrentPacingProfile,
+            enemySpawnIntervalSeconds: CurrentEnemySpawnIntervalSeconds,
+            enemySpeedMultiplier: CurrentEnemySpeedMultiplier,
+            currentKillStreak: CurrentKillStreak,
+            bestKillStreak: BestKillStreak,
+            streakBonusDropCount: StreakBonusDropCount,
+            surgeLabel: ResolveSurgeHudLabel(),
+            rewardSelectionTimeoutSeconds: CurrentTuning.RewardSelectionTimeoutSeconds,
+            draftRerollsRemaining: DraftRerollsRemaining,
+            draftBanishesRemaining: DraftBanishesRemaining,
+            buildSlotLabel: ResolveBuildSlotHudLabel(),
+            dashLabel: ResolveDashHudLabel());
+        }
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -2156,65 +2234,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void DrawPlayerHud()
-        {
-            IReadOnlyList<string> lines = ResolvePlayerHudLines();
-            float panelWidth = Mathf.Min(340f, Mathf.Max(270f, Screen.width - 32f));
-            float lineHeight = 19f;
-            float panelHeight = 126f + Mathf.Min(4, lines.Count) * lineHeight;
-            Rect panel = new Rect(12f, 58f, panelWidth, panelHeight);
-            SurvivorsScreenLayout.DrawSolidRect(panel, new Color(0.015f, 0.02f, 0.026f, 0.74f));
-            SurvivorsScreenLayout.DrawSolidRect(new Rect(panel.x, panel.y, 4f, panel.height), new Color(0.2f, 0.78f, 1f, 0.9f));
-            GUI.Label(new Rect(panel.x + 14f, panel.y + 8f, panel.width - 28f, 22f), CurrentRunModeDisplayName, _hudTitleStyle);
-            DrawHudBar(new Rect(panel.x + 14f, panel.y + 36f, panel.width - 28f, 18f), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
-            if (BarrierCapacity > 0.01f)
-            {
-                DrawHudBar(new Rect(panel.x + 14f, panel.y + 60f, panel.width - 28f, 18f), "Barrier", BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
-            }
 
-            DrawHudBar(new Rect(panel.x + 14f, panel.y + 84f, panel.width - 28f, 18f), $"XP L{Level}", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
-            float y = panel.y + 110f;
-            int shown = Mathf.Min(4, lines.Count);
-            for (int i = 0; i < shown; i++)
-            {
-                GUI.Label(new Rect(panel.x + 14f, y, panel.width - 28f, lineHeight), lines[i], _hudSmallStyle);
-                y += lineHeight;
-            }
-        }
-
-        private void DrawDebugOverlay()
-        {
-            string evolutionObjectiveHud = ResolveEvolutionObjectiveHudLabel();
-            string waystoneCompassHud = ResolveWaystoneCompassHudLabel();
-            float panelHeight = string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? 424f : 448f;
-            Rect panel = new Rect(12f, 58f + Mathf.Min(206f, Screen.height * 0.22f), 356f, panelHeight);
-            SurvivorsScreenLayout.DrawSolidRect(panel, new Color(0.02f, 0.024f, 0.03f, 0.86f));
-            SurvivorsScreenLayout.DrawSolidRect(new Rect(panel.x, panel.y, 4f, panel.height), new Color(1f, 0.72f, 0.22f, 0.86f));
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 10f, 300f, 22f), "Survivors Debug Overlay", _hudTitleStyle);
-            DrawHudBar(new Rect(panel.x + 12f, panel.y + 38f, 318f, 18f), "Health", MaxHealth <= 0f ? 0f : CurrentHealth / MaxHealth, new Color(0.9f, 0.22f, 0.24f));
-            DrawHudBar(new Rect(panel.x + 12f, panel.y + 62f, 318f, 18f), "Barrier", BarrierCapacity <= 0f ? 0f : BarrierValue / BarrierCapacity, new Color(0.42f, 0.8f, 1f));
-            DrawHudBar(new Rect(panel.x + 12f, panel.y + 86f, 318f, 18f), "XP", Experience / (float)RequiredExperienceForNextLevel, new Color(0.2f, 0.78f, 1f));
-            DrawHudBar(new Rect(panel.x + 12f, panel.y + 110f, 318f, 18f), "Run", Mathf.Clamp01(RunTimeSeconds / Mathf.Max(1f, CurrentTuning.SurvivalVictoryTimeSeconds)), new Color(0.72f, 0.44f, 1f));
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 136f, 318f, 22f), $"LV {Level}   Time {FormatRunTime(RunTimeSeconds)}   Phase {ResolveRunPhaseHudLabel()} +{RunEscalationLevel}", _hudLabelStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 158f, 318f, 22f), CurrentRunMilestoneHudLabel, _hudLabelStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 180f, 318f, 22f), $"Enemies {ActiveEnemyCount}/{CurrentEnemyMaximumAlive}   Kills {KilledCount}", _hudLabelStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 202f, 318f, 22f), $"Split {ActiveSplitterCount}   Call {ActiveSummonerCount}   Elite {ActiveEliteCount}   Mini {ActiveMinibossCount}   Boss {ActiveBossCount}", _hudLabelStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 224f, 318f, 22f), $"{CurrencyDisplayName} {MetaBloodShards}   Poison {PoisonDamageRatio:0.##}   Bleed {BleedDamageRatio:0.##}   Execute {ExecuteThresholdNormalized:P0}", _hudSmallStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 246f, 318f, 22f), "Weapons: " + ResolveWeaponHudLabel(), _hudSmallStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 268f, 318f, 22f), $"Mode {CurrentRunModeDisplayName}   Profile {BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)}", _hudSmallStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 290f, 318f, 22f), $"Spawn {CurrentEnemySpawnIntervalSeconds:0.00}s   Enemy Speed x{CurrentEnemySpeedMultiplier:0.##}", _hudSmallStyle);
-            string surgeHud = ResolveSurgeHudLabel();
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 312f, 318f, 22f), $"Streak {CurrentKillStreak}   Best {BestKillStreak}   Bonus Drops {StreakBonusDropCount}{surgeHud}", _hudSmallStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 334f, 318f, 22f), $"Reward Timeout {FormatRewardTimeout(CurrentTuning.RewardSelectionTimeoutSeconds)}   Reroll {DraftRerollsRemaining}   Banish {DraftBanishesRemaining}", _hudSmallStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 356f, 318f, 22f), ResolveBuildSlotHudLabel(), _hudSmallStyle);
-            GUI.Label(new Rect(panel.x + 12f, panel.y + 378f, 318f, 22f), waystoneCompassHud, _hudSmallStyle);
-            if (!string.IsNullOrWhiteSpace(evolutionObjectiveHud))
-            {
-                GUI.Label(new Rect(panel.x + 12f, panel.y + 400f, 318f, 22f), evolutionObjectiveHud, _hudSmallStyle);
-            }
-
-            GUI.Label(new Rect(panel.x + 12f, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? panel.y + 400f : panel.y + 422f, 318f, 22f), ResolveDashHudLabel(), _hudSmallStyle);
-        }
 
 
 
@@ -4144,52 +4164,9 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void EnsureHudStyles() => _hudStyles.Ensure();
 
-        private void DrawHudBar(Rect rect, string label, float value, Color fill) => SurvivorsStatusHudPresenter.DrawBar(rect, label, value, fill, _hudSmallStyle);
 
-        private void DrawTopCenterTimerHud()
-        {
-            Rect panel = ResolveTopCenterTimerRect();
-            string label = ResolveTopCenterTimerHudLabel();
-            if (string.IsNullOrWhiteSpace(label))
-            {
-                return;
-            }
 
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.015f, 0.02f, 0.026f, 0.78f);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(0.2f, 0.78f, 1f, 0.92f);
-            GUI.DrawTexture(new Rect(panel.x, panel.yMax - 3f, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            GUI.Label(panel, label, _majorThreatWarningStyle);
-            GUI.color = oldColor;
-        }
 
-        private Rect ResolveTopCenterTimerRect()
-        {
-            float width = Mathf.Min(360f, Mathf.Max(240f, Screen.width - 32f));
-            return new Rect(Screen.width * 0.5f - width * 0.5f, 12f, width, 36f);
-        }
-
-        private string ResolveTopCenterTimerHudLabel()
-        {
-            if (!_runSession.Started)
-            {
-                return string.Empty;
-            }
-
-            float target = Mathf.Max(0f, CurrentTuning.SurvivalVictoryTimeSeconds);
-            string elapsed = FormatRunTime(RunTimeSeconds);
-            string mode = string.IsNullOrWhiteSpace(CurrentRunModeDisplayName)
-                ? BasicSurvivorsGame.GetPacingProfileDisplayName(CurrentPacingProfile)
-                : CurrentRunModeDisplayName;
-            if (IsEndlessRun || target <= 0f)
-            {
-                return mode + "  TIME " + elapsed + "  ENDLESS";
-            }
-
-            return mode + "  TIME " + elapsed + "  LEFT " + FormatRunTime(Mathf.Max(0f, target - RunTimeSeconds));
-        }
 
         private void DrawLowHealthWarning() => SurvivorsStatusHudPresenter.DrawLowHealth(IsLowHealthWarningActive, _lowHealthStyle);
 
@@ -4273,33 +4250,6 @@ namespace Deucarian.TemplateGameSurvivors
             return (float)Math.Min(float.MaxValue, amount);
         }
 
-        private string ResolveWeaponHudLabel()
-        {
-            if (ActiveWeaponIds.Count == 0)
-            {
-                return "none";
-            }
-
-            const int maxShown = 4;
-            string label = string.Empty;
-            int shown = Mathf.Min(maxShown, ActiveWeaponIds.Count);
-            for (int i = 0; i < shown; i++)
-            {
-                if (i > 0)
-                {
-                    label += ", ";
-                }
-
-                label += ShortWeaponName(ActiveWeaponIds[i]);
-            }
-
-            if (ActiveWeaponIds.Count > shown)
-            {
-                label += " +" + (ActiveWeaponIds.Count - shown).ToString();
-            }
-
-            return label;
-        }
 
 
 
@@ -4313,25 +4263,6 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private string ResolveWaystoneCompassHudLabel()
-        {
-            if (CurrentTuning.WaystoneDiscoveryRadius <= 0f)
-            {
-                return $"Explore Waystones off   Found {WaystoneDiscoveryCount}";
-            }
-
-            if (TryResolveClosestArenaLandmark(ignoreDiscovered: true, out _, out float distance, out Vector3 delta))
-            {
-                return $"Explore Waystone {ResolveCompassDirectionLabel(delta)} {distance:0}m   Found {WaystoneDiscoveryCount}";
-            }
-
-            if (TryResolveClosestArenaLandmark(ignoreDiscovered: false, out _, out _, out _))
-            {
-                return $"Explore Waystone new grid   Found {WaystoneDiscoveryCount}";
-            }
-
-            return $"Explore Waystone --   Found {WaystoneDiscoveryCount}";
-        }
 
         private static string ResolveCompassDirectionLabel(Vector3 delta) => SurvivorsThreatHudModel.CompassDirection(delta);
 
@@ -4344,34 +4275,6 @@ namespace Deucarian.TemplateGameSurvivors
             return _relicDefinitions == null ? 0 : _relicDefinitions.Count;
         }
 
-        private string FormatSelectedRelicList()
-        {
-            if (RelicInventory.Selected.Count == 0)
-            {
-                return "none";
-            }
-
-            const int maxShown = 3;
-            string label = string.Empty;
-            int shown = Mathf.Min(maxShown, RelicInventory.Selected.Count);
-            for (int i = 0; i < shown; i++)
-            {
-                if (i > 0)
-                {
-                    label += ", ";
-                }
-
-                SurvivorsRelicDefinition relic = RelicInventory.Selected[i];
-                label += relic == null || string.IsNullOrWhiteSpace(relic.DisplayName) ? "Unknown Relic" : relic.DisplayName;
-            }
-
-            if (RelicInventory.Selected.Count > shown)
-            {
-                label += " +" + (RelicInventory.Selected.Count - shown).ToString();
-            }
-
-            return label;
-        }
 
 
 
