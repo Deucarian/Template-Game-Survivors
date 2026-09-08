@@ -349,7 +349,9 @@ namespace Deucarian.TemplateGameSurvivors
         private int _levelAtFiveMinutes;
         private float _pickupMagnetPulseTimer;
         private string _lastMagnetPulseFeedbackLabel = string.Empty;
-        private string _lastOffscreenThreatMarkerLabel = string.Empty;
+        private SurvivorsThreatHudModel _threatHud;
+        private SurvivorsThreatHudModel ThreatHud => _threatHud ??
+            (_threatHud = new SurvivorsThreatHudModel(new SurvivorsEnemyHudSource(_enemies)));
         private string _lastGameplaySpawnSafetyFailure = string.Empty;
         private Vector3 _lastGameplaySpawnPosition = Vector3.zero;
         private float _lastGameplaySpawnPadding;
@@ -714,29 +716,9 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveOverheadLifeBarCount => CountAuthoredThreatLifeBars(showBossLifeBar: false);
         public int ActiveMajorThreatLifeBarCount => ActiveBossLifeBarCount + ActiveOverheadLifeBarCount;
         public string ActiveMajorThreatLifeBarSummary => ResolveActiveMajorThreatLifeBarSummary();
-        public bool IsMajorThreatHealthVisible => ResolveCurrentMajorThreatForHud() != null;
-        public string CurrentMajorThreatHealthLabel
-        {
-            get
-            {
-                SurvivorsEnemyActor enemy = ResolveCurrentMajorThreatForHud();
-                if (enemy == null)
-                {
-                    return string.Empty;
-                }
-
-                return string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName;
-            }
-        }
-
-        public float CurrentMajorThreatHealthFraction
-        {
-            get
-            {
-                SurvivorsEnemyActor enemy = ResolveCurrentMajorThreatForHud();
-                return enemy == null ? 0f : Mathf.Clamp01(enemy.HealthFraction);
-            }
-        }
+        public bool IsMajorThreatHealthVisible => ThreatHud.SelectHealthThreat().HasValue;
+        public string CurrentMajorThreatHealthLabel => ThreatHud.SelectHealthThreat()?.Name ?? string.Empty;
+        public float CurrentMajorThreatHealthFraction => Mathf.Clamp01(ThreatHud.SelectHealthThreat()?.HealthFraction ?? 0f);
         public int ActivePickupCount => _pickups.Count;
         public int ActiveHordeRushEnemyCount => _activeHordeRushEnemies.Count;
         public int ActiveRoamingCacheAmbushEnemyCount => _activeRoamingCacheAmbushEnemies.Count;
@@ -758,7 +740,7 @@ namespace Deucarian.TemplateGameSurvivors
         public bool LastGameplaySpawnWasInsideCameraViewportForTest => _lastGameplaySpawnWasInsideCameraViewport;
         public int ActiveOffscreenThreatMarkerCount => CountOffscreenMajorThreatMarkers();
         public string CurrentOffscreenThreatMarkerLabel => ResolveFirstOffscreenMajorThreatMarkerLabel();
-        public string LastOffscreenThreatMarkerLabel => _lastOffscreenThreatMarkerLabel;
+        public string LastOffscreenThreatMarkerLabel => ThreatHud.LastMarkerLabel;
         public int ActiveMajorRewardCacheAttractedPickupCount
         {
             get
@@ -2328,7 +2310,7 @@ namespace Deucarian.TemplateGameSurvivors
             MajorThreatRepositionCount = 0;
             MagnetPulseActivationCount = 0;
             _lastMagnetPulseFeedbackLabel = string.Empty;
-            _lastOffscreenThreatMarkerLabel = string.Empty;
+            ThreatHud.Reset();
             GameplayEnemySpawnSafetyCheckCountForTest = 0;
             GameplaySpawnInsideCameraViewViolationCountForTest = 0;
             _lastGameplaySpawnSafetyFailure = string.Empty;
@@ -4831,115 +4813,11 @@ namespace Deucarian.TemplateGameSurvivors
             return count;
         }
 
-        private int CountAuthoredThreatLifeBars(bool showBossLifeBar)
-        {
-            int count = 0;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    continue;
-                }
+        private int CountAuthoredThreatLifeBars(bool showBossLifeBar) => ThreatHud.CountLifeBars(showBossLifeBar);
 
-                if (showBossLifeBar && enemy.ShowBossLifeBar)
-                {
-                    count++;
-                }
-                else if (!showBossLifeBar && enemy.ShowOverheadLifeBar)
-                {
-                    count++;
-                }
-            }
+        private string ResolveActiveMajorThreatLifeBarSummary() => ThreatHud.LifeBarSummary();
 
-            return count;
-        }
-
-        private string ResolveActiveMajorThreatLifeBarSummary()
-        {
-            var labels = new List<string>(ActiveMajorThreatLifeBarCount);
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive || !ShouldShowThreatLifeBar(enemy))
-                {
-                    continue;
-                }
-
-                string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
-                    ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
-                    : enemy.DisplayName;
-                labels.Add($"{name} {Mathf.RoundToInt(enemy.HealthFraction * 100f)}%");
-            }
-
-            return string.Join(", ", labels);
-        }
-
-        private SurvivorsEnemyActor ResolveCurrentMajorThreatForHud()
-        {
-            SurvivorsEnemyActor selected = null;
-            int selectedPriority = -1;
-            float selectedHealthFraction = 2f;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive || !ShouldShowThreatLifeBar(enemy))
-                {
-                    continue;
-                }
-
-                int priority = ResolveMajorThreatHealthPriority(enemy.Role);
-                float healthFraction = Mathf.Clamp01(enemy.HealthFraction);
-                if (priority > selectedPriority ||
-                    (priority == selectedPriority && healthFraction < selectedHealthFraction))
-                {
-                    selected = enemy;
-                    selectedPriority = priority;
-                    selectedHealthFraction = healthFraction;
-                }
-            }
-
-            return selected;
-        }
-
-        private static bool ShouldShowThreatLifeBar(SurvivorsEnemyActor enemy)
-        {
-            return enemy != null &&
-                enemy.IsAlive &&
-                (enemy.ShowBossLifeBar || enemy.ShowOverheadLifeBar);
-        }
-
-        private static int ResolveMajorThreatHealthPriority(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return 4;
-                case SurvivorsEnemyRole.Miniboss:
-                    return 3;
-                case SurvivorsEnemyRole.DreadElite:
-                    return 2;
-                case SurvivorsEnemyRole.Elite:
-                    return 1;
-                default:
-                    return 0;
-            }
-        }
-
-        private static string ResolveMajorThreatHealthFallbackLabel(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return "Final Boss";
-                case SurvivorsEnemyRole.Miniboss:
-                    return "Miniboss";
-                case SurvivorsEnemyRole.DreadElite:
-                    return "Dread Elite";
-                default:
-                    return "Elite";
-            }
-        }
+        private static string ResolveMajorThreatHealthFallbackLabel(SurvivorsEnemyRole role) => SurvivorsThreatHudModel.ResolveFallbackLabel(role);
 
         private static bool IsEliteRole(SurvivorsEnemyRole role)
         {
@@ -9500,7 +9378,7 @@ namespace Deucarian.TemplateGameSurvivors
             string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
                 ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
                 : enemy.DisplayName;
-            _lastOffscreenThreatMarkerLabel = $"{name} re-entering {ResolveCompassDirectionLabel(enemy.transform.position - playerPosition)}";
+            ThreatHud.RecordMarkerLabel($"{name} re-entering {ResolveCompassDirectionLabel(enemy.transform.position - playerPosition)}");
         }
 
         internal float ResolveEnemyCatchUpMoveSpeedMultiplier(SurvivorsEnemyActor enemy, float distance)
@@ -9611,93 +9489,11 @@ namespace Deucarian.TemplateGameSurvivors
             return SurvivorsCameraGroundProjection.TryResolve(_camera != null ? _camera : Camera.main, PlayerPosition.y, padding, out rect);
         }
 
-        private int CountOffscreenMajorThreatMarkers()
-        {
-            int count = 0;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                if (ShouldShowOffscreenThreatMarker(_enemies[i]))
-                {
-                    count++;
-                }
-            }
+        private int CountOffscreenMajorThreatMarkers() => ThreatHud.CountMarkers(PlayerPosition, CurrentTuning.OffscreenThreatMarkerDistance);
 
-            return count;
-        }
+        private string ResolveFirstOffscreenMajorThreatMarkerLabel() => ThreatHud.MarkerLabel(PlayerPosition, CurrentTuning.OffscreenThreatMarkerDistance);
 
-        private string ResolveFirstOffscreenMajorThreatMarkerLabel()
-        {
-            SurvivorsEnemyActor selected = ResolveFirstOffscreenMajorThreatMarkerEnemy();
-            if (selected == null)
-            {
-                return string.Empty;
-            }
-
-            return FormatOffscreenThreatMarkerLabel(selected);
-        }
-
-        private SurvivorsEnemyActor ResolveFirstOffscreenMajorThreatMarkerEnemy()
-        {
-            SurvivorsEnemyActor selected = null;
-            int selectedPriority = -1;
-            float selectedDistance = 0f;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (!ShouldShowOffscreenThreatMarker(enemy))
-                {
-                    continue;
-                }
-
-                int priority = ResolveMajorThreatHealthPriority(enemy.Role);
-                float distance = Vector3.Distance(PlayerPosition, enemy.transform.position);
-                if (priority > selectedPriority || (priority == selectedPriority && distance > selectedDistance))
-                {
-                    selected = enemy;
-                    selectedPriority = priority;
-                    selectedDistance = distance;
-                }
-            }
-
-            return selected;
-        }
-
-        private bool ShouldShowOffscreenThreatMarker(SurvivorsEnemyActor enemy)
-        {
-            if (enemy == null || !enemy.IsAlive || !enemy.ShowOffscreenMarker)
-            {
-                return false;
-            }
-
-            Vector3 offset = enemy.transform.position - PlayerPosition;
-            offset.y = 0f;
-            float markerDistance = Mathf.Max(0.1f, CurrentTuning.OffscreenThreatMarkerDistance);
-            return offset.sqrMagnitude >= markerDistance * markerDistance;
-        }
-
-        private string FormatOffscreenThreatMarkerLabel(SurvivorsEnemyActor enemy)
-        {
-            if (enemy == null)
-            {
-                return string.Empty;
-            }
-
-            Vector3 delta = enemy.transform.position - PlayerPosition;
-            delta.y = 0f;
-            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
-                ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
-                : enemy.DisplayName;
-            return $"{name} {ResolveCompassDirectionLabel(delta)} {delta.magnitude:0}m";
-        }
-
-        private void UpdateOffscreenThreatMarkerSnapshot()
-        {
-            string label = ResolveFirstOffscreenMajorThreatMarkerLabel();
-            if (!string.IsNullOrWhiteSpace(label))
-            {
-                _lastOffscreenThreatMarkerLabel = label;
-            }
-        }
+        private void UpdateOffscreenThreatMarkerSnapshot() => ThreatHud.UpdateLastMarker(PlayerPosition, CurrentTuning.OffscreenThreatMarkerDistance);
 
         internal Vector3 ResolveEnemyCrowdSeparation(SurvivorsEnemyActor actor)
         {
@@ -11640,134 +11436,17 @@ namespace Deucarian.TemplateGameSurvivors
         private void DrawHordeRushWarning() => SurvivorsStatusHudPresenter.DrawHordeRush(
             IsHordeRushWarningActive, IsTopCenterTimerVisible, IsMajorThreatWarningActive, CurrentHordeRushWarningLabel, HordeRushWarningRemainingSeconds, _majorThreatWarningStyle);
 
-        private void DrawMajorThreatHealthBar()
-        {
-            DrawBossLifeBars();
-            DrawOverheadThreatLifeBars();
-        }
-
-        private void DrawBossLifeBars()
-        {
-            float width = Mathf.Min(420f, Mathf.Max(260f, Screen.width - 48f));
-            float x = Mathf.Max(24f, Screen.width - width - 24f);
-            float y = 24f;
-            if (IsMajorThreatWarningActive)
-            {
-                y += 60f;
-            }
-
-            if (IsHordeRushWarningActive)
-            {
-                y += 52f;
-            }
-
-            int drawn = 0;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive || !enemy.ShowBossLifeBar)
-                {
-                    continue;
-                }
-
-                Rect panel = new Rect(x, y + drawn * 50f, width, 46f);
-                Color oldColor = GUI.color;
-                GUI.color = new Color(0.03f, 0.02f, 0.02f, 0.66f);
-                GUI.DrawTexture(panel, Texture2D.whiteTexture);
-                GUI.color = oldColor;
-                string label = (string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName) + " HP";
-                DrawHudBar(new Rect(panel.x + 10f, panel.y + 13f, panel.width - 20f, 20f), label, enemy.HealthFraction, ResolveMajorRewardDropColor(enemy.Role));
-                drawn++;
-            }
-        }
-
-        private void DrawOverheadThreatLifeBars()
-        {
-            if (_camera == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive || !enemy.ShowOverheadLifeBar)
-                {
-                    continue;
-                }
-
-                Vector3 world = enemy.transform.position + Vector3.up * Mathf.Max(1.2f, enemy.Radius + 0.95f);
-                Vector3 screen = _camera.WorldToScreenPoint(world);
-                if (screen.z <= 0f)
-                {
-                    continue;
-                }
-
-                float width = enemy.Role == SurvivorsEnemyRole.Miniboss ? 190f : 156f;
-                float height = 28f;
-                float x = Mathf.Clamp(screen.x - width * 0.5f, 12f, Mathf.Max(12f, Screen.width - width - 12f));
-                float y = Mathf.Clamp(Screen.height - screen.y, 58f, Mathf.Max(58f, Screen.height - height - 12f));
-                Rect panel = new Rect(x, y, width, height);
-                Color oldColor = GUI.color;
-                GUI.color = new Color(0.025f, 0.018f, 0.02f, 0.72f);
-                GUI.DrawTexture(panel, Texture2D.whiteTexture);
-                GUI.color = oldColor;
-                string label = string.IsNullOrWhiteSpace(enemy.DisplayName) ? ResolveMajorThreatHealthFallbackLabel(enemy.Role) : enemy.DisplayName;
-                DrawHudBar(new Rect(panel.x + 6f, panel.y + 6f, panel.width - 12f, 16f), label, enemy.HealthFraction, ResolveMajorRewardDropColor(enemy.Role));
-            }
-        }
+        private void DrawMajorThreatHealthBar() => SurvivorsThreatHudPresenter.DrawLifeBars(ThreatHud, _camera,
+            IsMajorThreatWarningActive, IsHordeRushWarningActive, ResolveMajorRewardDropColor, _hudSmallStyle);
 
         private void DrawOffscreenThreatMarker()
         {
-            if (State != SurvivorsRunState.Playing)
+            if (State != SurvivorsRunState.Playing) return;
+            SurvivorsThreatHudItem? selected = ThreatHud.SelectMarker(PlayerPosition, CurrentTuning.OffscreenThreatMarkerDistance);
+            if (selected.HasValue)
             {
-                return;
+                SurvivorsThreatHudPresenter.DrawMarker(selected, PlayerPosition, ResolveMajorRewardDropColor(selected.Value.Role), _hudSmallStyle);
             }
-
-            SurvivorsEnemyActor enemy = ResolveFirstOffscreenMajorThreatMarkerEnemy();
-            if (enemy == null)
-            {
-                return;
-            }
-
-            Vector3 delta = enemy.transform.position - PlayerPosition;
-            delta.y = 0f;
-            if (delta.sqrMagnitude <= 0.0001f)
-            {
-                return;
-            }
-
-            Vector2 screenDirection = new Vector2(delta.x, -delta.z).normalized;
-            if (screenDirection.sqrMagnitude <= 0.0001f)
-            {
-                return;
-            }
-
-            const float markerWidth = 248f;
-            const float markerHeight = 38f;
-            const float edgeMargin = 18f;
-            float halfWidth = Screen.width * 0.5f;
-            float halfHeight = Screen.height * 0.5f;
-            float xLimit = Mathf.Max(1f, halfWidth - markerWidth * 0.5f - edgeMargin);
-            float yLimit = Mathf.Max(1f, halfHeight - markerHeight * 0.5f - edgeMargin);
-            float xScale = Mathf.Abs(screenDirection.x) <= 0.001f ? float.MaxValue : xLimit / Mathf.Abs(screenDirection.x);
-            float yScale = Mathf.Abs(screenDirection.y) <= 0.001f ? float.MaxValue : yLimit / Mathf.Abs(screenDirection.y);
-            float scale = Mathf.Min(xScale, yScale);
-            Vector2 center = new Vector2(halfWidth, halfHeight) + screenDirection * scale;
-            center.x = Mathf.Clamp(center.x, edgeMargin + markerWidth * 0.5f, Screen.width - edgeMargin - markerWidth * 0.5f);
-            center.y = Mathf.Clamp(center.y, 96f + markerHeight * 0.5f, Screen.height - edgeMargin - markerHeight * 0.5f);
-
-            Rect panel = new Rect(center.x - markerWidth * 0.5f, center.y - markerHeight * 0.5f, markerWidth, markerHeight);
-            Color threatColor = ResolveMajorRewardDropColor(enemy.Role);
-            Color oldColor = GUI.color;
-            GUI.color = new Color(0.02f, 0.015f, 0.02f, 0.76f);
-            GUI.DrawTexture(panel, Texture2D.whiteTexture);
-            GUI.color = new Color(threatColor.r, threatColor.g, threatColor.b, 0.92f);
-            GUI.DrawTexture(new Rect(panel.x, panel.y, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(panel.x, panel.yMax - 3f, panel.width, 3f), Texture2D.whiteTexture);
-            GUI.color = Color.white;
-            GUI.Label(new Rect(panel.x + 10f, panel.y + 7f, panel.width - 20f, panel.height - 12f), FormatOffscreenThreatMarkerLabel(enemy), _hudSmallStyle);
-            GUI.color = oldColor;
         }
 
         private void DrawRewardSelectionFeedback() => _rewardBanner.Draw(_rewardFeedbackStyle);
@@ -12139,30 +11818,7 @@ namespace Deucarian.TemplateGameSurvivors
             return $"Explore Waystone --   Found {WaystoneDiscoveryCount}";
         }
 
-        private static string ResolveCompassDirectionLabel(Vector3 delta)
-        {
-            delta.y = 0f;
-            if (delta.sqrMagnitude <= 0.0001f)
-            {
-                return "here";
-            }
-
-            float absX = Mathf.Abs(delta.x);
-            float absZ = Mathf.Abs(delta.z);
-            string horizontal = delta.x >= 0f ? "E" : "W";
-            string vertical = delta.z >= 0f ? "N" : "S";
-            if (absX > absZ * 1.85f)
-            {
-                return horizontal;
-            }
-
-            if (absZ > absX * 1.85f)
-            {
-                return vertical;
-            }
-
-            return vertical + horizontal;
-        }
+        private static string ResolveCompassDirectionLabel(Vector3 delta) => SurvivorsThreatHudModel.CompassDirection(delta);
 
         private string ResolveEvolutionGoalHudLabel()
         {

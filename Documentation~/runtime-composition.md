@@ -23,6 +23,9 @@ The controller retains its original script GUID, six serialized fields, public m
 | Death bursts and ranged shot cues | `SurvivorsCombatFeedbackPresenter` | Transform provider and event values; owns separate bounded lists and material lifetimes |
 | Incoming-threat and slam ground telegraphs | `SurvivorsThreatTelegraphPresenter` | Transform provider and threat values; owns charge/fade windows and bounded lists |
 | Major reward-cache markers | `SurvivorsRewardDropPresenter` | Transform/theme providers and reward values; owns marker animation and cleanup |
+| Threat health and offscreen marker read model | `SurvivorsThreatHudModel` | Read-only value observations; owns authored visibility, priority/tie rules, labels and last-marker history |
+| Threat HUD actor access | `SurvivorsEnemyHudSource` | Adapts the existing enemy collection into copied observations; does not cache a second enemy collection |
+| Threat HUD geometry and rendering | `SurvivorsThreatHudLayout` / `SurvivorsThreatHudPresenter` | Pure viewport/position geometry, then rendering over values, camera projection, theme color and style |
 
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
@@ -42,4 +45,6 @@ Direct EditMode tests exercise the owners without constructing a complete playab
 
 The direct tests distinguish scene-free run/XP/modifier/spawn/status policy from Unity presentation lifecycle tests. Presentation cases cover bounded eviction, distinct telegraph expiry, missing presentation roots, parent destruction, owned material/clip release and repeated disposal. They are separate from full controller, content-editing and PlayMode integration coverage.
 
-This decomposition is in progress. Traversal rewards, full build/draft orchestration, authored binding, major UI screens and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.
+Threat HUD model tests use value observations without actors or scene construction. They preserve authored flags independently of enemy role, first-in-source order for exact selection ties, role then weakest-health selection, horizontal marker eligibility, the existing full-distance marker tie rule, marker history and small/wide viewport layout. A separate Unity adapter test checks copied positions, live collection changes and destroyed actors. Drawing does not change these selection/history rules.
+
+This decomposition is in progress. Traversal rewards, full build/draft orchestration, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.
