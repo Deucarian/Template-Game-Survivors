@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -802,9 +802,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void InitializeNewRun()
         {
             _audioEvents.Reset();
-            _highestChosenRarity = RunUpgradeRarity.Common;
-            _highestChosenRarityLabel = string.Empty;
-            _bestMomentLabel = string.Empty;
+            RewardHistory.ResetBestMoment();
             SurvivorsTemplateTuning resolved = CurrentTuning;
             EnemyDamage.Reset(resolved.RunSeed);
             _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
@@ -865,10 +863,7 @@ namespace Deucarian.TemplateGameSurvivors
             MajorRewardPickupCache.ResetDiagnostics();
             MajorThreatAbilities.ResetDiagnostics();
             PickupCollection.ResetDiagnostics();
-            RewardCardPresentationCount = 0;
-            RewardSelectionFeedbackCount = 0;
-            LastRewardCardPresentationLabel = string.Empty;
-            LastRewardSelectionFeedbackLabel = string.Empty;
+            RewardHistory.ResetFeedbackHistory();
             ExplorationFeedback.Reset();
             RoamingCaches.Reset();
             ShrineTrials.Reset();
@@ -941,6 +936,34 @@ namespace Deucarian.TemplateGameSurvivors
             DrawExperienceComboFeedback();
             DrawDamagePopups();
         }
+
+        private void RecordRewardCardPresentation(SurvivorsRewardSelectionKind selectionKind, RunUpgradeDraft draft) => RewardHistory.RecordRewardCardPresentation(selectionKind, draft);
+
+        private void RecordRewardCardPresentation(SurvivorsRelicDraft draft) => RewardHistory.RecordRewardCardPresentation(draft);
+
+        private void RecordRewardSelectionFeedback(SurvivorsRewardSelectionKind selectionKind, RunUpgradeDefinition selected) => RewardHistory.RecordRewardSelectionFeedback(selectionKind, selected);
+
+        private void RecordBestRewardMoment(RunUpgradeDefinition selected) => RewardHistory.RecordBestRewardMoment(selected);
+
+        private void RecordRelicSelectionFeedback(SurvivorsRelicDefinition selected) => RewardHistory.RecordRelicSelectionFeedback(selected);
+
+        private void RecordRewardSkipFeedback(SurvivorsRewardSelectionKind selectionKind) => RewardHistory.RecordRewardSkipFeedback(selectionKind);
+
+        private static RunUpgradeRarity ResolveHighestRarity(IReadOnlyList<RunUpgradeDefinition> choices) => SurvivorsRewardFeedbackHistory.ResolveHighestRarity(choices);
+
+        private SurvivorsRewardFeedbackHistory _rewardHistory;
+        private SurvivorsRewardFeedbackHistory RewardHistory => _rewardHistory ?? (_rewardHistory = new SurvivorsRewardFeedbackHistory(this));
+        string ISurvivorsRewardFeedbackPort.ResolveUpgradeDisplayName(RunUpgradeId id) => ResolveUpgradeDisplayName(id);
+        SurvivorsRunUpgradeCategory ISurvivorsRewardFeedbackPort.ResolveCurrentUpgradeCategory(RunUpgradeDefinition selected) => ResolveCurrentUpgradeCategory(selected);
+        string ISurvivorsRewardFeedbackPort.ResolveUpgradeAffectedLabel(RunUpgradeDefinition selected) => ResolveUpgradeAffectedLabel(selected);
+        bool ISurvivorsRewardFeedbackPort.IsEvolutionUpgrade(RunUpgradeDefinition selected) => IsEvolutionUpgrade(selected);
+        string ISurvivorsRewardFeedbackPort.FormatRelicEffectSummary(SurvivorsRelicDefinition selected) => FormatRelicEffectSummary(selected);
+        float ISurvivorsRewardFeedbackPort.RunTimeSeconds => RunTimeSeconds;
+        int ISurvivorsRewardFeedbackPort.DraftSkipBloodShards => DraftSkipBloodShards;
+        string ISurvivorsRewardFeedbackPort.CurrencyRewardLabel => CurrencyRewardLabel;
+        void ISurvivorsRewardFeedbackPort.ShowRewardBanner(string label, float duration, Color color) => _rewardBanner.Show(label, duration, color);
+        void ISurvivorsRewardFeedbackPort.PlayRelicAudio() => PlayAudioEvent(AudioEventRelic, _bossClip, 0.08f);
+        void ISurvivorsRewardFeedbackPort.PlaySkipAudio() => PlayAudioEvent(AudioEventDraftSkip, _pickupClip, 0.08f);
 
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
@@ -1530,9 +1553,9 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly SurvivorsProfileSession _profileSession = new SurvivorsProfileSession(
             () => new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider())));
         private bool _debugOverlayVisible { get => FrameInput.DebugVisible; set => FrameInput.DebugVisible = value; }
-        private RunUpgradeRarity _highestChosenRarity;
-        private string _highestChosenRarityLabel = string.Empty;
-        private string _bestMomentLabel = string.Empty;
+        private RunUpgradeRarity _highestChosenRarity => RewardHistory.HighestChosenRarity;
+        private string _highestChosenRarityLabel => RewardHistory.HighestChosenRarityLabel;
+        private string _bestMomentLabel => RewardHistory.BestMomentLabel;
         private SurvivorsThreatHudModel _threatHud;
         private SurvivorsThreatHudModel ThreatHud => _threatHud ??
             (_threatHud = new SurvivorsThreatHudModel(new SurvivorsEnemyHudSource(_enemies)));
@@ -1702,10 +1725,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int BloodShardsCollectedFromPickups => PickupCollection.BloodShardsCollectedFromPickups;
         public int PickupAttractionFeedbackCount => PickupCollection.PickupAttractionFeedbackCount;
         public int MagnetRecallFeedbackCount => PickupCollection.MagnetRecallFeedbackCount;
-        public int RewardCardPresentationCount { get; private set; }
-        public int RewardSelectionFeedbackCount { get; private set; }
-        public string LastRewardCardPresentationLabel { get; private set; } = string.Empty;
-        public string LastRewardSelectionFeedbackLabel { get; private set; } = string.Empty;
+        public int RewardCardPresentationCount => RewardHistory.RewardCardPresentationCount;
+        public int RewardSelectionFeedbackCount => RewardHistory.RewardSelectionFeedbackCount;
+        public string LastRewardCardPresentationLabel => RewardHistory.LastRewardCardPresentationLabel;
+        public string LastRewardSelectionFeedbackLabel => RewardHistory.LastRewardSelectionFeedbackLabel;
         public string LastMajorRewardDropFeedbackLabel => RewardDrops.LastMajorRewardDropFeedbackLabel;
         public string LastMajorRewardCacheFeedbackLabel => MajorRewardPickupCache.LastMajorRewardCacheFeedbackLabel;
         public int ExperienceCollected => _experienceProgression.ExperienceCollected;
@@ -3909,108 +3932,12 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
 
-        private void RecordRewardCardPresentation(SurvivorsRewardSelectionKind selectionKind, RunUpgradeDraft draft)
-        {
-            int choiceCount = draft == null ? 0 : draft.Choices.Count;
-            if (choiceCount <= 0)
-            {
-                return;
-            }
 
-            RewardCardPresentationCount += choiceCount;
-            RunUpgradeRarity highestRarity = ResolveHighestRarity(draft.Choices);
-            LastRewardCardPresentationLabel = $"{ResolveRewardKindLabel(selectionKind)} - {choiceCount} cards, best {highestRarity}";
-        }
 
-        private void RecordRewardCardPresentation(SurvivorsRelicDraft draft)
-        {
-            int choiceCount = draft == null ? 0 : draft.Choices.Count;
-            if (choiceCount <= 0)
-            {
-                return;
-            }
 
-            RewardCardPresentationCount += choiceCount;
-            LastRewardCardPresentationLabel = $"Boss Relic - {choiceCount} cards";
-        }
 
-        private void RecordRewardSelectionFeedback(SurvivorsRewardSelectionKind selectionKind, RunUpgradeDefinition selected)
-        {
-            if (selected == null)
-            {
-                return;
-            }
 
-            string name = ResolveUpgradeDisplayName(selected.Id);
-            string category = ResolveCurrentUpgradeCategory(selected).ToString();
-            string affected = ResolveUpgradeAffectedLabel(selected);
-            LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)}: {selected.Rarity} {category} - {name} ({affected})";
-            RewardSelectionFeedbackCount++;
-            _rewardBanner.Show(LastRewardSelectionFeedbackLabel, RewardFeedbackDurationSeconds, ResolveRarityAccentColor(selected.Rarity));
-            RecordBestRewardMoment(selected);
-        }
 
-        private void RecordBestRewardMoment(RunUpgradeDefinition selected)
-        {
-            if (selected == null)
-            {
-                return;
-            }
-
-            string name = ResolveUpgradeDisplayName(selected.Id);
-            if ((int)selected.Rarity >= (int)_highestChosenRarity)
-            {
-                _highestChosenRarity = selected.Rarity;
-                _highestChosenRarityLabel = selected.Rarity + " - " + name;
-                _bestMomentLabel = "Highest rarity chosen: " + _highestChosenRarityLabel;
-            }
-
-            if (IsEvolutionUpgrade(selected))
-            {
-                _bestMomentLabel = "Evolution acquired: " + name + " at " + FormatRunTime(RunTimeSeconds);
-            }
-        }
-
-        private void RecordRelicSelectionFeedback(SurvivorsRelicDefinition selected)
-        {
-            if (selected == null)
-            {
-                return;
-            }
-
-            LastRewardSelectionFeedbackLabel = $"Boss Relic: {selected.DisplayName} - {FormatRelicEffectSummary(selected)}";
-            RewardSelectionFeedbackCount++;
-            _rewardBanner.Show(LastRewardSelectionFeedbackLabel, RewardFeedbackDurationSeconds, ResolveRelicAccentColor(selected));
-            PlayAudioEvent(AudioEventRelic, _bossClip, 0.08f);
-        }
-
-        private void RecordRewardSkipFeedback(SurvivorsRewardSelectionKind selectionKind)
-        {
-            LastRewardSelectionFeedbackLabel = $"{ResolveRewardKindLabel(selectionKind)} skipped +{DraftSkipBloodShards} {CurrencyRewardLabel}";
-            RewardSelectionFeedbackCount++;
-            _rewardBanner.Show(LastRewardSelectionFeedbackLabel, RewardFeedbackDurationSeconds, new Color(0.72f, 0.84f, 0.9f));
-            PlayAudioEvent(AudioEventDraftSkip, _pickupClip, 0.08f);
-        }
-
-        private static RunUpgradeRarity ResolveHighestRarity(IReadOnlyList<RunUpgradeDefinition> choices)
-        {
-            RunUpgradeRarity highest = RunUpgradeRarity.Common;
-            if (choices == null)
-            {
-                return highest;
-            }
-
-            for (int i = 0; i < choices.Count; i++)
-            {
-                RunUpgradeDefinition choice = choices[i];
-                if (choice != null && (int)choice.Rarity > (int)highest)
-                {
-                    highest = choice.Rarity;
-                }
-            }
-
-            return highest;
-        }
 
 
 
