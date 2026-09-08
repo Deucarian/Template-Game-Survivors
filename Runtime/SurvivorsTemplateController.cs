@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort, ISurvivorsActorMembershipPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -209,17 +209,6 @@ namespace Deucarian.TemplateGameSurvivors
             if (IsEliteRole(role)) Telemetry.Record(SurvivorsRunMetric.FirstEliteKill, RunTimeSeconds);
             else if (role == SurvivorsEnemyRole.Miniboss) Telemetry.Record(SurvivorsRunMetric.FirstMinibossKill, RunTimeSeconds);
             else if (role == SurvivorsEnemyRole.Boss) Telemetry.Record(SurvivorsRunMetric.FirstBossKill, RunTimeSeconds);
-        }
-        SurvivorsEncounterClears ISurvivorsEnemyDefeatPort.ReleaseKilledEnemy(ISurvivorsDefeatTarget target)
-        {
-            var enemy = (SurvivorsEnemyActor)target;
-            _enemies.Remove(enemy);
-            bool horde = HordeRush.RemoveEnemy(enemy.InstanceId.Value);
-            bool cache = RoamingCaches.RemoveEnemy(enemy.InstanceId.Value);
-            bool shrine = ShrineTrials.RemoveEnemy(enemy.InstanceId.Value);
-            MajorThreatAbilities.ForgetEnemy(enemy);
-            if (_spawnService != null && enemy.InstanceId.Value > 0) _spawnService.Despawn(enemy.InstanceId, DespawnReason.Killed);
-            return new SurvivorsEncounterClears(horde, cache, shrine);
         }
         void ISurvivorsEnemyDefeatPort.SpawnExperience(Vector3 position, int amount) => SpawnPickup(SurvivorsPickupKind.Experience, position, amount);
         void ISurvivorsEnemyDefeatPort.RegisterStreak(Vector3 position) => RegisterKillStreak(position);
@@ -1334,6 +1323,25 @@ namespace Deucarian.TemplateGameSurvivors
             executeThresholdNormalized: ExecuteThresholdNormalized,
             lifestealRatio: LifestealRatio);
 
+        SurvivorsEncounterClears ISurvivorsEnemyDefeatPort.ReleaseKilledEnemy(ISurvivorsDefeatTarget target) => ActorMembership.ReleaseKilledEnemy((SurvivorsEnemyActor)target);
+
+        internal void ReleaseEnemy(SurvivorsEnemyActor enemy, DespawnReason reason) => ActorMembership.ReleaseEnemy(enemy, reason);
+
+        internal void ReleaseProjectile(SurvivorsProjectileActor projectile, DespawnReason reason) => ActorMembership.ReleaseProjectile(projectile, reason);
+
+        private int DamageNonMajorEnemies(Vector3 position, float radius, float damage, string source) => AreaDamage.DamageNonMajorEnemies(position, radius, damage, source);
+
+        private SurvivorsActorMembership _actorMembership;
+        private SurvivorsActorMembership ActorMembership => _actorMembership ?? (_actorMembership = new SurvivorsActorMembership(this));
+        private SurvivorsAreaDamage _areaDamage;
+        private SurvivorsAreaDamage AreaDamage => _areaDamage ?? (_areaDamage = new SurvivorsAreaDamage(EnemySpatialQueries, (enemy, damage, source) => enemy.ApplyDamage(damage, source)));
+        bool ISurvivorsActorMembershipPort.RemoveHordeMember(long id) => HordeRush.RemoveEnemy(id);
+        bool ISurvivorsActorMembershipPort.RemoveCacheMember(long id) => RoamingCaches.RemoveEnemy(id);
+        bool ISurvivorsActorMembershipPort.RemoveShrineMember(long id) => ShrineTrials.RemoveEnemy(id);
+        void ISurvivorsActorMembershipPort.ForgetMajorThreat(SurvivorsEnemyActor enemy) => MajorThreatAbilities.ForgetEnemy(enemy);
+        bool ISurvivorsActorMembershipPort.HasSpawnService => _spawnService != null;
+        void ISurvivorsActorMembershipPort.Despawn(SpawnInstanceId id, DespawnReason reason) => _spawnService.Despawn(id, reason);
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -1384,9 +1392,9 @@ namespace Deucarian.TemplateGameSurvivors
         [SerializeField]
         private SurvivorsUiTheme uiTheme;
 
-        private readonly List<SurvivorsEnemyActor> _enemies = new List<SurvivorsEnemyActor>(64);
-        private readonly List<SurvivorsPickupActor> _pickups = new List<SurvivorsPickupActor>(128);
-        private readonly List<SurvivorsProjectileActor> _projectiles = new List<SurvivorsProjectileActor>(64);
+        private List<SurvivorsEnemyActor> _enemies => ActorMembership.Enemies;
+        private List<SurvivorsPickupActor> _pickups => ActorMembership.Pickups;
+        private List<SurvivorsProjectileActor> _projectiles => ActorMembership.Projectiles;
         private readonly SurvivorsFeedbackBannerPresenter _rewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Reward);
         private readonly SurvivorsFeedbackBannerPresenter _streakRewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Streak);
         private readonly SurvivorsFeedbackBannerPresenter _classUnlockRewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.ClassUnlock);
@@ -1796,19 +1804,6 @@ namespace Deucarian.TemplateGameSurvivors
         bool ISurvivorsHordeRushPort.SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount) => SpawnPickup(kind, position, amount) != null;
         int ISurvivorsHordeRushPort.DamageNonMajorEnemies(Vector3 position, float radius, float damage, string source) =>
             DamageNonMajorEnemies(position, radius, damage, source);
-        private int DamageNonMajorEnemies(Vector3 position, float radius, float damage, string source)
-        {
-            var targets = new List<SurvivorsEnemyActor>();
-            CollectEnemiesWithinRadius(position, radius, targets);
-            int count = 0;
-            foreach (SurvivorsEnemyActor enemy in targets)
-            {
-                if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role)) continue;
-                enemy.ApplyDamage(damage, source);
-                count++;
-            }
-            return count;
-        }
         void ISurvivorsHordeRushPort.ShowWarning(string label, float radius, float remaining)
         {
             RecordIncomingThreatTelegraph(PlayerPosition, SurvivorsEnemyRole.Runner, label, radius, remaining);
@@ -3057,37 +3052,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        internal void ReleaseEnemy(SurvivorsEnemyActor enemy, DespawnReason reason)
-        {
-            if (enemy == null)
-            {
-                return;
-            }
 
-            _enemies.Remove(enemy);
-            HordeRush.RemoveEnemy(enemy.InstanceId.Value);
-            RoamingCaches.RemoveEnemy(enemy.InstanceId.Value);
-            ShrineTrials.RemoveEnemy(enemy.InstanceId.Value);
-            MajorThreatAbilities.ForgetEnemy(enemy);
-            if (_spawnService != null && enemy.InstanceId.Value > 0)
-            {
-                _spawnService.Despawn(enemy.InstanceId, reason);
-            }
-        }
-
-        internal void ReleaseProjectile(SurvivorsProjectileActor projectile, DespawnReason reason)
-        {
-            if (projectile == null)
-            {
-                return;
-            }
-
-            _projectiles.Remove(projectile);
-            if (_spawnService != null && projectile.InstanceId.Value > 0)
-            {
-                _spawnService.Despawn(projectile.InstanceId, reason);
-            }
-        }
 
 
 
