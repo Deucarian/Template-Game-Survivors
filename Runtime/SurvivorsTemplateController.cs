@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -103,6 +103,28 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsEnemySpatialQueries _enemySpatialQueries;
+        private SurvivorsEnemySpatialQueries EnemySpatialQueries => _enemySpatialQueries ?? (_enemySpatialQueries = new SurvivorsEnemySpatialQueries(_enemies, () => CurrentTuning));
+        private SurvivorsEnemyNavigation _enemyNavigation;
+        private SurvivorsEnemyNavigation EnemyNavigation => _enemyNavigation ?? (_enemyNavigation = new SurvivorsEnemyNavigation(this));
+        internal SurvivorsEnemyActor FindNearestEnemy(Vector3 origin, float range) => EnemySpatialQueries.FindNearestEnemy(origin, range);
+        internal void CollectEnemiesWithinRadius(Vector3 origin, float radius, List<SurvivorsEnemyActor> results) => EnemySpatialQueries.CollectEnemiesWithinRadius(origin, radius, results);
+        private void TryUpdateEnemyLeash(SurvivorsEnemyActor enemy, float deltaTime) => EnemyNavigation.TryUpdateEnemyLeash(enemy, deltaTime);
+        internal float ResolveEnemyCatchUpMoveSpeedMultiplier(SurvivorsEnemyActor enemy, float distance) => EnemyNavigation.ResolveEnemyCatchUpMoveSpeedMultiplier(enemy, distance);
+        internal Vector3 ResolveEnemyCrowdSeparation(SurvivorsEnemyActor actor) => EnemySpatialQueries.ResolveEnemyCrowdSeparation(actor);
+        SurvivorsTemplateTuning ISurvivorsEnemyNavigationPort.Tuning => CurrentTuning;
+        Vector3 ISurvivorsEnemyNavigationPort.PlayerPosition => PlayerPosition;
+        bool ISurvivorsEnemyNavigationPort.IsMajorRewardRole(SurvivorsEnemyRole role) => IsMajorRewardRole(role);
+        Vector3 ISurvivorsEnemyNavigationPort.ResolveSafeOffscreenPosition(Vector3 center, float minimumDistance, float maximumDistance, long seed, float padding, float bandDepth) =>
+            ResolveSafeOffscreenPosition(center, minimumDistance, maximumDistance, seed, padding, bandDepth);
+        float ISurvivorsEnemyNavigationPort.ResolveOffscreenSpawnPadding(SurvivorsEnemyRole role, string reason) => ResolveOffscreenSpawnPadding(role, reason);
+        void ISurvivorsEnemyNavigationPort.RecordGameplaySpawnSafety(SurvivorsEnemyRole role, Vector3 position, string reason) => RecordGameplaySpawnSafety(role, position, reason);
+        void ISurvivorsEnemyNavigationPort.RecordMajorThreatReentry(SurvivorsEnemyRole role, string displayName, Vector3 playerToEnemy)
+        {
+            string name = string.IsNullOrWhiteSpace(displayName) ? ResolveMajorThreatHealthFallbackLabel(role) : displayName;
+            ThreatHud.RecordMarkerLabel($"{name} re-entering {ResolveCompassDirectionLabel(playerToEnemy)}");
+        }
+
         private SurvivorsKillStreakRewards _killStreakRewards;
         private SurvivorsKillStreakRewards KillStreakRewards => _killStreakRewards ?? (_killStreakRewards = new SurvivorsKillStreakRewards(this));
         private SurvivorsExperienceComboRewards _experienceRhythm;
@@ -954,8 +976,8 @@ namespace Deucarian.TemplateGameSurvivors
         public int ActiveMajorRewardDropFeedbackCount => RewardDrops.ActiveMajorRewardDropFeedbackCount;
         public int ActiveMajorThreatSlamTelegraphEffectCount => ThreatTelegraphs.ActiveMajorThreatSlamTelegraphEffectCount;
         public int ActiveIncomingThreatTelegraphEffectCount => ThreatTelegraphs.ActiveIncomingThreatTelegraphEffectCount;
-        public int NormalEnemyRecycleCount { get; private set; }
-        public int MajorThreatRepositionCount { get; private set; }
+        public int NormalEnemyRecycleCount => _enemyNavigation?.NormalEnemyRecycleCount ?? 0;
+        public int MajorThreatRepositionCount => _enemyNavigation?.MajorThreatRepositionCount ?? 0;
         public int GameplayEnemySpawnSafetyCheckCountForTest { get; private set; }
         public int GameplaySpawnInsideCameraViewViolationCountForTest { get; private set; }
         public string LastGameplaySpawnSafetyFailureForTest => _lastGameplaySpawnSafetyFailure;
@@ -2072,8 +2094,7 @@ namespace Deucarian.TemplateGameSurvivors
             CombatFeedback.ResetMetrics();
             _experienceProgression.Reset();
             PlayerVitals.SetBarrier(0f);
-            NormalEnemyRecycleCount = 0;
-            MajorThreatRepositionCount = 0;
+            _enemyNavigation?.ResetDiagnostics();
             MagnetPulseActivationCount = 0;
             _lastMagnetPulseFeedbackLabel = string.Empty;
             ThreatHud.Reset();
@@ -3754,29 +3775,6 @@ namespace Deucarian.TemplateGameSurvivors
             PlayFeedback(_pickupPulse, position, 6, null);
         }
 
-        internal SurvivorsEnemyActor FindNearestEnemy(Vector3 origin, float range)
-        {
-            SurvivorsEnemyActor best = null;
-            float bestDistance = range * range;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    continue;
-                }
-
-                float distance = (enemy.transform.position - origin).sqrMagnitude;
-                if (distance <= bestDistance)
-                {
-                    bestDistance = distance;
-                    best = enemy;
-                }
-            }
-
-            return best;
-        }
-
         internal IReadOnlyList<SurvivorsEnemyActor> ActiveEnemies => _enemies;
 
         internal Transform RuntimeWorldRoot => _worldRoot;
@@ -3910,30 +3908,6 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileLaunchCount++;
             PlayFeedback(_firePulse, origin, 8, _fireClip);
             return true;
-        }
-
-        internal void CollectEnemiesWithinRadius(Vector3 origin, float radius, List<SurvivorsEnemyActor> results)
-        {
-            if (results == null)
-            {
-                return;
-            }
-
-            results.Clear();
-            float radiusSquared = radius * radius;
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    continue;
-                }
-
-                if ((enemy.transform.position - origin).sqrMagnitude <= radiusSquared)
-                {
-                    results.Add(enemy);
-                }
-            }
         }
 
         internal void RecordOrbitHit()
@@ -6202,116 +6176,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void TryUpdateEnemyLeash(SurvivorsEnemyActor enemy, float deltaTime)
-        {
-            if (enemy == null || !enemy.IsAlive || !enemy.CanLeash)
-            {
-                return;
-            }
-
-            Vector3 playerPosition = PlayerPosition;
-            Vector3 offset = enemy.transform.position - playerPosition;
-            offset.y = 0f;
-            float distance = offset.magnitude;
-            if (IsMajorRewardRole(enemy.Role))
-            {
-                TryUpdateMajorThreatLeash(enemy, playerPosition, distance, deltaTime);
-            }
-            else
-            {
-                TryUpdateNormalEnemyLeash(enemy, playerPosition, distance, deltaTime);
-            }
-        }
-
-        private void TryUpdateNormalEnemyLeash(SurvivorsEnemyActor enemy, Vector3 playerPosition, float distance, float deltaTime)
-        {
-            if (!enemy.CanRecycle)
-            {
-                return;
-            }
-
-            float softRadius = Mathf.Max(0f, CurrentTuning.EnemySoftLeashRadius);
-            float hardRadius = Mathf.Max(softRadius + 0.1f, CurrentTuning.EnemyHardRecycleRadius);
-            if (softRadius <= 0f || distance <= softRadius)
-            {
-                enemy.ResetLeashTimer();
-                return;
-            }
-
-            enemy.AddLeashTime(deltaTime);
-            if (distance < hardRadius ||
-                enemy.LeashTimerSeconds < Mathf.Max(0f, CurrentTuning.EnemyRecycleDelaySeconds) ||
-                enemy.HealthFraction <= 0.15f)
-            {
-                return;
-            }
-
-            enemy.transform.position = ResolveSafeOffscreenPosition(
-                playerPosition,
-                Mathf.Max(CurrentTuning.EnemyRecycleMinimumRespawnDistance, CurrentTuning.PlayerRadius + enemy.Radius + 1.8f),
-                Mathf.Max(CurrentTuning.EnemyRecycleMaximumRespawnDistance, CurrentTuning.EnemyRecycleMinimumRespawnDistance + 1f),
-                enemy.InstanceId.Value + NormalEnemyRecycleCount + 17,
-                ResolveOffscreenSpawnPadding(enemy.Role, "normal-recycle"),
-                CurrentTuning.SpawnBandDepth);
-            RecordGameplaySpawnSafety(enemy.Role, enemy.transform.position, "normal-recycle");
-            enemy.ResetLeashTimer();
-            NormalEnemyRecycleCount++;
-        }
-
-        private void TryUpdateMajorThreatLeash(SurvivorsEnemyActor enemy, Vector3 playerPosition, float distance, float deltaTime)
-        {
-            if (!enemy.CanReposition)
-            {
-                return;
-            }
-
-            float repositionRadius = Mathf.Max(0f, CurrentTuning.MajorThreatRepositionRadius);
-            if (repositionRadius <= 0f || distance <= repositionRadius)
-            {
-                enemy.ResetLeashTimer();
-                return;
-            }
-
-            enemy.AddLeashTime(deltaTime);
-            if (enemy.LeashTimerSeconds < Mathf.Max(0f, CurrentTuning.MajorThreatRepositionDelaySeconds))
-            {
-                return;
-            }
-
-            float minimum = Mathf.Max(CurrentTuning.MajorThreatCatchUpRadius, CurrentTuning.PlayerRadius + enemy.Radius + 3.2f);
-            float maximum = Mathf.Max(minimum + 1.5f, minimum + 4.5f);
-            enemy.transform.position = ResolveSafeOffscreenPosition(
-                playerPosition,
-                minimum,
-                maximum,
-                enemy.InstanceId.Value + MajorThreatRepositionCount + 43,
-                ResolveOffscreenSpawnPadding(enemy.Role, "major-threat-reentry"),
-                CurrentTuning.SpawnBandDepth);
-            RecordGameplaySpawnSafety(enemy.Role, enemy.transform.position, "major-threat-reentry");
-            enemy.ResetLeashTimer();
-            MajorThreatRepositionCount++;
-            string name = string.IsNullOrWhiteSpace(enemy.DisplayName)
-                ? ResolveMajorThreatHealthFallbackLabel(enemy.Role)
-                : enemy.DisplayName;
-            ThreatHud.RecordMarkerLabel($"{name} re-entering {ResolveCompassDirectionLabel(enemy.transform.position - playerPosition)}");
-        }
-
-        internal float ResolveEnemyCatchUpMoveSpeedMultiplier(SurvivorsEnemyActor enemy, float distance)
-        {
-            if (enemy == null || !enemy.IsAlive || !IsMajorRewardRole(enemy.Role))
-            {
-                return 1f;
-            }
-
-            float catchUpRadius = Mathf.Max(0f, CurrentTuning.MajorThreatCatchUpRadius);
-            if (catchUpRadius <= 0f || distance <= catchUpRadius)
-            {
-                return 1f;
-            }
-
-            return Mathf.Max(1f, CurrentTuning.MajorThreatCatchUpSpeedMultiplier);
-        }
-
         internal Vector3 ResolveRuntimeEnemySpawnPositionForResolver(long seed)
         {
             return ResolveSafeOffscreenPosition(
@@ -6409,76 +6273,6 @@ namespace Deucarian.TemplateGameSurvivors
         private string ResolveFirstOffscreenMajorThreatMarkerLabel() => ThreatHud.MarkerLabel(PlayerPosition, CurrentTuning.OffscreenThreatMarkerDistance);
 
         private void UpdateOffscreenThreatMarkerSnapshot() => ThreatHud.UpdateLastMarker(PlayerPosition, CurrentTuning.OffscreenThreatMarkerDistance);
-
-        internal Vector3 ResolveEnemyCrowdSeparation(SurvivorsEnemyActor actor)
-        {
-            if (actor == null || _enemies.Count <= 1)
-            {
-                return Vector3.zero;
-            }
-
-            float strength = Mathf.Max(0f, CurrentTuning.EnemySeparationStrength);
-            float baseRadius = Mathf.Max(0f, CurrentTuning.EnemySeparationRadius);
-            if (strength <= 0f || baseRadius <= 0f)
-            {
-                return Vector3.zero;
-            }
-
-            Vector3 origin = actor.transform.position;
-            Vector3 push = Vector3.zero;
-            int neighborCount = 0;
-            int maxNeighbors = Mathf.Max(1, CurrentTuning.EnemySeparationMaxNeighbors);
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor other = _enemies[i];
-                if (other == null || other == actor || !other.IsAlive)
-                {
-                    continue;
-                }
-
-                float radius = Mathf.Max(baseRadius, actor.Radius + other.Radius);
-                Vector3 away = origin - other.transform.position;
-                away.y = 0f;
-                float sqrDistance = away.sqrMagnitude;
-                if (sqrDistance > radius * radius)
-                {
-                    continue;
-                }
-
-                float distance = 0f;
-                if (sqrDistance <= 0.0001f)
-                {
-                    away = ResolveDeterministicSeparationDirection(actor, other);
-                }
-                else
-                {
-                    distance = Mathf.Sqrt(sqrDistance);
-                    away /= distance;
-                }
-
-                float weight = radius <= 0f ? 0f : 1f - Mathf.Clamp01(distance / radius);
-                push += away * weight;
-                neighborCount++;
-                if (neighborCount >= maxNeighbors)
-                {
-                    break;
-                }
-            }
-
-            if (push.sqrMagnitude <= 0.0001f)
-            {
-                return Vector3.zero;
-            }
-
-            return push.normalized * Mathf.Min(strength, push.magnitude * strength);
-        }
-
-        private static Vector3 ResolveDeterministicSeparationDirection(SurvivorsEnemyActor first, SurvivorsEnemyActor second)
-        {
-            int hash = first.GetInstanceID() ^ (second.GetInstanceID() << 1);
-            float angle = ((hash & 0x7fffffff) % 360) * Mathf.Deg2Rad;
-            return new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-        }
 
         private void TickProjectiles(float deltaTime)
         {

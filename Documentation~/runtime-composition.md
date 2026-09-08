@@ -61,6 +61,8 @@ The controller retains its original script GUID, six serialized fields, public m
 | Kill streak reward cadence | `SurvivorsKillStreakRewards` | Owns streak window, successful drop counters, tiered Tempo Surge and independent clocks; bounded pickup/feedback port |
 | Experience combo and Gem Rush | `SurvivorsExperienceComboRewards` | Owns combo budget, once-per-combo activation and banner; gameplay and presentation clocks remain distinct |
 
+| Enemy spatial queries and reentry | `SurvivorsEnemySpatialQueries / SurvivorsEnemyNavigation` | Borrowed existing actor list, exact distance/crowd ties, leash/catch-up policy and single reentry counters |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -101,4 +103,6 @@ Screen-model tests verify wide/narrow draft orientation, card spacing and scroll
 
 Pickup rhythm tests preserve cadence under failed spawns, tempo tier caps, independent streak/surge expiry, combo-versus-gameplay pause timing, repeated pickup refresh, reset boundaries and disabled/live-clamped bonuses.
 
-This decomposition is in progress. Combat augments and further momentum rewards, further build milestone feedback, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.
+Eighteen cases retain target/radius/crowd ordering, leash and reentry behavior. Dead fixtures use Combat LifeState.Dead.
+
+This decomposition is in progress. Remaining combat/death, pickup collection/cache, feedback/metrics, frame/lifecycle coordination and the compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
