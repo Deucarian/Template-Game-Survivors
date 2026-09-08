@@ -46,6 +46,9 @@ The controller retains its original script GUID, six serialized fields, public m
 | Guaranteed draft choices | `SurvivorsDraftGuaranteePolicy` | Rarity/primer/early-passive priority, duplicate suppression, catalog-ordered evolution locks and stable seed salts |
 | Deterministic offer generation | `SurvivorsDraftOfferGenerator` / `SurvivorsDraftProgress` | Explicit run-progress values plus build/rarity policies; produces offers without applying upgrades or spending charges |
 
+| Active draft selection and continuation | `SurvivorsDraftSession` | Owns offers, reroll/banish/skip charges, timer, diagnostics and ordered victory/relic/queued-XP continuation; bounded feedback/application port |
+| Acquired relic inventory | `SurvivorsRelicInventory` | Sole ordinal selected-ID set and ordered selected list; reserves identity before effects and publishes count/order before acquisition feedback |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -78,4 +81,6 @@ Build policy tests preserve first matching class gates and the all-rejected cata
 
 Offer tests cover reward-pool fallback, rarity-before-primer guarantees and duplicate locks, missing-passive requirements, evolution lock precedence and source order, explicit normal versus derived reward locks, deterministic rerolls, disabled pools and each reward seed salt.
 
-This decomposition is in progress. Combat augments and further momentum rewards, full build/draft orchestration, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.
+Draft-session tests cover charge spending only after successful generation, failed banish regeneration without skip rewards, timeout attempt accounting when eligibility changes, first victory versus endless boss rewards, miniboss/relic/queued-level ordering, empty relic fallback, empty normal-pool compensation and clear versus reset. Relic tests check identity reservation before effects, acquired-order visibility and duplicate rejection.
+
+This decomposition is in progress. Combat augments and further momentum rewards, further build milestone feedback, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.
