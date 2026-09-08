@@ -26,6 +26,8 @@ The controller retains its original script GUID, six serialized fields, public m
 | Threat health and offscreen marker read model | `SurvivorsThreatHudModel` | Read-only value observations; owns authored visibility, priority/tie rules, labels and last-marker history |
 | Threat HUD actor access | `SurvivorsEnemyHudSource` | Adapts the existing enemy collection into copied observations; does not cache a second enemy collection |
 | Threat HUD geometry and rendering | `SurvivorsThreatHudLayout` / `SurvivorsThreatHudPresenter` | Pure viewport/position geometry, then rendering over values, camera projection, theme color and style |
+| Horde rush encounter | `SurvivorsHordeRushEncounter` | Schedule, warning/burst scaling, World Spawning member IDs, clear rewards, pulse accounting and Breaker timer; narrow world spawn/damage/feedback port |
+| Roaming cache and shrine travel triggers | `SurvivorsTraversalDirector` | Accumulated travel, shrine eligibility and shrine-before-cache command ordering; no scene state or presentation ownership |
 
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
@@ -46,5 +48,7 @@ Direct EditMode tests exercise the owners without constructing a complete playab
 The direct tests distinguish scene-free run/XP/modifier/spawn/status policy from Unity presentation lifecycle tests. Presentation cases cover bounded eviction, distinct telegraph expiry, missing presentation roots, parent destruction, owned material/clip release and repeated disposal. They are separate from full controller, content-editing and PlayMode integration coverage.
 
 Threat HUD model tests use value observations without actors or scene construction. They preserve authored flags independently of enemy role, first-in-source order for exact selection ties, role then weakest-health selection, horizontal marker eligibility, the existing full-distance marker tie rule, marker history and small/wide viewport layout. A separate Unity adapter test checks copied positions, live collection changes and destroyed actors. Drawing does not change these selection/history rules.
+
+Horde/traversal tests use fake world command ports without menus, audio or scene hierarchies. They retain blocked-spawn schedule consumption, continued attempts after individual horde spawn failure, member removal before the existing ordered death reward sequence, successful-drop gating of clear rewards, special-drop cadence, pulse/surge timing, travel backlog limits and disabled/active-shrine travel behavior. World Spawning continues to own actual spawned instance lifetime.
 
 This decomposition is in progress. Traversal rewards, full build/draft orchestration, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.
