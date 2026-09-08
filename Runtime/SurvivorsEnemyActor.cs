@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable
+    public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable, ISurvivorsDefeatTarget
     {
         private SurvivorsTemplateController _controller;
         private SurvivorsEnemyPresentation _presentation;
@@ -42,6 +42,7 @@ namespace Deucarian.TemplateGameSurvivors
         private float _majorThreatSlamTelegraphTimer;
         private bool _majorThreatSlamTelegraphing;
 
+        Vector3 ISurvivorsDefeatTarget.Position => transform.position;
         public SpawnInstanceId InstanceId { get; private set; }
         public bool IsAlive => _health != null && _health.IsAlive;
         public bool IsHitFlashActive => Presentation.IsHitFlashActive;

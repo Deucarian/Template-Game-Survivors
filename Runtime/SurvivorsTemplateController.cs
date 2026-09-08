@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -198,6 +198,49 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsContentBindingPort.RefreshConfiguredTuning() => tuning = CreateConfiguredTuning(pacingProfile);
         void ISurvivorsContentBindingPort.ReleaseProfile() => ReleaseMetaProgressionService();
         bool ISurvivorsContentBindingPort.ConfigureUiThemes(TextAsset primary, TextAsset alternate) => ConfigureUiThemes(primary, alternate);
+
+        private SurvivorsEnemyDefeatFlow _defeats;
+        private SurvivorsEnemyDefeatFlow Defeats => _defeats ?? (_defeats = new SurvivorsEnemyDefeatFlow(this, _runSession));
+        internal void HandleEnemyKilled(SurvivorsEnemyActor enemy, string source, bool applyAugments)
+        { if (enemy != null) Defeats.HandleEnemyKilled(enemy, source, applyAugments); }
+        void ISurvivorsEnemyDefeatPort.RecordKillMetric(SurvivorsEnemyRole role)
+        {
+            RecordMetricTime(ref _firstKillTimeSeconds);
+            if (IsEliteRole(role)) RecordMetricTime(ref _firstEliteKillTimeSeconds);
+            else if (role == SurvivorsEnemyRole.Miniboss) RecordMetricTime(ref _firstMinibossKillTimeSeconds);
+            else if (role == SurvivorsEnemyRole.Boss) RecordMetricTime(ref _firstBossKillTimeSeconds);
+        }
+        SurvivorsEncounterClears ISurvivorsEnemyDefeatPort.ReleaseKilledEnemy(ISurvivorsDefeatTarget target)
+        {
+            var enemy = (SurvivorsEnemyActor)target;
+            _enemies.Remove(enemy);
+            bool horde = HordeRush.RemoveEnemy(enemy.InstanceId.Value);
+            bool cache = RoamingCaches.RemoveEnemy(enemy.InstanceId.Value);
+            bool shrine = ShrineTrials.RemoveEnemy(enemy.InstanceId.Value);
+            _enragedMajorThreats.Remove(enemy);
+            if (_spawnService != null && enemy.InstanceId.Value > 0) _spawnService.Despawn(enemy.InstanceId, DespawnReason.Killed);
+            return new SurvivorsEncounterClears(horde, cache, shrine);
+        }
+        void ISurvivorsEnemyDefeatPort.SpawnExperience(Vector3 position, int amount) => SpawnPickup(SurvivorsPickupKind.Experience, position, amount);
+        void ISurvivorsEnemyDefeatPort.RegisterStreak(Vector3 position) => RegisterKillStreak(position);
+        void ISurvivorsEnemyDefeatPort.ShowDeath(Vector3 position, SurvivorsEnemyRole role, float radius) => RecordEnemyDeathEffect(position, role, radius);
+        void ISurvivorsEnemyDefeatPort.TriggerDeathNova(Vector3 position, string source, bool applyAugments) => TryTriggerDeathNova(position, source, applyAugments);
+        void ISurvivorsEnemyDefeatPort.SpawnMajorRewards(Vector3 position, SurvivorsEnemyRole role, float radius, int xp)
+        {
+            RecordMajorRewardDropFeedback(position, role, radius);
+            SpawnMajorRewardPickupCache(position, role, radius);
+            TryDropHealthPickup(position + new Vector3(radius * 0.7f, 0f, radius * 0.35f));
+            TryActivateEndlessSurge(role, position, xp);
+        }
+        void ISurvivorsEnemyDefeatPort.PlayDeath(Vector3 position, int burst) => PlayFeedback(_killPulse, position, burst, _killClip, AudioEventEnemyDeath, 0.08f);
+        void ISurvivorsEnemyDefeatPort.SpawnSplitterChildren(Vector3 position, string displayName) => SpawnSplitterChildren(position, displayName);
+        void ISurvivorsEnemyDefeatPort.GrantMajorEnemyReward(SurvivorsEnemyRole role) => GrantMajorEnemyReward(role);
+        bool ISurvivorsEnemyDefeatPort.OpenUpgradeRewardDraft(SurvivorsEnemyRole role) => OpenUpgradeRewardDraft(role, requireEvolutionChoice: false);
+        void ISurvivorsEnemyDefeatPort.OpenBossRelicDraft() => OpenBossRelicDraft();
+        void ISurvivorsEnemyDefeatPort.EnterVictory() => EnterVictory();
+        void ISurvivorsEnemyDefeatPort.RewardHordeClear(Vector3 position) => HordeRush.SpawnHordeRushClearReward(position);
+        void ISurvivorsEnemyDefeatPort.RewardCacheClear(Vector3 position) => RoamingCaches.SpawnRoamingCacheAmbushClearReward(position);
+        void ISurvivorsEnemyDefeatPort.RewardShrineClear(Vector3 position) => ShrineTrials.SpawnArenaShrineClearReward(position);
 
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -850,7 +893,7 @@ namespace Deucarian.TemplateGameSurvivors
         public int Experience => _experienceProgression.Experience;
         public int PendingLevelUps => _experienceProgression.PendingLevelUps;
         public int SpawnedCount { get; private set; }
-        public int KilledCount { get; private set; }
+        public int KilledCount => Defeats.KilledCount;
         public int ProjectileLaunchCount { get; private set; }
         public int OrbitHitCount { get; private set; }
         public int MeleeSwingCount { get; private set; }
@@ -890,9 +933,9 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastSummonerSupportFeedbackLabel { get; private set; } = string.Empty;
         public int MinibossSpawnCount { get; private set; }
         public int BossSpawnCount { get; private set; }
-        public int EliteKilledCount { get; private set; }
-        public int MinibossKilledCount { get; private set; }
-        public int BossKilledCount { get; private set; }
+        public int EliteKilledCount => Defeats.EliteKilledCount;
+        public int MinibossKilledCount => Defeats.MinibossKilledCount;
+        public int BossKilledCount => Defeats.BossKilledCount;
         public int EliteRewardGrantCount => RunRewards.EliteRewardGrantCount;
         public int MinibossRewardGrantCount => RunRewards.MinibossRewardGrantCount;
         public int BossRewardGrantCount => RunRewards.BossRewardGrantCount;
@@ -1928,7 +1971,7 @@ namespace Deucarian.TemplateGameSurvivors
             PlayerVitals.Initialize(resolved.PlayerMaxHealth);
             PlayerMotion.Reset();
             SpawnedCount = 0;
-            KilledCount = 0;
+            Defeats.Reset();
             ProjectileLaunchCount = 0;
             OrbitHitCount = 0;
             MeleeSwingCount = 0;
@@ -1971,9 +2014,6 @@ namespace Deucarian.TemplateGameSurvivors
             LastSummonerSupportFeedbackLabel = string.Empty;
             MinibossSpawnCount = 0;
             BossSpawnCount = 0;
-            EliteKilledCount = 0;
-            MinibossKilledCount = 0;
-            BossKilledCount = 0;
             RunRewards.Reset();
             PersistentProgression.ResetRunDiagnostics();
             LastMetaUpgradePurchaseFeedbackLabel = string.Empty;
@@ -3328,99 +3368,6 @@ namespace Deucarian.TemplateGameSurvivors
             return CombatDamageResolver.Resolve(_combatCatalog, health, null, request, allowCritical ? _combatRandom : null);
         }
 
-        internal void HandleEnemyKilled(SurvivorsEnemyActor enemy, string source, bool applyAugments)
-        {
-            if (enemy == null)
-            {
-                return;
-            }
-
-            KilledCount++;
-            Vector3 position = enemy.transform.position;
-            SurvivorsEnemyRole role = enemy.Role;
-            RecordMetricTime(ref _firstKillTimeSeconds);
-            if (IsEliteRole(role))
-            {
-                RecordMetricTime(ref _firstEliteKillTimeSeconds);
-            }
-            else if (role == SurvivorsEnemyRole.Miniboss)
-            {
-                RecordMetricTime(ref _firstMinibossKillTimeSeconds);
-            }
-            else if (role == SurvivorsEnemyRole.Boss)
-            {
-                RecordMetricTime(ref _firstBossKillTimeSeconds);
-            }
-
-            int xp = Mathf.Max(1, enemy.ExperienceReward);
-            float radius = enemy.Radius;
-            _enemies.Remove(enemy);
-            bool clearedHordeRushEnemy = HordeRush.RemoveEnemy(enemy.InstanceId.Value);
-            bool clearedRoamingCacheAmbushEnemy = RoamingCaches.RemoveEnemy(enemy.InstanceId.Value);
-            bool clearedArenaShrineEnemy = ShrineTrials.RemoveEnemy(enemy.InstanceId.Value);
-            _enragedMajorThreats.Remove(enemy);
-            if (_spawnService != null && enemy.InstanceId.Value > 0)
-            {
-                _spawnService.Despawn(enemy.InstanceId, DespawnReason.Killed);
-            }
-
-            SpawnPickup(SurvivorsPickupKind.Experience, position, xp);
-            RegisterKillStreak(position);
-            RecordEnemyDeathEffect(position, role, radius);
-            TryTriggerDeathNova(position, source, applyAugments);
-            if (IsMajorRewardRole(role))
-            {
-                RecordMajorRewardDropFeedback(position, role, radius);
-                SpawnMajorRewardPickupCache(position, role, radius);
-                TryDropHealthPickup(position + new Vector3(radius * 0.7f, 0f, radius * 0.35f));
-                TryActivateEndlessSurge(role, position, xp);
-            }
-
-            PlayFeedback(_killPulse, position, role == SurvivorsEnemyRole.Swarm ? 18 : 34, _killClip, AudioEventEnemyDeath, 0.08f);
-            if (role == SurvivorsEnemyRole.Splitter)
-            {
-                SpawnSplitterChildren(position, enemy.DisplayName);
-            }
-            else if (IsEliteRole(role))
-            {
-                EliteKilledCount++;
-                GrantMajorEnemyReward(role);
-                OpenUpgradeRewardDraft(role, requireEvolutionChoice: false);
-            }
-            else if (role == SurvivorsEnemyRole.Miniboss)
-            {
-                MinibossKilledCount++;
-                GrantMajorEnemyReward(SurvivorsEnemyRole.Miniboss);
-                if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Miniboss, requireEvolutionChoice: false))
-                {
-                    OpenBossRelicDraft();
-                }
-            }
-            else if (role == SurvivorsEnemyRole.Boss)
-            {
-                BossKilledCount++;
-                GrantMajorEnemyReward(SurvivorsEnemyRole.Boss);
-                if (!OpenUpgradeRewardDraft(SurvivorsEnemyRole.Boss, requireEvolutionChoice: false) && !_runSession.HasClearedVictory)
-                {
-                    EnterVictory();
-                }
-            }
-
-            if (clearedHordeRushEnemy)
-            {
-                HordeRush.SpawnHordeRushClearReward(position);
-            }
-
-            if (clearedRoamingCacheAmbushEnemy)
-            {
-                RoamingCaches.SpawnRoamingCacheAmbushClearReward(position);
-            }
-
-            if (clearedArenaShrineEnemy)
-            {
-                ShrineTrials.SpawnArenaShrineClearReward(position);
-            }
-        }
 
         private void TryTriggerDeathNova(Vector3 position, string source, bool applyAugments)
         {
