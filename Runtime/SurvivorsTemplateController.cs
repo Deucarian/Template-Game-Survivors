@@ -412,6 +412,16 @@ namespace Deucarian.TemplateGameSurvivors
         internal void ApplyWeaponStatusEffectsToEnemy(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition, DamageResult damage)
         { if (enemy != null) DamageAugments.ApplyWeaponStatusEffectsToEnemy(enemy, definition, damage); }
 
+        private SurvivorsPayloadHazardRewards _payloadHazards;
+        private SurvivorsPayloadHazardRewards PayloadHazards => _payloadHazards ?? (_payloadHazards = new SurvivorsPayloadHazardRewards(this));
+        private SurvivorsDeathNova _deathNova;
+        private SurvivorsDeathNova DeathNova => _deathNova ?? (_deathNova = new SurvivorsDeathNova(_enemies, () => DeathNovaDamage, () => DeathNovaRadius, (position, count) => PlayFeedback(_killPulse, position, count, _killClip)));
+        internal void RecordPayloadHazardTick() => PayloadHazards.RecordPayloadHazardTick();
+        internal void RecordPayloadHazardSnare(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition, Vector3 origin)
+        { if (enemy != null) PayloadHazards.RecordPayloadHazardSnare(enemy.DisplayName, definition, origin); }
+        private void TickPayloadHazardChain(float deltaTime) => PayloadHazards.TickPayloadHazardChain(deltaTime);
+        private void TryTriggerDeathNova(Vector3 position, string source, bool applyAugments) => DeathNova.TryTriggerDeathNova(position, source, applyAugments);
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -1002,9 +1012,6 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsTraversalPort.SpawnShrine(Vector3 direction) => ShrineTrials.SpawnArenaShrineTrial(direction);
         void ISurvivorsTraversalPort.SpawnCache(Vector3 direction, int sequenceOffset) => RoamingCaches.SpawnRoamingArenaCache(direction, sequenceOffset);
         private long _spawnSequence;
-        private float _payloadHazardChainWindowTimer;
-        private float _payloadHazardChainCooldownTimer;
-        private int _payloadHazardChainSnareCount;
         private SurvivorsUpgradeModifiers _upgradeModifiers;
         private SurvivorsUpgradeModifiers UpgradeModifiers => _upgradeModifiers ?? (_upgradeModifiers = new SurvivorsUpgradeModifiers(this));
         private readonly SurvivorsRunSession _runSession = new SurvivorsRunSession();
@@ -1074,13 +1081,13 @@ namespace Deucarian.TemplateGameSurvivors
         public int PayloadPlacedCount { get; private set; }
         public int PayloadDetonationCount { get; private set; }
         public int PayloadExplosionHitCount { get; private set; }
-        public int PayloadHazardTickCount { get; private set; }
-        public int PayloadHazardSnareCount { get; private set; }
-        public string LastPayloadHazardSnareFeedbackLabel { get; private set; } = string.Empty;
-        public int PayloadHazardChainActivationCount { get; private set; }
-        public int PayloadHazardChainPulseHitCount { get; private set; }
-        public int PayloadHazardChainExperienceGemDropCount { get; private set; }
-        public string LastPayloadHazardChainFeedbackLabel { get; private set; } = string.Empty;
+        public int PayloadHazardTickCount => PayloadHazards.PayloadHazardTickCount;
+        public int PayloadHazardSnareCount => PayloadHazards.PayloadHazardSnareCount;
+        public string LastPayloadHazardSnareFeedbackLabel => PayloadHazards.LastPayloadHazardSnareFeedbackLabel;
+        public int PayloadHazardChainActivationCount => PayloadHazards.PayloadHazardChainActivationCount;
+        public int PayloadHazardChainPulseHitCount => PayloadHazards.PayloadHazardChainPulseHitCount;
+        public int PayloadHazardChainExperienceGemDropCount => PayloadHazards.PayloadHazardChainExperienceGemDropCount;
+        public string LastPayloadHazardChainFeedbackLabel => PayloadHazards.LastPayloadHazardChainFeedbackLabel;
         public int SplitterChildSpawnCount { get; private set; }
         public int SplitterSplitFeedbackCount { get; private set; }
         public string LastSplitterSplitFeedbackLabel { get; private set; } = string.Empty;
@@ -1157,8 +1164,8 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastDashFeedbackLabel => PlayerMotion.LastDashFeedbackLabel;
         public int EnemyHitFlashFeedbackCount { get; private set; }
         public int CriticalHitFeedbackCount { get; private set; }
-        public int DeathNovaTriggerCount { get; private set; }
-        public int DeathNovaHitCount { get; private set; }
+        public int DeathNovaTriggerCount => DeathNova.DeathNovaTriggerCount;
+        public int DeathNovaHitCount => DeathNova.DeathNovaHitCount;
         public int EnemyDeathEffectCount => CombatFeedback.EnemyDeathEffectCount;
         public int EnemyRangedAttackFeedbackCount => CombatFeedback.EnemyRangedAttackFeedbackCount;
         public int EnemyRangedAttackDodgeFeedbackCount { get; private set; }
@@ -2126,16 +2133,7 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadPlacedCount = 0;
             PayloadDetonationCount = 0;
             PayloadExplosionHitCount = 0;
-            PayloadHazardTickCount = 0;
-            PayloadHazardSnareCount = 0;
-            LastPayloadHazardSnareFeedbackLabel = string.Empty;
-            PayloadHazardChainActivationCount = 0;
-            PayloadHazardChainPulseHitCount = 0;
-            PayloadHazardChainExperienceGemDropCount = 0;
-            LastPayloadHazardChainFeedbackLabel = string.Empty;
-            _payloadHazardChainSnareCount = 0;
-            _payloadHazardChainWindowTimer = 0f;
-            _payloadHazardChainCooldownTimer = 0f;
+            PayloadHazards.Reset();
             SplitterChildSpawnCount = 0;
             SplitterSplitFeedbackCount = 0;
             LastSplitterSplitFeedbackLabel = string.Empty;
@@ -2157,8 +2155,7 @@ namespace Deucarian.TemplateGameSurvivors
             PlayerDamageFeedbackCount = 0;
             EnemyHitFlashFeedbackCount = 0;
             CriticalHitFeedbackCount = 0;
-            DeathNovaTriggerCount = 0;
-            DeathNovaHitCount = 0;
+            DeathNova.Reset();
             EnemyRangedAttackDodgeFeedbackCount = 0;
             EnemyRangedAttackDodgeExperienceGemDropCount = 0;
             LastEnemyRangedAttackDodgeFeedbackLabel = string.Empty;
@@ -3308,55 +3305,6 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void TryTriggerDeathNova(Vector3 position, string source, bool applyAugments)
-        {
-            float damage = DeathNovaDamage;
-            float radius = DeathNovaRadius;
-            if (damage <= 0f || radius <= 0f || !applyAugments || !CanApplyDamageAugments(source))
-            {
-                return;
-            }
-
-            var targets = new List<SurvivorsEnemyActor>();
-            for (int i = 0; i < _enemies.Count; i++)
-            {
-                SurvivorsEnemyActor target = _enemies[i];
-                if (target == null || !target.IsAlive)
-                {
-                    continue;
-                }
-
-                Vector3 delta = target.transform.position - position;
-                delta.y = 0f;
-                float range = radius + Mathf.Max(0f, target.Radius);
-                if (delta.sqrMagnitude <= range * range)
-                {
-                    targets.Add(target);
-                }
-            }
-
-            if (targets.Count == 0)
-            {
-                return;
-            }
-
-            DeathNovaTriggerCount++;
-            PlayFeedback(_killPulse, position, Mathf.Clamp(16 + targets.Count * 7, 18, 72), _killClip);
-            for (int i = 0; i < targets.Count; i++)
-            {
-                SurvivorsEnemyActor target = targets[i];
-                if (target == null || !target.IsAlive)
-                {
-                    continue;
-                }
-
-                DamageResult result = target.ApplyDamage(damage, "survivors.augment.death-nova");
-                if (result != null && result.HealthDamage > 0d)
-                {
-                    DeathNovaHitCount++;
-                }
-            }
-        }
 
         internal void ReleaseEnemy(SurvivorsEnemyActor enemy, DespawnReason reason)
         {
@@ -3661,116 +3609,10 @@ namespace Deucarian.TemplateGameSurvivors
             PayloadExplosionHitCount++;
         }
 
-        internal void RecordPayloadHazardTick()
-        {
-            PayloadHazardTickCount++;
-        }
 
-        internal void RecordPayloadHazardSnare(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition, Vector3 origin)
-        {
-            if (enemy == null || definition == null)
-            {
-                return;
-            }
 
-            PayloadHazardSnareCount++;
-            LastPayloadHazardSnareFeedbackLabel = $"{definition.DisplayName} hazard snared {enemy.DisplayName}";
-            RegisterPayloadHazardChainSnare(origin, definition);
-        }
 
-        private void RegisterPayloadHazardChainSnare(Vector3 origin, SurvivorsWeaponArchetypeDefinition definition)
-        {
-            if (_payloadHazardChainCooldownTimer > 0f)
-            {
-                return;
-            }
 
-            if (_payloadHazardChainWindowTimer <= 0f)
-            {
-                _payloadHazardChainSnareCount = 0;
-            }
-
-            _payloadHazardChainSnareCount++;
-            _payloadHazardChainWindowTimer = Mathf.Max(0.05f, CurrentTuning.PayloadHazardChainWindowSeconds);
-            int threshold = Mathf.Max(1, CurrentTuning.PayloadHazardChainSnareThreshold);
-            if (_payloadHazardChainSnareCount < threshold)
-            {
-                return;
-            }
-
-            TriggerPayloadHazardChain(origin, definition);
-        }
-
-        private void TriggerPayloadHazardChain(Vector3 origin, SurvivorsWeaponArchetypeDefinition definition)
-        {
-            int caughtSnares = Mathf.Max(1, _payloadHazardChainSnareCount);
-            _payloadHazardChainSnareCount = 0;
-            _payloadHazardChainWindowTimer = 0f;
-            _payloadHazardChainCooldownTimer = Mathf.Max(0f, CurrentTuning.PayloadHazardChainCooldownSeconds);
-
-            float radius = Mathf.Max(0f, CurrentTuning.PayloadHazardChainPulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.PayloadHazardChainPulseDamage);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(origin, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor target = targets[i];
-                    if (target == null || !target.IsAlive || IsMajorRewardRole(target.Role))
-                    {
-                        continue;
-                    }
-
-                    target.ApplyDamage(damage, "survivors.payload-hazard.chain");
-                    hitCount++;
-                }
-            }
-
-            int gemCount = Mathf.Max(0, CurrentTuning.PayloadHazardChainExperienceGemCount);
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * Mathf.Max(0.1f, CurrentTuning.PayloadHazardChainExperienceMultiplier)));
-            int spawnedExperience = 0;
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.23f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 0.78f;
-                if (SpawnPickup(SurvivorsPickupKind.Experience, origin + offset, xpPerGem) != null)
-                {
-                    spawnedExperience += xpPerGem;
-                    PayloadHazardChainExperienceGemDropCount++;
-                }
-            }
-
-            PayloadHazardChainActivationCount++;
-            PayloadHazardChainPulseHitCount += hitCount;
-            string name = definition == null || string.IsNullOrWhiteSpace(definition.DisplayName)
-                ? "Payload"
-                : definition.DisplayName;
-            LastPayloadHazardChainFeedbackLabel = $"Trap Chain: {name} caught {caughtSnares} snares, +{spawnedExperience} XP, {hitCount} enemies hit";
-            RecordStreakRewardFeedback(LastPayloadHazardChainFeedbackLabel, new Color(0.62f, 0.9f, 1f));
-            PlayFeedback(_levelUpPulse, origin, Mathf.Clamp(28 + hitCount * 4, 34, 78), _pickupClip);
-        }
-
-        private void TickPayloadHazardChain(float deltaTime)
-        {
-            float dt = Mathf.Max(0f, deltaTime);
-            if (_payloadHazardChainCooldownTimer > 0f)
-            {
-                _payloadHazardChainCooldownTimer = Mathf.Max(0f, _payloadHazardChainCooldownTimer - dt);
-            }
-
-            if (_payloadHazardChainWindowTimer <= 0f)
-            {
-                return;
-            }
-
-            _payloadHazardChainWindowTimer = Mathf.Max(0f, _payloadHazardChainWindowTimer - dt);
-            if (_payloadHazardChainWindowTimer <= 0f)
-            {
-                _payloadHazardChainSnareCount = 0;
-            }
-        }
 
         private int CountEnemiesByRole(SurvivorsEnemyRole role)
         {

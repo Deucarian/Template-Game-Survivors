@@ -85,6 +85,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Enemy damage and combat augmentation | `SurvivorsEnemyDamage / SurvivorsDamageAugments` | Owned Combat catalog and deterministic critical RNG, live modifier values and status/evolution decisions through narrow target commands |
 
+| Payload hazard chains and death novas | `SurvivorsPayloadHazardRewards / SurvivorsDeathNova` | Independent snare window/cooldown, successful-drop accounting and two-pass live-target damage over the borrowed actor list |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -148,5 +150,7 @@ Eighteen cases preserve summary order and fallback text, clear versus rebuild, e
 Eighteen cases cover cache distribution and failure accounting, reward-before-removal/despawn, XP metric/gain/combo order, recall membership and independent diagnostics/pulse resets.
 
 Twelve cases preserve critical RNG consumption, damage-source classification, heal/barrier/status/execute ordering, named evolved effects and destroyed-Unity-target guards before interface conversion.
+
+Five cases cover disabled and failed rewards, chain timing, horizontal body-radius capture, mutation during feedback, repeated liveness checks and destroyed actor targets.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
