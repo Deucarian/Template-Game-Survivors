@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -391,6 +391,27 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsPickupCollectionPort.RecordStreakRewardFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
         void ISurvivorsPickupCollectionPort.DespawnCompletedPickup(SpawnInstanceId id) => _spawnService?.Despawn(id, DespawnReason.Completed);
 
+        internal DamageResolutionResult ResolveEnemyDamage(HealthState health, float amount, string source, bool applyAugments) => EnemyDamage.ResolveEnemyDamage(health, amount, source, applyAugments);
+
+        private static bool CanApplyDamageAugments(string source) => SurvivorsEnemyDamage.CanApplyDamageAugments(source);
+
+        private SurvivorsDamageAugments _damageAugments;
+        private SurvivorsDamageAugments DamageAugments => _damageAugments ?? (_damageAugments = new SurvivorsDamageAugments(this));
+        private SurvivorsEnemyDamage _enemyDamage;
+        private SurvivorsEnemyDamage EnemyDamage => _enemyDamage ?? (_enemyDamage = new SurvivorsEnemyDamage(() => CriticalChanceNormalized, () => CriticalDamageMultiplier));
+        SurvivorsDamageAugmentValues ISurvivorsDamageAugmentPort.Values => new SurvivorsDamageAugmentValues(LifestealRatio, BarrierOnDamageRatio, PoisonDamageRatio, BleedDamageRatio, ExecuteThresholdNormalized);
+        SurvivorsTemplateTuning ISurvivorsDamageAugmentPort.Tuning => CurrentTuning;
+        bool ISurvivorsDamageAugmentPort.IsPlayerBound => PlayerVitals.IsBound;
+        void ISurvivorsDamageAugmentPort.HealPlayer(float amount) => PlayerVitals.Heal(amount);
+        void ISurvivorsDamageAugmentPort.RestoreBarrier(float amount) => PlayerVitals.RestoreBarrier(amount);
+        bool ISurvivorsDamageAugmentPort.IsEvolutionActive(string id) => IsEvolutionActive(id);
+        string ISurvivorsDamageAugmentPort.ResolveUpgradeName(string id) => ResolveUpgradeDisplayName(new RunUpgradeId(id));
+        string ISurvivorsDamageAugmentPort.ResolveWeaponName(string id) => ResolveWeaponBuildDisplayName(id);
+        internal void ApplyDamageAugmentsToEnemy(SurvivorsEnemyActor enemy, DamageResult damage, string source)
+        { if (enemy != null) DamageAugments.ApplyDamageAugmentsToEnemy(enemy, damage, source); }
+        internal void ApplyWeaponStatusEffectsToEnemy(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition, DamageResult damage)
+        { if (enemy != null) DamageAugments.ApplyWeaponStatusEffectsToEnemy(enemy, definition, damage); }
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -424,13 +445,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
         private const float ClassUnlockRewardFeedbackDurationSeconds = 2.65f;
         private const float EvolutionReadyFeedbackDurationSeconds = 2.4f;
-        private const float FrostFanEnemyMoveSpeedMultiplier = 0.68f;
-        private const float FrostFanEnemySlowDurationSeconds = 1.65f;
-        private const float BlizzardCrownEnemyMoveSpeedMultiplier = 0.52f;
-        private const float BlizzardCrownEnemySlowDurationSeconds = 2.35f;
-        private const float CinderBurstBurnDamageRatio = 0.26f;
-        private const float InfernoHeartBurnDamageRatio = 0.42f;
-        private const float InfernoHeartBurnDurationMultiplier = 1.45f;
         private const float EnemyHitFlashSeconds = 0.13f;
         private const float BaseDeathNovaRadius = 1.65f;
         private const int ResultMetaUpgradeOptionCount = 3;
@@ -948,8 +962,6 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _transparentButtonStyle => _hudStyles.TransparentButtonStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService => _runtimeWorld?.Spawning;
-        private CombatCatalog _combatCatalog;
-        private DeterministicRandom _combatRandom;
         private WeaponDefinition _weaponDefinition;
         private ProjectileDefinition _projectileDefinition;
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
@@ -1054,10 +1066,10 @@ namespace Deucarian.TemplateGameSurvivors
         public int ProjectileReturnStartCount { get; private set; }
         public int OrbitKnockbackCount { get; private set; }
         public string LastOrbitKnockbackFeedbackLabel { get; private set; } = string.Empty;
-        public int FrostFanSlowApplicationCount { get; private set; }
-        public string LastFrostFanSlowFeedbackLabel { get; private set; } = string.Empty;
-        public int CinderBurnApplicationCount { get; private set; }
-        public string LastCinderBurnFeedbackLabel { get; private set; } = string.Empty;
+        public int FrostFanSlowApplicationCount => DamageAugments.FrostFanSlowApplicationCount;
+        public string LastFrostFanSlowFeedbackLabel => DamageAugments.LastFrostFanSlowFeedbackLabel;
+        public int CinderBurnApplicationCount => DamageAugments.CinderBurnApplicationCount;
+        public string LastCinderBurnFeedbackLabel => DamageAugments.LastCinderBurnFeedbackLabel;
         public int PayloadThrowCount { get; private set; }
         public int PayloadPlacedCount { get; private set; }
         public int PayloadDetonationCount { get; private set; }
@@ -1461,7 +1473,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float BarrierCapacity => Mathf.Max(0f, CurrentTuning.StartingBarrierCapacity + BarrierCapacityBonus);
         public Vector3 PlayerPosition => _playerObject == null ? transform.position : _playerObject.transform.position;
         public Vector3 PlayerForward => _playerObject == null ? Vector3.forward : _playerObject.transform.forward;
-        public CombatCatalog CombatCatalog => _combatCatalog;
+        public CombatCatalog CombatCatalog => EnemyDamage.Catalog;
         public SurvivorsPacingProfile CurrentPacingProfile => CurrentTuning.PacingProfile;
         public bool IsHumanPlaytestPacing => CurrentPacingProfile == SurvivorsPacingProfile.HumanPlaytest;
         public bool IsDebugFastPacing => CurrentPacingProfile == SurvivorsPacingProfile.DebugFast;
@@ -2077,8 +2089,7 @@ namespace Deucarian.TemplateGameSurvivors
             _highestChosenRarityLabel = string.Empty;
             _bestMomentLabel = string.Empty;
             SurvivorsTemplateTuning resolved = CurrentTuning;
-            _combatCatalog = BasicSurvivorsGame.CreateCombatCatalog();
-            _combatRandom = new DeterministicRandom(resolved.RunSeed + 4049);
+            EnemyDamage.Reset(resolved.RunSeed);
             _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
             _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
             _relicDefinitions = CreateRelicDefinitions();
@@ -2110,10 +2121,7 @@ namespace Deucarian.TemplateGameSurvivors
             ProjectileReturnStartCount = 0;
             OrbitKnockbackCount = 0;
             LastOrbitKnockbackFeedbackLabel = string.Empty;
-            FrostFanSlowApplicationCount = 0;
-            LastFrostFanSlowFeedbackLabel = string.Empty;
-            CinderBurnApplicationCount = 0;
-            LastCinderBurnFeedbackLabel = string.Empty;
+            DamageAugments.Reset();
             PayloadThrowCount = 0;
             PayloadPlacedCount = 0;
             PayloadDetonationCount = 0;
@@ -3271,101 +3279,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        internal void ApplyDamageAugmentsToEnemy(SurvivorsEnemyActor enemy, DamageResult damage, string source)
-        {
-            if (enemy == null || damage == null || !enemy.IsAlive || !CanApplyDamageAugments(source))
-            {
-                return;
-            }
 
-            float dealt = Mathf.Max(0f, (float)damage.HealthDamage);
-            if (dealt <= 0f)
-            {
-                return;
-            }
-
-            if (LifestealRatio > 0f && PlayerVitals.IsBound)
-            {
-                PlayerVitals.Heal(dealt * LifestealRatio);
-            }
-
-            if (BarrierOnDamageRatio > 0f)
-            {
-                PlayerVitals.RestoreBarrier(dealt * BarrierOnDamageRatio);
-            }
-
-            if (PoisonDamageRatio > 0f)
-            {
-                enemy.ApplyDamageOverTime(
-                    dealt * PoisonDamageRatio,
-                    CurrentTuning.StatusPoisonDurationSeconds,
-                    "status.survivors.poison",
-                    source);
-            }
-
-            if (BleedDamageRatio > 0f)
-            {
-                enemy.ApplyDamageOverTime(
-                    dealt * BleedDamageRatio,
-                    CurrentTuning.StatusBleedDurationSeconds,
-                    "status.survivors.bleed",
-                    source);
-            }
-
-            if (ExecuteThresholdNormalized > 0f && enemy.HealthFraction <= ExecuteThresholdNormalized)
-            {
-                enemy.ExecuteFromAugment(source);
-            }
-        }
-
-        internal void ApplyWeaponStatusEffectsToEnemy(SurvivorsEnemyActor enemy, SurvivorsWeaponArchetypeDefinition definition, DamageResult damage)
-        {
-            if (enemy == null || definition == null || !enemy.IsAlive)
-            {
-                return;
-            }
-
-            if (string.Equals(definition.Id, BasicSurvivorsGame.FrostFanWeaponContentId, StringComparison.Ordinal))
-            {
-                bool evolved = IsEvolutionActive(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId);
-                float multiplier = evolved ? BlizzardCrownEnemyMoveSpeedMultiplier : FrostFanEnemyMoveSpeedMultiplier;
-                float duration = evolved ? BlizzardCrownEnemySlowDurationSeconds : FrostFanEnemySlowDurationSeconds;
-                if (!enemy.ApplyMovementSlow(multiplier, duration))
-                {
-                    return;
-                }
-
-                FrostFanSlowApplicationCount++;
-                string sourceName = evolved
-                    ? ResolveUpgradeDisplayName(new RunUpgradeId(BasicSurvivorsGame.BlizzardCrownEvolutionUpgradeId))
-                    : ResolveWeaponBuildDisplayName(definition.Id);
-                LastFrostFanSlowFeedbackLabel = $"{sourceName} chilled {enemy.DisplayName}";
-            }
-
-            if (!string.Equals(definition.Id, BasicSurvivorsGame.StarNovaWeaponContentId, StringComparison.Ordinal) || damage == null)
-            {
-                return;
-            }
-
-            float dealt = Mathf.Max(0f, (float)damage.HealthDamage);
-            if (dealt <= 0f)
-            {
-                return;
-            }
-
-            bool inferno = IsEvolutionActive(BasicSurvivorsGame.InfernoHeartEvolutionUpgradeId);
-            float ratio = inferno ? InfernoHeartBurnDamageRatio : CinderBurstBurnDamageRatio;
-            float durationMultiplier = inferno ? InfernoHeartBurnDurationMultiplier : 1f;
-            enemy.ApplyDamageOverTime(
-                dealt * ratio,
-                CurrentTuning.StatusBurnDurationSeconds * durationMultiplier,
-                "status.survivors.burn",
-                definition.Id);
-            CinderBurnApplicationCount++;
-            LastCinderBurnFeedbackLabel = inferno
-                ? $"Inferno Heart burned {enemy.DisplayName}"
-                : $"Cinder Burst burned {enemy.DisplayName}";
-        }
 
         internal void RecordEnemyDamageFeedback(SurvivorsEnemyActor enemy, DamageResult damage)
         {
@@ -3392,23 +3306,6 @@ namespace Deucarian.TemplateGameSurvivors
             TryTriggerMajorThreatEnrage(enemy);
         }
 
-        internal DamageResolutionResult ResolveEnemyDamage(HealthState health, float amount, string source, bool applyAugments)
-        {
-            if (health == null)
-            {
-                return null;
-            }
-
-            CombatSourceSnapshot combatSource = CreateEnemyDamageSourceSnapshot(source, applyAugments);
-            bool allowCritical = combatSource != null;
-            DamageRequest request = new DamageRequest(
-                health.Id,
-                new[] { new DamageComponent(BasicSurvivorsGame.ArcaneDamageType, amount) },
-                source: combatSource,
-                sourceId: new CombatantId(string.IsNullOrWhiteSpace(source) ? "combatant.survivors.player" : source),
-                preResolvedCritical: allowCritical ? (bool?)null : false);
-            return CombatDamageResolver.Resolve(_combatCatalog, health, null, request, allowCritical ? _combatRandom : null);
-        }
 
 
         private void TryTriggerDeathNova(Vector3 position, string source, bool applyAugments)
@@ -5243,27 +5140,7 @@ namespace Deucarian.TemplateGameSurvivors
         }
 
 
-        private static bool CanApplyDamageAugments(string source)
-        {
-            if (string.IsNullOrWhiteSpace(source))
-            {
-                return true;
-            }
 
-            return source.IndexOf(".status.", StringComparison.Ordinal) < 0 &&
-                source.IndexOf(".augment.", StringComparison.Ordinal) < 0 &&
-                source.IndexOf("combatant.survivors.enemy", StringComparison.Ordinal) < 0;
-        }
-
-        private CombatSourceSnapshot CreateEnemyDamageSourceSnapshot(string source, bool applyAugments)
-        {
-            if (!applyAugments || !CanApplyDamageAugments(source) || CriticalChanceNormalized <= 0f)
-            {
-                return null;
-            }
-
-            return new CombatSourceSnapshot(CriticalChanceNormalized, CriticalDamageMultiplier);
-        }
 
         private void ApplyRelic(SurvivorsRelicDefinition relic)
         {

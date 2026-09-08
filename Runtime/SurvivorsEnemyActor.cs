@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable, ISurvivorsDefeatTarget
+    public sealed class SurvivorsEnemyActor : MonoBehaviour, IWorldSpawnedObject, IWorldSpawnResettable, ISurvivorsDefeatTarget, ISurvivorsDamageAugmentTarget
     {
         private SurvivorsTemplateController _controller;
         private SurvivorsEnemyPresentation _presentation;
