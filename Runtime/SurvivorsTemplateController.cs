@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -805,8 +805,7 @@ namespace Deucarian.TemplateGameSurvivors
             RewardHistory.ResetBestMoment();
             SurvivorsTemplateTuning resolved = CurrentTuning;
             EnemyDamage.Reset(resolved.RunSeed);
-            _weaponDefinition = BasicSurvivorsGame.CreateWeaponDefinition();
-            _projectileDefinition = BasicSurvivorsGame.CreateProjectileDefinition(resolved);
+            RunWeapons.InitializeFallbackDefinition(resolved);
             _relicDefinitions = CreateRelicDefinitions();
             _upgradeClassGates = CreateClassUpgradeGates();
             _classLibrary = CreateClassLibraryDefinition();
@@ -900,8 +899,7 @@ namespace Deucarian.TemplateGameSurvivors
             PlayerVitals.SetBarrier(BarrierCapacity);
             BuildRuntimeWorld();
             _runFlow = new SurvivorsRunFlowRuntime(CreateRunFlowDefinition(resolved));
-            _weaponArchetypeDefinitions = CreateWeaponArchetypeDefinitions(resolved);
-            _weaponLoadout = new SurvivorsWeaponLoadoutRuntime(this, ResolveStartingWeaponDefinitions(_weaponArchetypeDefinitions));
+            RunWeapons.BuildLoadout(resolved);
         }
 
         private SurvivorsHudDispatch _hudDispatch;
@@ -1070,6 +1068,62 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsRangedDodgePort.ShowStreakFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
         void ISurvivorsRangedDodgePort.PlayDodgePulse(Vector3 position, int count) => PlayFeedback(_pickupPulse, position, count, _pickupClip);
 
+        private float ResolveDisplayedWeaponDamage() => RunWeapons.ResolveDisplayedWeaponDamage();
+
+        private float ResolveDisplayedWeaponCooldownSeconds() => RunWeapons.ResolveDisplayedWeaponCooldownSeconds();
+
+        private SurvivorsWeaponArchetypeDefinition ResolvePrimaryWeaponDefinitionForDisplay() => RunWeapons.ResolvePrimaryWeaponDefinitionForDisplay();
+
+        internal float ResolveWeaponDamage(SurvivorsWeaponArchetypeDefinition definition) => RunWeapons.ResolveWeaponDamage(definition);
+
+        internal float ResolveWeaponCooldownSeconds(SurvivorsWeaponArchetypeDefinition definition) => RunWeapons.ResolveWeaponCooldownSeconds(definition);
+
+        private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> ResolveStartingWeaponDefinitions(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> allDefinitions) => RunWeapons.ResolveStartingWeaponDefinitions(allDefinitions);
+
+        private bool TryAddWeaponToLoadout(string weaponId) => RunWeapons.TryAddWeaponToLoadout(weaponId);
+
+        private SurvivorsWeaponArchetypeDefinition FindWeaponDefinition(string weaponId) => RunWeapons.FindWeaponDefinition(weaponId);
+
+        private SurvivorsRunWeapons _runWeapons;
+        private SurvivorsRunWeapons RunWeapons => _runWeapons ?? (_runWeapons = new SurvivorsRunWeapons(this));
+        SurvivorsTemplateTuning ISurvivorsRunWeaponPort.Tuning => CurrentTuning;
+        IReadOnlyList<string> ISurvivorsRunWeaponPort.StartingWeaponIds => _selectedClass == null ? null : _selectedClass.StartingWeaponIds;
+        int ISurvivorsRunWeaponPort.MaximumSlots => MaxWeaponSlots;
+        IReadOnlyList<SurvivorsWeaponArchetypeDefinition> ISurvivorsRunWeaponPort.CreateDefinitions(SurvivorsTemplateTuning resolved)
+            => CreateWeaponArchetypeDefinitions(resolved);
+        ISurvivorsWeaponLoadoutSession ISurvivorsRunWeaponPort.CreateLoadout(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> definitions)
+            => new SurvivorsWeaponLoadoutSession(new SurvivorsWeaponLoadoutRuntime(this, definitions));
+        void ISurvivorsRunWeaponPort.WeaponAdded(SurvivorsWeaponArchetypeDefinition definition)
+            => TryTriggerWeaponLoadoutSurge(definition);
+        SurvivorsWeaponBonusValues ISurvivorsRunWeaponPort.DamageBonuses => new SurvivorsWeaponBonusValues(
+            DamageBonus,
+            StreakSurgeDamageBonus,
+            RoamingCacheSurgeDamageBonus,
+            ArenaShrineSurgeDamageBonus,
+            WaystoneFocusDamageBonus,
+            WaystoneChainSurgeDamageBonus,
+            HordeRushClearSurgeDamageBonus,
+            WeaponLoadoutSurgeDamageBonus,
+            PassiveLoadoutSurgeDamageBonus,
+            BossRelicSurgeDamageBonus,
+            GemRushDamageBonus,
+            EvolutionChainSurgeDamageBonus,
+            EndlessSurgeDamageBonus);
+        SurvivorsWeaponBonusValues ISurvivorsRunWeaponPort.CooldownBonuses => new SurvivorsWeaponBonusValues(
+            WeaponCooldownMultiplierBonus,
+            StreakSurgeCooldownMultiplierBonus,
+            RoamingCacheSurgeCooldownMultiplierBonus,
+            ArenaShrineSurgeCooldownMultiplierBonus,
+            WaystoneFocusCooldownMultiplierBonus,
+            WaystoneChainSurgeCooldownMultiplierBonus,
+            HordeRushClearSurgeCooldownMultiplierBonus,
+            WeaponLoadoutSurgeCooldownMultiplierBonus,
+            PassiveLoadoutSurgeCooldownMultiplierBonus,
+            BossRelicSurgeCooldownMultiplierBonus,
+            GemRushCooldownMultiplierBonus,
+            EvolutionChainSurgeCooldownMultiplierBonus,
+            EndlessSurgeCooldownMultiplierBonus);
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -1103,7 +1157,6 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static readonly RunUpgradeDefinition[] EmptyChoices = Array.Empty<RunUpgradeDefinition>();
         private static readonly SurvivorsRelicDefinition[] EmptyRelicChoices = Array.Empty<SurvivorsRelicDefinition>();
-        private static readonly string[] EmptyWeaponIds = Array.Empty<string>();
 
         [SerializeField]
         private bool autoStart = false;
@@ -1432,7 +1485,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void RecordRunBuildSelection(RunUpgradeDefinition upgrade) => RunBuild.RecordRunBuildSelection(upgrade);
         SurvivorsTemplateTuning ISurvivorsRunBuildPort.Tuning => CurrentTuning;
         int ISurvivorsRunBuildPort.WeaponCount => ActiveWeaponCount;
-        bool ISurvivorsRunBuildPort.HasWeapon(string id) => _weaponLoadout != null && _weaponLoadout.ContainsWeapon(id);
+        bool ISurvivorsRunBuildPort.HasWeapon(string id) => RunWeapons.ContainsWeapon(id);
         void ISurvivorsRunBuildPort.AddWeapon(string id) => TryAddWeaponToLoadout(id);
         void ISurvivorsRunBuildPort.PassiveAdded(RunUpgradeDefinition upgrade) => TryTriggerPassiveLoadoutSurge(upgrade);
         void ISurvivorsRunBuildPort.RecordEvolutionTime() => Telemetry.Record(SurvivorsRunMetric.FirstEvolutionAcquired, RunTimeSeconds);
@@ -1606,10 +1659,6 @@ namespace Deucarian.TemplateGameSurvivors
         private GUIStyle _transparentButtonStyle => _hudStyles.TransparentButtonStyle;
         private SurvivorsSpawnPoseResolver _poseResolver;
         private WorldSpawnService _spawnService => _runtimeWorld?.Spawning;
-        private WeaponDefinition _weaponDefinition;
-        private ProjectileDefinition _projectileDefinition;
-        private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
-        private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> _weaponArchetypeDefinitions = Array.Empty<SurvivorsWeaponArchetypeDefinition>();
         private SurvivorsRunFlowRuntime _runFlow;
         private IReadOnlyList<SurvivorsRelicDefinition> _relicDefinitions;
         private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> _upgradeClassGates;
@@ -2051,7 +2100,7 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastOffscreenThreatMarkerLabel => ThreatHud.LastMarkerLabel;
         public int ActiveMajorRewardCacheAttractedPickupCount => PickupCollection.ActiveMajorRewardCacheAttractedPickupCount;
 
-        public int ActiveWeaponCount => _weaponLoadout == null ? 0 : _weaponLoadout.WeaponCount;
+        public int ActiveWeaponCount => RunWeapons.ActiveWeaponCount;
         public int ActivePassiveCount => RunBuild.PassiveIds.Count;
         public int EvolvedWeaponCount => RunBuild.EvolutionIds.Count;
         public int MaxWeaponSlots => RunBuild.MaxWeaponSlots;
@@ -2066,8 +2115,8 @@ namespace Deucarian.TemplateGameSurvivors
         public string CurrentWaystoneCompassHudLabel => ResolveWaystoneCompassHudLabel();
         public bool IsWaystoneCompassArrowVisibleForTest => Arena.CompassVisible;
         public Vector3 WaystoneCompassArrowForwardForTest => Arena.CompassForward;
-        public IReadOnlyList<string> ActiveWeaponIds => _weaponLoadout == null ? EmptyWeaponIds : _weaponLoadout.WeaponIds;
-        public int ActiveOrbitBladeCount => _weaponLoadout == null ? 0 : _weaponLoadout.ActiveOrbitBladeCount;
+        public IReadOnlyList<string> ActiveWeaponIds => RunWeapons.ActiveWeaponIds;
+        public int ActiveOrbitBladeCount => RunWeapons.ActiveOrbitBladeCount;
         public float PlayerMoveSpeed => CurrentTuning.PlayerMoveSpeed + MoveSpeedBonus + StreakSurgeMoveSpeedBonus + RoamingCacheSurgeMoveSpeedBonus + ArenaShrineSurgeMoveSpeedBonus + WaystoneFocusMoveSpeedBonus + WaystoneChainSurgeMoveSpeedBonus + HordeRushClearSurgeMoveSpeedBonus + WeaponLoadoutSurgeMoveSpeedBonus + PassiveLoadoutSurgeMoveSpeedBonus + BossRelicSurgeMoveSpeedBonus + GemRushMoveSpeedBonus + EvolutionChainSurgeMoveSpeedBonus + EndlessSurgeMoveSpeedBonus;
         public float DashCooldownRemainingSeconds => PlayerMotion.CooldownRemaining;
         public float PlayerSafetyRemainingSeconds => PlayerVitals.SafetyRemaining;
@@ -2472,13 +2521,13 @@ namespace Deucarian.TemplateGameSurvivors
         public void FireWeaponForTest()
         {
             EnsureRunStartedForTest();
-            _weaponLoadout?.FireForTest(SurvivorsWeaponArchetype.Projectile);
+            RunWeapons.FireForTest(SurvivorsWeaponArchetype.Projectile);
         }
 
         public bool FireWeaponForTest(SurvivorsWeaponArchetype archetype)
         {
             EnsureRunStartedForTest();
-            return _weaponLoadout != null && _weaponLoadout.FireForTest(archetype);
+            return RunWeapons.FireForTest(archetype);
         }
 
         public bool DashForTest(Vector2 directionInput)
@@ -2862,7 +2911,7 @@ namespace Deucarian.TemplateGameSurvivors
         public bool HasWeaponInLoadoutForTest(string weaponId)
         {
             EnsureRunStartedForTest();
-            return _weaponLoadout != null && _weaponLoadout.ContainsWeapon(weaponId);
+            return RunWeapons.ContainsWeapon(weaponId);
         }
 
         public bool IsUpgradeAvailableInRunForTest(string upgradeId)
@@ -3263,70 +3312,10 @@ namespace Deucarian.TemplateGameSurvivors
 
         internal Transform RuntimeWorldRoot => _worldRoot;
 
-        private float ResolveDisplayedWeaponDamage()
-        {
-            SurvivorsWeaponArchetypeDefinition definition = ResolvePrimaryWeaponDefinitionForDisplay();
-            if (definition != null)
-            {
-                return ResolveWeaponDamage(definition);
-            }
 
-            float baseDamage = _projectileDefinition == null ? 0f : (float)_projectileDefinition.BaseDamage;
-            return Mathf.Max(0f, baseDamage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus);
-        }
 
-        private float ResolveDisplayedWeaponCooldownSeconds()
-        {
-            SurvivorsWeaponArchetypeDefinition definition = ResolvePrimaryWeaponDefinitionForDisplay();
-            if (definition != null)
-            {
-                return ResolveWeaponCooldownSeconds(definition);
-            }
 
-            return Mathf.Max(0.12f, CurrentTuning.WeaponCooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + ArenaShrineSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + WaystoneChainSurgeCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus + EndlessSurgeCooldownMultiplierBonus));
-        }
 
-        private SurvivorsWeaponArchetypeDefinition ResolvePrimaryWeaponDefinitionForDisplay()
-        {
-            IReadOnlyList<string> weaponIds = _weaponLoadout == null ? null : _weaponLoadout.WeaponIds;
-            IReadOnlyList<SurvivorsWeaponArchetypeDefinition> definitions = _weaponArchetypeDefinitions;
-            if (weaponIds == null || weaponIds.Count == 0 || definitions == null)
-            {
-                return null;
-            }
-
-            string primaryWeaponId = weaponIds[0];
-            for (int i = 0; i < definitions.Count; i++)
-            {
-                SurvivorsWeaponArchetypeDefinition definition = definitions[i];
-                if (definition != null && string.Equals(definition.Id, primaryWeaponId, StringComparison.Ordinal))
-                {
-                    return definition;
-                }
-            }
-
-            return null;
-        }
-
-        internal float ResolveWeaponDamage(SurvivorsWeaponArchetypeDefinition definition)
-        {
-            if (definition == null)
-            {
-                return 0f;
-            }
-
-            return Mathf.Max(0f, definition.Damage + DamageBonus + StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus);
-        }
-
-        internal float ResolveWeaponCooldownSeconds(SurvivorsWeaponArchetypeDefinition definition)
-        {
-            if (definition == null)
-            {
-                return WeaponCooldownSeconds;
-            }
-
-            return Mathf.Max(0.08f, definition.CooldownSeconds * Mathf.Max(0.2f, 1f + WeaponCooldownMultiplierBonus + StreakSurgeCooldownMultiplierBonus + RoamingCacheSurgeCooldownMultiplierBonus + ArenaShrineSurgeCooldownMultiplierBonus + WaystoneFocusCooldownMultiplierBonus + WaystoneChainSurgeCooldownMultiplierBonus + HordeRushClearSurgeCooldownMultiplierBonus + WeaponLoadoutSurgeCooldownMultiplierBonus + PassiveLoadoutSurgeCooldownMultiplierBonus + BossRelicSurgeCooldownMultiplierBonus + GemRushCooldownMultiplierBonus + EvolutionChainSurgeCooldownMultiplierBonus + EndlessSurgeCooldownMultiplierBonus));
-        }
 
 
 
@@ -3575,11 +3564,7 @@ namespace Deucarian.TemplateGameSurvivors
             _rewardDrops?.Dispose();
             _threatTelegraphs?.Dispose();
             _combatFeedback?.Dispose();
-            if (_weaponLoadout != null)
-            {
-                _weaponLoadout.Dispose();
-                _weaponLoadout = null;
-            }
+            _runWeapons?.DisposeLoadout();
 
             _runFlow = null;
             _enemies.Clear();
@@ -3669,83 +3654,8 @@ namespace Deucarian.TemplateGameSurvivors
             PlayFeedback(_levelUpPulse, PlayerPosition, 36, _levelUpClip);
         }
 
-        private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> ResolveStartingWeaponDefinitions(IReadOnlyList<SurvivorsWeaponArchetypeDefinition> allDefinitions)
-        {
-            if (allDefinitions == null || allDefinitions.Count == 0)
-            {
-                return Array.Empty<SurvivorsWeaponArchetypeDefinition>();
-            }
 
-            if (_selectedClass == null || _selectedClass.StartingWeaponIds.Count == 0)
-            {
-                return new[] { allDefinitions[0] };
-            }
 
-            var selected = new List<SurvivorsWeaponArchetypeDefinition>(_selectedClass.StartingWeaponIds.Count);
-            for (int classWeaponIndex = 0; classWeaponIndex < _selectedClass.StartingWeaponIds.Count; classWeaponIndex++)
-            {
-                string weaponId = _selectedClass.StartingWeaponIds[classWeaponIndex];
-                for (int definitionIndex = 0; definitionIndex < allDefinitions.Count; definitionIndex++)
-                {
-                    SurvivorsWeaponArchetypeDefinition definition = allDefinitions[definitionIndex];
-                    if (definition != null && string.Equals(definition.Id, weaponId, StringComparison.Ordinal))
-                    {
-                        selected.Add(definition);
-                        break;
-                    }
-                }
-            }
-
-            return selected.Count == 0 ? new[] { allDefinitions[0] } : selected;
-        }
-
-        private bool TryAddWeaponToLoadout(string weaponId)
-        {
-            if (_weaponLoadout == null || string.IsNullOrWhiteSpace(weaponId) || ActiveWeaponCount >= MaxWeaponSlots)
-            {
-                return false;
-            }
-
-            if (_weaponLoadout.ContainsWeapon(weaponId))
-            {
-                return false;
-            }
-
-            SurvivorsWeaponArchetypeDefinition definition = FindWeaponDefinition(weaponId);
-            if (definition == null || !_weaponLoadout.TryAddWeapon(definition))
-            {
-                return false;
-            }
-
-            TryTriggerWeaponLoadoutSurge(definition);
-            return true;
-        }
-
-        private SurvivorsWeaponArchetypeDefinition FindWeaponDefinition(string weaponId)
-        {
-            if (string.IsNullOrWhiteSpace(weaponId))
-            {
-                return null;
-            }
-
-            IReadOnlyList<SurvivorsWeaponArchetypeDefinition> definitions = _weaponArchetypeDefinitions;
-            if (definitions == null || definitions.Count == 0)
-            {
-                definitions = CreateWeaponArchetypeDefinitions(CurrentTuning);
-                _weaponArchetypeDefinitions = definitions;
-            }
-
-            for (int i = 0; i < definitions.Count; i++)
-            {
-                SurvivorsWeaponArchetypeDefinition definition = definitions[i];
-                if (definition != null && string.Equals(definition.Id, weaponId, StringComparison.Ordinal))
-                {
-                    return definition;
-                }
-            }
-
-            return null;
-        }
 
         private void ApplyPersistentMetaBonuses()
         {
@@ -3836,7 +3746,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void TickWeapon(float deltaTime)
         {
-            _weaponLoadout?.Tick(deltaTime);
+            RunWeapons.Tick(deltaTime);
         }
 
 
