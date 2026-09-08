@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -160,6 +160,30 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsRoamingCacheEncounter _roamingCaches;
+        private SurvivorsRoamingCacheEncounter RoamingCaches => _roamingCaches ?? (_roamingCaches = new SurvivorsRoamingCacheEncounter(this));
+        private SurvivorsShrineEncounter _shrineTrials;
+        private SurvivorsShrineEncounter ShrineTrials => _shrineTrials ?? (_shrineTrials = new SurvivorsShrineEncounter(this));
+        private SurvivorsWaystoneExploration _waystones;
+        private SurvivorsWaystoneExploration Waystones => _waystones ?? (_waystones = new SurvivorsWaystoneExploration(this));
+        private SurvivorsExplorationBonuses ExplorationBonuses => new SurvivorsExplorationBonuses(_runSession.HasClearedVictory, EndlessSurgeTier);
+        private SurvivorsExplorationFeedback _explorationFeedback;
+        private SurvivorsExplorationFeedback ExplorationFeedback => _explorationFeedback ?? (_explorationFeedback = new SurvivorsExplorationFeedback(
+            RecordStreakRewardFeedback,
+            (position, particles, danger) => PlayFeedback(danger ? _bossPulse : _levelUpPulse, position, particles, danger ? _dangerClip : _pickupClip)));
+        SurvivorsTemplateTuning ISurvivorsExplorationPort.Tuning => CurrentTuning;
+        int ISurvivorsExplorationPort.Escalation => RunEscalationLevel;
+        int ISurvivorsExplorationPort.MaximumAlive => ResolveEnemyMaximumAlive();
+        long ISurvivorsExplorationPort.SpawnSequence => _spawnSequence;
+        SurvivorsExplorationBonuses ISurvivorsExplorationPort.Endless => ExplorationBonuses;
+        string ISurvivorsExplorationPort.CurrencyRewardLabel => CurrencyRewardLabel;
+        SurvivorsExplorationFeedback ISurvivorsExplorationPort.Feedback => ExplorationFeedback;
+        long ISurvivorsExplorationPort.SpawnEnemy(SurvivorsEnemyRole role, long seed, float minimum, float maximum, string source) =>
+            SpawnGameplayEnemyOffscreen(role, seed, minimum, maximum, source)?.InstanceId.Value ?? 0;
+        bool ISurvivorsExplorationPort.SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount) => SpawnPickup(kind, position, amount) != null;
+        int ISurvivorsExplorationPort.DamageNonMajorEnemies(Vector3 position, float radius, float damage, string source) =>
+            DamageNonMajorEnemies(position, radius, damage, source);
+
         private SurvivorsHordeRushEncounter _hordeRush;
         private SurvivorsHordeRushEncounter HordeRush => _hordeRush ?? (_hordeRush = new SurvivorsHordeRushEncounter(this));
         SurvivorsTemplateTuning ISurvivorsHordeRushPort.Tuning => CurrentTuning;
@@ -170,7 +194,9 @@ namespace Deucarian.TemplateGameSurvivors
         long ISurvivorsHordeRushPort.SpawnEnemy(SurvivorsEnemyRole role, long seed, float minimum, float maximum) =>
             SpawnGameplayEnemyOffscreen(role, seed, minimum, maximum, "horde-rush")?.InstanceId.Value ?? 0;
         bool ISurvivorsHordeRushPort.SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount) => SpawnPickup(kind, position, amount) != null;
-        int ISurvivorsHordeRushPort.DamageNonMajorEnemies(Vector3 position, float radius, float damage, string source)
+        int ISurvivorsHordeRushPort.DamageNonMajorEnemies(Vector3 position, float radius, float damage, string source) =>
+            DamageNonMajorEnemies(position, radius, damage, source);
+        private int DamageNonMajorEnemies(Vector3 position, float radius, float damage, string source)
         {
             var targets = new List<SurvivorsEnemyActor>();
             CollectEnemiesWithinRadius(position, radius, targets);
@@ -198,10 +224,7 @@ namespace Deucarian.TemplateGameSurvivors
             RecordStreakRewardFeedback(label, new Color(1f, 0.74f, 0.24f));
             PlayFeedback(_levelUpPulse, position, Mathf.Clamp(24 + hitCount * 5, 28, 78), _pickupClip);
         }
-        private readonly HashSet<SurvivorsEnemyActor> _activeRoamingCacheAmbushEnemies = new HashSet<SurvivorsEnemyActor>();
-        private readonly HashSet<SurvivorsEnemyActor> _activeArenaShrineEnemies = new HashSet<SurvivorsEnemyActor>();
         private readonly HashSet<SurvivorsEnemyActor> _enragedMajorThreats = new HashSet<SurvivorsEnemyActor>();
-        private readonly HashSet<long> _discoveredArenaWaystones = new HashSet<long>();
         private readonly Dictionary<string, SurvivorsRunUpgradeMetadata> _upgradeMetadataById = new Dictionary<string, SurvivorsRunUpgradeMetadata>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedPassiveUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly HashSet<string> _ownedEvolutionUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
@@ -307,17 +330,13 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsTraversalDirector _traversal;
         private SurvivorsTraversalDirector Traversal => _traversal ?? (_traversal = new SurvivorsTraversalDirector(this));
         SurvivorsTemplateTuning ISurvivorsTraversalPort.Tuning => CurrentTuning;
-        int ISurvivorsTraversalPort.ActiveShrineEnemyCount => _activeArenaShrineEnemies.Count;
-        void ISurvivorsTraversalPort.SpawnShrine(Vector3 direction) => SpawnArenaShrineTrial(direction);
-        void ISurvivorsTraversalPort.SpawnCache(Vector3 direction, int sequenceOffset) => SpawnRoamingArenaCache(direction, sequenceOffset);
+        int ISurvivorsTraversalPort.ActiveShrineEnemyCount => ShrineTrials.ActiveCount;
+        void ISurvivorsTraversalPort.SpawnShrine(Vector3 direction) => ShrineTrials.SpawnArenaShrineTrial(direction);
+        void ISurvivorsTraversalPort.SpawnCache(Vector3 direction, int sequenceOffset) => RoamingCaches.SpawnRoamingArenaCache(direction, sequenceOffset);
         private long _spawnSequence;
         private int _killStreakCount;
         private int _currentDraftRerollIndex;
         private float _streakSurgeTimer;
-        private float _roamingCacheSurgeTimer;
-        private float _arenaShrineSurgeTimer;
-        private float _waystoneFocusTimer;
-        private float _waystoneChainSurgeTimer;
         private float _weaponLoadoutSurgeTimer;
         private float _passiveLoadoutSurgeTimer;
         private float _bossRelicSurgeTimer;
@@ -566,42 +585,42 @@ namespace Deucarian.TemplateGameSurvivors
         public int ExperienceCollected => _experienceProgression.ExperienceCollected;
         public int SelectedUpgradeCount { get; private set; }
         public int MagnetRecallCount { get; private set; }
-        public int RoamingCacheDropCount { get; private set; }
-        public int RoamingCacheExperienceGemDropCount { get; private set; }
-        public int RoamingCacheMagnetDropCount { get; private set; }
-        public int RoamingCacheBloodShardDropCount { get; private set; }
-        public int RoamingCacheAmbushCount { get; private set; }
-        public int RoamingCacheAmbushEnemySpawnCount { get; private set; }
-        public int RoamingCacheAmbushClearRewardCount { get; private set; }
-        public int RoamingCacheAmbushClearExperienceGemDropCount { get; private set; }
-        public int RoamingCacheAmbushClearMagnetDropCount { get; private set; }
-        public int RoamingCacheAmbushClearBloodShardDropCount { get; private set; }
-        public int RoamingCacheSurgeActivationCount { get; private set; }
-        public int RoamingCacheSurgeBonusExperienceGemDropCount { get; private set; }
-        public int RoamingCacheSurgePulseHitCount { get; private set; }
-        public string LastRoamingCacheFeedbackLabel { get; private set; } = string.Empty;
-        public string LastRoamingCacheAmbushClearFeedbackLabel { get; private set; } = string.Empty;
-        public string LastRoamingCacheSurgeFeedbackLabel { get; private set; } = string.Empty;
-        public int ArenaShrineTrialCount { get; private set; }
-        public int ArenaShrineEnemySpawnCount { get; private set; }
-        public int ArenaShrineClearRewardCount { get; private set; }
-        public int ArenaShrineClearExperienceGemDropCount { get; private set; }
-        public int ArenaShrineClearBloodShardDropCount { get; private set; }
-        public int ArenaShrineSurgeActivationCount { get; private set; }
-        public int ArenaShrineSurgePulseHitCount { get; private set; }
-        public string LastArenaShrineFeedbackLabel { get; private set; } = string.Empty;
-        public string LastArenaShrineClearFeedbackLabel { get; private set; } = string.Empty;
-        public int WaystoneDiscoveryCount { get; private set; }
-        public int WaystoneExperienceGemDropCount { get; private set; }
-        public int WaystoneBloodShardDropCount { get; private set; }
-        public int WaystoneAmbushCount { get; private set; }
-        public int WaystoneAmbushEnemySpawnCount { get; private set; }
-        public int WaystoneFocusActivationCount { get; private set; }
-        public int WaystoneChainSurgeActivationCount { get; private set; }
-        public int WaystoneChainSurgeBonusExperienceGemDropCount { get; private set; }
-        public int WaystoneChainSurgePulseHitCount { get; private set; }
-        public string LastWaystoneDiscoveryFeedbackLabel { get; private set; } = string.Empty;
-        public string LastWaystoneChainSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public int RoamingCacheDropCount => RoamingCaches.RoamingCacheDropCount;
+        public int RoamingCacheExperienceGemDropCount => RoamingCaches.RoamingCacheExperienceGemDropCount;
+        public int RoamingCacheMagnetDropCount => RoamingCaches.RoamingCacheMagnetDropCount;
+        public int RoamingCacheBloodShardDropCount => RoamingCaches.RoamingCacheBloodShardDropCount;
+        public int RoamingCacheAmbushCount => RoamingCaches.RoamingCacheAmbushCount;
+        public int RoamingCacheAmbushEnemySpawnCount => RoamingCaches.RoamingCacheAmbushEnemySpawnCount;
+        public int RoamingCacheAmbushClearRewardCount => RoamingCaches.RoamingCacheAmbushClearRewardCount;
+        public int RoamingCacheAmbushClearExperienceGemDropCount => RoamingCaches.RoamingCacheAmbushClearExperienceGemDropCount;
+        public int RoamingCacheAmbushClearMagnetDropCount => RoamingCaches.RoamingCacheAmbushClearMagnetDropCount;
+        public int RoamingCacheAmbushClearBloodShardDropCount => RoamingCaches.RoamingCacheAmbushClearBloodShardDropCount;
+        public int RoamingCacheSurgeActivationCount => RoamingCaches.RoamingCacheSurgeActivationCount;
+        public int RoamingCacheSurgeBonusExperienceGemDropCount => RoamingCaches.RoamingCacheSurgeBonusExperienceGemDropCount;
+        public int RoamingCacheSurgePulseHitCount => RoamingCaches.RoamingCacheSurgePulseHitCount;
+        public string LastRoamingCacheFeedbackLabel => ExplorationFeedback.LastLabel;
+        public string LastRoamingCacheAmbushClearFeedbackLabel => RoamingCaches.LastRoamingCacheAmbushClearFeedbackLabel;
+        public string LastRoamingCacheSurgeFeedbackLabel => RoamingCaches.LastRoamingCacheSurgeFeedbackLabel;
+        public int ArenaShrineTrialCount => ShrineTrials.ArenaShrineTrialCount;
+        public int ArenaShrineEnemySpawnCount => ShrineTrials.ArenaShrineEnemySpawnCount;
+        public int ArenaShrineClearRewardCount => ShrineTrials.ArenaShrineClearRewardCount;
+        public int ArenaShrineClearExperienceGemDropCount => ShrineTrials.ArenaShrineClearExperienceGemDropCount;
+        public int ArenaShrineClearBloodShardDropCount => ShrineTrials.ArenaShrineClearBloodShardDropCount;
+        public int ArenaShrineSurgeActivationCount => ShrineTrials.ArenaShrineSurgeActivationCount;
+        public int ArenaShrineSurgePulseHitCount => ShrineTrials.ArenaShrineSurgePulseHitCount;
+        public string LastArenaShrineFeedbackLabel => ShrineTrials.LastArenaShrineFeedbackLabel;
+        public string LastArenaShrineClearFeedbackLabel => ShrineTrials.LastArenaShrineClearFeedbackLabel;
+        public int WaystoneDiscoveryCount => Waystones.WaystoneDiscoveryCount;
+        public int WaystoneExperienceGemDropCount => Waystones.WaystoneExperienceGemDropCount;
+        public int WaystoneBloodShardDropCount => Waystones.WaystoneBloodShardDropCount;
+        public int WaystoneAmbushCount => Waystones.WaystoneAmbushCount;
+        public int WaystoneAmbushEnemySpawnCount => Waystones.WaystoneAmbushEnemySpawnCount;
+        public int WaystoneFocusActivationCount => Waystones.WaystoneFocusActivationCount;
+        public int WaystoneChainSurgeActivationCount => Waystones.WaystoneChainSurgeActivationCount;
+        public int WaystoneChainSurgeBonusExperienceGemDropCount => Waystones.WaystoneChainSurgeBonusExperienceGemDropCount;
+        public int WaystoneChainSurgePulseHitCount => Waystones.WaystoneChainSurgePulseHitCount;
+        public string LastWaystoneDiscoveryFeedbackLabel => Waystones.LastWaystoneDiscoveryFeedbackLabel;
+        public string LastWaystoneChainSurgeFeedbackLabel => Waystones.LastWaystoneChainSurgeFeedbackLabel;
         public int BestKillStreak { get; private set; }
         public int StreakBonusDropCount { get; private set; }
         public int StreakHealthDropCount { get; private set; }
@@ -618,26 +637,26 @@ namespace Deucarian.TemplateGameSurvivors
         public float StreakSurgeMoveSpeedBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgeMoveSpeedBonusPerTier : 0f;
         public float StreakSurgeCooldownMultiplierBonus => IsStreakSurgeActive ? -StreakSurgeTier * StreakSurgeCooldownReductionPerTier : 0f;
         public float StreakSurgePickupRangeBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgePickupRangeBonusPerTier : 0f;
-        public bool IsRoamingCacheSurgeActive => _roamingCacheSurgeTimer > 0f;
-        public float RoamingCacheSurgeRemainingSeconds => Mathf.Max(0f, _roamingCacheSurgeTimer);
+        public bool IsRoamingCacheSurgeActive => RoamingCaches.SurgeRemaining > 0f;
+        public float RoamingCacheSurgeRemainingSeconds => Mathf.Max(0f, RoamingCaches.SurgeRemaining);
         public float RoamingCacheSurgeDamageBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgeDamageBonus) : 0f;
         public float RoamingCacheSurgeMoveSpeedBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgeMoveSpeedBonus) : 0f;
         public float RoamingCacheSurgeCooldownMultiplierBonus => IsRoamingCacheSurgeActive ? Mathf.Min(0f, CurrentTuning.RoamingCacheSurgeCooldownMultiplierBonus) : 0f;
         public float RoamingCacheSurgePickupRangeBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePickupRangeBonus) : 0f;
-        public bool IsArenaShrineSurgeActive => _arenaShrineSurgeTimer > 0f;
-        public float ArenaShrineSurgeRemainingSeconds => Mathf.Max(0f, _arenaShrineSurgeTimer);
+        public bool IsArenaShrineSurgeActive => ShrineTrials.SurgeRemaining > 0f;
+        public float ArenaShrineSurgeRemainingSeconds => Mathf.Max(0f, ShrineTrials.SurgeRemaining);
         public float ArenaShrineSurgeDamageBonus => IsArenaShrineSurgeActive ? Mathf.Max(0f, CurrentTuning.ArenaShrineSurgeDamageBonus) : 0f;
         public float ArenaShrineSurgeMoveSpeedBonus => IsArenaShrineSurgeActive ? Mathf.Max(0f, CurrentTuning.ArenaShrineSurgeMoveSpeedBonus) : 0f;
         public float ArenaShrineSurgeCooldownMultiplierBonus => IsArenaShrineSurgeActive ? Mathf.Min(0f, CurrentTuning.ArenaShrineSurgeCooldownMultiplierBonus) : 0f;
         public float ArenaShrineSurgePickupRangeBonus => IsArenaShrineSurgeActive ? Mathf.Max(0f, CurrentTuning.ArenaShrineSurgePickupRangeBonus) : 0f;
-        public bool IsWaystoneFocusActive => _waystoneFocusTimer > 0f;
-        public float WaystoneFocusRemainingSeconds => Mathf.Max(0f, _waystoneFocusTimer);
+        public bool IsWaystoneFocusActive => Waystones.FocusRemaining > 0f;
+        public float WaystoneFocusRemainingSeconds => Mathf.Max(0f, Waystones.FocusRemaining);
         public float WaystoneFocusDamageBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusDamageBonus) : 0f;
         public float WaystoneFocusMoveSpeedBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusMoveSpeedBonus) : 0f;
         public float WaystoneFocusCooldownMultiplierBonus => IsWaystoneFocusActive ? Mathf.Min(0f, CurrentTuning.WaystoneFocusCooldownMultiplierBonus) : 0f;
         public float WaystoneFocusPickupRangeBonus => IsWaystoneFocusActive ? Mathf.Max(0f, CurrentTuning.WaystoneFocusPickupRangeBonus) : 0f;
-        public bool IsWaystoneChainSurgeActive => _waystoneChainSurgeTimer > 0f;
-        public float WaystoneChainSurgeRemainingSeconds => Mathf.Max(0f, _waystoneChainSurgeTimer);
+        public bool IsWaystoneChainSurgeActive => Waystones.ChainRemaining > 0f;
+        public float WaystoneChainSurgeRemainingSeconds => Mathf.Max(0f, Waystones.ChainRemaining);
         public float WaystoneChainSurgeDamageBonus => IsWaystoneChainSurgeActive ? Mathf.Max(0f, CurrentTuning.WaystoneChainDamageBonus) : 0f;
         public float WaystoneChainSurgeMoveSpeedBonus => IsWaystoneChainSurgeActive ? Mathf.Max(0f, CurrentTuning.WaystoneChainMoveSpeedBonus) : 0f;
         public float WaystoneChainSurgeCooldownMultiplierBonus => IsWaystoneChainSurgeActive ? Mathf.Min(0f, CurrentTuning.WaystoneChainCooldownMultiplierBonus) : 0f;
@@ -685,7 +704,7 @@ namespace Deucarian.TemplateGameSurvivors
         public float EndlessSurgeMoveSpeedBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgeMoveSpeedBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
         public float EndlessSurgeCooldownMultiplierBonus => IsEndlessSurgeActive ? Mathf.Min(0f, CurrentTuning.EndlessSurgeCooldownMultiplierBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
         public float EndlessSurgePickupRangeBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgePickupRangeBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
-        public int EndlessExplorationBonusTier => ResolveEndlessExplorationBonusTier();
+        public int EndlessExplorationBonusTier => ExplorationBonuses.Tier;
         public int BonusBloodShardsEarnedThisRun => _bonusBloodShardsEarnedThisRun;
         public int BonusLegacyExperienceEarnedThisRun => _bonusLegacyExperienceEarnedThisRun;
         public int BloodShardsEarnedThisRun { get; private set; }
@@ -756,8 +775,8 @@ namespace Deucarian.TemplateGameSurvivors
         public float CurrentMajorThreatHealthFraction => Mathf.Clamp01(ThreatHud.SelectHealthThreat()?.HealthFraction ?? 0f);
         public int ActivePickupCount => _pickups.Count;
         public int ActiveHordeRushEnemyCount => HordeRush.ActiveCount;
-        public int ActiveRoamingCacheAmbushEnemyCount => _activeRoamingCacheAmbushEnemies.Count;
-        public int ActiveArenaShrineEnemyCount => _activeArenaShrineEnemies.Count;
+        public int ActiveRoamingCacheAmbushEnemyCount => RoamingCaches.ActiveCount;
+        public int ActiveArenaShrineEnemyCount => ShrineTrials.ActiveCount;
         public int ActiveProjectileCount => _projectiles.Count;
         public int ActiveDamagePopupCount => _damageFeedback.ActiveCount;
         public int ActiveEnemyDeathEffectCount => CombatFeedback.ActiveEnemyDeathEffectCount;
@@ -2270,43 +2289,11 @@ namespace Deucarian.TemplateGameSurvivors
             LastMajorRewardCacheFeedbackLabel = string.Empty;
             SelectedUpgradeCount = 0;
             MagnetRecallCount = 0;
-            RoamingCacheDropCount = 0;
-            RoamingCacheExperienceGemDropCount = 0;
-            RoamingCacheMagnetDropCount = 0;
-            RoamingCacheBloodShardDropCount = 0;
-            RoamingCacheAmbushCount = 0;
-            RoamingCacheAmbushEnemySpawnCount = 0;
-            RoamingCacheAmbushClearRewardCount = 0;
-            RoamingCacheAmbushClearExperienceGemDropCount = 0;
-            RoamingCacheAmbushClearMagnetDropCount = 0;
-            RoamingCacheAmbushClearBloodShardDropCount = 0;
-            RoamingCacheSurgeActivationCount = 0;
-            RoamingCacheSurgeBonusExperienceGemDropCount = 0;
-            RoamingCacheSurgePulseHitCount = 0;
-            LastRoamingCacheFeedbackLabel = string.Empty;
-            LastRoamingCacheAmbushClearFeedbackLabel = string.Empty;
-            LastRoamingCacheSurgeFeedbackLabel = string.Empty;
-            ArenaShrineTrialCount = 0;
-            ArenaShrineEnemySpawnCount = 0;
-            ArenaShrineClearRewardCount = 0;
-            ArenaShrineClearExperienceGemDropCount = 0;
-            ArenaShrineClearBloodShardDropCount = 0;
-            ArenaShrineSurgeActivationCount = 0;
-            ArenaShrineSurgePulseHitCount = 0;
-            LastArenaShrineFeedbackLabel = string.Empty;
-            LastArenaShrineClearFeedbackLabel = string.Empty;
-            WaystoneDiscoveryCount = 0;
-            WaystoneExperienceGemDropCount = 0;
-            WaystoneBloodShardDropCount = 0;
-            WaystoneAmbushCount = 0;
-            WaystoneAmbushEnemySpawnCount = 0;
-            WaystoneFocusActivationCount = 0;
-            WaystoneChainSurgeActivationCount = 0;
-            WaystoneChainSurgeBonusExperienceGemDropCount = 0;
-            WaystoneChainSurgePulseHitCount = 0;
-            LastWaystoneDiscoveryFeedbackLabel = string.Empty;
-            LastWaystoneChainSurgeFeedbackLabel = string.Empty;
-            _discoveredArenaWaystones.Clear();
+            ExplorationFeedback.Reset();
+            RoamingCaches.Reset();
+            ShrineTrials.Reset();
+            Waystones.Reset();
+            Waystones.ClearDiscoveries();
             BestKillStreak = 0;
             StreakBonusDropCount = 0;
             StreakHealthDropCount = 0;
@@ -2363,15 +2350,11 @@ namespace Deucarian.TemplateGameSurvivors
             Traversal.Reset();
             _killStreakCount = 0;
             _streakSurgeTimer = 0f;
-            _roamingCacheSurgeTimer = 0f;
-            _waystoneFocusTimer = 0f;
-            _waystoneChainSurgeTimer = 0f;
             _weaponLoadoutSurgeTimer = 0f;
             _passiveLoadoutSurgeTimer = 0f;
             _bossRelicSurgeTimer = 0f;
             _evolutionChainSurgeTimer = 0f;
             _endlessSurgeTimer = 0f;
-            _arenaShrineSurgeTimer = 0f;
             _weaponLoadoutSurgeUsed = false;
             _passiveLoadoutSurgeUsed = false;
             _announcedEvolutionGoalUpgradeIds.Clear();
@@ -2472,10 +2455,10 @@ namespace Deucarian.TemplateGameSurvivors
             _dashCooldownTimer = Mathf.Max(0f, _dashCooldownTimer - dt);
             TickKillStreak(dt);
             TickStreakSurge(dt);
-            TickRoamingCacheSurge(dt);
-            TickArenaShrineSurge(dt);
-            TickWaystoneFocus(dt);
-            TickWaystoneChainSurge(dt);
+            RoamingCaches.TickRoamingCacheSurge(dt);
+            ShrineTrials.TickArenaShrineSurge(dt);
+            Waystones.TickWaystoneFocus(dt);
+            Waystones.TickWaystoneChainSurge(dt);
             HordeRush.TickHordeRushClearSurge(dt);
             TickWeaponLoadoutSurge(dt);
             TickPassiveLoadoutSurge(dt);
@@ -2579,16 +2562,16 @@ namespace Deucarian.TemplateGameSurvivors
         public int KillActiveRoamingCacheAmbushEnemiesForTest()
         {
             EnsureRunStartedForTest();
-            if (_activeRoamingCacheAmbushEnemies.Count == 0)
+            if (RoamingCaches.ActiveCount == 0)
             {
                 return 0;
             }
 
-            var enemies = new List<SurvivorsEnemyActor>(_activeRoamingCacheAmbushEnemies);
+            var enemies = new List<long>(RoamingCaches.ActiveMembers);
             int killed = 0;
             for (int i = 0; i < enemies.Count; i++)
             {
-                SurvivorsEnemyActor enemy = enemies[i];
+                SurvivorsEnemyActor enemy = _enemies.Find(candidate => candidate != null && candidate.InstanceId.Value == enemies[i]);
                 if (enemy == null || !enemy.IsAlive)
                 {
                     continue;
@@ -2604,16 +2587,16 @@ namespace Deucarian.TemplateGameSurvivors
         public int KillActiveArenaShrineEnemiesForTest()
         {
             EnsureRunStartedForTest();
-            if (_activeArenaShrineEnemies.Count == 0)
+            if (ShrineTrials.ActiveCount == 0)
             {
                 return 0;
             }
 
-            var enemies = new List<SurvivorsEnemyActor>(_activeArenaShrineEnemies);
+            var enemies = new List<long>(ShrineTrials.ActiveMembers);
             int killed = 0;
             for (int i = 0; i < enemies.Count; i++)
             {
-                SurvivorsEnemyActor enemy = enemies[i];
+                SurvivorsEnemyActor enemy = _enemies.Find(candidate => candidate != null && candidate.InstanceId.Value == enemies[i]);
                 if (enemy == null || !enemy.IsAlive)
                 {
                     continue;
@@ -3212,7 +3195,7 @@ namespace Deucarian.TemplateGameSurvivors
 
                 if (ignoreDiscovered &&
                     i < _arenaLandmarkKeys.Count &&
-                    _discoveredArenaWaystones.Contains(_arenaLandmarkKeys[i]))
+                    Waystones.IsDiscovered(_arenaLandmarkKeys[i]))
                 {
                     continue;
                 }
@@ -4134,8 +4117,8 @@ namespace Deucarian.TemplateGameSurvivors
             float radius = enemy.Radius;
             _enemies.Remove(enemy);
             bool clearedHordeRushEnemy = HordeRush.RemoveEnemy(enemy.InstanceId.Value);
-            bool clearedRoamingCacheAmbushEnemy = _activeRoamingCacheAmbushEnemies.Remove(enemy) && _activeRoamingCacheAmbushEnemies.Count == 0;
-            bool clearedArenaShrineEnemy = _activeArenaShrineEnemies.Remove(enemy) && _activeArenaShrineEnemies.Count == 0;
+            bool clearedRoamingCacheAmbushEnemy = RoamingCaches.RemoveEnemy(enemy.InstanceId.Value);
+            bool clearedArenaShrineEnemy = ShrineTrials.RemoveEnemy(enemy.InstanceId.Value);
             _enragedMajorThreats.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
@@ -4191,12 +4174,12 @@ namespace Deucarian.TemplateGameSurvivors
 
             if (clearedRoamingCacheAmbushEnemy)
             {
-                SpawnRoamingCacheAmbushClearReward(position);
+                RoamingCaches.SpawnRoamingCacheAmbushClearReward(position);
             }
 
             if (clearedArenaShrineEnemy)
             {
-                SpawnArenaShrineClearReward(position);
+                ShrineTrials.SpawnArenaShrineClearReward(position);
             }
         }
 
@@ -4259,8 +4242,8 @@ namespace Deucarian.TemplateGameSurvivors
 
             _enemies.Remove(enemy);
             HordeRush.RemoveEnemy(enemy.InstanceId.Value);
-            _activeRoamingCacheAmbushEnemies.Remove(enemy);
-            _activeArenaShrineEnemies.Remove(enemy);
+            RoamingCaches.RemoveEnemy(enemy.InstanceId.Value);
+            ShrineTrials.RemoveEnemy(enemy.InstanceId.Value);
             _enragedMajorThreats.Remove(enemy);
             if (_spawnService != null && enemy.InstanceId.Value > 0)
             {
@@ -5746,15 +5729,15 @@ namespace Deucarian.TemplateGameSurvivors
             _runFlow = null;
             _enemies.Clear();
             HordeRush.ClearMembers();
-            _activeRoamingCacheAmbushEnemies.Clear();
-            _activeArenaShrineEnemies.Clear();
+            RoamingCaches.ClearMembers();
+            ShrineTrials.ClearMembers();
             _enragedMajorThreats.Clear();
             _pickups.Clear();
             _projectiles.Clear();
             _arenaTiles.Clear();
             _arenaLandmarks.Clear();
             _arenaLandmarkKeys.Clear();
-            _discoveredArenaWaystones.Clear();
+            Waystones.ClearDiscoveries();
             _ownedPassiveUpgradeIds.Clear();
             _ownedEvolutionUpgradeIds.Clear();
             _arenaTileRoot = null;
@@ -7620,462 +7603,16 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordRoamingArenaTravel(Vector3 delta) => Traversal.RecordTravel(delta, State == SurvivorsRunState.Playing);
 
-        private void SpawnRoamingArenaCache(Vector3 direction, int sequenceOffset)
+        private void TickArenaWaystoneDiscoveries()
         {
-            Vector3 forward = direction.sqrMagnitude > 0.0001f ? direction.normalized : PlayerForward;
-            if (forward.sqrMagnitude <= 0.0001f)
+            for (int i = 0; i < _arenaLandmarks.Count; i++)
             {
-                forward = Vector3.forward;
-            }
-
-            Vector3 side = new Vector3(-forward.z, 0f, forward.x);
-            int nextCacheNumber = RoamingCacheDropCount + 1;
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1f + RunEscalationLevel * 0.08f) * ResolveEndlessExplorationExperienceMultiplier()));
-            int gemCount = Mathf.Max(1, CurrentTuning.RoamingCacheExperienceGemCount + ResolveEndlessExplorationGemBonus());
-            int spawnedExperience = 0;
-            Vector3 origin = PlayerPosition + forward * (3.1f + sequenceOffset * 0.45f);
-            for (int i = 0; i < gemCount; i++)
-            {
-                float lane = (i - (gemCount - 1) * 0.5f) * 0.72f;
-                Vector3 position = origin + side * lane + forward * (i * 0.18f);
-                if (SpawnPickup(SurvivorsPickupKind.Experience, position, xpPerGem) != null)
+                Transform landmark = _arenaLandmarks[i];
+                if (landmark != null && i < _arenaLandmarkKeys.Count)
                 {
-                    spawnedExperience += xpPerGem;
-                    RoamingCacheExperienceGemDropCount++;
+                    Waystones.TryDiscover(_arenaLandmarkKeys[i], landmark.position);
                 }
             }
-
-            bool spawnedMagnet = false;
-            if (ShouldTriggerRoamingCacheCadence(nextCacheNumber, CurrentTuning.RoamingCacheMagnetInterval))
-            {
-                Vector3 magnetPosition = origin + forward * 0.8f;
-                if (SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1) != null)
-                {
-                    spawnedMagnet = true;
-                    RoamingCacheMagnetDropCount++;
-                }
-            }
-
-            bool spawnedBloodShard = false;
-            if (ShouldTriggerRoamingCacheCadence(nextCacheNumber, CurrentTuning.RoamingCacheBloodShardInterval))
-            {
-                Vector3 shardPosition = origin - forward * 0.35f;
-                int shardAmount = CurrentTuning.BloodShardPickupAmount + ResolveEndlessExplorationShardBonus();
-                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount) != null)
-                {
-                    spawnedBloodShard = true;
-                    RoamingCacheBloodShardDropCount++;
-                }
-            }
-
-            int ambushSpawned = SpawnRoamingArenaCacheAmbush(origin, forward, side, nextCacheNumber);
-            int surgeExperience = TryActivateRoamingCacheSurge(nextCacheNumber, origin, forward, side, xpPerGem, out int surgeHitCount);
-            if (spawnedExperience <= 0 && !spawnedMagnet && !spawnedBloodShard && ambushSpawned <= 0 && surgeExperience <= 0 && surgeHitCount <= 0)
-            {
-                return;
-            }
-
-            RoamingCacheDropCount++;
-            string label = $"Roaming Cache: +{spawnedExperience} XP";
-            if (spawnedMagnet)
-            {
-                label += " + Magnet";
-            }
-
-            if (spawnedBloodShard)
-            {
-                label += " + Shard";
-            }
-
-            if (ambushSpawned > 0)
-            {
-                label += $" + Ambush x{ambushSpawned}";
-            }
-
-            if (surgeExperience > 0 || surgeHitCount > 0)
-            {
-                label += $" + Wayfinder Surge (+{surgeExperience} XP, {surgeHitCount} hit)";
-            }
-
-            label += ResolveEndlessExplorationLabelSuffix();
-            LastRoamingCacheFeedbackLabel = label;
-            RecordStreakRewardFeedback(label, new Color(0.35f, 0.9f, 1f));
-        }
-
-        private int TryActivateRoamingCacheSurge(int cacheNumber, Vector3 origin, Vector3 forward, Vector3 side, int xpPerGem, out int pulseHitCount)
-        {
-            pulseHitCount = 0;
-            if (!ShouldTriggerRoamingCacheCadence(cacheNumber, CurrentTuning.RoamingCacheSurgeInterval))
-            {
-                return 0;
-            }
-
-            _roamingCacheSurgeTimer = Mathf.Max(0.1f, CurrentTuning.RoamingCacheSurgeDurationSeconds);
-            RoamingCacheSurgeActivationCount++;
-
-            int gemCount = Mathf.Max(0, CurrentTuning.RoamingCacheSurgeBonusGemCount + ResolveEndlessExplorationGemBonus());
-            int spawnedExperience = 0;
-            int bonusXpPerGem = Mathf.Max(1, Mathf.RoundToInt(xpPerGem * (2f + ResolveEndlessExplorationBonusTier() * 0.12f)));
-            Vector3 center = origin + forward * 1.15f;
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.35f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
-                Vector3 offset = side * (Mathf.Cos(angle) * 0.92f) + forward * (Mathf.Sin(angle) * 0.92f);
-                if (SpawnPickup(SurvivorsPickupKind.Experience, center + offset, bonusXpPerGem) != null)
-                {
-                    spawnedExperience += bonusXpPerGem;
-                    RoamingCacheSurgeBonusExperienceGemDropCount++;
-                }
-            }
-
-            pulseHitCount = TriggerRoamingCacheSurgePulse(center);
-            LastRoamingCacheSurgeFeedbackLabel = $"Wayfinder Surge: +{spawnedExperience} XP, {pulseHitCount} enemies hit{ResolveEndlessExplorationLabelSuffix()}";
-            return spawnedExperience;
-        }
-
-        private int TriggerRoamingCacheSurgePulse(Vector3 center)
-        {
-            float radius = Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.RoamingCacheSurgePulseDamage * ResolveEndlessExplorationPulseMultiplier());
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(center, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.roaming-cache.surge");
-                    hitCount++;
-                }
-            }
-
-            RoamingCacheSurgePulseHitCount += hitCount;
-            PlayFeedback(_levelUpPulse, center, Mathf.Clamp(32 + hitCount * 4, 40, 80), _pickupClip);
-            return hitCount;
-        }
-
-        private int SpawnRoamingArenaCacheAmbush(Vector3 origin, Vector3 forward, Vector3 side, int cacheNumber)
-        {
-            if (!ShouldTriggerRoamingCacheAmbush(cacheNumber))
-            {
-                return 0;
-            }
-
-            int baseCount = Mathf.Max(0, CurrentTuning.RoamingCacheAmbushBaseEnemyCount);
-            if (baseCount <= 0)
-            {
-                return 0;
-            }
-
-            int maxCount = Mathf.Max(baseCount, CurrentTuning.RoamingCacheAmbushMaxEnemyCount);
-            int interval = Mathf.Max(1, CurrentTuning.RoamingCacheAmbushInterval);
-            int start = Mathf.Max(1, CurrentTuning.RoamingCacheAmbushStartCache);
-            int distancePressureBonus = Mathf.Max(0, cacheNumber - start) / (interval * 2);
-            int escalationBonus = Mathf.Max(0, RunEscalationLevel) / 3;
-            int targetCount = Mathf.Clamp(baseCount + distancePressureBonus + escalationBonus + ResolveEndlessExplorationPressureBonus(), 1, maxCount);
-            int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.RoamingCacheAmbushExtraAliveAllowance) - _enemies.Count);
-            targetCount = Mathf.Min(targetCount, available);
-            if (targetCount <= 0)
-            {
-                return 0;
-            }
-
-            int spawned = 0;
-            float radius = Mathf.Max(1f, CurrentTuning.RoamingCacheAmbushRadius);
-            Vector3 center = origin - forward * (radius * 0.35f);
-            for (int i = 0; i < targetCount; i++)
-            {
-                SurvivorsEnemyRole role = ResolveRoamingCacheAmbushRole(i, cacheNumber);
-                SurvivorsEnemyActor enemy = SpawnGameplayEnemyOffscreen(
-                    role,
-                    _spawnSequence + i + cacheNumber * 37 + 809,
-                    radius,
-                    radius + CurrentTuning.SpawnBandDepth,
-                    "roaming-cache-ambush");
-                if (enemy != null)
-                {
-                    _activeRoamingCacheAmbushEnemies.Add(enemy);
-                    spawned++;
-                }
-            }
-
-            if (spawned > 0)
-            {
-                RoamingCacheAmbushCount++;
-                RoamingCacheAmbushEnemySpawnCount += spawned;
-            }
-
-            return spawned;
-        }
-
-        private bool ShouldTriggerRoamingCacheAmbush(int cacheNumber)
-        {
-            int start = Mathf.Max(1, CurrentTuning.RoamingCacheAmbushStartCache);
-            int interval = Mathf.Max(0, CurrentTuning.RoamingCacheAmbushInterval);
-            return interval > 0 && cacheNumber >= start && ((cacheNumber - start) % interval) == 0;
-        }
-
-        private static bool ShouldTriggerRoamingCacheCadence(int cacheNumber, int cadence)
-        {
-            return cadence > 0 && cacheNumber > 0 && cacheNumber % cadence == 0;
-        }
-
-        private SurvivorsEnemyRole ResolveRoamingCacheAmbushRole(int index, int cacheNumber)
-        {
-            int pressure = Mathf.Max(0, RunEscalationLevel);
-            int seed = index + cacheNumber;
-            if (pressure >= 6 && seed % 7 == 0)
-            {
-                return SurvivorsEnemyRole.Splitter;
-            }
-
-            if (pressure >= 3 && seed % 5 == 0)
-            {
-                return SurvivorsEnemyRole.Spitter;
-            }
-
-            return seed % 3 == 0 ? SurvivorsEnemyRole.Runner : SurvivorsEnemyRole.Swarm;
-        }
-
-        private void SpawnRoamingCacheAmbushClearReward(Vector3 position)
-        {
-            int gemCount = Mathf.Max(1, CurrentTuning.RoamingCacheExperienceGemCount + 1 + ResolveEndlessExplorationGemBonus());
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.35f + RunEscalationLevel * 0.08f) * ResolveEndlessExplorationExperienceMultiplier()));
-            float radius = 0.72f + Mathf.Min(0.9f, gemCount * 0.08f);
-            int spawnedExperience = 0;
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.2f) / gemCount) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
-                {
-                    spawnedExperience += xpPerGem;
-                    RoamingCacheAmbushClearExperienceGemDropCount++;
-                }
-            }
-
-            if (spawnedExperience <= 0)
-            {
-                return;
-            }
-
-            int clearNumber = RoamingCacheAmbushClearRewardCount + 1;
-            bool spawnedMagnet = false;
-            if (ShouldTriggerRoamingCacheCadence(clearNumber, CurrentTuning.RoamingCacheAmbushClearMagnetInterval))
-            {
-                Vector3 magnetPosition = position + new Vector3(radius * 0.85f, 0f, -radius * 0.3f);
-                if (SpawnPickup(SurvivorsPickupKind.Magnet, magnetPosition, 1) != null)
-                {
-                    spawnedMagnet = true;
-                    RoamingCacheAmbushClearMagnetDropCount++;
-                }
-            }
-
-            bool spawnedBloodShard = false;
-            if (ShouldTriggerRoamingCacheCadence(clearNumber, CurrentTuning.RoamingCacheAmbushClearBloodShardInterval))
-            {
-                Vector3 shardPosition = position + new Vector3(-radius * 0.7f, 0f, radius * 0.45f);
-                int shardAmount = CurrentTuning.BloodShardPickupAmount + ResolveEndlessExplorationShardBonus();
-                if (SpawnPickup(SurvivorsPickupKind.BloodShard, shardPosition, shardAmount) != null)
-                {
-                    spawnedBloodShard = true;
-                    RoamingCacheAmbushClearBloodShardDropCount++;
-                }
-            }
-
-            RoamingCacheAmbushClearRewardCount++;
-            string label = $"Roaming Ambush Cleared: +{spawnedExperience} XP";
-            if (spawnedMagnet)
-            {
-                label += " + Magnet";
-            }
-
-            if (spawnedBloodShard)
-            {
-                label += " + Shard";
-            }
-
-            label += ResolveEndlessExplorationLabelSuffix();
-            LastRoamingCacheAmbushClearFeedbackLabel = label;
-            LastRoamingCacheFeedbackLabel = label;
-            RecordStreakRewardFeedback(label, new Color(0.5f, 1f, 0.68f));
-            PlayFeedback(_levelUpPulse, position, 18, _pickupClip);
-        }
-
-        private int SpawnArenaShrineTrial(Vector3 direction)
-        {
-            Vector3 forward = direction.sqrMagnitude > 0.0001f ? direction.normalized : PlayerForward;
-            if (forward.sqrMagnitude <= 0.0001f)
-            {
-                forward = Vector3.forward;
-            }
-
-            Vector3 side = new Vector3(-forward.z, 0f, forward.x);
-            int trialNumber = ArenaShrineTrialCount + 1;
-            int baseCount = Mathf.Max(1, CurrentTuning.ArenaShrineBaseEnemyCount);
-            int maxCount = Mathf.Max(baseCount, CurrentTuning.ArenaShrineMaxEnemyCount);
-            int targetCount = Mathf.Clamp(
-                baseCount + Mathf.Max(0, trialNumber - 1) * Mathf.Max(0, CurrentTuning.ArenaShrineEnemyCountIncreasePerTrial) + Mathf.Max(0, RunEscalationLevel) / 3 + ResolveEndlessExplorationPressureBonus(),
-                1,
-                maxCount);
-            int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.ArenaShrineExtraAliveAllowance) - _enemies.Count);
-            targetCount = Mathf.Min(targetCount, available);
-            if (targetCount <= 0)
-            {
-                return 0;
-            }
-
-            float radius = Mathf.Max(2f, CurrentTuning.ArenaShrineSpawnRadius);
-            Vector3 center = PlayerPosition + forward * Mathf.Max(3.5f, radius * 0.85f);
-            int spawned = 0;
-            for (int i = 0; i < targetCount; i++)
-            {
-                SurvivorsEnemyRole role = ResolveArenaShrineRole(i, trialNumber);
-                SurvivorsEnemyActor enemy = SpawnGameplayEnemyOffscreen(
-                    role,
-                    _spawnSequence + i + trialNumber * 41 + 853,
-                    radius,
-                    radius + CurrentTuning.SpawnBandDepth,
-                    "arena-shrine");
-                if (enemy == null)
-                {
-                    continue;
-                }
-
-                _activeArenaShrineEnemies.Add(enemy);
-                spawned++;
-            }
-
-            if (spawned <= 0)
-            {
-                return 0;
-            }
-
-            ArenaShrineTrialCount++;
-            ArenaShrineEnemySpawnCount += spawned;
-            LastArenaShrineFeedbackLabel = $"Arena Trial {ArenaShrineTrialCount}: shrine ring x{spawned}{ResolveEndlessExplorationLabelSuffix()}";
-            LastRoamingCacheFeedbackLabel = LastArenaShrineFeedbackLabel;
-            RecordStreakRewardFeedback(LastArenaShrineFeedbackLabel, new Color(1f, 0.78f, 0.35f));
-            PlayFeedback(_bossPulse, center, Mathf.Clamp(28 + spawned * 3, 36, 82), _dangerClip);
-            return spawned;
-        }
-
-        private SurvivorsEnemyRole ResolveArenaShrineRole(int index, int trialNumber)
-        {
-            int pressure = Mathf.Max(0, RunEscalationLevel) + Mathf.Max(0, trialNumber - 1);
-            int seed = index + trialNumber * 3;
-            if (pressure >= 5 && seed % 6 == 0)
-            {
-                return SurvivorsEnemyRole.Splitter;
-            }
-
-            if (pressure >= 3 && seed % 5 == 0)
-            {
-                return SurvivorsEnemyRole.Spitter;
-            }
-
-            if (seed % 4 == 0)
-            {
-                return SurvivorsEnemyRole.Bruiser;
-            }
-
-            return seed % 2 == 0 ? SurvivorsEnemyRole.Runner : SurvivorsEnemyRole.Swarm;
-        }
-
-        private void SpawnArenaShrineClearReward(Vector3 position)
-        {
-            int gemCount = Mathf.Max(1, CurrentTuning.ArenaShrineClearExperienceGemCount + ResolveEndlessExplorationGemBonus());
-            float xpMultiplier = Mathf.Max(0.1f, CurrentTuning.ArenaShrineClearExperienceMultiplier);
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * xpMultiplier * (1f + RunEscalationLevel * 0.1f) * ResolveEndlessExplorationExperienceMultiplier()));
-            float radius = 0.95f + Mathf.Min(1.25f, gemCount * 0.09f);
-            int spawnedExperience = 0;
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.3f) / gemCount) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * radius;
-                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
-                {
-                    spawnedExperience += xpPerGem;
-                    ArenaShrineClearExperienceGemDropCount++;
-                }
-            }
-
-            int shardAmount = Mathf.Max(0, CurrentTuning.ArenaShrineClearBloodShardAmount + ResolveEndlessExplorationShardBonus());
-            bool spawnedBloodShard = false;
-            if (shardAmount > 0 && SpawnPickup(SurvivorsPickupKind.BloodShard, position + new Vector3(-radius * 0.75f, 0f, radius * 0.45f), shardAmount) != null)
-            {
-                spawnedBloodShard = true;
-                ArenaShrineClearBloodShardDropCount++;
-            }
-
-            bool surgeActivated = ActivateArenaShrineSurge();
-            int pulseHitCount = TriggerArenaShrineSurgePulse(position);
-            ArenaShrineClearRewardCount++;
-            string label = $"Arena Trial Cleared: +{spawnedExperience} XP";
-            if (spawnedBloodShard)
-            {
-                label += $" +{shardAmount} {CurrencyRewardLabel}";
-            }
-
-            label += $" + Shrine Surge ({pulseHitCount} hit)";
-            if (surgeActivated)
-            {
-                label += $" {ArenaShrineSurgeRemainingSeconds:0.#}s";
-            }
-
-            label += ResolveEndlessExplorationLabelSuffix();
-            LastArenaShrineClearFeedbackLabel = label;
-            LastArenaShrineFeedbackLabel = label;
-            LastRoamingCacheFeedbackLabel = label;
-            RecordStreakRewardFeedback(label, new Color(1f, 0.86f, 0.42f));
-            PlayFeedback(_levelUpPulse, position, Mathf.Clamp(34 + pulseHitCount * 5, 42, 92), _pickupClip);
-        }
-
-        private bool ActivateArenaShrineSurge()
-        {
-            float duration = Mathf.Max(0f, CurrentTuning.ArenaShrineSurgeDurationSeconds);
-            if (duration <= 0f)
-            {
-                return false;
-            }
-
-            _arenaShrineSurgeTimer = Mathf.Max(_arenaShrineSurgeTimer, duration);
-            ArenaShrineSurgeActivationCount++;
-            return true;
-        }
-
-        private int TriggerArenaShrineSurgePulse(Vector3 position)
-        {
-            float radius = Mathf.Max(0f, CurrentTuning.ArenaShrineSurgePulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.ArenaShrineSurgePulseDamage * ResolveEndlessExplorationPulseMultiplier());
-            if (radius <= 0f || damage <= 0f)
-            {
-                return 0;
-            }
-
-            int hitCount = 0;
-            var targets = new List<SurvivorsEnemyActor>();
-            CollectEnemiesWithinRadius(position, radius, targets);
-            for (int i = 0; i < targets.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = targets[i];
-                if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                {
-                    continue;
-                }
-
-                enemy.ApplyDamage(damage, "survivors.arena-shrine.surge");
-                hitCount++;
-            }
-
-            ArenaShrineSurgePulseHitCount += hitCount;
-            return hitCount;
         }
 
         private void UpdateArenaPresentation()
@@ -8192,218 +7729,6 @@ namespace Deucarian.TemplateGameSurvivors
         private static float ResolveArenaPresentationAnchor(float value)
         {
             return Mathf.Floor((value + InfiniteArenaTileSize * 0.5f) / InfiniteArenaTileSize) * InfiniteArenaTileSize;
-        }
-
-        private void TickArenaWaystoneDiscoveries()
-        {
-            if (_arenaLandmarks.Count == 0 || CurrentTuning.WaystoneDiscoveryRadius <= 0f)
-            {
-                return;
-            }
-
-            Vector3 player = PlayerPosition;
-            float radiusSquared = CurrentTuning.WaystoneDiscoveryRadius * CurrentTuning.WaystoneDiscoveryRadius;
-            for (int i = 0; i < _arenaLandmarks.Count; i++)
-            {
-                Transform landmark = _arenaLandmarks[i];
-                if (landmark == null || i >= _arenaLandmarkKeys.Count)
-                {
-                    continue;
-                }
-
-                long key = _arenaLandmarkKeys[i];
-                if (_discoveredArenaWaystones.Contains(key))
-                {
-                    continue;
-                }
-
-                Vector3 delta = landmark.position - player;
-                delta.y = 0f;
-                if (delta.sqrMagnitude > radiusSquared)
-                {
-                    continue;
-                }
-
-                _discoveredArenaWaystones.Add(key);
-                SpawnWaystoneDiscoveryReward(landmark.position);
-            }
-        }
-
-        private void SpawnWaystoneDiscoveryReward(Vector3 position)
-        {
-            int discoveryNumber = WaystoneDiscoveryCount + 1;
-            bool focusActivated = ActivateWaystoneFocus();
-            int gemCount = Mathf.Max(1, CurrentTuning.WaystoneExperienceGemCount + ResolveEndlessExplorationGemBonus());
-            int xpPerGem = Mathf.Max(1, Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (1.45f + RunEscalationLevel * 0.08f) * ResolveEndlessExplorationExperienceMultiplier()));
-            int spawnedExperience = 0;
-            float rewardRadius = 0.7f + Mathf.Min(0.8f, gemCount * 0.08f);
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.15f) / gemCount) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * rewardRadius;
-                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
-                {
-                    spawnedExperience += xpPerGem;
-                    WaystoneExperienceGemDropCount++;
-                }
-            }
-
-            bool spawnedBloodShard = false;
-            if (ShouldTriggerRoamingCacheCadence(discoveryNumber, CurrentTuning.WaystoneBloodShardInterval))
-            {
-                int shardAmount = CurrentTuning.BloodShardPickupAmount + ResolveEndlessExplorationShardBonus();
-                if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + new Vector3(-rewardRadius, 0f, rewardRadius * 0.45f), shardAmount) != null)
-                {
-                    spawnedBloodShard = true;
-                    WaystoneBloodShardDropCount++;
-                }
-            }
-
-            int ambushSpawned = SpawnWaystoneDiscoveryAmbush(position, discoveryNumber);
-            int chainExperience = TryActivateWaystoneChainSurge(discoveryNumber, position, xpPerGem, out int chainHitCount);
-            WaystoneDiscoveryCount++;
-            string label = $"Waystone Discovered: +{spawnedExperience} XP";
-            if (spawnedBloodShard)
-            {
-                label += " + Shard";
-            }
-
-            if (focusActivated)
-            {
-                label += $" + Focus {WaystoneFocusRemainingSeconds:0.#}s";
-            }
-
-            if (ambushSpawned > 0)
-            {
-                label += $" + Ambush x{ambushSpawned}";
-            }
-
-            if (chainExperience > 0 || chainHitCount > 0)
-            {
-                label += $" + Waystone Chain (+{chainExperience} XP, {chainHitCount} hit)";
-            }
-
-            label += ResolveEndlessExplorationLabelSuffix();
-            LastWaystoneDiscoveryFeedbackLabel = label;
-            LastRoamingCacheFeedbackLabel = label;
-            RecordStreakRewardFeedback(label, new Color(0.58f, 0.95f, 1f));
-            PlayFeedback(_levelUpPulse, position, ambushSpawned > 0 ? 24 : 16, _pickupClip);
-        }
-
-        private bool ActivateWaystoneFocus()
-        {
-            float duration = Mathf.Max(0f, CurrentTuning.WaystoneFocusDurationSeconds);
-            if (duration <= 0f)
-            {
-                return false;
-            }
-
-            _waystoneFocusTimer = Mathf.Max(_waystoneFocusTimer, duration);
-            WaystoneFocusActivationCount++;
-            return true;
-        }
-
-        private int TryActivateWaystoneChainSurge(int discoveryNumber, Vector3 position, int xpPerGem, out int pulseHitCount)
-        {
-            pulseHitCount = 0;
-            if (!ShouldTriggerRoamingCacheCadence(discoveryNumber, CurrentTuning.WaystoneChainInterval))
-            {
-                return 0;
-            }
-
-            _waystoneChainSurgeTimer = Mathf.Max(0.1f, CurrentTuning.WaystoneChainDurationSeconds);
-            WaystoneChainSurgeActivationCount++;
-
-            int gemCount = Mathf.Max(0, CurrentTuning.WaystoneChainBonusGemCount + ResolveEndlessExplorationGemBonus());
-            int spawnedExperience = 0;
-            int bonusXpPerGem = Mathf.Max(1, Mathf.RoundToInt(xpPerGem * (2.35f + ResolveEndlessExplorationBonusTier() * 0.12f)));
-            float rewardRadius = 0.85f + Mathf.Min(0.95f, gemCount * 0.09f);
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.4f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * rewardRadius;
-                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, bonusXpPerGem) != null)
-                {
-                    spawnedExperience += bonusXpPerGem;
-                    WaystoneChainSurgeBonusExperienceGemDropCount++;
-                }
-            }
-
-            pulseHitCount = TriggerWaystoneChainSurgePulse(position);
-            LastWaystoneChainSurgeFeedbackLabel = $"Waystone Chain: {discoveryNumber} discoveries, +{spawnedExperience} XP, {pulseHitCount} enemies hit{ResolveEndlessExplorationLabelSuffix()}";
-            return spawnedExperience;
-        }
-
-        private int TriggerWaystoneChainSurgePulse(Vector3 center)
-        {
-            float radius = Mathf.Max(0f, CurrentTuning.WaystoneChainPulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.WaystoneChainPulseDamage * ResolveEndlessExplorationPulseMultiplier());
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(center, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.waystone.chain-surge");
-                    hitCount++;
-                }
-            }
-
-            WaystoneChainSurgePulseHitCount += hitCount;
-            PlayFeedback(_levelUpPulse, center, Mathf.Clamp(34 + hitCount * 5, 42, 86), _pickupClip);
-            return hitCount;
-        }
-
-        private int SpawnWaystoneDiscoveryAmbush(Vector3 position, int discoveryNumber)
-        {
-            if (!ShouldTriggerRoamingCacheCadence(discoveryNumber, CurrentTuning.WaystoneAmbushInterval))
-            {
-                return 0;
-            }
-
-            int baseCount = Mathf.Max(0, CurrentTuning.WaystoneAmbushBaseEnemyCount);
-            if (baseCount <= 0)
-            {
-                return 0;
-            }
-
-            int available = Mathf.Max(0, ResolveEnemyMaximumAlive() + Mathf.Max(0, CurrentTuning.WaystoneAmbushExtraAliveAllowance) - _enemies.Count);
-            int targetCount = Mathf.Min(baseCount + Mathf.Max(0, RunEscalationLevel) / 4 + ResolveEndlessExplorationPressureBonus(), available);
-            if (targetCount <= 0)
-            {
-                return 0;
-            }
-
-            int spawned = 0;
-            float radius = Mathf.Max(1f, CurrentTuning.WaystoneAmbushRadius);
-            for (int i = 0; i < targetCount; i++)
-            {
-                SurvivorsEnemyRole role = ResolveRoamingCacheAmbushRole(i, discoveryNumber + 2);
-                if (SpawnGameplayEnemyOffscreen(
-                    role,
-                    _spawnSequence + i + discoveryNumber * 43 + 907,
-                    radius,
-                    radius + CurrentTuning.SpawnBandDepth,
-                    "waystone-ambush") != null)
-                {
-                    spawned++;
-                }
-            }
-
-            if (spawned > 0)
-            {
-                WaystoneAmbushCount++;
-                WaystoneAmbushEnemySpawnCount += spawned;
-            }
-
-            return spawned;
         }
 
         private static void ResolveArenaLandmarkOffset(int index, out int offsetX, out int offsetZ)
@@ -8550,52 +7875,6 @@ namespace Deucarian.TemplateGameSurvivors
         private float ResolveEndlessSurgeIntensityMultiplier()
         {
             return Mathf.Clamp(1f + Mathf.Max(0, EndlessSurgeTier - 1) * 0.16f, 1f, 2.25f);
-        }
-
-        private int ResolveEndlessExplorationBonusTier()
-        {
-            if (!_runSession.HasClearedVictory)
-            {
-                return 0;
-            }
-
-            return Mathf.Clamp(Mathf.Max(1, EndlessSurgeTier), 1, 12);
-        }
-
-        private float ResolveEndlessExplorationExperienceMultiplier()
-        {
-            int tier = ResolveEndlessExplorationBonusTier();
-            return tier <= 0 ? 1f : Mathf.Clamp(1f + tier * 0.12f, 1f, 2.5f);
-        }
-
-        private float ResolveEndlessExplorationPulseMultiplier()
-        {
-            int tier = ResolveEndlessExplorationBonusTier();
-            return tier <= 0 ? 1f : Mathf.Clamp(1f + tier * 0.08f, 1f, 2f);
-        }
-
-        private int ResolveEndlessExplorationGemBonus()
-        {
-            int tier = ResolveEndlessExplorationBonusTier();
-            return tier <= 0 ? 0 : Mathf.Min(6, (tier + 1) / 2);
-        }
-
-        private int ResolveEndlessExplorationPressureBonus()
-        {
-            int tier = ResolveEndlessExplorationBonusTier();
-            return tier <= 0 ? 0 : Mathf.Min(8, 1 + tier / 2);
-        }
-
-        private int ResolveEndlessExplorationShardBonus()
-        {
-            int tier = ResolveEndlessExplorationBonusTier();
-            return tier <= 1 ? 0 : Mathf.Min(4, 1 + tier / 3);
-        }
-
-        private string ResolveEndlessExplorationLabelSuffix()
-        {
-            int tier = ResolveEndlessExplorationBonusTier();
-            return tier <= 0 ? string.Empty : $" + Endless T{tier}";
         }
 
         private static int ResolveEndlessSurgeThreatTier(SurvivorsEnemyRole role)
@@ -9824,46 +9103,6 @@ namespace Deucarian.TemplateGameSurvivors
             {
                 StreakSurgeTier = 0;
             }
-        }
-
-        private void TickRoamingCacheSurge(float deltaTime)
-        {
-            if (_roamingCacheSurgeTimer <= 0f)
-            {
-                return;
-            }
-
-            _roamingCacheSurgeTimer = Mathf.Max(0f, _roamingCacheSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
-
-        private void TickArenaShrineSurge(float deltaTime)
-        {
-            if (_arenaShrineSurgeTimer <= 0f)
-            {
-                return;
-            }
-
-            _arenaShrineSurgeTimer = Mathf.Max(0f, _arenaShrineSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
-
-        private void TickWaystoneFocus(float deltaTime)
-        {
-            if (_waystoneFocusTimer <= 0f)
-            {
-                return;
-            }
-
-            _waystoneFocusTimer = Mathf.Max(0f, _waystoneFocusTimer - Mathf.Max(0f, deltaTime));
-        }
-
-        private void TickWaystoneChainSurge(float deltaTime)
-        {
-            if (_waystoneChainSurgeTimer <= 0f)
-            {
-                return;
-            }
-
-            _waystoneChainSurgeTimer = Mathf.Max(0f, _waystoneChainSurgeTimer - Mathf.Max(0f, deltaTime));
         }
 
         private void TickWeaponLoadoutSurge(float deltaTime)
