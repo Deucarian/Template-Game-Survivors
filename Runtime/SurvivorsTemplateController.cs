@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -541,6 +541,37 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsMajorThreatAbilityPort.RecordMajorThreatSlamTelegraphEffect(Vector3 position, SurvivorsEnemyRole role, float radius, float durationSeconds) => RecordMajorThreatSlamTelegraphEffect(position, role, radius, durationSeconds);
         void ISurvivorsMajorThreatAbilityPort.PlayBossFeedback(Vector3 position, int burstCount) => PlayFeedback(_bossPulse, position, burstCount, _dangerClip);
 
+        private SurvivorsFrameInput _frameInput;
+        private SurvivorsFrameInput FrameInput => _frameInput ?? (_frameInput = new SurvivorsFrameInput(_runSession, Menus, new SurvivorsUnityKeyboard(), this));
+        private void Update() => FrameInput.Tick(Time.deltaTime);
+        void ISurvivorsFrameInputPort.TickPresentation(float deltaTime) => TickPresentation(deltaTime);
+        void ISurvivorsFrameInputPort.TickRewardSelectionTimeout(float deltaTime) => TickRewardSelectionTimeout(deltaTime);
+        void ISurvivorsFrameInputPort.SelectMode(SurvivorsPacingProfile profile) => SelectRunMode(profile);
+        void ISurvivorsFrameInputPort.ContinueAfterVictory() => ContinueAfterVictory();
+        void ISurvivorsFrameInputPort.RestartRun() => RestartRun();
+        void ISurvivorsFrameInputPort.TriggerMagnetRecall() => TriggerMagnetRecall();
+        void ISurvivorsFrameInputPort.BanishDraftChoice(int index) => BanishDraftChoice(index);
+        void ISurvivorsFrameInputPort.RerollCurrentDraft() => RerollCurrentDraft();
+        void ISurvivorsFrameInputPort.SkipCurrentDraft() => SkipCurrentDraft();
+        void ISurvivorsFrameInputPort.SelectUpgrade(int index) => SelectUpgrade(index);
+        bool ISurvivorsFrameInputPort.TryPurchaseResultMetaUpgrade(int index) => TryPurchaseResultMetaUpgrade(index);
+        void ISurvivorsFrameInputPort.Dash(Vector2 movement) => PlayerMotion.TryDash(movement);
+        void ISurvivorsFrameInputPort.Simulate(float deltaTime, Vector2 movement) => Simulate(deltaTime, movement);
+        private void TickPresentation(float dt)
+        {
+            TickDamagePopups(dt);
+            TickWorldFeedbackEffects(dt);
+            TickEnemyRangedAttackFeedbackEffects(dt);
+            TickMajorThreatSlamTelegraphEffects(dt);
+            TickIncomingThreatTelegraphEffects(dt);
+            TickMajorRewardDropFeedbackEffects(dt);
+            TickRewardFeedback(dt);
+            TickStreakRewardFeedback(dt);
+            TickClassUnlockRewardFeedback(dt);
+            TickEvolutionReadyFeedback(dt);
+            TickExperienceComboFeedback(dt);
+        }
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -806,9 +837,6 @@ namespace Deucarian.TemplateGameSurvivors
         private bool CloseTutorialOverlay(bool markSeen) => Menus.CloseTutorialOverlay(markSeen);
         private bool AdvanceTutorialStep() => Menus.AdvanceTutorialStep();
         private bool BackTutorialStep() => Menus.BackTutorialStep();
-        private bool HandleBuildMenuInput() => Menus.HandleBuildInput(State,
-            Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.Tab) || Input.GetKeyDown(KeyCode.B),
-            Input.GetKeyDown(KeyCode.Alpha1) ? 0 : Input.GetKeyDown(KeyCode.Alpha2) ? 1 : Input.GetKeyDown(KeyCode.Alpha3) ? 2 : Input.GetKeyDown(KeyCode.Alpha4) ? 3 : -1);
         bool ISurvivorsTutorialPort.HasProfile => _metaProgression != null;
         bool ISurvivorsTutorialPort.TutorialSeen => _metaProgression != null && _metaProgression.TutorialSeen;
         void ISurvivorsTutorialPort.EnsureProfile() => EnsureMetaProgressionLoaded();
@@ -1140,7 +1168,7 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsAudioEventRouter _audioEvents => AudioPresentation.Events;
         private readonly SurvivorsProfileSession _profileSession = new SurvivorsProfileSession(
             () => new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider())));
-        private bool _debugOverlayVisible;
+        private bool _debugOverlayVisible { get => FrameInput.DebugVisible; set => FrameInput.DebugVisible = value; }
         private int _selectedUiThemeIndex;
         private RunUpgradeRarity _highestChosenRarity;
         private string _highestChosenRarityLabel = string.Empty;
@@ -1759,100 +1787,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(KeyCode.F1))
-            {
-                _debugOverlayVisible = !_debugOverlayVisible;
-            }
-
-            if (!_runSession.Started)
-            {
-                if (Menus.TutorialOpen)
-                {
-                    HandleTutorialInput();
-                }
-                else if (Menus.ModeSelectionOpen)
-                {
-                    HandleRunModeSelectionInput();
-                }
-
-                return;
-            }
-
-            if (Menus.TutorialOpen)
-            {
-                HandleTutorialInput();
-                return;
-            }
-
-            if (HandleBuildMenuInput())
-            {
-                return;
-            }
-
-            if (State == SurvivorsRunState.LevelUp)
-            {
-                TickDamagePopups(Time.deltaTime);
-                TickWorldFeedbackEffects(Time.deltaTime);
-                TickEnemyRangedAttackFeedbackEffects(Time.deltaTime);
-                TickMajorThreatSlamTelegraphEffects(Time.deltaTime);
-                TickIncomingThreatTelegraphEffects(Time.deltaTime);
-                TickMajorRewardDropFeedbackEffects(Time.deltaTime);
-                TickRewardFeedback(Time.deltaTime);
-                TickStreakRewardFeedback(Time.deltaTime);
-                TickClassUnlockRewardFeedback(Time.deltaTime);
-                TickEvolutionReadyFeedback(Time.deltaTime);
-                TickExperienceComboFeedback(Time.deltaTime);
-                TickRewardSelectionTimeout(Time.deltaTime);
-                HandleLevelUpInput();
-                return;
-            }
-
-            if (State == SurvivorsRunState.GameOver || State == SurvivorsRunState.Victory)
-            {
-                TickDamagePopups(Time.deltaTime);
-                TickWorldFeedbackEffects(Time.deltaTime);
-                TickEnemyRangedAttackFeedbackEffects(Time.deltaTime);
-                TickMajorThreatSlamTelegraphEffects(Time.deltaTime);
-                TickIncomingThreatTelegraphEffects(Time.deltaTime);
-                TickMajorRewardDropFeedbackEffects(Time.deltaTime);
-                TickRewardFeedback(Time.deltaTime);
-                TickStreakRewardFeedback(Time.deltaTime);
-                TickClassUnlockRewardFeedback(Time.deltaTime);
-                TickEvolutionReadyFeedback(Time.deltaTime);
-                TickExperienceComboFeedback(Time.deltaTime);
-                if (HandleResultMetaUpgradeInput())
-                {
-                    return;
-                }
-
-                if (State == SurvivorsRunState.Victory && Input.GetKeyDown(KeyCode.C))
-                {
-                    ContinueAfterVictory();
-                    return;
-                }
-
-                if (Input.GetKeyDown(KeyCode.R))
-                {
-                    RestartRun();
-                }
-                return;
-            }
-
-            Vector2 movement = ReadMovementInput();
-            if (Input.GetKeyDown(KeyCode.Space))
-            {
-                PlayerMotion.TryDash(movement);
-            }
-
-            Simulate(Time.deltaTime, movement);
-
-            if (Input.GetKeyDown(KeyCode.M))
-            {
-                TriggerMagnetRecall();
-            }
-        }
 
 
         private void OnGUI()
@@ -1920,21 +1854,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private void HandleRunModeSelectionInput()
-        {
-            if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Return))
-            {
-                SelectStandardRun();
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.S))
-            {
-                SelectSprintRun();
-            }
-            else if (Input.GetKeyDown(KeyCode.T))
-            {
-                OpenTutorialOverlay(markUnseen: false);
-            }
-        }
 
         private void DrawPlayerHud()
         {
@@ -2012,21 +1931,6 @@ namespace Deucarian.TemplateGameSurvivors
             return true;
         }
 
-        private void HandleTutorialInput()
-        {
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.S))
-            {
-                CloseTutorialOverlay(markSeen: true);
-            }
-            else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
-            {
-                AdvanceTutorialStep();
-            }
-            else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.Backspace))
-            {
-                BackTutorialStep();
-            }
-        }
 
         private string ResolveTutorialStepTitle(int step)
         {
@@ -5220,73 +5124,8 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void HandleLevelUpInput()
-        {
-            bool banishModifier = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            if (banishModifier && Input.GetKeyDown(KeyCode.Alpha1))
-            {
-                BanishDraftChoice(0);
-            }
-            else if (banishModifier && Input.GetKeyDown(KeyCode.Alpha2))
-            {
-                BanishDraftChoice(1);
-            }
-            else if (banishModifier && Input.GetKeyDown(KeyCode.Alpha3))
-            {
-                BanishDraftChoice(2);
-            }
-            else if (Input.GetKeyDown(KeyCode.R))
-            {
-                RerollCurrentDraft();
-            }
-            else if (Input.GetKeyDown(KeyCode.S))
-            {
-                SkipCurrentDraft();
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha1))
-            {
-                SelectUpgrade(0);
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha2))
-            {
-                SelectUpgrade(1);
-            }
-            else if (Input.GetKeyDown(KeyCode.Alpha3))
-            {
-                SelectUpgrade(2);
-            }
-        }
 
-        private bool HandleResultMetaUpgradeInput()
-        {
-            if (Input.GetKeyDown(KeyCode.Alpha1))
-            {
-                return TryPurchaseResultMetaUpgrade(0);
-            }
 
-            if (Input.GetKeyDown(KeyCode.Alpha2))
-            {
-                return TryPurchaseResultMetaUpgrade(1);
-            }
-
-            if (Input.GetKeyDown(KeyCode.Alpha3))
-            {
-                return TryPurchaseResultMetaUpgrade(2);
-            }
-
-            return false;
-        }
-
-        private Vector2 ReadMovementInput()
-        {
-            float x = 0f;
-            float y = 0f;
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) x -= 1f;
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) x += 1f;
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) y -= 1f;
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) y += 1f;
-            return new Vector2(x, y);
-        }
 
         private static Material ApplyColor(Renderer renderer, Color color) => SurvivorsPrimitivePresentation.ApplyColor(renderer, color);
 
