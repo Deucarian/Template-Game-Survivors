@@ -242,6 +242,112 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsEnemyDefeatPort.RewardCacheClear(Vector3 position) => RoamingCaches.SpawnRoamingCacheAmbushClearReward(position);
         void ISurvivorsEnemyDefeatPort.RewardShrineClear(Vector3 position) => ShrineTrials.SpawnArenaShrineClearReward(position);
 
+        private SurvivorsRunSummaryModel _runSummary;
+        private SurvivorsRunSummaryModel RunSummary => _runSummary ?? (_runSummary = new SurvivorsRunSummaryModel(RunBuild, BuildContentLabels));
+        private IReadOnlyList<string> _lastRunSummaryLines => RunSummary.Lines;
+        private string _lastRunSummaryTitle => RunSummary.Title;
+
+        private void RebuildLastRunSummaryLines(bool victory) => RunSummary.Rebuild(CaptureRunSummaryValues(victory));
+        private string FormatActiveWeaponList() => RunSummary.FormatActiveWeaponList(ActiveWeaponIds);
+        private string FormatRunSummaryUpgradeList(IReadOnlyCollection<string> ids, bool includeRanks) => RunSummary.FormatRunSummaryUpgradeList(ids, includeRanks);
+
+        private SurvivorsRunSummaryValues CaptureRunSummaryValues(bool victory) => new SurvivorsRunSummaryValues(
+            new SurvivorsRunSummaryOutcome(
+                victory: victory,
+                endlessContinuationEnabled: CurrentTuning.EndlessContinuationEnabled,
+                themeTitle: ActiveUiTheme.runSummaryTitle,
+                modeDisplayName: CurrentRunModeDisplayName,
+                runTimeSeconds: RunTimeSeconds,
+                survivalVictoryTimeSeconds: CurrentTuning.SurvivalVictoryTimeSeconds,
+                targetDurationSeconds: CurrentTuning.TargetDurationSeconds,
+                runRewardMultiplier: CurrentTuning.RunRewardMultiplier,
+                level: Level,
+                experienceCollected: ExperienceCollected,
+                experience: Experience,
+                requiredExperienceForNextLevel: RequiredExperienceForNextLevel),
+            new SurvivorsRunSummaryRewards(
+                bloodShardsEarnedThisRun: BloodShardsEarnedThisRun,
+                legacyExperienceEarnedThisRun: LegacyExperienceEarnedThisRun,
+                currencyRewardLabel: CurrencyRewardLabel,
+                progressionRewardLabel: ProgressionRewardLabel,
+                metaBloodShards: MetaBloodShards,
+                lifetimeLegacyExperience: LifetimeLegacyExperience,
+                currencyDisplayName: CurrencyDisplayName,
+                progressionDisplayName: ProgressionDisplayName),
+            new SurvivorsRunSummaryCombat(
+                killedCount: KilledCount,
+                eliteKilledCount: EliteKilledCount,
+                minibossKilledCount: MinibossKilledCount,
+                bossKilledCount: BossKilledCount,
+                damageTakenThisRun: DamageTakenThisRun,
+                currentHealth: CurrentHealth,
+                maxHealth: MaxHealth,
+                bestMomentLabel: _bestMomentLabel,
+                firstEvolutionAcquiredTimeSeconds: _firstEvolutionAcquiredTimeSeconds,
+                highestChosenRarityLabel: _highestChosenRarityLabel,
+                bestKillStreak: BestKillStreak),
+            new SurvivorsRunSummaryCollection(
+                activeWeaponIds: ActiveWeaponIds,
+                activeWeaponCount: ActiveWeaponCount,
+                selectedRelicCount: SelectedRelicCount,
+                totalRelicCount: ResolveTotalRelicCount(),
+                selectedRelicLabel: FormatSelectedRelicList(),
+                currentPickupAttractRange: CurrentPickupAttractRange,
+                currentPickupAttractionSpeed: CurrentPickupAttractionSpeed,
+                currentPickupMagnetPulseIntervalSeconds: CurrentPickupMagnetPulseIntervalSeconds,
+                magnetRecallCount: MagnetRecallCount,
+                classUnlockRewardCount: ClassUnlockRewardCount,
+                unlockedClassDisplayName: ClassUnlockRewardCount > 0 ? ResolveClassDisplayName(BasicSurvivorsGame.EmberVanguardClassId, "Ember Vanguard") : string.Empty));
+
+        private SurvivorsEvolutionHudModel _evolutionHud;
+        private SurvivorsEvolutionHudModel EvolutionHud => _evolutionHud ?? (_evolutionHud = new SurvivorsEvolutionHudModel(RunBuild, DraftOffers.Catalogs));
+        private string ResolveEvolutionGoalHudLabel() => EvolutionHud.Goal();
+        private string ResolveEvolutionReadyHudLabel() => EvolutionHud.Ready();
+        private string ResolveEvolutionObjectiveHudLabel() => EvolutionHud.Objective();
+
+        private static string FormatRunTime(float seconds) => SurvivorsRunText.FormatRunTime(seconds);
+        private static string FormatMetricTime(float seconds) => SurvivorsRunText.FormatMetricTime(seconds);
+        private static string FormatRewardTimeout(float seconds) => SurvivorsRunText.FormatRewardTimeout(seconds);
+        private string ResolveRunPhaseHudLabel() => SurvivorsRunText.FormatPhase(IsEndlessRun, RunPhase);
+        private string ResolveDashHudLabel() => SurvivorsRunText.FormatDash(DashCooldownRemainingSeconds, IsPlayerSafetyActive, PlayerSafetyRemainingSeconds);
+        private string ResolveBuildSlotHudLabel() => SurvivorsRunText.FormatBuildSlots(ActiveWeaponCount, MaxWeaponSlots, ActivePassiveCount, MaxPassiveSlots, EvolvedWeaponCount, SelectedRelicCount, ResolveTotalRelicCount());
+
+        private string ResolveRunMilestoneHudLabel() => SurvivorsRunMilestoneModel.Label(CaptureRunMilestoneValues());
+        private bool TryResolveRunMilestone(out string name, out float targetTimeSeconds, out float remainingSeconds) =>
+            SurvivorsRunMilestoneModel.TryResolve(CaptureRunMilestoneValues(), out name, out targetTimeSeconds, out remainingSeconds);
+
+        private SurvivorsRunMilestoneValues CaptureRunMilestoneValues()
+        {
+            if (!_runSession.Started || State == SurvivorsRunState.Victory || State == SurvivorsRunState.GameOver)
+                return new SurvivorsRunMilestoneValues(_runSession.Started, State, 0f, false, 0f, default, default);
+            float hordeTime = HordeRush.NextTime;
+            bool endless = IsEndlessRun;
+            SurvivorsNormalMilestoneTimes normal = default;
+            SurvivorsEndlessMilestoneTimes endlessTimes = default;
+            if (endless)
+                endlessTimes = new SurvivorsEndlessMilestoneTimes(TimedEncounters.ResolveNextEndlessEliteRole(),
+                    TimedEncounters.NextEliteTime, TimedEncounters.NextMinibossTime, TimedEncounters.NextBossTime);
+            else if (_runFlow != null && _runFlow.Definition != null)
+                normal = new SurvivorsNormalMilestoneTimes(true, _runFlow.NextEliteSpawnTimeSeconds, _runFlow.NextDreadEliteSpawnTimeSeconds,
+                    _runFlow.Definition.MinibossSpawnTimeSeconds, _runFlow.Definition.BossSpawnTimeSeconds, _runFlow.Definition.SurvivalVictoryTimeSeconds);
+            return new SurvivorsRunMilestoneValues(true, State, RunTimeSeconds, endless, hordeTime, normal, endlessTimes);
+        }
+
+        private string ResolveSurgeHudLabel() => SurvivorsSurgeHudModel.Format(CaptureSurgeHudValues());
+        private SurvivorsSurgeHudValues CaptureSurgeHudValues() => new SurvivorsSurgeHudValues(
+            new SurvivorsSurgeHudState(IsStreakSurgeActive, StreakSurgeRemainingSeconds, StreakSurgeTier),
+            new SurvivorsSurgeHudState(IsRoamingCacheSurgeActive, RoamingCacheSurgeRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsArenaShrineSurgeActive, ArenaShrineSurgeRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsWaystoneFocusActive, WaystoneFocusRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsWaystoneChainSurgeActive, WaystoneChainSurgeRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsHordeRushClearSurgeActive, HordeRushClearSurgeRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsWeaponLoadoutSurgeActive, WeaponLoadoutSurgeRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsPassiveLoadoutSurgeActive, PassiveLoadoutSurgeRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsBossRelicSurgeActive, BossRelicSurgeRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsGemRushActive, GemRushRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsEvolutionChainSurgeActive, EvolutionChainSurgeRemainingSeconds, 0),
+            new SurvivorsSurgeHudState(IsEndlessSurgeActive, EndlessSurgeRemainingSeconds, EndlessSurgeTier));
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -324,7 +430,6 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsRewardDropPresenter _rewardDrops;
         private SurvivorsRewardDropPresenter RewardDrops => _rewardDrops ?? (_rewardDrops = new SurvivorsRewardDropPresenter(() => _feedbackRoot, () => ActiveUiTheme));
         private readonly SurvivorsDamagePopupPresenter _damageFeedback = new SurvivorsDamagePopupPresenter();
-        private readonly List<string> _lastRunSummaryLines = new List<string>(8);
         private readonly List<string> _runMetricsLines = new List<string>(16);
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private SurvivorsBuildSurgeRewards _buildSurges;
@@ -858,7 +963,6 @@ namespace Deucarian.TemplateGameSurvivors
             () => new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider())));
         private bool _debugOverlayVisible;
         private int _selectedUiThemeIndex;
-        private string _lastRunSummaryTitle = string.Empty;
         private RunUpgradeRarity _highestChosenRarity;
         private string _highestChosenRarityLabel = string.Empty;
         private string _bestMomentLabel = string.Empty;
@@ -2061,8 +2165,7 @@ namespace Deucarian.TemplateGameSurvivors
             Waystones.ClearDiscoveries();
             StreakRewardFeedbackCount = 0;
             LastStreakRewardFeedbackLabel = string.Empty;
-            _lastRunSummaryLines.Clear();
-            _lastRunSummaryTitle = string.Empty;
+            RunSummary.Clear();
             ResetRunMetrics();
             UpgradeModifiers.Reset();
             _runSession.Reset();
@@ -3071,10 +3174,6 @@ namespace Deucarian.TemplateGameSurvivors
             lines.Add(label + ": " + FormatMetricTime(seconds));
         }
 
-        private static string FormatMetricTime(float seconds)
-        {
-            return seconds >= 0f ? FormatRunTime(seconds) : "not yet";
-        }
 
         private void ResetRunMetrics()
         {
@@ -4741,55 +4840,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void RebuildLastRunSummaryLines(bool victory)
-        {
-            _lastRunSummaryLines.Clear();
-            string result = victory
-                ? (CurrentTuning.EndlessContinuationEnabled ? "Victory - Endless continuation available" : "Victory")
-                : "Defeat";
-            _lastRunSummaryTitle = ActiveUiTheme.runSummaryTitle + " - " + (victory ? "Victory" : "Defeat");
-            _lastRunSummaryLines.Add("Run mode: " + CurrentRunModeDisplayName);
-            _lastRunSummaryLines.Add("Result: " + result);
-            _lastRunSummaryLines.Add($"Run time: {FormatRunTime(RunTimeSeconds)} / target {FormatRunTime(CurrentTuning.SurvivalVictoryTimeSeconds)}");
-            _lastRunSummaryLines.Add($"Level reached: {Level}   XP collected: {ExperienceCollected}   Stored XP: {Experience}/{RequiredExperienceForNextLevel}");
-            _lastRunSummaryLines.Add($"Kills: {KilledCount}   Elites: {EliteKilledCount}   Minibosses: {MinibossKilledCount}   Bosses: {BossKilledCount}");
-            _lastRunSummaryLines.Add($"Rewards earned: +{BloodShardsEarnedThisRun} {CurrencyRewardLabel}, +{LegacyExperienceEarnedThisRun} {ProgressionRewardLabel}");
-            _lastRunSummaryLines.Add($"Reward profile: target {FormatRunTime(CurrentTuning.TargetDurationSeconds)}, multiplier x{CurrentTuning.RunRewardMultiplier:0.##}");
-            _lastRunSummaryLines.Add($"Meta bank: {MetaBloodShards} {CurrencyDisplayName}, {LifetimeLegacyExperience} {ProgressionDisplayName}");
-            _lastRunSummaryLines.Add($"Damage taken: {DamageTakenThisRun:0.#}   Final health: {CurrentHealth:0.#}/{MaxHealth:0.#}");
-            _lastRunSummaryLines.Add($"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}");
-            _lastRunSummaryLines.Add($"Passives {ActivePassiveCount}/{MaxPassiveSlots}: {FormatRunSummaryUpgradeList(RunBuild.PassiveIds, includeRanks: true)}");
-            _lastRunSummaryLines.Add($"Evolutions {EvolvedWeaponCount}: {FormatRunSummaryUpgradeList(RunBuild.EvolutionIds, includeRanks: false)}");
-            _lastRunSummaryLines.Add($"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}");
-            _lastRunSummaryLines.Add($"Pickup build: radius {CurrentPickupAttractRange:0.#}, magnet range {CurrentPickupAttractRange:0.#}, pull speed {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, recalls {MagnetRecallCount}");
-            _lastRunSummaryLines.Add("Top weapon by damage: not tracked yet");
-            _lastRunSummaryLines.Add("Top weapon by kills: not tracked yet");
-            _lastRunSummaryLines.Add("Best moment: " + (string.IsNullOrWhiteSpace(_bestMomentLabel) ? ResolveFallbackBestMomentLabel() : _bestMomentLabel));
-            if (ClassUnlockRewardCount > 0)
-            {
-                _lastRunSummaryLines.Add("Class unlocked: " + ResolveClassDisplayName(BasicSurvivorsGame.EmberVanguardClassId, "Ember Vanguard"));
-            }
-        }
 
-        private string ResolveFallbackBestMomentLabel()
-        {
-            if (_firstEvolutionAcquiredTimeSeconds >= 0f)
-            {
-                return "First evolution at " + FormatRunTime(_firstEvolutionAcquiredTimeSeconds);
-            }
-
-            if (!string.IsNullOrWhiteSpace(_highestChosenRarityLabel))
-            {
-                return "Highest rarity chosen: " + _highestChosenRarityLabel;
-            }
-
-            if (BestKillStreak > 0)
-            {
-                return "Best streak " + BestKillStreak.ToString();
-            }
-
-            return "First run data captured";
-        }
 
 
         private void RecordClassUnlockRewardFeedback()
@@ -5639,51 +5690,7 @@ namespace Deucarian.TemplateGameSurvivors
             return ActiveUiTheme.GetRarityAccentColor(rarity, ResolveRarityAccentColor(rarity));
         }
 
-        private string FormatActiveWeaponList()
-        {
-            IReadOnlyList<string> weaponIds = ActiveWeaponIds;
-            if (weaponIds == null || weaponIds.Count == 0)
-            {
-                return "None";
-            }
 
-            var labels = new List<string>(weaponIds.Count);
-            for (int i = 0; i < weaponIds.Count; i++)
-            {
-                labels.Add(ShortWeaponName(weaponIds[i]));
-            }
-
-            return string.Join(", ", labels);
-        }
-
-        private string FormatRunSummaryUpgradeList(IReadOnlyCollection<string> upgradeIds, bool includeRanks)
-        {
-            if (upgradeIds == null || upgradeIds.Count == 0 || RunBuild.Catalog == null)
-            {
-                return "None yet";
-            }
-
-            var labels = new List<string>(upgradeIds.Count);
-            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
-            {
-                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
-                if (definition == null || !System.Linq.Enumerable.Contains(upgradeIds, definition.Id.Value, StringComparer.Ordinal))
-                {
-                    continue;
-                }
-
-                string label = ResolveUpgradeDisplayName(definition.Id);
-                if (includeRanks && RunBuild.State != null)
-                {
-                    int rank = Mathf.Max(1, RunBuild.State.GetRank(definition.Id));
-                    label += " " + rank.ToString() + "/" + definition.MaxRank.ToString();
-                }
-
-                labels.Add(label);
-            }
-
-            return labels.Count == 0 ? "None yet" : string.Join(", ", labels);
-        }
 
         private void AppendSelectedUpgradeRankLines(List<string> lines)
         {
@@ -5976,10 +5983,6 @@ namespace Deucarian.TemplateGameSurvivors
             return label;
         }
 
-        private string ResolveBuildSlotHudLabel()
-        {
-            return $"Build W {ActiveWeaponCount}/{MaxWeaponSlots}   P {ActivePassiveCount}/{MaxPassiveSlots}   Evo {EvolvedWeaponCount}   Relic {SelectedRelicCount}/{ResolveTotalRelicCount()}";
-        }
 
 
 
@@ -6014,126 +6017,9 @@ namespace Deucarian.TemplateGameSurvivors
 
         private static string ResolveCompassDirectionLabel(Vector3 delta) => SurvivorsThreatHudModel.CompassDirection(delta);
 
-        private string ResolveEvolutionGoalHudLabel()
-        {
-            if (RunBuild.Catalog == null)
-            {
-                return string.Empty;
-            }
 
-            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
-            {
-                RunUpgradeDefinition evolution = RunBuild.Catalog.Definitions[i];
-                if (TryResolveEvolutionMissingPassive(evolution, out RunUpgradeDefinition passive))
-                {
-                    return $"Goal {ResolveUpgradeDisplayName(passive.Id)} -> {ResolveUpgradeDisplayName(evolution.Id)}";
-                }
-            }
 
-            return string.Empty;
-        }
 
-        private string ResolveEvolutionReadyHudLabel()
-        {
-            if (RunBuild.Catalog == null)
-            {
-                return string.Empty;
-            }
-
-            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
-            {
-                RunUpgradeDefinition evolution = RunBuild.Catalog.Definitions[i];
-                if (evolution != null && IsEvolutionUpgrade(evolution) && IsUpgradeEligibleForCurrentBuild(evolution))
-                {
-                    return $"Ready {ResolveUpgradeDisplayName(evolution.Id)} -> elite/boss reward";
-                }
-            }
-
-            return string.Empty;
-        }
-
-        private string ResolveEvolutionObjectiveHudLabel()
-        {
-            string goal = ResolveEvolutionGoalHudLabel();
-            return string.IsNullOrWhiteSpace(goal) ? ResolveEvolutionReadyHudLabel() : goal;
-        }
-
-        private string ResolveSurgeHudLabel()
-        {
-            string label = string.Empty;
-            if (IsStreakSurgeActive)
-            {
-                label = $"   Surge T{StreakSurgeTier} {StreakSurgeRemainingSeconds:0.0}s";
-            }
-
-            if (IsRoamingCacheSurgeActive)
-            {
-                string travel = $"Way {RoamingCacheSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + travel : label + "   " + travel;
-            }
-
-            if (IsArenaShrineSurgeActive)
-            {
-                string shrine = $"Shrine {ArenaShrineSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + shrine : label + "   " + shrine;
-            }
-
-            if (IsWaystoneFocusActive)
-            {
-                string focus = $"Focus {WaystoneFocusRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + focus : label + "   " + focus;
-            }
-
-            if (IsWaystoneChainSurgeActive)
-            {
-                string chain = $"Chain {WaystoneChainSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + chain : label + "   " + chain;
-            }
-
-            if (IsHordeRushClearSurgeActive)
-            {
-                string breaker = $"Breaker {HordeRushClearSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + breaker : label + "   " + breaker;
-            }
-
-            if (IsWeaponLoadoutSurgeActive)
-            {
-                string arsenal = $"Arsenal {WeaponLoadoutSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + arsenal : label + "   " + arsenal;
-            }
-
-            if (IsPassiveLoadoutSurgeActive)
-            {
-                string harmony = $"Harmony {PassiveLoadoutSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + harmony : label + "   " + harmony;
-            }
-
-            if (IsBossRelicSurgeActive)
-            {
-                string relic = $"Relic {BossRelicSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + relic : label + "   " + relic;
-            }
-
-            if (IsGemRushActive)
-            {
-                string gem = $"Gem {GemRushRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + gem : label + "   " + gem;
-            }
-
-            if (IsEvolutionChainSurgeActive)
-            {
-                string legend = $"Legend {EvolutionChainSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + legend : label + "   " + legend;
-            }
-
-            if (IsEndlessSurgeActive)
-            {
-                string endless = $"Endless T{EndlessSurgeTier} {EndlessSurgeRemainingSeconds:0.0}s";
-                label = string.IsNullOrEmpty(label) ? "   " + endless : label + "   " + endless;
-            }
-
-            return label;
-        }
 
         private int ResolveTotalRelicCount()
         {
@@ -6169,126 +6055,14 @@ namespace Deucarian.TemplateGameSurvivors
             return label;
         }
 
-        private string ResolveRunPhaseHudLabel()
-        {
-            return IsEndlessRun ? "Endless" : RunPhase.ToString();
-        }
-
-        private string ResolveRunMilestoneHudLabel()
-        {
-            if (!TryResolveRunMilestone(out string milestoneName, out _, out float remainingSeconds))
-            {
-                return "Next Objective: survive";
-            }
-
-            if (State == SurvivorsRunState.Victory)
-            {
-                return "Victory Clear - continue or restart";
-            }
-
-            if (State == SurvivorsRunState.GameOver)
-            {
-                return "Run Ended - restart to try again";
-            }
-
-            return "Next " + milestoneName + " in " + FormatRunTime(remainingSeconds);
-        }
-
-        private bool TryResolveRunMilestone(out string name, out float targetTimeSeconds, out float remainingSeconds)
-        {
-            name = string.Empty;
-            targetTimeSeconds = 0f;
-            remainingSeconds = 0f;
-
-            if (!_runSession.Started)
-            {
-                return false;
-            }
-
-            if (State == SurvivorsRunState.Victory)
-            {
-                name = "Victory Clear";
-                return true;
-            }
-
-            if (State == SurvivorsRunState.GameOver)
-            {
-                name = "Run Ended";
-                return true;
-            }
-
-            float bestTargetTimeSeconds = float.MaxValue;
-            string bestName = string.Empty;
-            ConsiderRunMilestone("Horde Rush", HordeRush.NextTime, ref bestName, ref bestTargetTimeSeconds);
-
-            if (IsEndlessRun)
-            {
-                ConsiderRunMilestone(ResolveEndlessMilestoneName(TimedEncounters.ResolveNextEndlessEliteRole()), TimedEncounters.NextEliteTime, ref bestName, ref bestTargetTimeSeconds);
-                ConsiderRunMilestone("Endless Miniboss", TimedEncounters.NextMinibossTime, ref bestName, ref bestTargetTimeSeconds);
-                ConsiderRunMilestone("Endless Boss", TimedEncounters.NextBossTime, ref bestName, ref bestTargetTimeSeconds);
-            }
-            else if (_runFlow != null && _runFlow.Definition != null)
-            {
-                SurvivorsRunFlowDefinition definition = _runFlow.Definition;
-                ConsiderRunMilestone("Elite", _runFlow.NextEliteSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
-                ConsiderRunMilestone("Dread Elite", _runFlow.NextDreadEliteSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
-                ConsiderRunMilestone("Miniboss", definition.MinibossSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
-                ConsiderRunMilestone("Final Boss", definition.BossSpawnTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
-                ConsiderRunMilestone("Victory", definition.SurvivalVictoryTimeSeconds, ref bestName, ref bestTargetTimeSeconds);
-            }
-
-            if (string.IsNullOrWhiteSpace(bestName) || bestTargetTimeSeconds == float.MaxValue)
-            {
-                return false;
-            }
-
-            name = bestName;
-            targetTimeSeconds = bestTargetTimeSeconds;
-            remainingSeconds = Mathf.Max(0f, bestTargetTimeSeconds - RunTimeSeconds);
-            return true;
-        }
-
-        private void ConsiderRunMilestone(string candidateName, float candidateTimeSeconds, ref string bestName, ref float bestTargetTimeSeconds)
-        {
-            if (string.IsNullOrWhiteSpace(candidateName) || candidateTimeSeconds <= 0f || candidateTimeSeconds <= RunTimeSeconds)
-            {
-                return;
-            }
-
-            if (candidateTimeSeconds < bestTargetTimeSeconds - 0.001f)
-            {
-                bestName = candidateName;
-                bestTargetTimeSeconds = candidateTimeSeconds;
-            }
-        }
-
-        private static string ResolveEndlessMilestoneName(SurvivorsEnemyRole role)
-        {
-            return role == SurvivorsEnemyRole.DreadElite
-                ? "Endless Dread Elite"
-                : "Endless Elite";
-        }
 
 
-        private static string FormatRunTime(float seconds)
-        {
-            int total = Mathf.Max(0, Mathf.FloorToInt(seconds));
-            return (total / 60).ToString("00") + ":" + (total % 60).ToString("00");
-        }
 
-        private static string FormatRewardTimeout(float seconds)
-        {
-            return seconds > 0f ? seconds.ToString("0.#") + "s" : "Off";
-        }
 
-        private string ResolveDashHudLabel()
-        {
-            string cooldown = DashCooldownRemainingSeconds <= 0.01f
-                ? "Ready"
-                : DashCooldownRemainingSeconds.ToString("0.0") + "s";
-            string safety = IsPlayerSafetyActive ? "   Safe " + PlayerSafetyRemainingSeconds.ToString("0.0") + "s" : string.Empty;
-            return "Arc Step " + cooldown + safety;
-        }
+
+
+
+
 
         private void HandleLevelUpInput()
         {

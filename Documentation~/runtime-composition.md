@@ -79,6 +79,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Enemy defeat transaction | `SurvivorsEnemyDefeatFlow` | Sole kill and role counters, world removal before ordered XP/death/drop/draft/encounter completion commands; live actor observations retain pool-reset behavior |
 
+| Run summary, evolution and milestone text | `SurvivorsRunSummaryModel / SurvivorsEvolutionHudModel / SurvivorsRunMilestoneModel` | Copied run observations and borrowed build queries, stable summary list identity, phase-gated milestone reads and deterministic display ties |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -136,5 +138,7 @@ Ten cases cover hierarchy/palette/pool definitions, service-root teardown, owned
 Ten cases cover strict required assets, Basic/Neon binding, callback order, failed theme rollback, active-run behavior and fallback/rebind diagnostics.
 
 Seven cases preserve release and reward order, role-specific draft fallback, endless decisions, diagnostics and the post-despawn splitter label read.
+
+Eighteen cases preserve summary order and fallback text, clear versus rebuild, evolution readiness, milestone epsilon/tie rules and live status labels.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
