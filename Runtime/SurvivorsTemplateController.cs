@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -1167,6 +1167,54 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsProgressionFeedbackPort.RecordEvolutionEligibility() => Telemetry.Record(SurvivorsRunMetric.FirstEvolutionEligibility, RunTimeSeconds);
         void ISurvivorsProgressionFeedbackPort.PlayEvolutionPulse(int count) => PlayFeedback(_levelUpPulse, PlayerPosition, count, _levelUpClip);
         void ISurvivorsProgressionFeedbackPort.PlayClassUnlockPulse() => PlayFeedback(_bossPulse, PlayerPosition, 52, _levelUpClip);
+
+        public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, float healthOverride = -1f) => DebugWorld.SpawnWithHealth(position, SurvivorsEnemyRole.Swarm, healthOverride);
+
+        public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, SurvivorsEnemyRole role, float healthOverride = -1f) => DebugWorld.SpawnWithHealth(position, role, healthOverride);
+
+        public SurvivorsEnemyActor SpawnMinibossForTest(Vector3 position, float healthOverride = -1f) => DebugWorld.SpawnWithHealth(position, SurvivorsEnemyRole.Miniboss, healthOverride);
+
+        public SurvivorsEnemyActor SpawnBossForTest(Vector3 position, float healthOverride = -1f) => DebugWorld.SpawnWithHealth(position, SurvivorsEnemyRole.Boss, healthOverride);
+
+        public int DebugClearActiveHordeRush() => DebugWorld.ClearEncounter(SurvivorsDebugEncounter.Horde);
+
+        public int KillActiveRoamingCacheAmbushEnemiesForTest() => DebugWorld.ClearEncounter(SurvivorsDebugEncounter.RoamingCache);
+
+        public int KillActiveArenaShrineEnemiesForTest() => DebugWorld.ClearEncounter(SurvivorsDebugEncounter.Shrine);
+
+        public int DebugSpawnEnemyBurst(SurvivorsEnemyRole role, int count, float radius) => DebugWorld.SpawnBurst(role, count, radius);
+
+        public SurvivorsEnemyActor DebugSpawnMajorEnemy(SurvivorsEnemyRole role, float radius) => DebugWorld.SpawnMajor(role, radius);
+
+        public SurvivorsEnemyActor DebugSpawnSprintBoss(float radius) => DebugWorld.SpawnSprintBoss(radius);
+
+        public int DebugFillArenaToTarget(SurvivorsEnemyRole role, int targetAlive, float radius) => DebugWorld.FillArena(role, targetAlive, radius);
+
+        public void DebugApplyStressProfile(int targetAlive) => DebugWorld.ApplyStress(targetAlive);
+
+        private SurvivorsDebugWorldCommands _debugWorld;
+        private SurvivorsDebugWorldCommands DebugWorld => _debugWorld ?? (_debugWorld = new SurvivorsDebugWorldCommands(this));
+        void ISurvivorsDebugWorldPort.EnsureRunStarted() => EnsureRunStartedForTest();
+        bool ISurvivorsDebugWorldPort.Started => _runSession.Started;
+        SurvivorsPacingProfile ISurvivorsDebugWorldPort.PacingProfile => CurrentPacingProfile;
+        void ISurvivorsDebugWorldPort.ApplyPacing(SurvivorsPacingProfile profile, bool restart) => ApplyPacingProfile(profile, restart);
+        void ISurvivorsDebugWorldPort.StartRun() => StartRun();
+        SurvivorsTemplateTuning ISurvivorsDebugWorldPort.Tuning => CurrentTuning;
+        Vector3 ISurvivorsDebugWorldPort.PlayerPosition => PlayerPosition;
+        Vector3 ISurvivorsDebugWorldPort.PlayerForward => PlayerForward;
+        int ISurvivorsDebugWorldPort.ActiveEnemyCount => ActiveEnemyCount;
+        SurvivorsEnemyActor ISurvivorsDebugWorldPort.SpawnEnemy(Vector3 position, SurvivorsEnemyRole role) => SpawnEnemy(position, explicitPosition: true, role);
+        int ISurvivorsDebugWorldPort.ActiveMembers(SurvivorsDebugEncounter encounter) => encounter == SurvivorsDebugEncounter.Horde ? HordeRush.ActiveCount :
+            encounter == SurvivorsDebugEncounter.RoamingCache ? RoamingCaches.ActiveCount : ShrineTrials.ActiveCount;
+        IEnumerable<long> ISurvivorsDebugWorldPort.Members(SurvivorsDebugEncounter encounter) => encounter == SurvivorsDebugEncounter.Horde ? HordeRush.ActiveMembers :
+            encounter == SurvivorsDebugEncounter.RoamingCache ? RoamingCaches.ActiveMembers : ShrineTrials.ActiveMembers;
+        bool ISurvivorsDebugWorldPort.DamageMember(long id, float damage, string source)
+        {
+            SurvivorsEnemyActor enemy = _enemies.Find(candidate => candidate != null && candidate.InstanceId.Value == id);
+            if (enemy == null || !enemy.IsAlive) return false;
+            enemy.ApplyDamage(damage, source);
+            return true;
+        }
 
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
@@ -2408,133 +2456,17 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, float healthOverride = -1f)
-        {
-            EnsureRunStartedForTest();
-            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, SurvivorsEnemyRole.Swarm);
-            if (enemy != null && healthOverride > 0f)
-            {
-                enemy.OverrideHealthForTest(healthOverride);
-            }
 
-            return enemy;
-        }
 
-        public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, SurvivorsEnemyRole role, float healthOverride = -1f)
-        {
-            EnsureRunStartedForTest();
-            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, role);
-            if (enemy != null && healthOverride > 0f)
-            {
-                enemy.OverrideHealthForTest(healthOverride);
-            }
 
-            return enemy;
-        }
-
-        public SurvivorsEnemyActor SpawnMinibossForTest(Vector3 position, float healthOverride = -1f)
-        {
-            EnsureRunStartedForTest();
-            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, SurvivorsEnemyRole.Miniboss);
-            if (enemy != null && healthOverride > 0f)
-            {
-                enemy.OverrideHealthForTest(healthOverride);
-            }
-
-            return enemy;
-        }
-
-        public SurvivorsEnemyActor SpawnBossForTest(Vector3 position, float healthOverride = -1f)
-        {
-            EnsureRunStartedForTest();
-            SurvivorsEnemyActor enemy = SpawnEnemy(position, explicitPosition: true, SurvivorsEnemyRole.Boss);
-            if (enemy != null && healthOverride > 0f)
-            {
-                enemy.OverrideHealthForTest(healthOverride);
-            }
-
-            return enemy;
-        }
 
         public int KillActiveHordeRushEnemiesForTest()
         {
             return DebugClearActiveHordeRush();
         }
 
-        public int DebugClearActiveHordeRush()
-        {
-            EnsureRunStartedForTest();
-            if (HordeRush.ActiveCount == 0)
-            {
-                return 0;
-            }
 
-            var enemies = new List<long>(HordeRush.ActiveMembers);
-            int killed = 0;
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies.Find(candidate => candidate != null && candidate.InstanceId.Value == enemies[i]);
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    continue;
-                }
 
-                enemy.ApplyDamage(10000f, "test.horde-rush-clear");
-                killed++;
-            }
-
-            return killed;
-        }
-
-        public int KillActiveRoamingCacheAmbushEnemiesForTest()
-        {
-            EnsureRunStartedForTest();
-            if (RoamingCaches.ActiveCount == 0)
-            {
-                return 0;
-            }
-
-            var enemies = new List<long>(RoamingCaches.ActiveMembers);
-            int killed = 0;
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies.Find(candidate => candidate != null && candidate.InstanceId.Value == enemies[i]);
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    continue;
-                }
-
-                enemy.ApplyDamage(10000f, "test.roaming-cache-ambush-clear");
-                killed++;
-            }
-
-            return killed;
-        }
-
-        public int KillActiveArenaShrineEnemiesForTest()
-        {
-            EnsureRunStartedForTest();
-            if (ShrineTrials.ActiveCount == 0)
-            {
-                return 0;
-            }
-
-            var enemies = new List<long>(ShrineTrials.ActiveMembers);
-            int killed = 0;
-            for (int i = 0; i < enemies.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = _enemies.Find(candidate => candidate != null && candidate.InstanceId.Value == enemies[i]);
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    continue;
-                }
-
-                enemy.ApplyDamage(10000f, "test.arena-shrine-clear");
-                killed++;
-            }
-
-            return killed;
-        }
 
         public SurvivorsPickupActor SpawnExperienceForTest(Vector3 position, int amount)
         {
@@ -2603,24 +2535,6 @@ namespace Deucarian.TemplateGameSurvivors
             return granted;
         }
 
-        public int DebugSpawnEnemyBurst(SurvivorsEnemyRole role, int count, float radius)
-        {
-            EnsureRunStartedForTest();
-            int spawned = 0;
-            int resolvedCount = Mathf.Clamp(count, 1, 256);
-            float resolvedRadius = Mathf.Max(0.5f, radius);
-            for (int index = 0; index < resolvedCount; index++)
-            {
-                float angle = (index / (float)resolvedCount) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * resolvedRadius;
-                if (SpawnEnemy(PlayerPosition + offset, explicitPosition: true, role) != null)
-                {
-                    spawned++;
-                }
-            }
-
-            return spawned;
-        }
 
         public SurvivorsEnemyActor DebugSpawnElite(float radius)
         {
@@ -2642,42 +2556,8 @@ namespace Deucarian.TemplateGameSurvivors
             return DebugSpawnMajorEnemy(SurvivorsEnemyRole.Boss, radius);
         }
 
-        public SurvivorsEnemyActor DebugSpawnSprintBoss(float radius)
-        {
-            if (CurrentPacingProfile != SurvivorsPacingProfile.SprintRun)
-            {
-                ApplyPacingProfile(SurvivorsPacingProfile.SprintRun, restartRun: _runSession.Started);
-            }
 
-            if (!_runSession.Started)
-            {
-                StartRun();
-            }
 
-            return DebugSpawnBoss(radius);
-        }
-
-        public SurvivorsEnemyActor DebugSpawnMajorEnemy(SurvivorsEnemyRole role, float radius)
-        {
-            EnsureRunStartedForTest();
-            SurvivorsEnemyRole resolvedRole = ResolveDebugMajorEnemyRole(role);
-            Vector3 forward = PlayerForward;
-            if (forward.sqrMagnitude <= 0.001f)
-            {
-                forward = Vector3.forward;
-            }
-
-            float resolvedRadius = Mathf.Clamp(radius, 2f, 40f);
-            return SpawnEnemy(PlayerPosition + (forward.normalized * resolvedRadius), explicitPosition: true, resolvedRole);
-        }
-
-        public int DebugFillArenaToTarget(SurvivorsEnemyRole role, int targetAlive, float radius)
-        {
-            EnsureRunStartedForTest();
-            int target = Mathf.Clamp(targetAlive, 1, 512);
-            int needed = Mathf.Max(0, target - ActiveEnemyCount);
-            return needed <= 0 ? 0 : DebugSpawnEnemyBurst(role, needed, radius);
-        }
 
         public int DebugTriggerHordeRush()
         {
@@ -2685,13 +2565,6 @@ namespace Deucarian.TemplateGameSurvivors
             return HordeRush.Trigger();
         }
 
-        public void DebugApplyStressProfile(int targetAlive)
-        {
-            int target = Mathf.Clamp(targetAlive, 50, 512);
-            CurrentTuning.EnemyMaximumAlive = target;
-            CurrentTuning.EnemySpawnIntervalSeconds = Mathf.Min(CurrentTuning.EnemySpawnIntervalSeconds, target >= 250 ? 0.18f : 0.28f);
-            DebugFillArenaToTarget(SurvivorsEnemyRole.Swarm, Mathf.Min(target, 160), CurrentTuning.EnemySpawnRadius);
-        }
 
         public void DebugApplyPacingProfile(SurvivorsPacingProfile profile)
         {
