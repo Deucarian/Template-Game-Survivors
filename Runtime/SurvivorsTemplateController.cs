@@ -572,6 +572,56 @@ namespace Deucarian.TemplateGameSurvivors
             TickExperienceComboFeedback(dt);
         }
 
+        private SurvivorsActorSimulation _actorSimulation;
+        private SurvivorsActorSimulation ActorSimulation => _actorSimulation ?? (_actorSimulation = new SurvivorsActorSimulation(_enemies, _projectiles, _pickups, TryUpdateEnemyLeash,
+            () => new SurvivorsPickupAttractionValues(CurrentPickupAttractRange, CurrentPickupAttractionSpeed, CurrentTuning.PickupCollectRadius)));
+        private void TickEnemies(float deltaTime) => ActorSimulation.TickEnemies(deltaTime);
+        private void TickProjectiles(float deltaTime) => ActorSimulation.TickProjectiles(deltaTime);
+        private void TickPickups(float deltaTime) => ActorSimulation.TickPickups(deltaTime);
+        private SurvivorsRunSimulation _simulation;
+        private SurvivorsRunSimulation Simulation => _simulation ?? (_simulation = CreateSimulation());
+        public void Simulate(float deltaTime, Vector2 movementInput = default) => Simulation.Simulate(deltaTime, movementInput);
+        private SurvivorsRunSimulation CreateSimulation() => new SurvivorsRunSimulation(_runSession, Menus, TickPresentation, TickRewardSelectionTimeout,
+            new Action<SurvivorsSimulationFrame>[]
+            {
+                frame => RecordLevelCheckpoints(),
+                frame => TickLevelUpDraftCooldown(frame.DeltaTime),
+                frame => TimedEncounters.TickMajorThreatWarnings(),
+                frame => TimedEncounters.TickRunFlow(),
+            },
+            new Action<SurvivorsSimulationFrame>[]
+            {
+                frame => HordeRush.TickHordeRushEvents(),
+                frame => PlayerVitals.TickSafety(frame.DeltaTime),
+                frame => PlayerMotion.TickCooldown(frame.DeltaTime),
+                frame => TickKillStreak(frame.DeltaTime),
+                frame => TickStreakSurge(frame.DeltaTime),
+                frame => RoamingCaches.TickRoamingCacheSurge(frame.DeltaTime),
+                frame => ShrineTrials.TickArenaShrineSurge(frame.DeltaTime),
+                frame => Waystones.TickWaystoneFocus(frame.DeltaTime),
+                frame => Waystones.TickWaystoneChainSurge(frame.DeltaTime),
+                frame => HordeRush.TickHordeRushClearSurge(frame.DeltaTime),
+                frame => TickWeaponLoadoutSurge(frame.DeltaTime),
+                frame => TickPassiveLoadoutSurge(frame.DeltaTime),
+                frame => TickBossRelicSurge(frame.DeltaTime),
+                frame => TickPayloadHazardChain(frame.DeltaTime),
+                frame => TickGemRush(frame.DeltaTime),
+                frame => TickPickupMagnetPulse(frame.DeltaTime),
+                frame => TickEvolutionChainSurge(frame.DeltaTime),
+                frame => TickEndlessSurge(frame.DeltaTime),
+                frame => PlayerVitals.TickBarrier(frame.DeltaTime),
+                frame => PlayerMotion.MovePlayer(frame.Movement, frame.DeltaTime),
+                frame => TickArenaWaystoneDiscoveries(),
+                frame => UpdateArenaPresentation(),
+                frame => TickArenaWaystoneDiscoveries(),
+                frame => TickEnemySpawning(frame.DeltaTime),
+                frame => TickWeapon(frame.DeltaTime),
+                frame => TickEnemies(frame.DeltaTime),
+                frame => TickProjectiles(frame.DeltaTime),
+                frame => TickPickups(frame.DeltaTime),
+                frame => UpdateOffscreenThreatMarkerSnapshot(),
+            });
+
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
         private const string FirePulseName = "Survivors Weapon Fire Pulse";
@@ -2241,86 +2291,6 @@ namespace Deucarian.TemplateGameSurvivors
             return true;
         }
 
-        public void Simulate(float deltaTime, Vector2 movementInput = default)
-        {
-            if (!_runSession.Started)
-            {
-                return;
-            }
-
-            if (Menus.BuildOpen && State == SurvivorsRunState.Playing)
-            {
-                return;
-            }
-
-            if (Menus.TutorialOpen)
-            {
-                return;
-            }
-
-            float dt = Mathf.Max(0f, deltaTime);
-            TickDamagePopups(dt);
-            TickWorldFeedbackEffects(dt);
-            TickEnemyRangedAttackFeedbackEffects(dt);
-            TickMajorThreatSlamTelegraphEffects(dt);
-            TickIncomingThreatTelegraphEffects(dt);
-            TickMajorRewardDropFeedbackEffects(dt);
-            TickRewardFeedback(dt);
-            TickStreakRewardFeedback(dt);
-            TickClassUnlockRewardFeedback(dt);
-            TickEvolutionReadyFeedback(dt);
-            TickExperienceComboFeedback(dt);
-            if (State == SurvivorsRunState.LevelUp)
-            {
-                TickRewardSelectionTimeout(dt);
-                return;
-            }
-
-            if (State != SurvivorsRunState.Playing)
-            {
-                return;
-            }
-
-            _runSession.Tick(dt);
-            RecordLevelCheckpoints();
-            TickLevelUpDraftCooldown(dt);
-            TimedEncounters.TickMajorThreatWarnings();
-            TimedEncounters.TickRunFlow();
-            if (State != SurvivorsRunState.Playing)
-            {
-                return;
-            }
-
-            HordeRush.TickHordeRushEvents();
-            PlayerVitals.TickSafety(dt);
-            PlayerMotion.TickCooldown(dt);
-            TickKillStreak(dt);
-            TickStreakSurge(dt);
-            RoamingCaches.TickRoamingCacheSurge(dt);
-            ShrineTrials.TickArenaShrineSurge(dt);
-            Waystones.TickWaystoneFocus(dt);
-            Waystones.TickWaystoneChainSurge(dt);
-            HordeRush.TickHordeRushClearSurge(dt);
-            TickWeaponLoadoutSurge(dt);
-            TickPassiveLoadoutSurge(dt);
-            TickBossRelicSurge(dt);
-            TickPayloadHazardChain(dt);
-            TickGemRush(dt);
-            TickPickupMagnetPulse(dt);
-            TickEvolutionChainSurge(dt);
-            TickEndlessSurge(dt);
-            PlayerVitals.TickBarrier(dt);
-            PlayerMotion.MovePlayer(movementInput, dt);
-            TickArenaWaystoneDiscoveries();
-            UpdateArenaPresentation();
-            TickArenaWaystoneDiscoveries();
-            TickEnemySpawning(dt);
-            TickWeapon(dt);
-            TickEnemies(dt);
-            TickProjectiles(dt);
-            TickPickups(dt);
-            UpdateOffscreenThreatMarkerSnapshot();
-        }
 
         public SurvivorsEnemyActor SpawnEnemyForTest(Vector3 position, float healthOverride = -1f)
         {
@@ -4384,21 +4354,6 @@ namespace Deucarian.TemplateGameSurvivors
             _weaponLoadout?.Tick(deltaTime);
         }
 
-        private void TickEnemies(float deltaTime)
-        {
-            for (int i = _enemies.Count - 1; i >= 0; i--)
-            {
-                SurvivorsEnemyActor enemy = _enemies[i];
-                if (enemy == null || !enemy.IsAlive)
-                {
-                    _enemies.RemoveAt(i);
-                    continue;
-                }
-
-                TryUpdateEnemyLeash(enemy, deltaTime);
-                enemy.Simulate(deltaTime);
-            }
-        }
 
         internal Vector3 ResolveRuntimeEnemySpawnPositionForResolver(long seed)
         {
@@ -4498,36 +4453,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void UpdateOffscreenThreatMarkerSnapshot() => ThreatHud.UpdateLastMarker(PlayerPosition, CurrentTuning.OffscreenThreatMarkerDistance);
 
-        private void TickProjectiles(float deltaTime)
-        {
-            for (int i = _projectiles.Count - 1; i >= 0; i--)
-            {
-                SurvivorsProjectileActor projectile = _projectiles[i];
-                if (projectile == null || !projectile.IsActive)
-                {
-                    _projectiles.RemoveAt(i);
-                    continue;
-                }
 
-                projectile.Simulate(deltaTime);
-            }
-        }
-
-        private void TickPickups(float deltaTime)
-        {
-            for (int i = _pickups.Count - 1; i >= 0; i--)
-            {
-                SurvivorsPickupActor pickup = _pickups[i];
-                if (pickup == null || !pickup.IsActive)
-                {
-                    _pickups.RemoveAt(i);
-                    continue;
-                }
-
-                pickup.UpdateAttractionSettings(CurrentPickupAttractRange, CurrentPickupAttractionSpeed, CurrentTuning.PickupCollectRadius);
-                pickup.Simulate(deltaTime);
-            }
-        }
 
         private int GainExperience(int amount)
         {

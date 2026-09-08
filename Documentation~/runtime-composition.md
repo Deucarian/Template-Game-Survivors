@@ -95,6 +95,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Frame input priority | `SurvivorsFrameInput` | Keyboard adapter, debug visibility and explicit phase/menu command routing; run and menu state remain borrowed |
 
+| Simulation phases and actor iteration | `SurvivorsRunSimulation / SurvivorsActorSimulation` | Clamped phase clock and explicit ordered progress/world commands; reverse iteration and pruning over the original actor lists |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -168,5 +170,7 @@ Three cases preserve pre-start zero values, reset-to-unseen behavior, first-even
 Twenty-five cases preserve Playing versus terminal-only gates, full-distance slam hits, actual health/barrier accounting, failure-sensitive seed order and separate membership/diagnostic resets.
 
 Six cases preserve F1 priority, tutorial/build interception, draft presentation then timeout/input, failed purchase fallthrough and movement/dash/magnet ordering.
+
+Five cases preserve stopped/tutorial/build pauses, draft timeout return, run-flow phase barrier, finishing the world phase after an actor defeat, and reverse live-actor iteration. Composition retains both waystone discovery passes.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
