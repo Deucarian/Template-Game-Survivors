@@ -67,6 +67,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Build acquisition milestones and timed rewards | `SurvivorsBuildSurgeRewards` | Authoritative build membership, one-use slot milestones, evolution recalls and repeated relic pulses through bounded commands |
 
+| Build HUD content and drawing | `SurvivorsBuildContentLabels / SurvivorsBuildHudModel / SurvivorsBuildHudPresenter` | Live loadout/catalog/ranks, lazy evolution objective, prepared pickup/relic labels and bounded panel drawing |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -112,5 +114,7 @@ Eighteen cases retain target/radius/crowd ordering, leash and reentry behavior. 
 Fourteen cases cover metadata/category labels, exact first-two effect previews, live stat comparison, rarity and relic presentation.
 
 Six cases cover slot gates, disabled pulses, source order, successful recall accounting, independent timers and live bonuses.
+
+Nine cases preserve authored labels, three rank fragments, source-order full rows, lazy objective queries and narrow/18-row rendering preparation.
 
 This decomposition is in progress. Remaining combat/death, pickup collection/cache, feedback/metrics, frame/lifecycle coordination and the compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
