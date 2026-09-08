@@ -731,13 +731,20 @@ namespace Deucarian.TemplateGameSurvivors
         Vector3 ISurvivorsSpawnSafetyPort.PlayerPosition => PlayerPosition;
         bool ISurvivorsSpawnSafetyPort.TryResolveCameraGroundRect(float padding, out Rect rect) => TryResolveCameraGroundRect(padding, out rect);
 
-        private const string FeedbackRootName = "Survivors Feedback Presentation";
-        private const string SpawnPulseName = "Survivors Spawn Pulse";
-        private const string FirePulseName = "Survivors Weapon Fire Pulse";
-        private const string KillPulseName = "Survivors Kill Burst";
-        private const string PickupPulseName = "Survivors Pickup Pulse";
-        private const string LevelUpPulseName = "Survivors Level Up Pulse";
-        private const string BossPulseName = "Survivors Boss Cue Pulse";
+        private void PlayFeedback(ParticleSystem particles, Vector3 position, int count, AudioClip clip, string audioEventId = null, float audioThrottleSeconds = 0f) => FeedbackPulses.Play(particles, position, count, clip, audioEventId, audioThrottleSeconds);
+
+        private SurvivorsFeedbackPulses _feedbackPulses;
+        private SurvivorsFeedbackPulses FeedbackPulses => _feedbackPulses ?? (_feedbackPulses = new SurvivorsFeedbackPulses(clip => AudioPresentation.Play(clip), PlayAudioEvent));
+        private void BuildFeedbackPresentation()
+        { FeedbackPulses.Build(_worldRoot, ActiveUiTheme); AudioPresentation.Build(_feedbackRoot); }
+        private void ApplyWorldPresentation()
+        {
+            if (_worldRoot == null) return;
+            _runtimeWorld.ApplyPalette(SurvivorsRuntimeWorldPalette.Capture(ActiveUiTheme));
+            Arena.ApplyTheme();
+            _feedbackPulses?.ApplyTheme(ActiveUiTheme);
+        }
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -1246,13 +1253,13 @@ namespace Deucarian.TemplateGameSurvivors
         private GameObject _healthPickupPrefab => _runtimeWorld?.HealthPrefab;
         private GameObject _bloodShardPickupPrefab => _runtimeWorld?.BloodShardPrefab;
         private GameObject _projectilePrefab => _runtimeWorld?.ProjectilePrefab;
-        private Transform _feedbackRoot;
-        private ParticleSystem _spawnPulse;
-        private ParticleSystem _firePulse;
-        private ParticleSystem _killPulse;
-        private ParticleSystem _pickupPulse;
-        private ParticleSystem _levelUpPulse;
-        private ParticleSystem _bossPulse;
+        private Transform _feedbackRoot => _feedbackPulses?.Root;
+        private ParticleSystem _spawnPulse => _feedbackPulses?.Spawn;
+        private ParticleSystem _firePulse => _feedbackPulses?.Fire;
+        private ParticleSystem _killPulse => _feedbackPulses?.Kill;
+        private ParticleSystem _pickupPulse => _feedbackPulses?.Pickup;
+        private ParticleSystem _levelUpPulse => _feedbackPulses?.LevelUp;
+        private ParticleSystem _bossPulse => _feedbackPulses?.Boss;
         private AudioClip _spawnClip => AudioPresentation.SpawnClip;
         private AudioClip _fireClip => AudioPresentation.FireClip;
         private AudioClip _killClip => AudioPresentation.KillClip;
@@ -3623,47 +3630,7 @@ namespace Deucarian.TemplateGameSurvivors
             return SpawnPickup(SurvivorsPickupKind.Health, position, CurrentTuning.HealthPickupHealAmount) != null;
         }
 
-        private void BuildFeedbackPresentation()
-        {
-            GameObject root = new GameObject(FeedbackRootName);
-            root.transform.SetParent(_worldRoot, false);
-            _feedbackRoot = root.transform;
-            Color accent = ActiveUiTheme.GetFeedbackAccentColor(new Color(0.82f, 0.4f, 1f));
-            Color arenaAccent = ActiveUiTheme.GetArenaAccentColor(new Color(0.2f, 0.82f, 1f));
-            Color elite = ActiveUiTheme.GetEliteThreatColor(new Color(1f, 0.85f, 0.24f));
-            Color boss = ActiveUiTheme.GetBossThreatColor(new Color(1f, 0.3f, 0.82f));
-            _spawnPulse = CreateFeedbackPulse(SpawnPulseName, Color.Lerp(boss, arenaAccent, 0.25f), 0.2f, 2.2f, 0.5f);
-            _firePulse = CreateFeedbackPulse(FirePulseName, accent, 0.16f, 2.8f, 0.35f);
-            _killPulse = CreateFeedbackPulse(KillPulseName, Color.Lerp(arenaAccent, accent, 0.25f), 0.22f, 3.2f, 0.45f);
-            _pickupPulse = CreateFeedbackPulse(PickupPulseName, arenaAccent, 0.14f, 2.4f, 0.35f);
-            _levelUpPulse = CreateFeedbackPulse(LevelUpPulseName, elite, 0.28f, 2.0f, 0.7f);
-            _bossPulse = CreateFeedbackPulse(BossPulseName, boss, 0.32f, 3.6f, 0.65f);
 
-            AudioPresentation.Build(_feedbackRoot);
-        }
-
-        private void ApplyWorldPresentation()
-        {
-            if (_worldRoot == null)
-            {
-                return;
-            }
-
-            _runtimeWorld.ApplyPalette(SurvivorsRuntimeWorldPalette.Capture(ActiveUiTheme));
-
-            Arena.ApplyTheme();
-
-            Color accent = ActiveUiTheme.GetFeedbackAccentColor(new Color(0.82f, 0.4f, 1f));
-            Color arenaAccent = ActiveUiTheme.GetArenaAccentColor(new Color(0.2f, 0.82f, 1f));
-            Color elite = ActiveUiTheme.GetEliteThreatColor(new Color(1f, 0.85f, 0.24f));
-            Color boss = ActiveUiTheme.GetBossThreatColor(new Color(1f, 0.3f, 0.82f));
-            SetParticleColor(_spawnPulse, Color.Lerp(boss, arenaAccent, 0.25f));
-            SetParticleColor(_firePulse, accent);
-            SetParticleColor(_killPulse, Color.Lerp(arenaAccent, accent, 0.25f));
-            SetParticleColor(_pickupPulse, arenaAccent);
-            SetParticleColor(_levelUpPulse, elite);
-            SetParticleColor(_bossPulse, boss);
-        }
 
         internal Color ResolveProjectileFallbackColor()
         {
@@ -3678,54 +3645,8 @@ namespace Deucarian.TemplateGameSurvivors
         private static void SetRendererColor(Renderer renderer, Color color) => SurvivorsPrimitivePresentation.SetRendererColor(renderer, color);
 
 
-        private static void SetParticleColor(ParticleSystem particles, Color color)
-        {
-            if (particles == null)
-            {
-                return;
-            }
 
-            ParticleSystem.MainModule main = particles.main;
-            main.startColor = color;
-        }
 
-        private ParticleSystem CreateFeedbackPulse(string name, Color color, float startSize, float startSpeed, float lifetime)
-        {
-            GameObject instance = new GameObject(name);
-            instance.transform.SetParent(_feedbackRoot, false);
-            ParticleSystem particles = instance.AddComponent<ParticleSystem>();
-            ParticleSystem.MainModule main = particles.main;
-            main.loop = false;
-            main.playOnAwake = false;
-            main.startLifetime = lifetime;
-            main.startSpeed = startSpeed;
-            main.startSize = startSize;
-            main.startColor = color;
-            main.maxParticles = 120;
-            ParticleSystem.EmissionModule emission = particles.emission;
-            emission.enabled = false;
-            ParticleSystem.ShapeModule shape = particles.shape;
-            shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 0.35f;
-            return particles;
-        }
-
-        private void PlayFeedback(ParticleSystem particles, Vector3 position, int count, AudioClip clip, string audioEventId = null, float audioThrottleSeconds = 0f)
-        {
-            if (particles != null)
-            {
-                particles.transform.position = position + Vector3.up * 0.28f;
-                particles.Emit(Mathf.Max(1, count));
-            }
-
-            if (!string.IsNullOrWhiteSpace(audioEventId))
-            {
-                PlayAudioEvent(audioEventId, clip, audioThrottleSeconds);
-                return;
-            }
-
-            AudioPresentation.Play(clip);
-        }
 
         private bool PlayAudioEvent(string eventId, AudioClip fallbackClip, float fallbackThrottleSeconds)
         {
@@ -3845,6 +3766,7 @@ namespace Deucarian.TemplateGameSurvivors
             _projectiles.Clear();
             Waystones.ClearDiscoveries();
             RunBuild.ClearOwnedSelections();
+            _feedbackPulses?.Dispose();
             _runtimeWorld?.ReleaseSpawns();
             _runtimeWorld?.Dispose();
             _runtimeWorld = null;
