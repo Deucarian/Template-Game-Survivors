@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -112,6 +112,92 @@ namespace Deucarian.TemplateGameSurvivors
             UpdateArenaPresentation();
             _runtimeCamera?.Follow(_playerObject == null ? null : _playerObject.transform, Time.deltaTime);
         }
+
+        public bool ConfigureAuthoredContent(TextAsset enemyLibrary, TextAsset runFlowLibrary, TextAsset rewardLibrary) => ContentBinding.ConfigureAuthoredContent(enemyLibrary, runFlowLibrary, rewardLibrary);
+
+        public bool ConfigureAuthoredContent(
+            TextAsset weaponLibrary,
+            TextAsset upgradeLibrary,
+            TextAsset relicLibrary,
+            TextAsset classLibrary,
+            TextAsset progressionLibrary,
+            TextAsset enemyLibrary,
+            TextAsset runFlowLibrary,
+            TextAsset rewardLibrary) => ContentBinding.ConfigureAuthoredContent(weaponLibrary, upgradeLibrary, relicLibrary, classLibrary, progressionLibrary, enemyLibrary, runFlowLibrary, rewardLibrary);
+
+        public bool ConfigureAuthoredContent(
+            TextAsset weaponLibrary,
+            TextAsset upgradeLibrary,
+            TextAsset relicLibrary,
+            TextAsset classLibrary,
+            TextAsset progressionLibrary,
+            TextAsset enemyLibrary,
+            TextAsset runFlowLibrary,
+            TextAsset rewardLibrary,
+            SurvivorsAuthoredContentBindingPolicy bindingPolicy) => ContentBinding.ConfigureAuthoredContent(weaponLibrary, upgradeLibrary, relicLibrary, classLibrary, progressionLibrary, enemyLibrary, runFlowLibrary, rewardLibrary, bindingPolicy);
+
+        public bool ConfigureAuthoredContentJson(string enemyJson, string runFlowJson, string rewardJson) => ContentBinding.ConfigureAuthoredContentJson(enemyJson, runFlowJson, rewardJson);
+
+        public bool ConfigureAuthoredContentJson(
+            string weaponJson,
+            string upgradeJson,
+            string relicJson,
+            string classJson,
+            string progressionJson,
+            string enemyJson,
+            string runFlowJson,
+            string rewardJson) => ContentBinding.ConfigureAuthoredContentJson(weaponJson, upgradeJson, relicJson, classJson, progressionJson, enemyJson, runFlowJson, rewardJson);
+
+        public bool ConfigureAuthoredContentJson(
+            string weaponJson,
+            string upgradeJson,
+            string relicJson,
+            string classJson,
+            string progressionJson,
+            string enemyJson,
+            string runFlowJson,
+            string rewardJson,
+            SurvivorsAuthoredContentBindingPolicy bindingPolicy) => ContentBinding.ConfigureAuthoredContentJson(weaponJson, upgradeJson, relicJson, classJson, progressionJson, enemyJson, runFlowJson, rewardJson, bindingPolicy);
+
+        public bool ConfigureStrictSampleContent(
+            TextAsset weaponLibrary,
+            TextAsset upgradeLibrary,
+            TextAsset relicLibrary,
+            TextAsset classLibrary,
+            TextAsset progressionLibrary,
+            TextAsset enemyLibrary,
+            TextAsset pickupLibrary,
+            TextAsset runFlowLibrary,
+            TextAsset rewardLibrary,
+            TextAsset defaultThemeLibrary,
+            TextAsset alternateThemeLibrary) => ContentBinding.ConfigureStrictSampleContent(weaponLibrary, upgradeLibrary, relicLibrary, classLibrary, progressionLibrary, enemyLibrary, pickupLibrary, runFlowLibrary, rewardLibrary, defaultThemeLibrary, alternateThemeLibrary);
+
+        private SurvivorsMetaProgressionDefinition ResolveMetaProgressionDefinition() => RuntimeContent.ResolveMetaProgressionDefinition();
+
+        private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> CreateWeaponArchetypeDefinitions(SurvivorsTemplateTuning resolved) => RuntimeContent.CreateWeaponArchetypeDefinitions(resolved);
+
+        private IReadOnlyList<SurvivorsRelicDefinition> CreateRelicDefinitions() => RuntimeContent.CreateRelicDefinitions();
+
+        private SurvivorsClassLibraryDefinition CreateClassLibraryDefinition() => RuntimeContent.CreateClassLibraryDefinition();
+
+        private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> CreateClassUpgradeGates() => RuntimeContent.CreateClassUpgradeGates();
+
+        private RunUpgradeCatalog CreateBaseRunUpgradeCatalog() => RuntimeContent.CreateBaseRunUpgradeCatalog();
+
+        private IReadOnlyList<SurvivorsRunUpgradeMetadata> CreateRunUpgradeMetadata() => RuntimeContent.CreateRunUpgradeMetadata();
+
+        private SurvivorsRunFlowDefinition CreateRunFlowDefinition(SurvivorsTemplateTuning resolved) => RuntimeContent.CreateRunFlowDefinition(resolved);
+
+        private SurvivorsTemplateTuning CreateConfiguredTuning(SurvivorsPacingProfile profile) => RuntimeContent.CreateConfiguredTuning(profile);
+
+        private SurvivorsContentBinding _contentBinding;
+        private SurvivorsContentBinding ContentBinding => _contentBinding ?? (_contentBinding = new SurvivorsContentBinding(this));
+        private SurvivorsRuntimeContentResolver _runtimeContent;
+        private SurvivorsRuntimeContentResolver RuntimeContent => _runtimeContent ?? (_runtimeContent = new SurvivorsRuntimeContentResolver(ContentBinding));
+        bool ISurvivorsContentBindingPort.RunStarted => _runSession.Started;
+        void ISurvivorsContentBindingPort.RefreshConfiguredTuning() => tuning = CreateConfiguredTuning(pacingProfile);
+        void ISurvivorsContentBindingPort.ReleaseProfile() => ReleaseMetaProgressionService();
+        bool ISurvivorsContentBindingPort.ConfigureUiThemes(TextAsset primary, TextAsset alternate) => ConfigureUiThemes(primary, alternate);
 
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -357,7 +443,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void DrawRunModeSelectionOverlay() => RunModePresenter.Draw();
         bool ISurvivorsRunModePort.CanStart => CanStartConfiguredRun;
         bool ISurvivorsRunModePort.StrictAuthored => IsStrictAuthoredSample;
-        string ISurvivorsRunModePort.AuthoredStatus => _authoredContentStatus;
+        string ISurvivorsRunModePort.AuthoredStatus => ContentBinding.AuthoredContentStatus;
         IReadOnlyList<SurvivorsUiTheme> ISurvivorsRunModePort.Themes => _availableUiThemes;
         int ISurvivorsRunModePort.SelectedThemeIndex => _selectedUiThemeIndex;
         SurvivorsRunModeCardView ISurvivorsRunModePort.ReadCard(SurvivorsPacingProfile profile)
@@ -679,11 +765,6 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsWeaponLoadoutRuntime _weaponLoadout;
         private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> _weaponArchetypeDefinitions = Array.Empty<SurvivorsWeaponArchetypeDefinition>();
         private SurvivorsRunFlowRuntime _runFlow;
-        private SurvivorsAuthoredContentDefinition _authoredContent;
-        private SurvivorsAuthoredContentBindingPolicy _authoredBindingPolicy = SurvivorsAuthoredContentBindingPolicy.AllowFallbacks;
-        private bool _strictSampleContentReady;
-        private string _authoredContentStatus = "Fallback content active for an unbound host.";
-        private bool _usingAuthoredRunFlow;
         private IReadOnlyList<SurvivorsRelicDefinition> _relicDefinitions;
         private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> _upgradeClassGates;
         private SurvivorsClassLibraryDefinition _classLibrary;
@@ -1237,12 +1318,12 @@ namespace Deucarian.TemplateGameSurvivors
         public string CurrentDraftOverlayTitleForTest => ResolveRewardOverlayTitle();
         public SurvivorsTemplateTuning CurrentTuning => tuning ?? (tuning = CreateConfiguredTuning(pacingProfile));
         public SurvivorsRunFlowDefinition CurrentRunFlowDefinition => _runFlow == null ? null : _runFlow.Definition;
-        public bool IsAuthoredContentBound => _authoredContent != null;
-        public bool IsStrictAuthoredSample => _authoredBindingPolicy == SurvivorsAuthoredContentBindingPolicy.StrictSample;
-        public bool IsFallbackContentActive => !IsStrictAuthoredSample && (_authoredContent == null || _authoredContent.UsesBuiltInFallbacks);
-        public bool CanStartConfiguredRun => !IsStrictAuthoredSample || (_strictSampleContentReady && _authoredContent != null);
-        public bool IsUsingAuthoredRunFlow => _usingAuthoredRunFlow;
-        public string AuthoredContentStatus => _authoredContentStatus;
+        public bool IsAuthoredContentBound => ContentBinding.IsAuthoredContentBound;
+        public bool IsStrictAuthoredSample => ContentBinding.IsStrictAuthoredSample;
+        public bool IsFallbackContentActive => ContentBinding.IsFallbackContentActive;
+        public bool CanStartConfiguredRun => ContentBinding.CanStartConfiguredRun;
+        public bool IsUsingAuthoredRunFlow => RuntimeContent.IsUsingAuthoredRunFlow;
+        public string AuthoredContentStatus => ContentBinding.AuthoredContentStatus;
         public string TopCenterTimerHudLabel => _runSession.Started ? ResolveTopCenterTimerHudLabel() : string.Empty;
         public bool IsTopCenterTimerVisible => _runSession.Started;
         public Rect TopCenterTimerRectForTest => ResolveTopCenterTimerRect();
@@ -1747,264 +1828,13 @@ namespace Deucarian.TemplateGameSurvivors
             return SelectUiTheme(index);
         }
 
-        public bool ConfigureAuthoredContent(TextAsset enemyLibrary, TextAsset runFlowLibrary, TextAsset rewardLibrary)
-        {
-            _authoredBindingPolicy = SurvivorsAuthoredContentBindingPolicy.AllowFallbacks;
-            _strictSampleContentReady = false;
-            return ConfigureAuthoredContentJson(
-                enemyLibrary == null ? null : enemyLibrary.text,
-                runFlowLibrary == null ? null : runFlowLibrary.text,
-                rewardLibrary == null ? null : rewardLibrary.text);
-        }
 
-        public bool ConfigureAuthoredContent(
-            TextAsset weaponLibrary,
-            TextAsset upgradeLibrary,
-            TextAsset relicLibrary,
-            TextAsset classLibrary,
-            TextAsset progressionLibrary,
-            TextAsset enemyLibrary,
-            TextAsset runFlowLibrary,
-            TextAsset rewardLibrary)
-        {
-            return ConfigureAuthoredContent(
-                weaponLibrary,
-                upgradeLibrary,
-                relicLibrary,
-                classLibrary,
-                progressionLibrary,
-                enemyLibrary,
-                runFlowLibrary,
-                rewardLibrary,
-                SurvivorsAuthoredContentBindingPolicy.StrictSample);
-        }
 
-        public bool ConfigureAuthoredContent(
-            TextAsset weaponLibrary,
-            TextAsset upgradeLibrary,
-            TextAsset relicLibrary,
-            TextAsset classLibrary,
-            TextAsset progressionLibrary,
-            TextAsset enemyLibrary,
-            TextAsset runFlowLibrary,
-            TextAsset rewardLibrary,
-            SurvivorsAuthoredContentBindingPolicy bindingPolicy)
-        {
-            return ConfigureAuthoredContentJson(
-                weaponLibrary == null ? null : weaponLibrary.text,
-                upgradeLibrary == null ? null : upgradeLibrary.text,
-                relicLibrary == null ? null : relicLibrary.text,
-                classLibrary == null ? null : classLibrary.text,
-                progressionLibrary == null ? null : progressionLibrary.text,
-                enemyLibrary == null ? null : enemyLibrary.text,
-                runFlowLibrary == null ? null : runFlowLibrary.text,
-                rewardLibrary == null ? null : rewardLibrary.text,
-                bindingPolicy);
-        }
 
-        public bool ConfigureStrictSampleContent(
-            TextAsset weaponLibrary,
-            TextAsset upgradeLibrary,
-            TextAsset relicLibrary,
-            TextAsset classLibrary,
-            TextAsset progressionLibrary,
-            TextAsset enemyLibrary,
-            TextAsset pickupLibrary,
-            TextAsset runFlowLibrary,
-            TextAsset rewardLibrary,
-            TextAsset defaultThemeLibrary,
-            TextAsset alternateThemeLibrary)
-        {
-            _authoredBindingPolicy = SurvivorsAuthoredContentBindingPolicy.StrictSample;
-            _strictSampleContentReady = false;
-            TextAsset[] requiredAssets =
-            {
-                weaponLibrary,
-                upgradeLibrary,
-                relicLibrary,
-                classLibrary,
-                progressionLibrary,
-                enemyLibrary,
-                pickupLibrary,
-                runFlowLibrary,
-                rewardLibrary,
-                defaultThemeLibrary,
-                alternateThemeLibrary
-            };
-            for (int i = 0; i < requiredAssets.Length; i++)
-            {
-                if (requiredAssets[i] == null)
-                {
-                    return SetAuthoredBindingFailure($"Strict authored sample is missing required TextAsset at slot {i}.");
-                }
-            }
 
-            SurvivorsContentValidationResult validation = SurvivorsContentValidator.ValidateSampleJson(
-                weaponLibrary.text,
-                upgradeLibrary.text,
-                enemyLibrary.text,
-                rewardLibrary.text,
-                relicLibrary.text,
-                classLibrary.text,
-                progressionLibrary.text,
-                pickupLibrary.text,
-                runFlowLibrary.text,
-                defaultThemeLibrary.text,
-                alternateThemeLibrary.text);
-            if (!validation.Succeeded)
-            {
-                return SetAuthoredBindingFailure("Strict authored sample validation failed: " + string.Join("; ", validation.Errors));
-            }
 
-            if (!ConfigureAuthoredContent(
-                weaponLibrary,
-                upgradeLibrary,
-                relicLibrary,
-                classLibrary,
-                progressionLibrary,
-                enemyLibrary,
-                runFlowLibrary,
-                rewardLibrary,
-                SurvivorsAuthoredContentBindingPolicy.StrictSample))
-            {
-                return false;
-            }
 
-            if (!ConfigureUiThemes(defaultThemeLibrary, alternateThemeLibrary))
-            {
-                return SetAuthoredBindingFailure("Strict authored sample UI themes failed to bind.");
-            }
 
-            _strictSampleContentReady = true;
-            _authoredContentStatus = "Strict authored Survivors sample bound: " + _authoredContent.SourceSummary;
-            return true;
-        }
-
-        public bool ConfigureAuthoredContentJson(string enemyJson, string runFlowJson, string rewardJson)
-        {
-            _authoredBindingPolicy = SurvivorsAuthoredContentBindingPolicy.AllowFallbacks;
-            _strictSampleContentReady = false;
-            if (!SurvivorsAuthoredContentDefinition.TryCreate(
-                enemyJson,
-                runFlowJson,
-                rewardJson,
-                out SurvivorsAuthoredContentDefinition definition,
-                out string error))
-            {
-                _authoredContent = null;
-                _authoredContentStatus = string.IsNullOrWhiteSpace(error)
-                    ? "Fallback policy active after authored Survivors content failed to bind."
-                    : "Fallback policy active after authored Survivors content failed to bind: " + error;
-                if (!_runSession.Started)
-                {
-                    tuning = CreateConfiguredTuning(pacingProfile);
-                }
-
-                ReleaseMetaProgressionService();
-                return false;
-            }
-
-            _authoredContent = definition;
-            _authoredContentStatus = "Authored Survivors content bound with fallback policy active: " + definition.SourceSummary;
-            if (!_runSession.Started)
-            {
-                tuning = CreateConfiguredTuning(pacingProfile);
-            }
-
-            ReleaseMetaProgressionService();
-            return true;
-        }
-
-        public bool ConfigureAuthoredContentJson(
-            string weaponJson,
-            string upgradeJson,
-            string relicJson,
-            string classJson,
-            string progressionJson,
-            string enemyJson,
-            string runFlowJson,
-            string rewardJson)
-        {
-            return ConfigureAuthoredContentJson(
-                weaponJson,
-                upgradeJson,
-                relicJson,
-                classJson,
-                progressionJson,
-                enemyJson,
-                runFlowJson,
-                rewardJson,
-                SurvivorsAuthoredContentBindingPolicy.StrictSample);
-        }
-
-        public bool ConfigureAuthoredContentJson(
-            string weaponJson,
-            string upgradeJson,
-            string relicJson,
-            string classJson,
-            string progressionJson,
-            string enemyJson,
-            string runFlowJson,
-            string rewardJson,
-            SurvivorsAuthoredContentBindingPolicy bindingPolicy)
-        {
-            _authoredBindingPolicy = bindingPolicy;
-            _strictSampleContentReady = false;
-            if (!SurvivorsAuthoredContentDefinition.TryCreate(
-                weaponJson,
-                upgradeJson,
-                relicJson,
-                classJson,
-                progressionJson,
-                enemyJson,
-                runFlowJson,
-                rewardJson,
-                bindingPolicy,
-                out SurvivorsAuthoredContentDefinition definition,
-                out string error))
-            {
-                _authoredContent = null;
-                _authoredContentStatus = string.IsNullOrWhiteSpace(error)
-                    ? "Authored Survivors content failed to bind."
-                    : "Authored Survivors content failed to bind: " + error;
-                if (!_runSession.Started)
-                {
-                    tuning = CreateConfiguredTuning(pacingProfile);
-                }
-
-                ReleaseMetaProgressionService();
-                return false;
-            }
-
-            _authoredContent = definition;
-            _strictSampleContentReady = bindingPolicy == SurvivorsAuthoredContentBindingPolicy.StrictSample;
-            _authoredContentStatus = definition.IsStrictSample
-                ? "Strict authored Survivors content bound: " + definition.SourceSummary
-                : "Authored Survivors content bound with fallback policy: " + definition.SourceSummary;
-            if (!_runSession.Started)
-            {
-                tuning = CreateConfiguredTuning(pacingProfile);
-            }
-
-            ReleaseMetaProgressionService();
-            return true;
-        }
-
-        private bool SetAuthoredBindingFailure(string message)
-        {
-            _authoredContent = null;
-            _strictSampleContentReady = false;
-            _authoredContentStatus = string.IsNullOrWhiteSpace(message)
-                ? "Strict authored Survivors content failed to bind."
-                : message;
-            if (!_runSession.Started)
-            {
-                tuning = CreateConfiguredTuning(pacingProfile);
-            }
-
-            ReleaseMetaProgressionService();
-            return false;
-        }
 
         public void OpenRunModeSelection()
         {
@@ -4762,12 +4592,6 @@ namespace Deucarian.TemplateGameSurvivors
             _profileSession.EnsureLoaded(ResolveMetaProgressionDefinition());
         }
 
-        private SurvivorsMetaProgressionDefinition ResolveMetaProgressionDefinition()
-        {
-            return _authoredContent != null && _authoredContent.MetaProgressionDefinition != null
-                ? _authoredContent.MetaProgressionDefinition
-                : BasicSurvivorsGame.CreateMetaProgressionDefinition();
-        }
 
         private string CurrencyDisplayName => ResolveMetaProgressionDefinition().CurrencyDisplayName;
 
@@ -4781,47 +4605,11 @@ namespace Deucarian.TemplateGameSurvivors
             ? "XP"
             : ProgressionDisplayName;
 
-        private IReadOnlyList<SurvivorsWeaponArchetypeDefinition> CreateWeaponArchetypeDefinitions(SurvivorsTemplateTuning resolved)
-        {
-            return _authoredContent != null && _authoredContent.HasWeaponDefinitions
-                ? _authoredContent.WeaponDefinitions
-                : BasicSurvivorsGame.CreateWeaponArchetypeDefinitions(resolved);
-        }
 
-        private IReadOnlyList<SurvivorsRelicDefinition> CreateRelicDefinitions()
-        {
-            return _authoredContent != null && _authoredContent.HasRelicDefinitions
-                ? _authoredContent.RelicDefinitions
-                : BasicSurvivorsGame.CreateRelicDefinitions();
-        }
 
-        private SurvivorsClassLibraryDefinition CreateClassLibraryDefinition()
-        {
-            return _authoredContent != null && _authoredContent.HasClassLibrary
-                ? _authoredContent.ClassLibrary
-                : BasicSurvivorsGame.CreateClassLibraryDefinition();
-        }
 
-        private IReadOnlyList<SurvivorsClassUpgradeGateDefinition> CreateClassUpgradeGates()
-        {
-            return _authoredContent != null && _authoredContent.HasClassUpgradeGates
-                ? _authoredContent.ClassUpgradeGates
-                : BasicSurvivorsGame.CreateClassUpgradeGates();
-        }
 
-        private RunUpgradeCatalog CreateBaseRunUpgradeCatalog()
-        {
-            return _authoredContent != null && _authoredContent.HasRunUpgradeCatalog
-                ? _authoredContent.RunUpgradeCatalog
-                : BasicSurvivorsGame.CreateRunUpgradeCatalog();
-        }
 
-        private IReadOnlyList<SurvivorsRunUpgradeMetadata> CreateRunUpgradeMetadata()
-        {
-            return _authoredContent != null && _authoredContent.HasRunUpgradeMetadata
-                ? _authoredContent.RunUpgradeMetadata
-                : BasicSurvivorsGame.CreateRunUpgradeMetadata();
-        }
 
         private void EnsureClassLibraryLoaded()
         {
@@ -5115,17 +4903,6 @@ namespace Deucarian.TemplateGameSurvivors
         private float ResolveEnemySpawnIntervalSeconds() =>
             SurvivorsSwarmSpawnCoordinator.ResolveInterval(CurrentTuning, _runFlow, _runSession.HasClearedVictory);
 
-        private SurvivorsRunFlowDefinition CreateRunFlowDefinition(SurvivorsTemplateTuning resolved)
-        {
-            if (_authoredContent != null)
-            {
-                _usingAuthoredRunFlow = true;
-                return _authoredContent.CreateRunFlowDefinition(resolved);
-            }
-
-            _usingAuthoredRunFlow = false;
-            return BasicSurvivorsGame.CreateRunFlowDefinition(resolved);
-        }
 
         private int ResolveEnemyMaximumAlive() =>
             SurvivorsSwarmSpawnCoordinator.ResolveMaximumAlive(CurrentTuning, _runFlow, _runSession.HasClearedVictory);
@@ -5619,14 +5396,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        private SurvivorsTemplateTuning CreateConfiguredTuning(SurvivorsPacingProfile profile)
-        {
-            SurvivorsTemplateTuning configured = _authoredContent == null
-                ? BasicSurvivorsGame.CreateTuning(profile)
-                : _authoredContent.CreateTuning(profile);
-            configured.PacingProfile = profile;
-            return configured;
-        }
 
         private void RecordRewardCardPresentation(SurvivorsRewardSelectionKind selectionKind, RunUpgradeDraft draft)
         {

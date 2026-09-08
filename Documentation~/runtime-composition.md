@@ -75,6 +75,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Generated world, spawning and camera resources | `SurvivorsRuntimeWorld / SurvivorsRuntimeCamera` | Owned hierarchy/source materials and existing WorldSpawnService; borrowed pose policy; generated camera/listener lifetime separate from run restarts |
 
+| Authored binding and runtime content factories | `SurvivorsContentBinding / SurvivorsRuntimeContentResolver` | Single strict/fallback status and bound definition, explicit tuning/profile/theme commands, borrowed authored factories and last-created-flow observation |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -128,5 +130,7 @@ Twenty-three cases preserve purchase/class options, active-run gates, callback p
 Five cases cover victory/role gates, failed drops, persistent tier and capped intensity, reward rarity gates and separate particle/audio choices.
 
 Ten cases cover hierarchy/palette/pool definitions, service-root teardown, owned material release and generated versus borrowed camera/listener lifetime. Trail alpha checks Unity Color32 quantization.
+
+Ten cases cover strict required assets, Basic/Neon binding, callback order, failed theme rollback, active-run behavior and fallback/rebind diagnostics.
 
 This decomposition is in progress. Remaining combat/death, pickup collection/cache, feedback/metrics, frame/lifecycle coordination and the compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
