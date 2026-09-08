@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort, ISurvivorsActorMembershipPort, ISurvivorsDraftFeedbackPort, ISurvivorsPlayerStatReadPort, ISurvivorsHealthPickupDropPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort, ISurvivorsActorMembershipPort, ISurvivorsDraftFeedbackPort, ISurvivorsPlayerStatReadPort, ISurvivorsHealthPickupDropPort, ISurvivorsDraftHeaderReadPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -1401,6 +1401,13 @@ namespace Deucarian.TemplateGameSurvivors
         float ISurvivorsHealthPickupDropPort.MaxHealth => MaxHealth;
         bool ISurvivorsHealthPickupDropPort.SpawnHealthPickup(Vector3 position, int amount)
             => SpawnPickup(SurvivorsPickupKind.Health, position, amount) != null;
+
+        private SurvivorsDraftHeader _draftHeader;
+        private SurvivorsDraftHeader DraftHeader => _draftHeader ?? (_draftHeader = new SurvivorsDraftHeader(this));
+        bool ISurvivorsDraftHeaderReadPort.IsRelicChoiceOpen => IsRelicChoiceOpen;
+        RunUpgradeDraft ISurvivorsDraftHeaderReadPort.CurrentDraft => DraftSession.CurrentDraft;
+        SurvivorsRunUpgradeCategory ISurvivorsDraftHeaderReadPort.ResolveCategory(RunUpgradeDefinition choice) => RunBuild.ResolveCurrentUpgradeCategory(choice);
+        SurvivorsUiTheme ISurvivorsDraftHeaderReadPort.ActiveTheme => ActiveUiTheme;
 
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
@@ -3463,30 +3470,7 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private Color ResolveRewardTitleAccentColor()
-        {
-            if (IsRelicChoiceOpen)
-            {
-                return ActiveUiTheme.GetRarityAccentColor("Relic", new Color(1f, 0.84f, 0.42f));
-            }
-
-            if (DraftSession.CurrentDraft == null || DraftSession.CurrentDraft.Choices.Count == 0)
-            {
-                return ActiveUiTheme.GetRarityAccentColor("Common", Color.white);
-            }
-
-            for (int i = 0; i < DraftSession.CurrentDraft.Choices.Count; i++)
-            {
-                RunUpgradeDefinition choice = DraftSession.CurrentDraft.Choices[i];
-                if (choice != null && ResolveCurrentUpgradeCategory(choice) == SurvivorsRunUpgradeCategory.Evolution)
-                {
-                    return ActiveUiTheme.GetRarityAccentColor("Evolution", new Color(1f, 0.38f, 0.56f));
-                }
-            }
-
-            RunUpgradeRarity rarity = ResolveHighestRarity(DraftSession.CurrentDraft.Choices);
-            return ActiveUiTheme.GetRarityAccentColor(rarity, ResolveRarityAccentColor(rarity));
-        }
+        private Color ResolveRewardTitleAccentColor() => DraftHeader.ResolveAccent();
 
 
 
@@ -3518,25 +3502,7 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.color = oldColor;
         }
 
-        private string ResolveRewardOverlayTitle()
-        {
-            if (DraftSession.Kind == SurvivorsRewardSelectionKind.BossRelic)
-            {
-                return "Choose a Boss Relic";
-            }
-
-            if (DraftSession.Kind == SurvivorsRewardSelectionKind.EliteUpgrade)
-            {
-                return "Elite Reward";
-            }
-
-            if (DraftSession.Kind == SurvivorsRewardSelectionKind.BossUpgrade)
-            {
-                return "Boss Evolution Reward";
-            }
-
-            return "Level Up";
-        }
+        private string ResolveRewardOverlayTitle() => SurvivorsDraftHeader.Title(DraftSession.Kind);
 
         private void EnsureHudStyles() => _hudStyles.Ensure();
 

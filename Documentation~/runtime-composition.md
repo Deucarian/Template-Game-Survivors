@@ -139,6 +139,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Player stat and health-drop policy | `SurvivorsPlayerStats / SurvivorsHealthPickupDrops` | Actual modifiers, separately captured ordered surge terms and live health recovery queries |
 
+| Reward title and accent projection | `SurvivorsDraftHeader` | Live draft and theme reads with relic, empty, evolution and rarity precedence |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -256,5 +258,7 @@ Two further encounter cases preserve active/expired bonus windows and live nonne
 Six cases preserve draft metric/card precedence, all opening pulse branches and selection feedback/reward order.
 
 Twenty-two cases preserve floating-point addition/read order, clamps, disabled short circuits and the second live heal amount read before a drop.
+
+Seven cases preserve title mappings, late theme reads, draft replacement during observation and null/empty distinctions.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
