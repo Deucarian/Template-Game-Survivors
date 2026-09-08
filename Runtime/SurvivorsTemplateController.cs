@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort, ISurvivorsRunLifecyclePort, ISurvivorsHudRenderPort, ISurvivorsRewardFeedbackPort, ISurvivorsDamageFeedbackPort, ISurvivorsRangedDodgePort, ISurvivorsRunWeaponPort, ISurvivorsProgressionFeedbackPort, ISurvivorsDebugWorldPort, ISurvivorsRunMetricsReadPort, ISurvivorsActiveRunMetricsReadPort, ISurvivorsOrbitKnockbackPort, ISurvivorsDebugDraftPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -1270,6 +1270,69 @@ namespace Deucarian.TemplateGameSurvivors
             => _weaponDiagnostics.RecordTempestPrismArcHit(
                 source == null ? null : source.DisplayName,
                 target == null ? null : target.DisplayName);
+
+        private void AppendSelectedUpgradeRankLines(List<string> lines) => DebugUpgradeFormatter.AppendSelectedUpgradeRankLines(lines);
+
+        private string FormatDebugRankLine(RunUpgradeDefinition definition, int rank) => DebugUpgradeFormatter.FormatDebugRankLine(definition, rank);
+
+        private string FormatDebugUpgradeLine(int index, RunUpgradeDefinition definition) => DebugUpgradeFormatter.FormatDebugUpgradeLine(index, definition);
+
+        private string FormatUpgradeChoiceLabel(int index, RunUpgradeDefinition choice) => DebugUpgradeFormatter.FormatUpgradeChoiceLabel(index, choice);
+
+        private string FormatRelicChoiceLabel(int index, SurvivorsRelicDefinition relic) => DebugUpgradeFormatter.FormatRelicChoiceLabel(index, relic);
+
+        public IReadOnlyList<string> DebugDescribeEligibleEvolutionPool() { EnsureRunStartedForTest(); return DebugDraftModel.DebugDescribeEligibleEvolutionPool(); }
+
+        public IReadOnlyList<string> DebugDescribeCurrentDraftPool() { EnsureRunStartedForTest(); return DebugDraftModel.DebugDescribeCurrentDraftPool(); }
+
+        private SurvivorsDebugUpgradeFormatter _debugUpgradeFormatter;
+        private SurvivorsDebugUpgradeFormatter DebugUpgradeFormatter => _debugUpgradeFormatter ?? (_debugUpgradeFormatter = new SurvivorsDebugUpgradeFormatter(RunBuild, BuildContentLabels, DraftCards));
+        private SurvivorsDebugDraftModel _debugDraftModel;
+        private SurvivorsDebugDraftModel DebugDraftModel => _debugDraftModel ?? (_debugDraftModel = new SurvivorsDebugDraftModel(RunBuild, DraftOffers.Catalogs, DebugUpgradeFormatter, BuildContentLabels, this));
+        RunUpgradeDraft ISurvivorsDebugDraftPort.CurrentDraft => DraftSession.CurrentDraft;
+        SurvivorsRelicDraft ISurvivorsDebugDraftPort.CurrentRelicDraft => DraftSession.CurrentRelicDraft;
+        string ISurvivorsDebugDraftPort.RewardOverlayTitle => ResolveRewardOverlayTitle();
+        private SurvivorsDebugBuildModel _debugBuildModel;
+        private SurvivorsDebugBuildModel DebugBuildModel => _debugBuildModel ?? (_debugBuildModel = new SurvivorsDebugBuildModel(DebugUpgradeFormatter, ResolveEvolutionObjectiveHudLabel));
+        public IReadOnlyList<string> DebugDescribeCurrentBuild()
+        { EnsureRunStartedForTest(); return DebugBuildModel.Describe(CaptureDebugBuildValues()); }
+        private SurvivorsDebugBuildValues CaptureDebugBuildValues() => new SurvivorsDebugBuildValues(
+            activeWeaponCount: ActiveWeaponCount,
+            maxWeaponSlots: MaxWeaponSlots,
+            activeWeaponList: FormatActiveWeaponList(),
+            activePassiveCount: ActivePassiveCount,
+            maxPassiveSlots: MaxPassiveSlots,
+            evolvedWeaponCount: EvolvedWeaponCount,
+            selectedRelicCount: SelectedRelicCount,
+            totalRelicCount: ResolveTotalRelicCount(),
+            selectedRelicList: FormatSelectedRelicList(),
+            damageBonus: DamageBonus,
+            surgeDamageBonus: StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus,
+            criticalChanceNormalized: CriticalChanceNormalized,
+            criticalDamageMultiplier: CriticalDamageMultiplier,
+            draftLuckBonus: DraftLuckBonus,
+            weaponCooldownSeconds: WeaponCooldownSeconds,
+            playerMoveSpeed: PlayerMoveSpeed,
+            currentPickupAttractRange: CurrentPickupAttractRange,
+            currentPickupAttractionSpeed: CurrentPickupAttractionSpeed,
+            currentPickupMagnetPulseIntervalSeconds: CurrentPickupMagnetPulseIntervalSeconds,
+            totalExperienceGainBonus: ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus,
+            projectileFanBonus: ProjectileFanBonus,
+            projectilePierceBonus: ProjectilePierceBonus,
+            projectileChainBonus: ProjectileChainBonus,
+            projectileForkBonus: ProjectileForkBonus,
+            projectileReturnBonus: ProjectileReturnBonus,
+            areaRadiusBonus: AreaRadiusBonus,
+            orbitRadiusBonus: OrbitRadiusBonus,
+            burstCountBonus: BurstCountBonus,
+            burstEchoBonus: BurstEchoBonus,
+            payloadCountBonus: PayloadCountBonus,
+            deathNovaDamage: DeathNovaDamage,
+            deathNovaRadius: DeathNovaRadius,
+            poisonDamageRatio: PoisonDamageRatio,
+            bleedDamageRatio: BleedDamageRatio,
+            executeThresholdNormalized: ExecuteThresholdNormalized,
+            lifestealRatio: LifestealRatio);
 
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
@@ -2848,29 +2911,6 @@ namespace Deucarian.TemplateGameSurvivors
             return RunBuild.HasEvolution(upgradeId);
         }
 
-        public IReadOnlyList<string> DebugDescribeCurrentBuild()
-        {
-            EnsureRunStartedForTest();
-            var lines = new List<string>
-            {
-                $"Weapons {ActiveWeaponCount}/{MaxWeaponSlots}: {FormatActiveWeaponList()}",
-                $"Passives {ActivePassiveCount}/{MaxPassiveSlots}, Evolutions {EvolvedWeaponCount}",
-                $"Relics {SelectedRelicCount}/{ResolveTotalRelicCount()}: {FormatSelectedRelicList()}",
-                $"Stats: damage +{DamageBonus:0.#} surge +{StreakSurgeDamageBonus + RoamingCacheSurgeDamageBonus + ArenaShrineSurgeDamageBonus + WaystoneFocusDamageBonus + WaystoneChainSurgeDamageBonus + HordeRushClearSurgeDamageBonus + WeaponLoadoutSurgeDamageBonus + PassiveLoadoutSurgeDamageBonus + BossRelicSurgeDamageBonus + GemRushDamageBonus + EvolutionChainSurgeDamageBonus + EndlessSurgeDamageBonus:0.#}, crit {CriticalChanceNormalized:P0} x{CriticalDamageMultiplier:0.0}, luck +{DraftLuckBonus:P0}, cooldown {WeaponCooldownSeconds:0.00}s, move {PlayerMoveSpeed:0.0}, pickup {CurrentPickupAttractRange:0.#}, pull {CurrentPickupAttractionSpeed:0.#}, pulse {FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds)}, XP +{ExperienceGainMultiplierBonus + PassiveLoadoutSurgeExperienceGainMultiplierBonus:P0}",
-                $"Projectiles: fan +{ProjectileFanBonus}, pierce +{ProjectilePierceBonus}, chain +{ProjectileChainBonus}, fork +{ProjectileForkBonus}, return +{ProjectileReturnBonus}",
-                $"Area: global +{AreaRadiusBonus:0.#}, orbit +{OrbitRadiusBonus:0.#}, burst +{BurstCountBonus}, echoes +{BurstEchoBonus}, payload +{PayloadCountBonus}, death nova {DeathNovaDamage:0.#}/{DeathNovaRadius:0.#}",
-                $"Status: poison {PoisonDamageRatio:P0}, bleed {BleedDamageRatio:P0}, execute {ExecuteThresholdNormalized:P0}, lifesteal {LifestealRatio:P0}"
-            };
-
-            string evolutionObjective = ResolveEvolutionObjectiveHudLabel();
-            if (!string.IsNullOrWhiteSpace(evolutionObjective))
-            {
-                lines.Add(evolutionObjective);
-            }
-
-            AppendSelectedUpgradeRankLines(lines);
-            return lines;
-        }
 
         public IReadOnlyList<string> CurrentBuildHudLinesForTest()
         {
@@ -2965,69 +3005,7 @@ namespace Deucarian.TemplateGameSurvivors
             return SurvivorsScreenLayout.ResolveCenteredPanelRect(maxWidth, maxHeight, minWidth, minHeight, margin);
         }
 
-        public IReadOnlyList<string> DebugDescribeEligibleEvolutionPool()
-        {
-            EnsureRunStartedForTest();
-            if (RunBuild.Catalog == null)
-            {
-                return Array.Empty<string>();
-            }
 
-            var lines = new List<string>();
-            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
-            {
-                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
-                if (definition != null && IsEvolutionUpgrade(definition) && IsUpgradeEligibleForCurrentBuild(definition))
-                {
-                    lines.Add(FormatDebugUpgradeLine(-1, definition));
-                }
-            }
-
-            if (lines.Count == 0)
-            {
-                lines.Add("No eligible evolutions yet. Max a weapon path and own its matching passive.");
-            }
-
-            return lines;
-        }
-
-        public IReadOnlyList<string> DebugDescribeCurrentDraftPool()
-        {
-            EnsureRunStartedForTest();
-            var lines = new List<string>();
-            if (DraftSession.CurrentDraft != null && DraftSession.CurrentDraft.Choices.Count > 0)
-            {
-                lines.Add(ResolveRewardOverlayTitle());
-                for (int i = 0; i < DraftSession.CurrentDraft.Choices.Count; i++)
-                {
-                    lines.Add(FormatDebugUpgradeLine(i, DraftSession.CurrentDraft.Choices[i]));
-                }
-            }
-
-            if (DraftSession.CurrentRelicDraft != null && DraftSession.CurrentRelicDraft.Choices.Count > 0)
-            {
-                lines.Add("Boss Relics");
-                for (int i = 0; i < DraftSession.CurrentRelicDraft.Choices.Count; i++)
-                {
-                    SurvivorsRelicDefinition relic = DraftSession.CurrentRelicDraft.Choices[i];
-                    if (relic == null)
-                    {
-                        lines.Add($"{i + 1}. Missing relic");
-                    }
-                    else
-                    {
-                        lines.Add($"{i + 1}. {relic.DisplayName} [{relic.EffectKind}] +{relic.Amount:0.##} {ShortWeaponName(relic.TargetId)}");
-                    }
-                }
-            }
-
-            if (lines.Count == 0)
-            {
-                lines.Add("No draft or reward pool is currently open.");
-            }
-
-            return lines;
-        }
 
 
 
@@ -3527,94 +3505,10 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void AppendSelectedUpgradeRankLines(List<string> lines)
-        {
-            if (lines == null || RunBuild.Catalog == null || RunBuild.State == null)
-            {
-                return;
-            }
 
-            bool addedHeader = false;
-            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
-            {
-                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
-                int rank = definition == null ? 0 : RunBuild.State.GetRank(definition.Id);
-                if (rank <= 0)
-                {
-                    continue;
-                }
 
-                if (!addedHeader)
-                {
-                    lines.Add("Ranks");
-                    addedHeader = true;
-                }
 
-                lines.Add("  " + FormatDebugRankLine(definition, rank));
-            }
-        }
 
-        private string FormatDebugRankLine(RunUpgradeDefinition definition, int rank)
-        {
-            if (definition == null)
-            {
-                return "Missing upgrade";
-            }
-
-            string name = ResolveUpgradeDisplayName(definition.Id);
-            SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(definition);
-            string affected = TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
-                ? ShortWeaponName(metadata.AffectedContentId)
-                : "Build";
-            return $"{name} [{category}] rank {rank}/{definition.MaxRank} ({definition.Rarity}) - {affected}";
-        }
-
-        private string FormatDebugUpgradeLine(int index, RunUpgradeDefinition definition)
-        {
-            if (definition == null)
-            {
-                return index >= 0 ? $"{index + 1}. Missing upgrade" : "Missing upgrade";
-            }
-
-            string prefix = index >= 0 ? $"{index + 1}. " : string.Empty;
-            string name = ResolveUpgradeDisplayName(definition.Id);
-            SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(definition);
-            int currentRank = RunBuild.State == null ? 0 : RunBuild.State.GetRank(definition.Id);
-            int nextRank = Mathf.Min(definition.MaxRank, currentRank + 1);
-            string description = TryGetUpgradeMetadata(definition.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
-                ? metadata.Description
-                : name;
-            string affected = metadata == null ? "Build" : ShortWeaponName(metadata.AffectedContentId);
-            return $"{prefix}{name} [{FormatUpgradeCategoryLabel(category)}/{definition.Rarity}] rank {currentRank}->{nextRank}/{definition.MaxRank} - {affected}: {description}";
-        }
-
-        private string FormatUpgradeChoiceLabel(int index, RunUpgradeDefinition choice)
-        {
-            if (choice == null)
-            {
-                return (index + 1).ToString() + ". Missing Choice";
-            }
-
-            SurvivorsRunUpgradeCategory category = ResolveCurrentUpgradeCategory(choice);
-            string name = ResolveUpgradeDisplayName(choice.Id);
-            string affected = ResolveUpgradeAffectedLabel(choice);
-            string description = TryGetUpgradeMetadata(choice.Id.Value, out SurvivorsRunUpgradeMetadata metadata)
-                ? metadata.Description
-                : name;
-            int currentRank = RunBuild.State == null ? 0 : RunBuild.State.GetRank(choice.Id);
-            int nextRank = Mathf.Min(choice.MaxRank, currentRank + 1);
-            return $"{index + 1}. {choice.Rarity} {FormatUpgradeCategoryLabel(category)}: {name}\n{affected}  Rank {currentRank}->{nextRank}/{choice.MaxRank} - {description}";
-        }
-
-        private string FormatRelicChoiceLabel(int index, SurvivorsRelicDefinition relic)
-        {
-            if (relic == null)
-            {
-                return (index + 1).ToString() + ". Missing Relic";
-            }
-
-            return $"{index + 1}. Boss Relic: {relic.DisplayName}\n{FormatRelicEffectSummary(relic)}";
-        }
 
 
         private static Color ResolveRewardButtonBackgroundColor(Color accent)
