@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort, ISurvivorsContentBindingPort, ISurvivorsEnemyDefeatPort, ISurvivorsMajorRewardPickupCachePort, ISurvivorsPickupCollectionPort, ISurvivorsDamageAugmentPort, ISurvivorsMajorThreatAbilityPort, ISurvivorsEnemySupportSpawnPort, ISurvivorsFrameInputPort, ISurvivorsEnemySpawnPort, ISurvivorsPickupSpawnPort, ISurvivorsProjectileLaunchPort, ISurvivorsSpawnSafetyPort, ISurvivorsUiThemeSelectionPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -745,6 +745,25 @@ namespace Deucarian.TemplateGameSurvivors
             _feedbackPulses?.ApplyTheme(ActiveUiTheme);
         }
 
+        public bool ConfigureUiTheme(TextAsset themeLibrary) => UiThemeSelection.ConfigureUiTheme(themeLibrary);
+
+        public bool ConfigureUiThemeJson(string themeJson) => UiThemeSelection.ConfigureUiThemeJson(themeJson);
+
+        public bool ConfigureUiThemes(TextAsset defaultThemeLibrary, TextAsset alternateThemeLibrary) => UiThemeSelection.ConfigureUiThemes(defaultThemeLibrary, alternateThemeLibrary);
+
+        public bool ConfigureAdditionalUiThemeJson(string themeJson) => UiThemeSelection.ConfigureAdditionalUiThemeJson(themeJson);
+
+        private bool SelectUiTheme(int index) => UiThemeSelection.SelectUiTheme(index);
+
+        private void EnsureUiTheme() => UiThemeSelection.EnsureUiTheme();
+
+        private SurvivorsUiThemeSelection _uiThemeSelection;
+        private SurvivorsUiThemeSelection UiThemeSelection => _uiThemeSelection ?? (_uiThemeSelection = new SurvivorsUiThemeSelection(this));
+        SurvivorsUiTheme ISurvivorsUiThemeSelectionPort.SerializedTheme { get => uiTheme; set => uiTheme = value; }
+        void ISurvivorsUiThemeSelectionPort.ResetHudStyles() => ResetHudStyles();
+        void ISurvivorsUiThemeSelectionPort.ApplyWorldPresentation() => ApplyWorldPresentation();
+        void ISurvivorsUiThemeSelectionPort.PlayThemeSelectionAudio() => PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -813,7 +832,6 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsRewardDropPresenter RewardDrops => _rewardDrops ?? (_rewardDrops = new SurvivorsRewardDropPresenter(() => _feedbackRoot, () => ActiveUiTheme));
         private readonly SurvivorsDamagePopupPresenter _damageFeedback = new SurvivorsDamagePopupPresenter();
         private readonly List<string> _runMetricsLines = new List<string>(16);
-        private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private SurvivorsBuildSurgeRewards _buildSurges;
         private SurvivorsBuildSurgeRewards BuildSurges => _buildSurges ?? (_buildSurges = new SurvivorsBuildSurgeRewards(RunBuild, this));
         private void TriggerWeaponEvolutionSurge(RunUpgradeDefinition upgrade) => BuildSurges.TriggerWeaponEvolutionSurge(upgrade);
@@ -974,8 +992,8 @@ namespace Deucarian.TemplateGameSurvivors
         bool ISurvivorsRunModePort.CanStart => CanStartConfiguredRun;
         bool ISurvivorsRunModePort.StrictAuthored => IsStrictAuthoredSample;
         string ISurvivorsRunModePort.AuthoredStatus => ContentBinding.AuthoredContentStatus;
-        IReadOnlyList<SurvivorsUiTheme> ISurvivorsRunModePort.Themes => _availableUiThemes;
-        int ISurvivorsRunModePort.SelectedThemeIndex => _selectedUiThemeIndex;
+        IReadOnlyList<SurvivorsUiTheme> ISurvivorsRunModePort.Themes => UiThemeSelection.AvailableThemes;
+        int ISurvivorsRunModePort.SelectedThemeIndex => UiThemeSelection.SelectedIndex;
         SurvivorsRunModeCardView ISurvivorsRunModePort.ReadCard(SurvivorsPacingProfile profile)
         {
             SurvivorsTemplateTuning preview = CreateConfiguredTuning(profile);
@@ -1336,7 +1354,6 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly SurvivorsProfileSession _profileSession = new SurvivorsProfileSession(
             () => new PersistenceService(new FileTextStorage(new UnityPersistentDataPathProvider())));
         private bool _debugOverlayVisible { get => FrameInput.DebugVisible; set => FrameInput.DebugVisible = value; }
-        private int _selectedUiThemeIndex;
         private RunUpgradeRarity _highestChosenRarity;
         private string _highestChosenRarityLabel = string.Empty;
         private string _bestMomentLabel = string.Empty;
@@ -1784,8 +1801,8 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsBuildMenuOpen => Menus.BuildOpen;
         public string CurrentBuildMenuTabLabel => SurvivorsMenuSession.FormatBuildMenuTabLabel(Menus.BuildTab);
         public string CurrentUiThemeName => ActiveUiTheme.themeName;
-        public IReadOnlyList<SurvivorsUiTheme> AvailableUiThemesForTest => _availableUiThemes;
-        public int SelectedUiThemeIndex => _selectedUiThemeIndex;
+        public IReadOnlyList<SurvivorsUiTheme> AvailableUiThemesForTest => UiThemeSelection.AvailableThemes;
+        public int SelectedUiThemeIndex => UiThemeSelection.SelectedIndex;
         public bool IsTutorialOverlayOpen => Menus.TutorialOpen;
         public bool IsTutorialSeen => _metaProgression != null && _metaProgression.TutorialSeen;
         public string CurrentTutorialStepTitle => ResolveTutorialStepTitle(SurvivorsTutorialContent.ClampTutorialStepIndex(Menus.TutorialIndex));
@@ -2078,21 +2095,6 @@ namespace Deucarian.TemplateGameSurvivors
             GUI.Label(new Rect(panel.x + 12f, string.IsNullOrWhiteSpace(evolutionObjectiveHud) ? panel.y + 400f : panel.y + 422f, 318f, 22f), ResolveDashHudLabel(), _hudSmallStyle);
         }
 
-        private bool SelectUiTheme(int index)
-        {
-            EnsureUiTheme();
-            if (index < 0 || index >= _availableUiThemes.Count || _availableUiThemes[index] == null)
-            {
-                return false;
-            }
-
-            _selectedUiThemeIndex = index;
-            uiTheme = _availableUiThemes[index];
-            ResetHudStyles();
-            ApplyWorldPresentation();
-            PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
-            return true;
-        }
 
 
         private string ResolveTutorialStepTitle(int step)
@@ -2120,61 +2122,9 @@ namespace Deucarian.TemplateGameSurvivors
             }
         }
 
-        public bool ConfigureUiTheme(TextAsset themeLibrary)
-        {
-            return ConfigureUiThemeJson(themeLibrary == null ? null : themeLibrary.text);
-        }
 
-        public bool ConfigureUiThemeJson(string themeJson)
-        {
-            if (!SurvivorsUiTheme.TryFromJson(themeJson, out SurvivorsUiTheme parsed, out _))
-            {
-                uiTheme = SurvivorsUiTheme.CreateDefault();
-                _availableUiThemes.Clear();
-                _availableUiThemes.Add(uiTheme);
-                _selectedUiThemeIndex = 0;
-                ResetHudStyles();
-                ApplyWorldPresentation();
-                return false;
-            }
 
-            uiTheme = parsed;
-            _availableUiThemes.Clear();
-            _availableUiThemes.Add(uiTheme);
-            _selectedUiThemeIndex = 0;
-            ResetHudStyles();
-            ApplyWorldPresentation();
-            return true;
-        }
 
-        public bool ConfigureUiThemes(TextAsset defaultThemeLibrary, TextAsset alternateThemeLibrary)
-        {
-            bool configuredDefault = ConfigureUiThemeJson(defaultThemeLibrary == null ? null : defaultThemeLibrary.text);
-            if (alternateThemeLibrary == null)
-            {
-                return configuredDefault;
-            }
-
-            return ConfigureAdditionalUiThemeJson(alternateThemeLibrary.text) && configuredDefault;
-        }
-
-        public bool ConfigureAdditionalUiThemeJson(string themeJson)
-        {
-            if (!SurvivorsUiTheme.TryFromJson(themeJson, out SurvivorsUiTheme parsed, out _))
-            {
-                EnsureUiTheme();
-                return false;
-            }
-
-            EnsureUiTheme();
-            if (_availableUiThemes.Count == 0)
-            {
-                _availableUiThemes.Add(uiTheme);
-            }
-
-            _availableUiThemes.Add(parsed);
-            return true;
-        }
 
         public bool SelectUiThemeForTest(int index)
         {
@@ -4232,33 +4182,8 @@ namespace Deucarian.TemplateGameSurvivors
             RecordNewlyEligibleEvolutionFeedback();
         }
 
-        private SurvivorsUiTheme ActiveUiTheme
-        {
-            get
-            {
-                EnsureUiTheme();
-                return uiTheme;
-            }
-        }
+        private SurvivorsUiTheme ActiveUiTheme => UiThemeSelection.ActiveTheme;
 
-        private void EnsureUiTheme()
-        {
-            if (uiTheme == null)
-            {
-                uiTheme = SurvivorsUiTheme.CreateDefault();
-            }
-
-            if (_availableUiThemes.Count == 0)
-            {
-                _availableUiThemes.Add(uiTheme);
-                _selectedUiThemeIndex = 0;
-            }
-            else if (_selectedUiThemeIndex < 0 || _selectedUiThemeIndex >= _availableUiThemes.Count)
-            {
-                _selectedUiThemeIndex = 0;
-                uiTheme = _availableUiThemes[0] ?? SurvivorsUiTheme.CreateDefault();
-            }
-        }
 
         private void ResetHudStyles()
         {

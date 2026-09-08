@@ -103,6 +103,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Feedback particle lifetime | `SurvivorsFeedbackPulses` | Owned root and six pulse emitters with borrowed audio commands; original build, palette and cleanup phases remain explicit |
 
+| Theme configuration and selection | `SurvivorsUiThemeSelection` | Sole option list/index and direct serialized-theme port; no duplicate active theme or scene resource ownership |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -184,5 +186,7 @@ Seventeen cases preserve missing-service guards, sequence consumption on failed 
 Thirteen cases preserve absent-camera routing, distance clamps, role/source padding precedence, violation publication and live/dead role counts.
 
 Ten cases preserve emitter settings, theme fallback colors, play/audio ordering, rebuild and repeated disposal. Audio construction remains the final feedback-build action.
+
+Nine cases preserve accepted empty JSON defaults, invalid fallback, alternate append semantics, exact selection callback order and external serialized-theme authority.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.
