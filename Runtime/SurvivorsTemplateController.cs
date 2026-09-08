@@ -764,6 +764,12 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsUiThemeSelectionPort.ApplyWorldPresentation() => ApplyWorldPresentation();
         void ISurvivorsUiThemeSelectionPort.PlayThemeSelectionAudio() => PlayAudioEvent(AudioEventUiSelect, _pickupClip, 0.05f);
 
+        private SurvivorsEvolutionAnnouncements _evolutionAnnouncements;
+        private SurvivorsEvolutionAnnouncements EvolutionAnnouncements => _evolutionAnnouncements ??
+            (_evolutionAnnouncements = new SurvivorsEvolutionAnnouncements(RunBuild, DraftOffers.Catalogs,
+                RecordEvolutionGoalFeedback, RecordEvolutionReadyFeedback));
+        private void RecordNewlyEligibleEvolutionFeedback() => EvolutionAnnouncements.Refresh();
+
         private const string AudioEventUiHover = "ui.hover";
         private const string AudioEventUiSelect = "ui.select";
         private const string AudioEventModeSelected = "mode.selected";
@@ -1258,8 +1264,6 @@ namespace Deucarian.TemplateGameSurvivors
             RecordStreakRewardFeedback(label, new Color(1f, 0.74f, 0.24f));
             PlayFeedback(_levelUpPulse, position, Mathf.Clamp(24 + hitCount * 5, 28, 78), _pickupClip);
         }
-        private readonly HashSet<string> _announcedEvolutionGoalUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
-        private readonly HashSet<string> _announcedEvolutionReadyUpgradeIds = new HashSet<string>(StringComparer.Ordinal);
         private Transform _worldRoot => _runtimeWorld?.Root;
         private Transform _prefabRoot => _runtimeWorld?.PrefabRoot;
         private GameObject _playerObject => _runtimeWorld?.Player;
@@ -2309,8 +2313,7 @@ namespace Deucarian.TemplateGameSurvivors
             PickupCollection.ResetPulseSchedule();
             Traversal.Reset();
             EndlessSurges.Reset();
-            _announcedEvolutionGoalUpgradeIds.Clear();
-            _announcedEvolutionReadyUpgradeIds.Clear();
+            _evolutionAnnouncements?.Reset();
             _evolutionReadyBanner.Reset();
             SpawnSequence.Reset();
             _damageFeedback.Reset();
@@ -3773,43 +3776,6 @@ namespace Deucarian.TemplateGameSurvivors
 
 
 
-        private void RecordNewlyEligibleEvolutionFeedback()
-        {
-            if (RunBuild.Catalog == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < RunBuild.Catalog.Definitions.Count; i++)
-            {
-                RunUpgradeDefinition definition = RunBuild.Catalog.Definitions[i];
-                if (definition == null || !IsEvolutionUpgrade(definition))
-                {
-                    continue;
-                }
-
-                string upgradeId = definition.Id.Value;
-                if (RunBuild.HasEvolution(upgradeId) || _announcedEvolutionReadyUpgradeIds.Contains(upgradeId))
-                {
-                    continue;
-                }
-
-                if (!IsUpgradeEligibleForCurrentBuild(definition))
-                {
-                    if (!_announcedEvolutionGoalUpgradeIds.Contains(upgradeId) &&
-                        TryResolveEvolutionMissingPassive(definition, out RunUpgradeDefinition missingPassive))
-                    {
-                        _announcedEvolutionGoalUpgradeIds.Add(upgradeId);
-                        RecordEvolutionGoalFeedback(definition, missingPassive);
-                    }
-
-                    continue;
-                }
-
-                _announcedEvolutionReadyUpgradeIds.Add(upgradeId);
-                RecordEvolutionReadyFeedback(definition);
-            }
-        }
 
         private void RecordEvolutionGoalFeedback(RunUpgradeDefinition evolution, RunUpgradeDefinition missingPassive)
         {
