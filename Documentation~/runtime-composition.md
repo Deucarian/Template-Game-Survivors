@@ -58,6 +58,9 @@ The controller retains its original script GUID, six serialized fields, public m
 | Full draft screen | `SurvivorsDraftScreenPresenter` / `SurvivorsDraftScreenLayout` | Prepared card models, bounded session commands and responsive card/scroll/selection geometry |
 | Victory/defeat and result options | `SurvivorsRunResultPresenter` / result read values | Copied summary, class and purchase labels; explicit continuation/restart/class/purchase commands |
 
+| Kill streak reward cadence | `SurvivorsKillStreakRewards` | Owns streak window, successful drop counters, tiered Tempo Surge and independent clocks; bounded pickup/feedback port |
+| Experience combo and Gem Rush | `SurvivorsExperienceComboRewards` | Owns combo budget, once-per-combo activation and banner; gameplay and presentation clocks remain distinct |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -95,5 +98,7 @@ Draft-session tests cover charge spending only after successful generation, fail
 Menu tests preserve build-toggle priority, non-playing close behavior, tutorial reset/persistence/audio ordering, closing or advancing while hidden, first-run gating and fallback text indexing. Pure panel tests cover wide, narrow and very small viewports, including the legacy 220-pixel lower bound. Actual screen rendering remains covered by shared integration and visual validation.
 
 Screen-model tests verify wide/narrow draft orientation, card spacing and scroll extent, separate relic and upgrade selection regions, tiny viewport bounds and copied authored mode text/title fallbacks. Result class rows refresh after selection so subsequent rows reflect the updated selection in the same draw.
+
+Pickup rhythm tests preserve cadence under failed spawns, tempo tier caps, independent streak/surge expiry, combo-versus-gameplay pause timing, repeated pickup refresh, reset boundaries and disabled/live-clamped bonuses.
 
 This decomposition is in progress. Combat augments and further momentum rewards, further build milestone feedback, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.

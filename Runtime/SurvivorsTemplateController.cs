@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort
     {
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -44,18 +44,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const string AudioEventDefeat = "run.defeat";
         private const string AudioEventRunSummaryOpened = "run.summary.opened";
         private const string DirectionalLightName = "Survivors Directional Light";
-        private const float KillStreakWindowSeconds = 3.8f;
-        private const int KillStreakExperienceInterval = 8;
-        private const int KillStreakHealthInterval = 16;
-        private const int KillStreakMagnetInterval = 24;
-        private const int KillStreakBloodShardInterval = 32;
-        private const int KillStreakSurgeInterval = 16;
-        private const int KillStreakSurgeMaxTier = 5;
-        private const float StreakSurgeDurationSeconds = 6f;
-        private const float StreakSurgeDamageBonusPerTier = 1.1f;
-        private const float StreakSurgeMoveSpeedBonusPerTier = 0.16f;
-        private const float StreakSurgeCooldownReductionPerTier = 0.025f;
-        private const float StreakSurgePickupRangeBonusPerTier = 0.18f;
         private const float LowHealthWarningThreshold = 0.3f;
         private const float RewardFeedbackDurationSeconds = 2.35f;
         private const float StreakRewardFeedbackDurationSeconds = 1.8f;
@@ -68,9 +56,6 @@ namespace Deucarian.TemplateGameSurvivors
         private const float CinderBurstBurnDamageRatio = 0.26f;
         private const float InfernoHeartBurnDamageRatio = 0.42f;
         private const float InfernoHeartBurnDurationMultiplier = 1.45f;
-        private const float ExperienceComboWindowSeconds = 0.85f;
-        private const float ExperienceComboFeedbackDurationSeconds = 1.35f;
-        private const int ExperienceComboMinimumPickupCount = 3;
         private const float EnemyHitFlashSeconds = 0.13f;
         private const float BaseDeathNovaRadius = 1.65f;
         private const float MajorRewardPickupCacheRadiusPadding = 0.55f;
@@ -105,7 +90,6 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly SurvivorsFeedbackBannerPresenter _rewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Reward);
         private readonly SurvivorsFeedbackBannerPresenter _streakRewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Streak);
         private readonly SurvivorsFeedbackBannerPresenter _classUnlockRewardBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.ClassUnlock);
-        private readonly SurvivorsFeedbackBannerPresenter _experienceComboBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Experience);
         private readonly SurvivorsFeedbackBannerPresenter _evolutionReadyBanner = new SurvivorsFeedbackBannerPresenter(SurvivorsFeedbackBannerKind.Evolution);
         private SurvivorsCombatFeedbackPresenter _combatFeedback;
         private SurvivorsCombatFeedbackPresenter CombatFeedback => _combatFeedback ?? (_combatFeedback = new SurvivorsCombatFeedbackPresenter(() => _feedbackRoot));
@@ -119,6 +103,22 @@ namespace Deucarian.TemplateGameSurvivors
         private readonly List<SurvivorsUiTheme> _availableUiThemes = new List<SurvivorsUiTheme>(2);
         private readonly List<SurvivorsPersistentUpgradeDefinition> _resultMetaUpgradeOptions = new List<SurvivorsPersistentUpgradeDefinition>(ResultMetaUpgradeOptionCount);
         private readonly List<SurvivorsClassDefinition> _resultClassOptions = new List<SurvivorsClassDefinition>(ResultClassOptionCount);
+        private SurvivorsKillStreakRewards _killStreakRewards;
+        private SurvivorsKillStreakRewards KillStreakRewards => _killStreakRewards ?? (_killStreakRewards = new SurvivorsKillStreakRewards(this));
+        private SurvivorsExperienceComboRewards _experienceRhythm;
+        private SurvivorsExperienceComboRewards ExperienceRhythm => _experienceRhythm ?? (_experienceRhythm = new SurvivorsExperienceComboRewards(() => CurrentTuning));
+        private void RegisterKillStreak(Vector3 position) => KillStreakRewards.RegisterKillStreak(position);
+        private void TickKillStreak(float deltaTime) => KillStreakRewards.TickKillStreak(deltaTime);
+        private void TickStreakSurge(float deltaTime) => KillStreakRewards.TickStreakSurge(deltaTime);
+        private void RecordExperienceCombo(int gained) => ExperienceRhythm.RecordExperienceCombo(gained);
+        private void TickGemRush(float deltaTime) => ExperienceRhythm.TickGemRush(deltaTime);
+        private void TickExperienceComboFeedback(float deltaTime) => ExperienceRhythm.TickExperienceComboFeedback(deltaTime);
+        SurvivorsTemplateTuning ISurvivorsStreakRewardPort.Tuning => CurrentTuning;
+        string ISurvivorsStreakRewardPort.CurrencyLabel => CurrencyDisplayName;
+        bool ISurvivorsStreakRewardPort.SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount) => SpawnPickup(kind, position, amount) != null;
+        bool ISurvivorsStreakRewardPort.TryDropHealth(Vector3 position) => TryDropHealthPickup(position);
+        void ISurvivorsStreakRewardPort.ShowFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
+
         private SurvivorsRunResultPresenter _resultScreen;
         private SurvivorsRunResultPresenter ResultScreen => _resultScreen ?? (_resultScreen = new SurvivorsRunResultPresenter(this, () => ActiveUiTheme, _hudStyles));
         private void DrawRunResultOverlay(bool victory) => ResultScreen.Draw(victory);
@@ -519,7 +519,6 @@ namespace Deucarian.TemplateGameSurvivors
         long ISurvivorsSwarmSpawnPort.SpawnSequence => _spawnSequence;
         bool ISurvivorsSwarmSpawnPort.TrySpawn(SurvivorsEnemyRole role) =>
             SpawnEnemy(Vector3.zero, explicitPosition: false, role, gameplaySpawn: true, spawnSource: "normal-pack") != null;
-        private float _killStreakTimer;
         private SurvivorsTraversalDirector _traversal;
         private SurvivorsTraversalDirector Traversal => _traversal ?? (_traversal = new SurvivorsTraversalDirector(this));
         SurvivorsTemplateTuning ISurvivorsTraversalPort.Tuning => CurrentTuning;
@@ -527,8 +526,6 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsTraversalPort.SpawnShrine(Vector3 direction) => ShrineTrials.SpawnArenaShrineTrial(direction);
         void ISurvivorsTraversalPort.SpawnCache(Vector3 direction, int sequenceOffset) => RoamingCaches.SpawnRoamingArenaCache(direction, sequenceOffset);
         private long _spawnSequence;
-        private int _killStreakCount;
-        private float _streakSurgeTimer;
         private float _weaponLoadoutSurgeTimer;
         private float _passiveLoadoutSurgeTimer;
         private float _bossRelicSurgeTimer;
@@ -556,11 +553,6 @@ namespace Deucarian.TemplateGameSurvivors
         private bool _weaponLoadoutSurgeUsed;
         private bool _passiveLoadoutSurgeUsed;
         private bool _runRewardsGranted;
-        private float _experienceComboTimer;
-        private float _gemRushTimer;
-        private int _experienceComboPickupCount;
-        private int _experienceComboAmount;
-        private bool _gemRushActivatedForCurrentCombo;
         private int _bonusBloodShardsEarnedThisRun;
         private int _bonusLegacyExperienceEarnedThisRun;
         private float _firstKillTimeSeconds;
@@ -740,10 +732,10 @@ namespace Deucarian.TemplateGameSurvivors
         public string LastMajorThreatSlamFeedbackLabel { get; private set; } = string.Empty;
         public string LastIncomingThreatTelegraphLabel => ThreatTelegraphs.LastIncomingThreatTelegraphLabel;
         public int ExperiencePickupFeedbackCount { get; private set; }
-        public int ExperienceComboFeedbackCount { get; private set; }
-        public int GemRushActivationCount { get; private set; }
-        public string LastExperienceComboFeedbackLabel { get; private set; } = string.Empty;
-        public string LastGemRushFeedbackLabel { get; private set; } = string.Empty;
+        public int ExperienceComboFeedbackCount => ExperienceRhythm.ExperienceComboFeedbackCount;
+        public int GemRushActivationCount => ExperienceRhythm.GemRushActivationCount;
+        public string LastExperienceComboFeedbackLabel => ExperienceRhythm.LastExperienceComboFeedbackLabel;
+        public string LastGemRushFeedbackLabel => ExperienceRhythm.LastGemRushFeedbackLabel;
         public int EvolutionGoalFeedbackCount { get; private set; }
         public string LastEvolutionGoalFeedbackLabel { get; private set; } = string.Empty;
         public int EvolutionReadyFeedbackCount { get; private set; }
@@ -799,22 +791,22 @@ namespace Deucarian.TemplateGameSurvivors
         public int WaystoneChainSurgePulseHitCount => Waystones.WaystoneChainSurgePulseHitCount;
         public string LastWaystoneDiscoveryFeedbackLabel => Waystones.LastWaystoneDiscoveryFeedbackLabel;
         public string LastWaystoneChainSurgeFeedbackLabel => Waystones.LastWaystoneChainSurgeFeedbackLabel;
-        public int BestKillStreak { get; private set; }
-        public int StreakBonusDropCount { get; private set; }
-        public int StreakHealthDropCount { get; private set; }
-        public int StreakMagnetDropCount { get; private set; }
-        public int StreakBloodShardDropCount { get; private set; }
+        public int BestKillStreak => KillStreakRewards.BestKillStreak;
+        public int StreakBonusDropCount => KillStreakRewards.StreakBonusDropCount;
+        public int StreakHealthDropCount => KillStreakRewards.StreakHealthDropCount;
+        public int StreakMagnetDropCount => KillStreakRewards.StreakMagnetDropCount;
+        public int StreakBloodShardDropCount => KillStreakRewards.StreakBloodShardDropCount;
         public int StreakRewardFeedbackCount { get; private set; }
         public string LastStreakRewardFeedbackLabel { get; private set; } = string.Empty;
-        public int StreakSurgeTier { get; private set; }
-        public int StreakSurgeActivationCount { get; private set; }
-        public int CurrentKillStreak => _killStreakTimer > 0f ? _killStreakCount : 0;
-        public bool IsStreakSurgeActive => _streakSurgeTimer > 0f && StreakSurgeTier > 0;
-        public float StreakSurgeRemainingSeconds => Mathf.Max(0f, _streakSurgeTimer);
-        public float StreakSurgeDamageBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgeDamageBonusPerTier : 0f;
-        public float StreakSurgeMoveSpeedBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgeMoveSpeedBonusPerTier : 0f;
-        public float StreakSurgeCooldownMultiplierBonus => IsStreakSurgeActive ? -StreakSurgeTier * StreakSurgeCooldownReductionPerTier : 0f;
-        public float StreakSurgePickupRangeBonus => IsStreakSurgeActive ? StreakSurgeTier * StreakSurgePickupRangeBonusPerTier : 0f;
+        public int StreakSurgeTier => KillStreakRewards.StreakSurgeTier;
+        public int StreakSurgeActivationCount => KillStreakRewards.StreakSurgeActivationCount;
+        public int CurrentKillStreak => KillStreakRewards.CurrentKillStreak;
+        public bool IsStreakSurgeActive => KillStreakRewards.IsStreakSurgeActive;
+        public float StreakSurgeRemainingSeconds => KillStreakRewards.StreakSurgeRemainingSeconds;
+        public float StreakSurgeDamageBonus => KillStreakRewards.StreakSurgeDamageBonus;
+        public float StreakSurgeMoveSpeedBonus => KillStreakRewards.StreakSurgeMoveSpeedBonus;
+        public float StreakSurgeCooldownMultiplierBonus => KillStreakRewards.StreakSurgeCooldownMultiplierBonus;
+        public float StreakSurgePickupRangeBonus => KillStreakRewards.StreakSurgePickupRangeBonus;
         public bool IsRoamingCacheSurgeActive => RoamingCaches.SurgeRemaining > 0f;
         public float RoamingCacheSurgeRemainingSeconds => Mathf.Max(0f, RoamingCaches.SurgeRemaining);
         public float RoamingCacheSurgeDamageBonus => IsRoamingCacheSurgeActive ? Mathf.Max(0f, CurrentTuning.RoamingCacheSurgeDamageBonus) : 0f;
@@ -864,12 +856,12 @@ namespace Deucarian.TemplateGameSurvivors
         public float BossRelicSurgeMoveSpeedBonus => IsBossRelicSurgeActive ? Mathf.Max(0f, CurrentTuning.BossRelicSurgeMoveSpeedBonus) : 0f;
         public float BossRelicSurgeCooldownMultiplierBonus => IsBossRelicSurgeActive ? Mathf.Min(0f, CurrentTuning.BossRelicSurgeCooldownMultiplierBonus) : 0f;
         public float BossRelicSurgePickupRangeBonus => IsBossRelicSurgeActive ? Mathf.Max(0f, CurrentTuning.BossRelicSurgePickupRangeBonus) : 0f;
-        public bool IsGemRushActive => _gemRushTimer > 0f;
-        public float GemRushRemainingSeconds => Mathf.Max(0f, _gemRushTimer);
-        public float GemRushDamageBonus => IsGemRushActive ? Mathf.Max(0f, CurrentTuning.GemRushDamageBonus) : 0f;
-        public float GemRushMoveSpeedBonus => IsGemRushActive ? Mathf.Max(0f, CurrentTuning.GemRushMoveSpeedBonus) : 0f;
-        public float GemRushCooldownMultiplierBonus => IsGemRushActive ? Mathf.Min(0f, CurrentTuning.GemRushCooldownMultiplierBonus) : 0f;
-        public float GemRushPickupRangeBonus => IsGemRushActive ? Mathf.Max(0f, CurrentTuning.GemRushPickupRangeBonus) : 0f;
+        public bool IsGemRushActive => ExperienceRhythm.IsGemRushActive;
+        public float GemRushRemainingSeconds => ExperienceRhythm.GemRushRemainingSeconds;
+        public float GemRushDamageBonus => ExperienceRhythm.GemRushDamageBonus;
+        public float GemRushMoveSpeedBonus => ExperienceRhythm.GemRushMoveSpeedBonus;
+        public float GemRushCooldownMultiplierBonus => ExperienceRhythm.GemRushCooldownMultiplierBonus;
+        public float GemRushPickupRangeBonus => ExperienceRhythm.GemRushPickupRangeBonus;
         public bool IsEvolutionChainSurgeActive => _evolutionChainSurgeTimer > 0f;
         public float EvolutionChainSurgeRemainingSeconds => Mathf.Max(0f, _evolutionChainSurgeTimer);
         public float EvolutionChainSurgeDamageBonus => IsEvolutionChainSurgeActive ? Mathf.Max(0f, CurrentTuning.EvolutionChainSurgeDamageBonus) : 0f;
@@ -1147,10 +1139,10 @@ namespace Deucarian.TemplateGameSurvivors
         public float EvolutionReadyFeedbackRemainingSeconds => Mathf.Max(0f, _evolutionReadyBanner.RemainingSeconds);
         public string CurrentEvolutionGoalHudLabel => ResolveEvolutionGoalHudLabel();
         public string CurrentEvolutionReadyHudLabel => ResolveEvolutionReadyHudLabel();
-        public string ActiveExperienceComboFeedbackLabel => _experienceComboBanner.RemainingSeconds > 0f ? _experienceComboBanner.Label : string.Empty;
-        public float ExperienceComboFeedbackRemainingSeconds => Mathf.Max(0f, _experienceComboBanner.RemainingSeconds);
-        public int CurrentExperienceComboPickupCount => _experienceComboTimer > 0f ? _experienceComboPickupCount : 0;
-        public int CurrentExperienceComboAmount => _experienceComboTimer > 0f ? _experienceComboAmount : 0;
+        public string ActiveExperienceComboFeedbackLabel => ExperienceRhythm.ActiveExperienceComboFeedbackLabel;
+        public float ExperienceComboFeedbackRemainingSeconds => ExperienceRhythm.ExperienceComboFeedbackRemainingSeconds;
+        public int CurrentExperienceComboPickupCount => ExperienceRhythm.CurrentExperienceComboPickupCount;
+        public int CurrentExperienceComboAmount => ExperienceRhythm.CurrentExperienceComboAmount;
         public int RequiredExperienceForNextLevel => _experienceProgression.RequiredExperience(CurrentTuning);
         public int TotalDraftRerollCharges => Mathf.Max(0, CurrentTuning.DraftRerollCharges + PersistentDraftRerollBonus);
         public int DraftRerollsRemaining => DraftSession.RerollsRemaining;
@@ -2050,10 +2042,6 @@ namespace Deucarian.TemplateGameSurvivors
             MajorThreatSlamHitCount = 0;
             LastMajorThreatSlamFeedbackLabel = string.Empty;
             ExperiencePickupFeedbackCount = 0;
-            ExperienceComboFeedbackCount = 0;
-            GemRushActivationCount = 0;
-            LastExperienceComboFeedbackLabel = string.Empty;
-            LastGemRushFeedbackLabel = string.Empty;
             BloodShardPickupCollectedCount = 0;
             BloodShardsCollectedFromPickups = 0;
             PickupAttractionFeedbackCount = 0;
@@ -2069,15 +2057,8 @@ namespace Deucarian.TemplateGameSurvivors
             ShrineTrials.Reset();
             Waystones.Reset();
             Waystones.ClearDiscoveries();
-            BestKillStreak = 0;
-            StreakBonusDropCount = 0;
-            StreakHealthDropCount = 0;
-            StreakMagnetDropCount = 0;
-            StreakBloodShardDropCount = 0;
             StreakRewardFeedbackCount = 0;
             LastStreakRewardFeedbackLabel = string.Empty;
-            StreakSurgeTier = 0;
-            StreakSurgeActivationCount = 0;
             BloodShardsEarnedThisRun = 0;
             LegacyExperienceEarnedThisRun = 0;
             LastRunResult = null;
@@ -2105,22 +2086,15 @@ namespace Deucarian.TemplateGameSurvivors
             _runRewardsGranted = false;
             TimedEncounters.Reset();
             HordeRush.Reset();
+            KillStreakRewards.Reset();
+            ExperienceRhythm.Reset();
             _rewardBanner.Reset();
             _streakRewardBanner.Reset();
-            _experienceComboBanner.Reset();
-            _experienceComboTimer = 0f;
-            _gemRushTimer = 0f;
-            _experienceComboPickupCount = 0;
-            _experienceComboAmount = 0;
-            _gemRushActivatedForCurrentCombo = false;
             _bonusBloodShardsEarnedThisRun = 0;
             _bonusLegacyExperienceEarnedThisRun = 0;
             SwarmSpawning.Reset();
             _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
-            _killStreakTimer = 0f;
             Traversal.Reset();
-            _killStreakCount = 0;
-            _streakSurgeTimer = 0f;
             _weaponLoadoutSurgeTimer = 0f;
             _passiveLoadoutSurgeTimer = 0f;
             _bossRelicSurgeTimer = 0f;
@@ -4533,57 +4507,6 @@ namespace Deucarian.TemplateGameSurvivors
             directionalLight.shadows = LightShadows.Soft;
         }
 
-        private void RegisterKillStreak(Vector3 position)
-        {
-            _killStreakCount = _killStreakTimer > 0f ? _killStreakCount + 1 : 1;
-            _killStreakTimer = KillStreakWindowSeconds;
-            BestKillStreak = Mathf.Max(BestKillStreak, _killStreakCount);
-
-            if (_killStreakCount % KillStreakExperienceInterval == 0)
-            {
-                int amount = Mathf.Max(2, Mathf.CeilToInt(CurrentTuning.EnemyExperienceReward * (2f + _killStreakCount * 0.15f)));
-                Vector3 offset = new Vector3(Mathf.Sin(_killStreakCount) * 0.55f, 0f, Mathf.Cos(_killStreakCount) * 0.55f);
-                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, amount) != null)
-                {
-                    StreakBonusDropCount++;
-                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: Bonus XP +{amount}", new Color(0.28f, 0.86f, 1f));
-                }
-            }
-
-            if (_killStreakCount % KillStreakHealthInterval == 0)
-            {
-                Vector3 offset = new Vector3(Mathf.Cos(_killStreakCount * 0.7f) * 0.65f, 0f, Mathf.Sin(_killStreakCount * 0.7f) * 0.65f);
-                if (TryDropHealthPickup(position + offset))
-                {
-                    StreakHealthDropCount++;
-                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: Vital Shard", new Color(0.42f, 1f, 0.56f));
-                }
-            }
-
-            if (_killStreakCount % KillStreakMagnetInterval == 0)
-            {
-                Vector3 offset = new Vector3(Mathf.Cos(_killStreakCount) * 0.75f, 0f, Mathf.Sin(_killStreakCount) * 0.75f);
-                if (SpawnPickup(SurvivorsPickupKind.Magnet, position + offset, 1) != null)
-                {
-                    StreakMagnetDropCount++;
-                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: Magnet Recall", new Color(0.55f, 0.78f, 1f));
-                }
-            }
-
-            if (_killStreakCount % KillStreakBloodShardInterval == 0)
-            {
-                int amount = Mathf.Max(1, CurrentTuning.BloodShardPickupAmount + (_killStreakCount / KillStreakBloodShardInterval) - 1);
-                Vector3 offset = new Vector3(Mathf.Sin(_killStreakCount * 0.31f) * 0.82f, 0f, Mathf.Cos(_killStreakCount * 0.31f) * 0.82f);
-                if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + offset, amount) != null)
-                {
-                    StreakBloodShardDropCount++;
-                    RecordStreakRewardFeedback($"{_killStreakCount} Streak: {CurrencyDisplayName} +{amount}", new Color(1f, 0.34f, 0.42f));
-                }
-            }
-
-            TryActivateStreakSurge();
-        }
-
         private void SpawnMajorRewardPickupCache(Vector3 position, SurvivorsEnemyRole role, float radius)
         {
             if (!IsMajorRewardRole(role))
@@ -4721,20 +4644,6 @@ namespace Deucarian.TemplateGameSurvivors
                 default:
                     return 0;
             }
-        }
-
-        private void TryActivateStreakSurge()
-        {
-            if (_killStreakCount <= 0 || _killStreakCount % KillStreakSurgeInterval != 0)
-            {
-                return;
-            }
-
-            int tier = Mathf.Clamp(_killStreakCount / KillStreakSurgeInterval, 1, KillStreakSurgeMaxTier);
-            StreakSurgeTier = tier;
-            StreakSurgeActivationCount++;
-            _streakSurgeTimer = StreakSurgeDurationSeconds;
-            RecordStreakRewardFeedback($"{_killStreakCount} Streak: Tempo Surge T{tier}", new Color(1f, 0.74f, 0.24f));
         }
 
         private void RecordStreakRewardFeedback(string label, Color color)
@@ -6615,53 +6524,6 @@ namespace Deucarian.TemplateGameSurvivors
             _experienceProgression.ResolveBudget(CurrentTuning);
         }
 
-        private void RecordExperienceCombo(int gained)
-        {
-            if (gained <= 0)
-            {
-                return;
-            }
-
-            if (_experienceComboTimer <= 0f)
-            {
-                _experienceComboPickupCount = 0;
-                _experienceComboAmount = 0;
-                _gemRushActivatedForCurrentCombo = false;
-            }
-
-            _experienceComboPickupCount++;
-            _experienceComboAmount += gained;
-            _experienceComboTimer = ExperienceComboWindowSeconds;
-
-            if (_experienceComboPickupCount < ExperienceComboMinimumPickupCount)
-            {
-                return;
-            }
-
-            ExperienceComboFeedbackCount++;
-            ActivateGemRush();
-            _experienceComboBanner.Show($"{_experienceComboPickupCount} Gem Rush: +{_experienceComboAmount} XP, rush {GemRushRemainingSeconds:0.#}s", ExperienceComboFeedbackDurationSeconds, Color.white);
-            LastExperienceComboFeedbackLabel = _experienceComboBanner.Label;
-        }
-
-        private void ActivateGemRush()
-        {
-            float duration = Mathf.Max(0f, CurrentTuning.GemRushDurationSeconds);
-            if (duration <= 0f)
-            {
-                return;
-            }
-
-            _gemRushTimer = Mathf.Max(_gemRushTimer, duration);
-            if (!_gemRushActivatedForCurrentCombo)
-            {
-                GemRushActivationCount++;
-                _gemRushActivatedForCurrentCombo = true;
-            }
-
-            LastGemRushFeedbackLabel = $"Gem Rush: damage +{GemRushDamageBonus:0.#}, cooldown {GemRushCooldownMultiplierBonus:P0}, pickup +{GemRushPickupRangeBonus:0.#}";
-        }
-
         private void ApplyPacingProfile(SurvivorsPacingProfile profile, bool restartRun)
         {
             tuning = CreateConfiguredTuning(profile);
@@ -6784,34 +6646,6 @@ namespace Deucarian.TemplateGameSurvivors
             return highest;
         }
 
-        private void TickKillStreak(float deltaTime)
-        {
-            if (_killStreakTimer <= 0f || _killStreakCount <= 0)
-            {
-                return;
-            }
-
-            _killStreakTimer = Mathf.Max(0f, _killStreakTimer - Mathf.Max(0f, deltaTime));
-            if (_killStreakTimer <= 0f)
-            {
-                _killStreakCount = 0;
-            }
-        }
-
-        private void TickStreakSurge(float deltaTime)
-        {
-            if (_streakSurgeTimer <= 0f || StreakSurgeTier <= 0)
-            {
-                return;
-            }
-
-            _streakSurgeTimer = Mathf.Max(0f, _streakSurgeTimer - Mathf.Max(0f, deltaTime));
-            if (_streakSurgeTimer <= 0f)
-            {
-                StreakSurgeTier = 0;
-            }
-        }
-
         private void TickWeaponLoadoutSurge(float deltaTime)
         {
             if (_weaponLoadoutSurgeTimer <= 0f)
@@ -6840,16 +6674,6 @@ namespace Deucarian.TemplateGameSurvivors
             }
 
             _bossRelicSurgeTimer = Mathf.Max(0f, _bossRelicSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
-
-        private void TickGemRush(float deltaTime)
-        {
-            if (_gemRushTimer <= 0f)
-            {
-                return;
-            }
-
-            _gemRushTimer = Mathf.Max(0f, _gemRushTimer - Mathf.Max(0f, deltaTime));
         }
 
         private void TickEvolutionChainSurge(float deltaTime)
@@ -7745,7 +7569,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void DrawClassUnlockRewardFeedback() => _classUnlockRewardBanner.Draw(_rewardFeedbackStyle);
 
-        private void DrawExperienceComboFeedback() => _experienceComboBanner.Draw(_rewardFeedbackStyle);
+        private void DrawExperienceComboFeedback() => ExperienceRhythm.Banner.Draw(_rewardFeedbackStyle);
 
         private void DrawEvolutionReadyFeedback() => _evolutionReadyBanner.Draw(_rewardFeedbackStyle);
 
@@ -7766,21 +7590,6 @@ namespace Deucarian.TemplateGameSurvivors
         private void TickClassUnlockRewardFeedback(float deltaTime) => _classUnlockRewardBanner.Tick(deltaTime);
 
         private void TickEvolutionReadyFeedback(float deltaTime) => _evolutionReadyBanner.Tick(deltaTime);
-
-        private void TickExperienceComboFeedback(float deltaTime)
-        {
-            float dt = Mathf.Max(0f, deltaTime);
-            if (_experienceComboTimer > 0f)
-            {
-                _experienceComboTimer = Mathf.Max(0f, _experienceComboTimer - dt);
-                if (_experienceComboTimer <= 0f)
-                {
-                    _experienceComboPickupCount = 0;
-                    _experienceComboAmount = 0;
-                }
-            }
-            _experienceComboBanner.Tick(dt);
-        }
 
         private void RecordPlayerDamageFeedback(DamageResult damage, Vector3 position)
         {
