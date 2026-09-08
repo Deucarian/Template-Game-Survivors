@@ -13,7 +13,7 @@ using UnityEngine;
 
 namespace Deucarian.TemplateGameSurvivors
 {
-    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort
+    public sealed class SurvivorsTemplateController : MonoBehaviour, ISurvivorsUpgradeEffectSink, ISurvivorsSwarmSpawnPort, ISurvivorsTimedEncounterPort, ISurvivorsHordeRushPort, ISurvivorsTraversalPort, ISurvivorsExplorationPort, ISurvivorsPlayerDamagePort, ISurvivorsPlayerMotionPort, ISurvivorsRunBuildPort, ISurvivorsDraftSessionPort, ISurvivorsTutorialPort, ISurvivorsRunModePort, ISurvivorsRunResultPort, ISurvivorsStreakRewardPort, ISurvivorsEnemyNavigationPort, ISurvivorsBuildSurgePort, ISurvivorsPersistentProgressionPort, ISurvivorsRunRewardPort, ISurvivorsPickupRewardPort
     {
         private IReadOnlyList<string> ResolveBuildHudSummaryLines() => BuildHudModel.BuildLines(new SurvivorsBuildHudValues(ActiveWeaponIds, ActiveWeaponCount, CurrentPickupAttractRange, CurrentPickupAttractionSpeed, FormatMetricTime(CurrentPickupMagnetPulseIntervalSeconds), FormatSelectedRelicList()));
 
@@ -64,6 +64,31 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsRunRewardPort.ShowClassUnlock() => RecordClassUnlockRewardFeedback();
         void ISurvivorsRunRewardPort.ShowRunSummary(bool victory)
         { RebuildLastRunSummaryLines(victory); PlayAudioEvent(AudioEventRunSummaryOpened, _levelUpClip, 0.25f); }
+
+        private static string ResolveRewardKindLabel(SurvivorsRewardSelectionKind kind) => SurvivorsDraftSelectionRewards.ResolveRewardKindLabel(kind);
+
+        private SurvivorsEndlessSurgeRewards _endlessSurges;
+        private SurvivorsEndlessSurgeRewards EndlessSurges => _endlessSurges ?? (_endlessSurges = new SurvivorsEndlessSurgeRewards(_runSession, this));
+        private SurvivorsDraftSelectionRewards _selectionRewards;
+        private SurvivorsDraftSelectionRewards SelectionRewards => _selectionRewards ?? (_selectionRewards = new SurvivorsDraftSelectionRewards(RunBuild, this));
+        private void TryActivateEndlessSurge(SurvivorsEnemyRole role, Vector3 position, int baseExperienceReward) => EndlessSurges.TryActivateEndlessSurge(role, position, baseExperienceReward);
+        private void TickEndlessSurge(float deltaTime) => EndlessSurges.TickEndlessSurge(deltaTime);
+        private void TriggerRewardUpgradeSurge(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind kind) => SelectionRewards.TriggerRewardUpgradeSurge(upgrade, kind);
+        private void TriggerLevelUpPulse(RunUpgradeDefinition upgrade) => SelectionRewards.TriggerLevelUpPulse(upgrade);
+        private void TriggerRewardJackpot(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind kind) => SelectionRewards.TriggerRewardJackpot(upgrade, kind);
+        SurvivorsTemplateTuning ISurvivorsPickupRewardPort.Tuning => CurrentTuning;
+        Vector3 ISurvivorsPickupRewardPort.PlayerPosition => PlayerPosition;
+        string ISurvivorsPickupRewardPort.CurrencyLabel => CurrencyRewardLabel;
+        int ISurvivorsPickupRewardPort.DamageNonMajor(Vector3 position, float radius, float damage, string source) => DamageNonMajorEnemies(position, radius, damage, source);
+        bool ISurvivorsPickupRewardPort.SpawnPickup(SurvivorsPickupKind kind, Vector3 position, int amount, bool attract)
+        {
+            SurvivorsPickupActor pickup = SpawnPickup(kind, position, amount);
+            if (pickup == null) return false;
+            if (attract) StartMajorRewardCacheAttraction(pickup);
+            return true;
+        }
+        void ISurvivorsPickupRewardPort.ShowFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
+        void ISurvivorsPickupRewardPort.PlayPulse(Vector3 position, int count, bool boss, bool pickupAudio) => PlayFeedback(boss ? _bossPulse : _levelUpPulse, position, count, pickupAudio ? _pickupClip : boss ? _bossClip : _levelUpClip);
 
         private const string FeedbackRootName = "Survivors Feedback Presentation";
         private const string SpawnPulseName = "Survivors Spawn Pulse";
@@ -672,7 +697,6 @@ namespace Deucarian.TemplateGameSurvivors
         void ISurvivorsTraversalPort.SpawnShrine(Vector3 direction) => ShrineTrials.SpawnArenaShrineTrial(direction);
         void ISurvivorsTraversalPort.SpawnCache(Vector3 direction, int sequenceOffset) => RoamingCaches.SpawnRoamingArenaCache(direction, sequenceOffset);
         private long _spawnSequence;
-        private float _endlessSurgeTimer;
         private float _payloadHazardChainWindowTimer;
         private float _payloadHazardChainCooldownTimer;
         private int _payloadHazardChainSnareCount;
@@ -783,26 +807,26 @@ namespace Deucarian.TemplateGameSurvivors
         public int PassiveLoadoutSurgeActivationCount => BuildSurges.PassiveLoadoutSurgeActivationCount;
         public int PassiveLoadoutSurgePulseHitCount => BuildSurges.PassiveLoadoutSurgePulseHitCount;
         public string LastPassiveLoadoutSurgeFeedbackLabel => BuildSurges.LastPassiveLoadoutSurgeFeedbackLabel;
-        public int LevelUpPulseCount { get; private set; }
-        public int LevelUpPulseHitCount { get; private set; }
-        public string LastLevelUpPulseFeedbackLabel { get; private set; } = string.Empty;
+        public int LevelUpPulseCount => SelectionRewards.LevelUpPulseCount;
+        public int LevelUpPulseHitCount => SelectionRewards.LevelUpPulseHitCount;
+        public string LastLevelUpPulseFeedbackLabel => SelectionRewards.LastLevelUpPulseFeedbackLabel;
         public int SelectedRewardUpgradeCount => DraftSession.SelectedRewardUpgradeCount;
-        public int RewardUpgradeSurgeCount { get; private set; }
-        public int RewardUpgradeSurgeHitCount { get; private set; }
-        public string LastRewardUpgradeSurgeFeedbackLabel { get; private set; } = string.Empty;
-        public int RewardJackpotCount { get; private set; }
-        public int RewardJackpotExperienceGemDropCount { get; private set; }
-        public int RewardJackpotBloodShardDropCount { get; private set; }
-        public int RewardJackpotBloodShardsDropped { get; private set; }
-        public string LastRewardJackpotFeedbackLabel { get; private set; } = string.Empty;
+        public int RewardUpgradeSurgeCount => SelectionRewards.RewardUpgradeSurgeCount;
+        public int RewardUpgradeSurgeHitCount => SelectionRewards.RewardUpgradeSurgeHitCount;
+        public string LastRewardUpgradeSurgeFeedbackLabel => SelectionRewards.LastRewardUpgradeSurgeFeedbackLabel;
+        public int RewardJackpotCount => SelectionRewards.RewardJackpotCount;
+        public int RewardJackpotExperienceGemDropCount => SelectionRewards.RewardJackpotExperienceGemDropCount;
+        public int RewardJackpotBloodShardDropCount => SelectionRewards.RewardJackpotBloodShardDropCount;
+        public int RewardJackpotBloodShardsDropped => SelectionRewards.RewardJackpotBloodShardsDropped;
+        public string LastRewardJackpotFeedbackLabel => SelectionRewards.LastRewardJackpotFeedbackLabel;
         public int RewardAutoSelectCount => DraftSession.AutoSelectCount;
         public int EndlessThreatSpawnCount => TimedEncounters.EndlessThreatSpawnCount;
-        public int EndlessSurgeActivationCount { get; private set; }
-        public int EndlessSurgeTier { get; private set; }
-        public int EndlessSurgeExperienceGemDropCount { get; private set; }
-        public int EndlessSurgeBloodShardDropCount { get; private set; }
-        public int EndlessSurgePulseHitCount { get; private set; }
-        public string LastEndlessSurgeFeedbackLabel { get; private set; } = string.Empty;
+        public int EndlessSurgeActivationCount => EndlessSurges.EndlessSurgeActivationCount;
+        public int EndlessSurgeTier => EndlessSurges.EndlessSurgeTier;
+        public int EndlessSurgeExperienceGemDropCount => EndlessSurges.EndlessSurgeExperienceGemDropCount;
+        public int EndlessSurgeBloodShardDropCount => EndlessSurges.EndlessSurgeBloodShardDropCount;
+        public int EndlessSurgePulseHitCount => EndlessSurges.EndlessSurgePulseHitCount;
+        public string LastEndlessSurgeFeedbackLabel => EndlessSurges.LastEndlessSurgeFeedbackLabel;
         public int HordeRushSpawnCount => HordeRush.HordeRushSpawnCount;
         public int HordeRushEnemySpawnCount => HordeRush.HordeRushEnemySpawnCount;
         public int HordeRushWarningCount => HordeRush.HordeRushWarningCount;
@@ -1005,12 +1029,12 @@ namespace Deucarian.TemplateGameSurvivors
         public float EvolutionChainSurgeMoveSpeedBonus => BuildSurges.EvolutionChainSurgeMoveSpeedBonus;
         public float EvolutionChainSurgeCooldownMultiplierBonus => BuildSurges.EvolutionChainSurgeCooldownMultiplierBonus;
         public float EvolutionChainSurgePickupRangeBonus => BuildSurges.EvolutionChainSurgePickupRangeBonus;
-        public bool IsEndlessSurgeActive => _endlessSurgeTimer > 0f && EndlessSurgeTier > 0;
-        public float EndlessSurgeRemainingSeconds => Mathf.Max(0f, _endlessSurgeTimer);
-        public float EndlessSurgeDamageBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgeDamageBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
-        public float EndlessSurgeMoveSpeedBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgeMoveSpeedBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
-        public float EndlessSurgeCooldownMultiplierBonus => IsEndlessSurgeActive ? Mathf.Min(0f, CurrentTuning.EndlessSurgeCooldownMultiplierBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
-        public float EndlessSurgePickupRangeBonus => IsEndlessSurgeActive ? Mathf.Max(0f, CurrentTuning.EndlessSurgePickupRangeBonus) * ResolveEndlessSurgeIntensityMultiplier() : 0f;
+        public bool IsEndlessSurgeActive => EndlessSurges.IsEndlessSurgeActive;
+        public float EndlessSurgeRemainingSeconds => EndlessSurges.EndlessSurgeRemainingSeconds;
+        public float EndlessSurgeDamageBonus => EndlessSurges.EndlessSurgeDamageBonus;
+        public float EndlessSurgeMoveSpeedBonus => EndlessSurges.EndlessSurgeMoveSpeedBonus;
+        public float EndlessSurgeCooldownMultiplierBonus => EndlessSurges.EndlessSurgeCooldownMultiplierBonus;
+        public float EndlessSurgePickupRangeBonus => EndlessSurges.EndlessSurgePickupRangeBonus;
         public int EndlessExplorationBonusTier => ExplorationBonuses.Tier;
         public int BonusBloodShardsEarnedThisRun => RunRewards.BonusBloodShards;
         public int BonusLegacyExperienceEarnedThisRun => RunRewards.BonusLegacyExperience;
@@ -2118,23 +2142,6 @@ namespace Deucarian.TemplateGameSurvivors
             LastEvolutionGoalFeedbackLabel = string.Empty;
             EvolutionReadyFeedbackCount = 0;
             LastEvolutionReadyFeedbackLabel = string.Empty;
-            LevelUpPulseCount = 0;
-            LevelUpPulseHitCount = 0;
-            LastLevelUpPulseFeedbackLabel = string.Empty;
-            RewardUpgradeSurgeCount = 0;
-            RewardUpgradeSurgeHitCount = 0;
-            LastRewardUpgradeSurgeFeedbackLabel = string.Empty;
-            RewardJackpotCount = 0;
-            RewardJackpotExperienceGemDropCount = 0;
-            RewardJackpotBloodShardDropCount = 0;
-            RewardJackpotBloodShardsDropped = 0;
-            LastRewardJackpotFeedbackLabel = string.Empty;
-            EndlessSurgeActivationCount = 0;
-            EndlessSurgeTier = 0;
-            EndlessSurgeExperienceGemDropCount = 0;
-            EndlessSurgeBloodShardDropCount = 0;
-            EndlessSurgePulseHitCount = 0;
-            LastEndlessSurgeFeedbackLabel = string.Empty;
             LastClassUnlockRewardFeedbackLabel = string.Empty;
             _classUnlockRewardBanner.Reset();
             PlayerDamageFeedbackCount = 0;
@@ -2198,13 +2205,14 @@ namespace Deucarian.TemplateGameSurvivors
             HordeRush.Reset();
             KillStreakRewards.Reset();
             BuildSurges.Reset();
+            SelectionRewards.Reset();
             ExperienceRhythm.Reset();
             _rewardBanner.Reset();
             _streakRewardBanner.Reset();
             SwarmSpawning.Reset();
             _pickupMagnetPulseTimer = ResolvePickupMagnetPulseIntervalSeconds();
             Traversal.Reset();
-            _endlessSurgeTimer = 0f;
+            EndlessSurges.Reset();
             _announcedEvolutionGoalUpgradeIds.Clear();
             _announcedEvolutionReadyUpgradeIds.Clear();
             _evolutionReadyBanner.Reset();
@@ -4954,147 +4962,8 @@ namespace Deucarian.TemplateGameSurvivors
                 selectionKind == SurvivorsRewardSelectionKind.BossUpgrade;
         }
 
-        private void TriggerRewardUpgradeSurge(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind selectionKind)
-        {
-            float radius = Mathf.Max(0f, CurrentTuning.RewardUpgradeSurgeRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.RewardUpgradeSurgeDamage);
-            string name = upgrade == null ? ResolveRewardKindLabel(selectionKind) : ResolveUpgradeDisplayName(upgrade.Id);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
 
-                    enemy.ApplyDamage(damage, "survivors.reward.surge");
-                    hitCount++;
-                }
-            }
 
-            RewardUpgradeSurgeCount++;
-            RewardUpgradeSurgeHitCount += hitCount;
-            LastRewardUpgradeSurgeFeedbackLabel = $"{name} Reward Surge: {hitCount} enemies hit";
-            Color accent = selectionKind == SurvivorsRewardSelectionKind.BossUpgrade
-                ? new Color(1f, 0.52f, 0.24f)
-                : new Color(0.36f, 0.82f, 1f);
-            RecordStreakRewardFeedback(LastRewardUpgradeSurgeFeedbackLabel, accent);
-            PlayFeedback(
-                selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? _bossPulse : _levelUpPulse,
-                PlayerPosition,
-                Mathf.Clamp(34 + hitCount * 4, 40, 78),
-                selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? _bossClip : _levelUpClip);
-        }
-
-        private void TriggerLevelUpPulse(RunUpgradeDefinition upgrade)
-        {
-            float radius = Mathf.Max(0f, CurrentTuning.LevelUpPulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.LevelUpPulseDamage);
-            string name = upgrade == null ? "Level Up" : ResolveUpgradeDisplayName(upgrade.Id);
-            int hitCount = 0;
-            if (radius > 0f && damage > 0f)
-            {
-                var targets = new List<SurvivorsEnemyActor>();
-                CollectEnemiesWithinRadius(PlayerPosition, radius, targets);
-                for (int i = 0; i < targets.Count; i++)
-                {
-                    SurvivorsEnemyActor enemy = targets[i];
-                    if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                    {
-                        continue;
-                    }
-
-                    enemy.ApplyDamage(damage, "survivors.level-up.pulse");
-                    hitCount++;
-                }
-            }
-
-            LevelUpPulseCount++;
-            LevelUpPulseHitCount += hitCount;
-            LastLevelUpPulseFeedbackLabel = $"{name} Level Pulse: {hitCount} enemies hit";
-            RecordStreakRewardFeedback(LastLevelUpPulseFeedbackLabel, new Color(1f, 0.84f, 0.32f));
-            PlayFeedback(_levelUpPulse, PlayerPosition, Mathf.Clamp(20 + hitCount * 4, 26, 64), _levelUpClip);
-        }
-
-        private void TriggerRewardJackpot(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind selectionKind)
-        {
-            if (upgrade == null || upgrade.Rarity < RunUpgradeRarity.Rare || !IsRewardUpgradeSelectionKind(selectionKind))
-            {
-                return;
-            }
-
-            int rarityTier = Mathf.Max(0, (int)upgrade.Rarity - (int)RunUpgradeRarity.Rare);
-            int rewardTierBonus = selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? 1 : 0;
-            int gemCount = Mathf.Max(
-                0,
-                CurrentTuning.RewardJackpotExperienceGemBaseCount +
-                rarityTier * Mathf.Max(0, CurrentTuning.RewardJackpotExperienceGemPerRarityTier) +
-                rewardTierBonus);
-            int xpPerGem = Mathf.Max(
-                1,
-                Mathf.RoundToInt(CurrentTuning.EnemyExperienceReward * (2.5f + rarityTier * 0.7f + rewardTierBonus * 0.5f)));
-            int shardAmount = Mathf.Max(
-                0,
-                CurrentTuning.RewardJackpotBloodShardBaseAmount +
-                rarityTier +
-                rewardTierBonus +
-                (upgrade.Rarity >= RunUpgradeRarity.Legendary ? Mathf.Max(0, CurrentTuning.RewardJackpotLegendaryExtraBloodShardAmount) : 0));
-
-            Vector3 origin = PlayerPosition;
-            float cacheRadius = 0.82f + rarityTier * 0.12f;
-            int spawnedGems = 0;
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.35f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * cacheRadius;
-                SurvivorsPickupActor pickup = SpawnPickup(SurvivorsPickupKind.Experience, origin + offset, xpPerGem);
-                if (pickup != null)
-                {
-                    spawnedGems++;
-                    RewardJackpotExperienceGemDropCount++;
-                    StartMajorRewardCacheAttraction(pickup);
-                }
-            }
-
-            int spawnedShardAmount = 0;
-            if (shardAmount > 0)
-            {
-                SurvivorsPickupActor shard = SpawnPickup(SurvivorsPickupKind.BloodShard, origin + new Vector3(0f, 0f, cacheRadius * 0.45f), shardAmount);
-                if (shard != null)
-                {
-                    spawnedShardAmount = shardAmount;
-                    RewardJackpotBloodShardDropCount++;
-                    RewardJackpotBloodShardsDropped += shardAmount;
-                    StartMajorRewardCacheAttraction(shard);
-                }
-            }
-
-            if (spawnedGems <= 0 && spawnedShardAmount <= 0)
-            {
-                return;
-            }
-
-            RewardJackpotCount++;
-            string rewardLabel = ResolveRewardKindLabel(selectionKind);
-            int totalExperience = spawnedGems * xpPerGem;
-            LastRewardJackpotFeedbackLabel = $"{rewardLabel} Jackpot: {upgrade.Rarity} +{totalExperience} XP";
-            if (spawnedShardAmount > 0)
-            {
-                LastRewardJackpotFeedbackLabel += $" +{spawnedShardAmount} {CurrencyRewardLabel}";
-            }
-
-            RecordStreakRewardFeedback(LastRewardJackpotFeedbackLabel, ResolveRarityAccentColor(upgrade.Rarity));
-            PlayFeedback(
-                selectionKind == SurvivorsRewardSelectionKind.BossUpgrade ? _bossPulse : _levelUpPulse,
-                origin,
-                Mathf.Clamp(24 + spawnedGems * 4 + spawnedShardAmount * 3, 32, 86),
-                _pickupClip);
-        }
 
         private void RecordNewlyEligibleEvolutionFeedback()
         {
@@ -5335,111 +5204,10 @@ namespace Deucarian.TemplateGameSurvivors
 
         private void RecordRoamingArenaTravel(Vector3 delta) => Traversal.RecordTravel(delta, State == SurvivorsRunState.Playing);
 
-        private void TryActivateEndlessSurge(SurvivorsEnemyRole role, Vector3 position, int baseExperienceReward)
-        {
-            if (!_runSession.HasClearedVictory || !IsMajorRewardRole(role))
-            {
-                return;
-            }
 
-            float duration = Mathf.Max(0.1f, CurrentTuning.EndlessSurgeDurationSeconds);
-            _endlessSurgeTimer = Mathf.Max(_endlessSurgeTimer, duration);
-            EndlessSurgeActivationCount++;
-            EndlessSurgeTier = Mathf.Max(1, EndlessSurgeTier + 1);
 
-            int threatTier = ResolveEndlessSurgeThreatTier(role);
-            int gemCount = Mathf.Max(0, CurrentTuning.EndlessSurgeExperienceGemCount + threatTier - 1 + Mathf.Min(6, EndlessSurgeTier / 2));
-            int xpPerGem = Mathf.Max(
-                1,
-                Mathf.RoundToInt(Mathf.Max(1, baseExperienceReward) * Mathf.Max(0.1f, CurrentTuning.EndlessSurgeExperienceMultiplier) * (0.35f + threatTier * 0.25f)));
-            int spawnedExperience = 0;
-            float rewardRadius = 1.15f + Mathf.Min(1.3f, gemCount * 0.08f);
-            for (int i = 0; i < gemCount; i++)
-            {
-                float angle = ((i + 0.21f) / Mathf.Max(1, gemCount)) * Mathf.PI * 2f;
-                float laneOffset = 0.14f * (i % 3);
-                Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * (rewardRadius + laneOffset);
-                if (SpawnPickup(SurvivorsPickupKind.Experience, position + offset, xpPerGem) != null)
-                {
-                    spawnedExperience += xpPerGem;
-                    EndlessSurgeExperienceGemDropCount++;
-                }
-            }
 
-            int shardAmount = Mathf.Max(1, CurrentTuning.EndlessSurgeBloodShardAmount + threatTier - 1 + EndlessSurgeTier / 3);
-            if (SpawnPickup(SurvivorsPickupKind.BloodShard, position + new Vector3(-rewardRadius * 0.55f, 0f, rewardRadius * 0.38f), shardAmount) != null)
-            {
-                EndlessSurgeBloodShardDropCount++;
-            }
 
-            int pulseHitCount = TriggerEndlessSurgePulse(position);
-            string label = $"Endless Surge T{EndlessSurgeTier}: {ResolveEndlessSurgeThreatLabel(role)} cleared, +{spawnedExperience} XP, +{shardAmount} {CurrencyRewardLabel}, {pulseHitCount} hit";
-            LastEndlessSurgeFeedbackLabel = label;
-            RecordStreakRewardFeedback(label, new Color(0.52f, 0.84f, 1f));
-            PlayFeedback(_levelUpPulse, position, Mathf.Clamp(32 + pulseHitCount * 5 + threatTier * 6, 42, 96), _pickupClip);
-        }
-
-        private int TriggerEndlessSurgePulse(Vector3 position)
-        {
-            float radius = Mathf.Max(0f, CurrentTuning.EndlessSurgePulseRadius);
-            float damage = Mathf.Max(0f, CurrentTuning.EndlessSurgePulseDamage * ResolveEndlessSurgeIntensityMultiplier());
-            if (radius <= 0f || damage <= 0f)
-            {
-                return 0;
-            }
-
-            int hitCount = 0;
-            var targets = new List<SurvivorsEnemyActor>();
-            CollectEnemiesWithinRadius(position, radius, targets);
-            for (int i = 0; i < targets.Count; i++)
-            {
-                SurvivorsEnemyActor enemy = targets[i];
-                if (enemy == null || !enemy.IsAlive || IsMajorRewardRole(enemy.Role))
-                {
-                    continue;
-                }
-
-                enemy.ApplyDamage(damage, "survivors.endless.surge");
-                hitCount++;
-            }
-
-            EndlessSurgePulseHitCount += hitCount;
-            return hitCount;
-        }
-
-        private float ResolveEndlessSurgeIntensityMultiplier()
-        {
-            return Mathf.Clamp(1f + Mathf.Max(0, EndlessSurgeTier - 1) * 0.16f, 1f, 2.25f);
-        }
-
-        private static int ResolveEndlessSurgeThreatTier(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return 3;
-                case SurvivorsEnemyRole.Miniboss:
-                case SurvivorsEnemyRole.DreadElite:
-                    return 2;
-                default:
-                    return 1;
-            }
-        }
-
-        private static string ResolveEndlessSurgeThreatLabel(SurvivorsEnemyRole role)
-        {
-            switch (role)
-            {
-                case SurvivorsEnemyRole.Boss:
-                    return "Endless Boss";
-                case SurvivorsEnemyRole.Miniboss:
-                    return "Endless Miniboss";
-                case SurvivorsEnemyRole.DreadElite:
-                    return "Endless Dread";
-                default:
-                    return "Endless Elite";
-            }
-        }
 
         private void EnterVictory()
         {
@@ -6078,15 +5846,6 @@ namespace Deucarian.TemplateGameSurvivors
             return highest;
         }
 
-        private void TickEndlessSurge(float deltaTime)
-        {
-            if (_endlessSurgeTimer <= 0f)
-            {
-                return;
-            }
-
-            _endlessSurgeTimer = Mathf.Max(0f, _endlessSurgeTimer - Mathf.Max(0f, deltaTime));
-        }
 
         private static bool CanApplyDamageAugments(string source)
         {
@@ -6414,22 +6173,6 @@ namespace Deucarian.TemplateGameSurvivors
             return $"{index + 1}. Boss Relic: {relic.DisplayName}\n{FormatRelicEffectSummary(relic)}";
         }
 
-        private static string ResolveRewardKindLabel(SurvivorsRewardSelectionKind selectionKind)
-        {
-            switch (selectionKind)
-            {
-                case SurvivorsRewardSelectionKind.LevelUp:
-                    return "Level Up";
-                case SurvivorsRewardSelectionKind.BossRelic:
-                    return "Boss Relic";
-                case SurvivorsRewardSelectionKind.EliteUpgrade:
-                    return "Elite Reward";
-                case SurvivorsRewardSelectionKind.BossUpgrade:
-                    return "Boss Reward";
-                default:
-                    return "Reward";
-            }
-        }
 
         private static Color ResolveRewardButtonBackgroundColor(Color accent)
         {
