@@ -107,6 +107,8 @@ The controller retains its original script GUID, six serialized fields, public m
 
 | Evolution announcement history | `SurvivorsEvolutionAnnouncements` | Ordinal goal/ready announced-ID sets, borrowed build/catalog queries and existing telemetry/presentation callbacks |
 
+| Projectile material lifetime | `SurvivorsProjectileActor` | Only actor-created material copies are released on replacement/final destruction; pool reset retains reusable material |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -192,5 +194,7 @@ Ten cases preserve emitter settings, theme fallback colors, play/audio ordering,
 Nine cases preserve accepted empty JSON defaults, invalid fallback, alternate append semantics, exact selection callback order and external serialized-theme authority.
 
 Nine cases preserve catalog order, goal-to-ready deduplication, record-before-callback semantics, reentry and later entries observing callback mutations. Reset remains Start-only.
+
+Three PlayMode cases exercise actual active-object destruction, borrowed-material survival, pooled material reuse and shader replacement. No renderer borrowed material is destroyed.
 
 This decomposition is in progress. The remaining controller policies and compatibility facade aggregate are still being separated. The legacy controller is not treated as compliant with the 500-line production-source limit merely because new collaborators are below that limit. No numbered behavior split is used.

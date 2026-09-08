@@ -384,6 +384,12 @@ namespace Deucarian.TemplateGameSurvivors
             InstanceId = default;
         }
 
+        private void OnDestroy()
+        {
+            UnityObjectUtility.DestroySafely(_runtimeMaterial);
+            _runtimeMaterial = null;
+        }
+
         private void ApplyPresentation(Color tint)
         {
             if (_renderer == null)
@@ -396,6 +402,7 @@ namespace Deucarian.TemplateGameSurvivors
                 Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
                 if (_runtimeMaterial == null || _runtimeMaterial.shader != shader)
                 {
+                    UnityObjectUtility.DestroySafely(_runtimeMaterial);
                     _runtimeMaterial = new Material(shader);
                 }
 
