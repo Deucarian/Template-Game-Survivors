@@ -42,6 +42,10 @@ The controller retains its original script GUID, six serialized fields, public m
 | Active run build | `SurvivorsRunBuildState` | Owns class-filtered catalog, rank state, first-entry metadata, acquired passive/evolution sets and slot/prerequisite eligibility; typed acquisition callbacks |
 | Draft rarity profiles | `SurvivorsDraftRarityPolicy` | Live authored early/mid/late/reward weights, luck floors and weighted catalog copies with original upgrade effects |
 
+| Draft offer pools | `SurvivorsDraftCatalogPolicy` | Eligible weighted pools, reward rarity fallback and read-only evolution-primer queries |
+| Guaranteed draft choices | `SurvivorsDraftGuaranteePolicy` | Rarity/primer/early-passive priority, duplicate suppression, catalog-ordered evolution locks and stable seed salts |
+| Deterministic offer generation | `SurvivorsDraftOfferGenerator` / `SurvivorsDraftProgress` | Explicit run-progress values plus build/rarity policies; produces offers without applying upgrades or spending charges |
+
 The scene controller composes these owners and forwards existing getters. It does not retain a second mutable copy of their state. The encounter ports expose the operations each coordinator needs; they do not expose the controller itself. The existing actor classes remain public and in the same assembly.
 
 ## Preserved behavior
@@ -71,5 +75,7 @@ Arena tests cover positive/negative cell boundaries, signed cell-key identity, l
 Player tests cover barrier absorption starting contact safety, blocked damage feedback, exactly one clutch on threshold crossing, damage accounting before defeat, actual pickup healing and barrier caps, analog/diagonal movement, dash travel-before-safety-before-pressure ordering, pause/cooldown behavior and segment endpoints. Maximum-health effects retain their existing double precision input. The owner uses the shared Combat resolver and does not duplicate damage formulas.
 
 Build policy tests preserve first matching class gates and the all-rejected catalog fallback, duplicate metadata precedence, full-slot rank upgrades, one passive acquisition callback, weapon ownership checks, reduced evolution rank and passive prerequisites, acquisition callback order and reset boundaries. Rarity tests cover late-before-mid thresholds, live tuning/luck, disabled rarity weights, common floors and effect-preserving catalog copies.
+
+Offer tests cover reward-pool fallback, rarity-before-primer guarantees and duplicate locks, missing-passive requirements, evolution lock precedence and source order, explicit normal versus derived reward locks, deterministic rerolls, disabled pools and each reward seed salt.
 
 This decomposition is in progress. Combat augments and further momentum rewards, full build/draft orchestration, authored binding, major menu/tutorial/result screens, broader HUD text formatting and the diagnostic facade still remain in the controller. Its legacy size is not treated as compliant with the 500-line production-source limit merely because the new collaborators are below that limit. No numbered partial-class split is used.
