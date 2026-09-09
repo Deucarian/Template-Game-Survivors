@@ -1553,44 +1553,59 @@ namespace Deucarian.TemplateGameSurvivors.PlayModeTests
         [UnityTest]
         public IEnumerator SprintRunFiveMinuteProgressionStaysInTargetEnvelope()
         {
-            SurvivorsTemplateController controller = CreateController(startRun: false);
-            controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
-            controller.CurrentTuning.EnemyContactDamage = 0f;
-            controller.CurrentTuning.MinibossSpawnTimeSeconds = 999f;
-            controller.CurrentTuning.BossSpawnTimeSeconds = 999f;
-            controller.StartRun();
-            yield return null;
-
-            const float deltaTime = 0.2f;
-            int guard = 0;
-            while (controller.State != SurvivorsRunState.Victory && controller.RunTimeSeconds < 300f && guard++ < 2400)
+            float previousCaptureDeltaTime = Time.captureDeltaTime;
+            SurvivorsTemplateController controller = null;
+            try
             {
-                if (controller.State == SurvivorsRunState.LevelUp)
+                // Use one explicit simulation clock; advance the original camera callback at the existing frame yields.
+                Time.captureDeltaTime = 0.02f;
+                controller = CreateController(startRun: false);
+                controller.enabled = false;
+                controller.ApplyPacingProfileForTest(SurvivorsPacingProfile.SprintRun);
+                controller.CurrentTuning.EnemyContactDamage = 0f;
+                controller.CurrentTuning.MinibossSpawnTimeSeconds = 999f;
+                controller.CurrentTuning.BossSpawnTimeSeconds = 999f;
+                controller.StartRun();
+                yield return null;
+                controller.SendMessage("LateUpdate", SendMessageOptions.RequireReceiver);
+
+                const float deltaTime = 0.2f;
+                int guard = 0;
+                while (controller.State != SurvivorsRunState.Victory && controller.RunTimeSeconds < 300f && guard++ < 2400)
                 {
-                    ResolveOpenChoiceForLongRunSmoke(controller);
-                    yield return null;
-                    continue;
+                    if (controller.State == SurvivorsRunState.LevelUp)
+                    {
+                        ResolveOpenChoiceForLongRunSmoke(controller);
+                        yield return null;
+                        controller.SendMessage("LateUpdate", SendMessageOptions.RequireReceiver);
+                        continue;
+                    }
+
+                    float elapsed = controller.RunTimeSeconds;
+                    Vector2 movement = new Vector2(Mathf.Sin(elapsed * 0.8f), Mathf.Cos(elapsed * 0.63f));
+                    controller.Simulate(deltaTime, movement);
+                    if (guard % 10 == 0)
+                    {
+                        yield return null;
+                        controller.SendMessage("LateUpdate", SendMessageOptions.RequireReceiver);
+                    }
                 }
 
-                float elapsed = controller.RunTimeSeconds;
-                Vector2 movement = new Vector2(Mathf.Sin(elapsed * 0.8f), Mathf.Cos(elapsed * 0.63f));
-                controller.Simulate(deltaTime, movement);
-                if (guard % 10 == 0)
-                {
-                    yield return null;
-                }
+                string pacing = $"level={controller.Level}, levelDrafts={controller.LevelUpDraftOpenCount}, totalDrafts={controller.DraftOpenCount}, first={controller.FirstLevelUpDraftTimeSeconds:0.0}, L1={controller.LevelAtOneMinute}, L2={controller.LevelAtTwoMinutes}, L3={controller.LevelAtThreeMinutes}, L4={controller.LevelAtFourMinutes}, L5={controller.LevelAtFiveMinutes}, xp={controller.ExperienceCollected}, overflow={controller.ThrottledExperienceOverflow}";
+                TestContext.WriteLine(pacing);
+                Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.GreaterThanOrEqualTo(22.5f).And.LessThanOrEqualTo(40f), pacing);
+                Assert.That(controller.LevelAtOneMinute, Is.InRange(2, 4), pacing);
+                Assert.That(controller.LevelAtTwoMinutes, Is.InRange(5, 7), pacing);
+                Assert.That(controller.LevelAtThreeMinutes, Is.InRange(8, 10), pacing);
+                Assert.That(controller.LevelAtFourMinutes, Is.InRange(11, 14), pacing);
+                Assert.That(controller.LevelAtFiveMinutes, Is.InRange(14, 18), pacing);
+                Assert.That(controller.LevelUpDraftOpenCount, Is.InRange(10, 16), pacing);
             }
-
-            string pacing = $"level={controller.Level}, levelDrafts={controller.LevelUpDraftOpenCount}, totalDrafts={controller.DraftOpenCount}, first={controller.FirstLevelUpDraftTimeSeconds:0.0}, L1={controller.LevelAtOneMinute}, L2={controller.LevelAtTwoMinutes}, L3={controller.LevelAtThreeMinutes}, L4={controller.LevelAtFourMinutes}, L5={controller.LevelAtFiveMinutes}, xp={controller.ExperienceCollected}, overflow={controller.ThrottledExperienceOverflow}";
-            Assert.That(controller.FirstLevelUpDraftTimeSeconds, Is.GreaterThanOrEqualTo(22.5f).And.LessThanOrEqualTo(40f), pacing);
-            Assert.That(controller.LevelAtOneMinute, Is.InRange(2, 4), pacing);
-            Assert.That(controller.LevelAtTwoMinutes, Is.InRange(5, 7), pacing);
-            Assert.That(controller.LevelAtThreeMinutes, Is.InRange(8, 10), pacing);
-            Assert.That(controller.LevelAtFourMinutes, Is.InRange(11, 14), pacing);
-            Assert.That(controller.LevelAtFiveMinutes, Is.InRange(14, 18), pacing);
-            Assert.That(controller.LevelUpDraftOpenCount, Is.InRange(10, 16), pacing);
-
-            Object.Destroy(controller.gameObject);
+            finally
+            {
+                Time.captureDeltaTime = previousCaptureDeltaTime;
+                if (controller != null) Object.Destroy(controller.gameObject);
+            }
         }
 
         [UnityTest]
