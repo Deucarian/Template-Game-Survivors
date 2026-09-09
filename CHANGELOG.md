@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.2] - 2026-09-09
+
+- Register package tooling and navigation actions as shared Control Center pages. Preserve the domain workflow while using Editor-owned submenus, in-window navigation, and UI scaling.
+
 ## Unreleased
 
 - Registered Survivors authoring, validation, and runtime debugger actions with Deucarian Control Center; Package Installer navigation now uses the stable tool registry.
