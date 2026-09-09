@@ -23,7 +23,11 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 GameContentAuthoringWindow.Open,
                 PackageId,
                 searchTerms: new[] { "survivors", "content", "template" },
-                order: 240));
+                order: 240, createPage: GameContentAuthoringWindow.CreatePage));
+            DeucarianToolRegistry.Register(new DeucarianToolDescriptor(
+                "deucarian.template.survivors.debugger", "Survivors Runtime Debugger",
+                "Inspect play-mode tuning and stress controls.", DeucarianControlCenterArea.Developer,
+                SurvivorsRuntimeDebugWindow.Open, PackageId, createPage: SurvivorsRuntimeDebugWindow.CreatePage));
             DeucarianControlCenterRegistry.RegisterCardProvider(new Provider());
         }
 
@@ -62,7 +66,7 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                         new DeucarianControlCenterAction(
                             "open-authoring",
                             "Open Authoring",
-                            GameContentAuthoringWindow.Open),
+                            GameContentAuthoringWindow.Open, navigationToolId: DeucarianToolIds.GameContentAuthoring),
                         new DeucarianControlCenterAction(
                             "validate",
                             "Validate Content",
@@ -74,17 +78,17 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                     PackageId + ".developer",
                     DeucarianControlCenterArea.Developer,
                     "Survivors Runtime Debugger",
-                    "Open the standalone play-mode tuning and stress controls.",
+                    "Inspect play-mode tuning and stress controls in this workspace.",
                     PackageId,
                     DeucarianControlCenterStatus.Info,
-                    "Standalone debugger available",
+                    "Debugger available",
                     order: 240,
                     actions: new[]
                     {
                         new DeucarianControlCenterAction(
                             "open-debugger",
                             "Open Runtime Debugger",
-                            SurvivorsRuntimeDebugWindow.Open)
+                            SurvivorsRuntimeDebugWindow.Open, navigationToolId: "deucarian.template.survivors.debugger")
                     },
                     searchTerms: new[] { "survivors", "debugger", "playmode" });
             }

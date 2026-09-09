@@ -21,10 +21,14 @@ namespace Deucarian.TemplateGameSurvivors.Editor
         public static void Open()
         {
             SurvivorsRuntimeDebugWindow window =
-                GetWindow<SurvivorsRuntimeDebugWindow>("Survivors Debug");
+                DeucarianEditorWindowPages.GetStandalone<SurvivorsRuntimeDebugWindow>("Survivors Debug");
             window.minSize = new Vector2(560f, 520f);
             window.Show();
         }
+
+        public static IDeucarianEditorPage CreatePage() =>
+            DeucarianEditorImGuiPage.Create<SurvivorsRuntimeDebugWindow>(
+                "deucarian.template.survivors.debugger", window => window.OnGUI());
 
         private void OnGUI()
         {
