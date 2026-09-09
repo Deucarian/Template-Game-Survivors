@@ -14,7 +14,7 @@
 - `SurvivorsRunState`
 - `SurvivorsPickupKind`
 
-`Runtime/SurvivorsTemplateController.cs` contains the run composition root, local actors, and local genre adapters:
+`Runtime/SurvivorsTemplateController.cs` remains the serialized run composition root and public compatibility facade. The original source holds serialized configuration and ordered owner references; named partial declarations hold domain bindings and compatibility forwards. Its composed responsibilities and remaining legacy-file debt are documented in `runtime-composition.md`. Enemy, projectile, pickup, and spawn-pose resolver types now have their own source files while retaining their namespace, assembly, public identity, and gameplay contracts. The template as a whole provides:
 
 - `SurvivorsTemplateController`
 - `SurvivorsEnemyActor`
@@ -109,7 +109,7 @@
 `Runtime/SurvivorsRelicsAndClasses.cs` contains local Survivors reward/class runtime helpers and fallback definitions:
 
 - deterministic relic draft selection and fallback boss relic definitions for unbound hosts
-- current-run relic ownership is tracked by the controller so boss relic drafts stop repeating selected relics
+- current-run relic ownership is tracked by `SurvivorsRelicInventory`; `SurvivorsDraftSession` uses that single inventory so boss relic drafts stop repeating selected relics
 - fallback class definitions, class-owned starting weapon loadouts, starting stat modifiers, and class-gated run-upgrade availability rules when no authored class library is bound
 - selected/unlocked class library helpers
 
