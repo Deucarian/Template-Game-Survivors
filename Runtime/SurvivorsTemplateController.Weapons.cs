@@ -94,7 +94,7 @@ namespace Deucarian.TemplateGameSurvivors
             => new SurvivorsWeaponLoadoutSession(new SurvivorsWeaponLoadoutRuntime(this, definitions));
 
         void ISurvivorsRunWeaponPort.WeaponAdded(SurvivorsWeaponArchetypeDefinition definition)
-            => TryTriggerWeaponLoadoutSurge(definition);
+            => BuildSurges.TryTriggerWeaponLoadoutSurge(definition);
 
         SurvivorsWeaponBonusValues ISurvivorsRunWeaponPort.DamageBonuses => new SurvivorsWeaponBonusValues(
             DamageBonus,

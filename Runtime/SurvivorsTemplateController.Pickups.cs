@@ -188,7 +188,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             int gained = _experienceProgression.Gain(amount,
                 ExperienceGainMultiplierBonus, PassiveLoadoutSurgeExperienceGainMultiplierBonus, CurrentTuning);
-            TryOpenPendingLevelUpDraft();
+            DraftSession.TryOpenPending();
             return gained;
         }
     }

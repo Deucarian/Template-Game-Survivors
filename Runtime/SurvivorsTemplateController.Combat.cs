@@ -42,7 +42,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         void ISurvivorsEnemyDefeatPort.SpawnExperience(Vector3 position, int amount) => SpawnPickup(SurvivorsPickupKind.Experience, position, amount);
 
-        void ISurvivorsEnemyDefeatPort.RegisterStreak(Vector3 position) => RegisterKillStreak(position);
+        void ISurvivorsEnemyDefeatPort.RegisterStreak(Vector3 position) => KillStreakRewards.RegisterKillStreak(position);
 
         void ISurvivorsEnemyDefeatPort.ShowDeath(Vector3 position, SurvivorsEnemyRole role, float radius) => RecordEnemyDeathEffect(position, role, radius);
 
@@ -53,7 +53,7 @@ namespace Deucarian.TemplateGameSurvivors
             RecordMajorRewardDropFeedback(position, role, radius);
             SpawnMajorRewardPickupCache(position, role, radius);
             TryDropHealthPickup(position + new Vector3(radius * 0.7f, 0f, radius * 0.35f));
-            TryActivateEndlessSurge(role, position, xp);
+            EndlessSurges.TryActivateEndlessSurge(role, position, xp);
         }
 
         void ISurvivorsEnemyDefeatPort.PlayDeath(Vector3 position, int burst) => PlayFeedback(_killPulse, position, burst, _killClip, AudioEventEnemyDeath, 0.08f);
@@ -62,9 +62,9 @@ namespace Deucarian.TemplateGameSurvivors
 
         void ISurvivorsEnemyDefeatPort.GrantMajorEnemyReward(SurvivorsEnemyRole role) => GrantMajorEnemyReward(role);
 
-        bool ISurvivorsEnemyDefeatPort.OpenUpgradeRewardDraft(SurvivorsEnemyRole role) => OpenUpgradeRewardDraft(role, requireEvolutionChoice: false);
+        bool ISurvivorsEnemyDefeatPort.OpenUpgradeRewardDraft(SurvivorsEnemyRole role) => DraftSession.OpenReward(role, requireEvolutionChoice: false);
 
-        void ISurvivorsEnemyDefeatPort.OpenBossRelicDraft() => OpenBossRelicDraft();
+        void ISurvivorsEnemyDefeatPort.OpenBossRelicDraft() => DraftSession.OpenRelic();
 
         void ISurvivorsEnemyDefeatPort.EnterVictory() => EnterVictory();
 

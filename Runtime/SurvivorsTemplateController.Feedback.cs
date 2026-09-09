@@ -52,13 +52,13 @@ namespace Deucarian.TemplateGameSurvivors
 
         string ISurvivorsRewardFeedbackPort.ResolveUpgradeDisplayName(RunUpgradeId id) => ResolveUpgradeDisplayName(id);
 
-        SurvivorsRunUpgradeCategory ISurvivorsRewardFeedbackPort.ResolveCurrentUpgradeCategory(RunUpgradeDefinition selected) => ResolveCurrentUpgradeCategory(selected);
+        SurvivorsRunUpgradeCategory ISurvivorsRewardFeedbackPort.ResolveCurrentUpgradeCategory(RunUpgradeDefinition selected) => RunBuild.ResolveCurrentUpgradeCategory(selected);
 
-        string ISurvivorsRewardFeedbackPort.ResolveUpgradeAffectedLabel(RunUpgradeDefinition selected) => ResolveUpgradeAffectedLabel(selected);
+        string ISurvivorsRewardFeedbackPort.ResolveUpgradeAffectedLabel(RunUpgradeDefinition selected) => DraftCards.ResolveUpgradeAffectedLabel(selected);
 
-        bool ISurvivorsRewardFeedbackPort.IsEvolutionUpgrade(RunUpgradeDefinition selected) => IsEvolutionUpgrade(selected);
+        bool ISurvivorsRewardFeedbackPort.IsEvolutionUpgrade(RunUpgradeDefinition selected) => DraftOffers.Catalogs.IsEvolutionUpgrade(selected);
 
-        string ISurvivorsRewardFeedbackPort.FormatRelicEffectSummary(SurvivorsRelicDefinition selected) => FormatRelicEffectSummary(selected);
+        string ISurvivorsRewardFeedbackPort.FormatRelicEffectSummary(SurvivorsRelicDefinition selected) => DraftCards.FormatRelicEffectSummary(selected);
 
         float ISurvivorsRewardFeedbackPort.RunTimeSeconds => RunTimeSeconds;
 

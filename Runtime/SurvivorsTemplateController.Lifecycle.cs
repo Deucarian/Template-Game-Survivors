@@ -98,21 +98,21 @@ namespace Deucarian.TemplateGameSurvivors
                 frame => HordeRush.TickHordeRushEvents(),
                 frame => PlayerVitals.TickSafety(frame.DeltaTime),
                 frame => PlayerMotion.TickCooldown(frame.DeltaTime),
-                frame => TickKillStreak(frame.DeltaTime),
-                frame => TickStreakSurge(frame.DeltaTime),
+                frame => KillStreakRewards.TickKillStreak(frame.DeltaTime),
+                frame => KillStreakRewards.TickStreakSurge(frame.DeltaTime),
                 frame => RoamingCaches.TickRoamingCacheSurge(frame.DeltaTime),
                 frame => ShrineTrials.TickArenaShrineSurge(frame.DeltaTime),
                 frame => Waystones.TickWaystoneFocus(frame.DeltaTime),
                 frame => Waystones.TickWaystoneChainSurge(frame.DeltaTime),
                 frame => HordeRush.TickHordeRushClearSurge(frame.DeltaTime),
-                frame => TickWeaponLoadoutSurge(frame.DeltaTime),
-                frame => TickPassiveLoadoutSurge(frame.DeltaTime),
-                frame => TickBossRelicSurge(frame.DeltaTime),
+                frame => BuildSurges.TickWeaponLoadoutSurge(frame.DeltaTime),
+                frame => BuildSurges.TickPassiveLoadoutSurge(frame.DeltaTime),
+                frame => BuildSurges.TickBossRelicSurge(frame.DeltaTime),
                 frame => TickPayloadHazardChain(frame.DeltaTime),
-                frame => TickGemRush(frame.DeltaTime),
+                frame => ExperienceRhythm.TickGemRush(frame.DeltaTime),
                 frame => TickPickupMagnetPulse(frame.DeltaTime),
-                frame => TickEvolutionChainSurge(frame.DeltaTime),
-                frame => TickEndlessSurge(frame.DeltaTime),
+                frame => BuildSurges.TickEvolutionChainSurge(frame.DeltaTime),
+                frame => EndlessSurges.TickEndlessSurge(frame.DeltaTime),
                 frame => PlayerVitals.TickBarrier(frame.DeltaTime),
                 frame => PlayerMotion.MovePlayer(frame.Movement, frame.DeltaTime),
                 frame => TickArenaWaystoneDiscoveries(),
@@ -161,7 +161,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         void ISurvivorsRunLifecyclePort.InitializeRun() => InitializeNewRun();
 
-        void ISurvivorsRunLifecyclePort.ClearDrafts() => ClearRewardDrafts();
+        void ISurvivorsRunLifecyclePort.ClearDrafts() => DraftSession.Clear();
 
         void ISurvivorsRunLifecyclePort.ApplyPacing(SurvivorsPacingProfile profile) => ApplyPacingProfile(profile, restartRun: false);
 
@@ -295,7 +295,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             EnsureRunStartedForTest();
             _experienceProgression.QueueDebugLevelUp();
-            OpenLevelUpDraft();
+            DraftSession.OpenLevelUp();
         }
 
         public void DebugApplyPacingProfile(SurvivorsPacingProfile profile)
@@ -310,7 +310,7 @@ namespace Deucarian.TemplateGameSurvivors
             var lockedChoices = string.IsNullOrWhiteSpace(upgradeId)
                 ? null
                 : new[] { new RunUpgradeId(upgradeId) };
-            OpenLevelUpDraft(lockedChoices);
+            DraftSession.OpenLevelUp(lockedChoices);
         }
 
         private void EnsureRunStartedForTest()

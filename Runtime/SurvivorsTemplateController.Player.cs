@@ -103,7 +103,7 @@ namespace Deucarian.TemplateGameSurvivors
         {
             GrantRunRewards(victory: false);
             _runSession.Defeat();
-            ClearRewardDrafts();
+            DraftSession.Clear();
             PlayFeedback(_bossPulse, PlayerPosition, 34, _dangerClip, AudioEventDefeat, 0.5f);
         }
 

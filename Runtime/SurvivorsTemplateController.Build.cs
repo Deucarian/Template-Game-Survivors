@@ -33,24 +33,6 @@ namespace Deucarian.TemplateGameSurvivors
 
         private SurvivorsBuildSurgeRewards BuildSurges => _buildSurges ?? (_buildSurges = new SurvivorsBuildSurgeRewards(RunBuild, this));
 
-        private void TriggerWeaponEvolutionSurge(RunUpgradeDefinition upgrade) => BuildSurges.TriggerWeaponEvolutionSurge(upgrade);
-
-        private void TriggerEvolutionChainSurge(RunUpgradeDefinition upgrade) => BuildSurges.TriggerEvolutionChainSurge(upgrade);
-
-        private void TryTriggerWeaponLoadoutSurge(SurvivorsWeaponArchetypeDefinition weapon) => BuildSurges.TryTriggerWeaponLoadoutSurge(weapon);
-
-        private void TryTriggerPassiveLoadoutSurge(RunUpgradeDefinition passive) => BuildSurges.TryTriggerPassiveLoadoutSurge(passive);
-
-        private void TriggerBossRelicSurge(SurvivorsRelicDefinition relic) => BuildSurges.TriggerBossRelicSurge(relic);
-
-        private void TickWeaponLoadoutSurge(float deltaTime) => BuildSurges.TickWeaponLoadoutSurge(deltaTime);
-
-        private void TickPassiveLoadoutSurge(float deltaTime) => BuildSurges.TickPassiveLoadoutSurge(deltaTime);
-
-        private void TickBossRelicSurge(float deltaTime) => BuildSurges.TickBossRelicSurge(deltaTime);
-
-        private void TickEvolutionChainSurge(float deltaTime) => BuildSurges.TickEvolutionChainSurge(deltaTime);
-
         SurvivorsTemplateTuning ISurvivorsBuildSurgePort.Tuning => CurrentTuning;
 
         Vector3 ISurvivorsBuildSurgePort.PlayerPosition => PlayerPosition;
@@ -61,35 +43,15 @@ namespace Deucarian.TemplateGameSurvivors
 
         int ISurvivorsBuildSurgePort.RecallGems() => StartMagnetRecall();
 
-        Color ISurvivorsBuildSurgePort.RelicAccent(SurvivorsRelicDefinition relic) => ResolveRelicAccentColor(relic);
+        Color ISurvivorsBuildSurgePort.RelicAccent(SurvivorsRelicDefinition relic) => SurvivorsDraftCardFactory.ResolveRelicAccentColor(relic);
 
         void ISurvivorsBuildSurgePort.ShowFeedback(string label, Color color) => RecordStreakRewardFeedback(label, color);
 
         void ISurvivorsBuildSurgePort.PlayPulse(int count, bool boss) => PlayFeedback(boss ? _bossPulse : _levelUpPulse, PlayerPosition, count, boss ? _bossClip : _levelUpClip);
 
-        private bool IsEvolutionUpgrade(RunUpgradeDefinition definition) => DraftOffers.Catalogs.IsEvolutionUpgrade(definition);
-
-        private bool TryResolveEvolutionMissingPassive(RunUpgradeDefinition evolution, out RunUpgradeDefinition passive) => DraftOffers.Catalogs.TryResolveEvolutionMissingPassive(evolution, out passive);
-
-        private int CountEvolutionChoices(IReadOnlyList<RunUpgradeDefinition> definitions) => DraftOffers.Catalogs.CountEvolutionChoices(definitions);
-
-        private IReadOnlyList<RunUpgradeId> CreateEligibleEvolutionChoiceLocks(int maxCount) => DraftOffers.Guarantees.CreateEligibleEvolutionChoiceLocks(maxCount);
-
         private SurvivorsRunBuildState RunBuild => _runBuild ?? (_runBuild = new SurvivorsRunBuildState(this));
 
-        private bool TryGetRunUpgrade(string id, out RunUpgradeDefinition definition) => RunBuild.TryGetRunUpgrade(id, out definition);
-
-        private bool TryGetUpgradeMetadata(string id, out SurvivorsRunUpgradeMetadata metadata) => RunBuild.TryGetUpgradeMetadata(id, out metadata);
-
         private string ResolveUpgradeDisplayName(RunUpgradeId id) => RunBuild.ResolveUpgradeDisplayName(id);
-
-        private int ResolveRequiredUpgradeRank(SurvivorsRunUpgradeMetadata metadata) => RunBuild.ResolveRequiredUpgradeRank(metadata);
-
-        private bool IsUpgradeEligibleForCurrentBuild(RunUpgradeDefinition upgrade) => RunBuild.IsUpgradeEligibleForCurrentBuild(upgrade);
-
-        private SurvivorsRunUpgradeCategory ResolveCurrentUpgradeCategory(RunUpgradeDefinition upgrade) => RunBuild.ResolveCurrentUpgradeCategory(upgrade);
-
-        private void RecordRunBuildSelection(RunUpgradeDefinition upgrade) => RunBuild.RecordRunBuildSelection(upgrade);
 
         SurvivorsTemplateTuning ISurvivorsRunBuildPort.Tuning => CurrentTuning;
 
@@ -99,14 +61,14 @@ namespace Deucarian.TemplateGameSurvivors
 
         void ISurvivorsRunBuildPort.AddWeapon(string id) => TryAddWeaponToLoadout(id);
 
-        void ISurvivorsRunBuildPort.PassiveAdded(RunUpgradeDefinition upgrade) => TryTriggerPassiveLoadoutSurge(upgrade);
+        void ISurvivorsRunBuildPort.PassiveAdded(RunUpgradeDefinition upgrade) => BuildSurges.TryTriggerPassiveLoadoutSurge(upgrade);
 
         void ISurvivorsRunBuildPort.RecordEvolutionTime() => Telemetry.Record(SurvivorsRunMetric.FirstEvolutionAcquired, RunTimeSeconds);
 
         void ISurvivorsRunBuildPort.EvolutionAdded(RunUpgradeDefinition upgrade)
         {
-            TriggerWeaponEvolutionSurge(upgrade);
-            TriggerEvolutionChainSurge(upgrade);
+            BuildSurges.TriggerWeaponEvolutionSurge(upgrade);
+            BuildSurges.TriggerEvolutionChainSurge(upgrade);
         }
 
         private SurvivorsUpgradeModifiers UpgradeModifiers => _upgradeModifiers ?? (_upgradeModifiers = new SurvivorsUpgradeModifiers(this));
@@ -318,21 +280,21 @@ namespace Deucarian.TemplateGameSurvivors
         public bool IsUpgradeEligibleInCurrentBuildForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
-            return TryGetRunUpgrade(upgradeId, out RunUpgradeDefinition upgrade) && IsUpgradeEligibleForCurrentBuild(upgrade);
+            return RunBuild.TryGetRunUpgrade(upgradeId, out RunUpgradeDefinition upgrade) && RunBuild.IsUpgradeEligibleForCurrentBuild(upgrade);
         }
 
         public SurvivorsRunUpgradeCategory GetUpgradeCategoryForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
-            return TryGetRunUpgrade(upgradeId, out RunUpgradeDefinition upgrade)
-                ? ResolveCurrentUpgradeCategory(upgrade)
+            return RunBuild.TryGetRunUpgrade(upgradeId, out RunUpgradeDefinition upgrade)
+                ? RunBuild.ResolveCurrentUpgradeCategory(upgrade)
                 : SurvivorsRunUpgradeCategory.WeaponUpgrade;
         }
 
         public string GetUpgradeDescriptionForTest(string upgradeId)
         {
             EnsureRunStartedForTest();
-            return TryGetUpgradeMetadata(upgradeId, out SurvivorsRunUpgradeMetadata metadata)
+            return RunBuild.TryGetUpgradeMetadata(upgradeId, out SurvivorsRunUpgradeMetadata metadata)
                 ? metadata.Description
                 : ResolveUpgradeDisplayName(new RunUpgradeId(upgradeId));
         }
@@ -367,7 +329,7 @@ namespace Deucarian.TemplateGameSurvivors
         private void ApplyUpgrade(RunUpgradeDefinition upgrade)
         {
             UpgradeModifiers.Apply(upgrade);
-            RecordRunBuildSelection(upgrade);
+            RunBuild.RecordRunBuildSelection(upgrade);
             RecordNewlyEligibleEvolutionFeedback();
         }
     }

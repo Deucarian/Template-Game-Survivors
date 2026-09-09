@@ -27,27 +27,23 @@ namespace Deucarian.TemplateGameSurvivors
     // Draft choice, selection and reward header bindings.
     public sealed partial class SurvivorsTemplateController
     {
-        private static string ResolveRewardKindLabel(SurvivorsRewardSelectionKind kind) => SurvivorsDraftSelectionRewards.ResolveRewardKindLabel(kind);
-
-        private static RunUpgradeRarity ResolveHighestRarity(IReadOnlyList<RunUpgradeDefinition> choices) => SurvivorsRewardFeedbackHistory.ResolveHighestRarity(choices);
-
         private SurvivorsDraftFeedback DraftFeedback => _draftFeedback ?? (_draftFeedback = new SurvivorsDraftFeedback(this));
 
         void ISurvivorsDraftFeedbackPort.RecordSelection(SurvivorsRewardSelectionKind kind, RunUpgradeDefinition selected) => RecordRewardSelectionFeedback(kind, selected);
 
         void ISurvivorsDraftFeedbackPort.PlayChoiceAudio() => PlayAudioEvent(AudioEventDraftChoiceSelected, _levelUpClip, 0.06f);
 
-        bool ISurvivorsDraftFeedbackPort.IsEvolution(RunUpgradeDefinition selected) => IsEvolutionUpgrade(selected);
+        bool ISurvivorsDraftFeedbackPort.IsEvolution(RunUpgradeDefinition selected) => DraftOffers.Catalogs.IsEvolutionUpgrade(selected);
 
         void ISurvivorsDraftFeedbackPort.PlayEvolutionAudio() => PlayAudioEvent(AudioEventEvolution, _levelUpClip, 0.08f);
 
-        void ISurvivorsDraftFeedbackPort.TriggerLevelPulse(RunUpgradeDefinition selected) => TriggerLevelUpPulse(selected);
+        void ISurvivorsDraftFeedbackPort.TriggerLevelPulse(RunUpgradeDefinition selected) => SelectionRewards.TriggerLevelUpPulse(selected);
 
         bool ISurvivorsDraftFeedbackPort.IsRewardUpgradeKind(SurvivorsRewardSelectionKind kind) => IsRewardUpgradeSelectionKind(kind);
 
-        void ISurvivorsDraftFeedbackPort.TriggerJackpot(RunUpgradeDefinition selected, SurvivorsRewardSelectionKind kind) => TriggerRewardJackpot(selected, kind);
+        void ISurvivorsDraftFeedbackPort.TriggerJackpot(RunUpgradeDefinition selected, SurvivorsRewardSelectionKind kind) => SelectionRewards.TriggerRewardJackpot(selected, kind);
 
-        void ISurvivorsDraftFeedbackPort.TriggerSurge(RunUpgradeDefinition selected, SurvivorsRewardSelectionKind kind) => TriggerRewardUpgradeSurge(selected, kind);
+        void ISurvivorsDraftFeedbackPort.TriggerSurge(RunUpgradeDefinition selected, SurvivorsRewardSelectionKind kind) => SelectionRewards.TriggerRewardUpgradeSurge(selected, kind);
 
         void ISurvivorsDraftFeedbackPort.RecordFirstLevelUpDraft() => Telemetry.Record(SurvivorsRunMetric.FirstLevelUpDraft, RunTimeSeconds);
 
@@ -119,19 +115,9 @@ namespace Deucarian.TemplateGameSurvivors
             PickupMagnetPulseMinimumIntervalSeconds = CurrentTuning.PickupMagnetPulseMinimumIntervalSeconds,
         };
 
-        private string ResolveUpgradeAffectedLabel(RunUpgradeDefinition choice) => DraftCards.ResolveUpgradeAffectedLabel(choice);
-
-        private string FormatRelicEffectSummary(SurvivorsRelicDefinition relic) => DraftCards.FormatRelicEffectSummary(relic);
-
-        private static string FormatUpgradeCategoryLabel(SurvivorsRunUpgradeCategory category) => SurvivorsDraftCardFactory.FormatUpgradeCategoryLabel(category);
-
-        private static Color ResolveRarityAccentColor(RunUpgradeRarity rarity) => SurvivorsDraftCardFactory.ResolveRarityAccentColor(rarity);
-
-        private static Color ResolveRelicAccentColor(SurvivorsRelicDefinition relic) => SurvivorsDraftCardFactory.ResolveRelicAccentColor(relic);
-
         private SurvivorsRelicInventory RelicInventory => _relicInventory ?? (_relicInventory = new SurvivorsRelicInventory(
             () => { EnsureClassLibraryLoaded(); return _relicDefinitions; }, ApplyRelic,
-            selected => { RecordRelicSelectionFeedback(selected); TriggerBossRelicSurge(selected); }));
+            selected => { RecordRelicSelectionFeedback(selected); BuildSurges.TriggerBossRelicSurge(selected); }));
 
         private SurvivorsDraftSession DraftSession => _draftSession ?? (_draftSession = new SurvivorsDraftSession(
             RunBuild, DraftOffers, RelicInventory, _runSession, _experienceProgression, this));
@@ -146,19 +132,7 @@ namespace Deucarian.TemplateGameSurvivors
 
         public bool BanishDraftChoice(int index) => DraftSession.Banish(index);
 
-        private void ClearRewardDrafts() => DraftSession.Clear();
-
-        private bool TryOpenPendingLevelUpDraft() => DraftSession.TryOpenPending();
-
-        private void OpenLevelUpDraft(IReadOnlyList<RunUpgradeId> lockedChoices = null) => DraftSession.OpenLevelUp(lockedChoices);
-
-        private bool OpenUpgradeRewardDraft(SurvivorsEnemyRole role, bool requireEvolutionChoice) => DraftSession.OpenReward(role, requireEvolutionChoice);
-
-        private bool OpenBossRelicDraft() => DraftSession.OpenRelic();
-
         private void TickRewardSelectionTimeout(float deltaTime) => DraftSession.TickTimeout(deltaTime);
-
-        private bool SelectRelic(int index) => DraftSession.SelectRelic(index);
 
         SurvivorsTemplateTuning ISurvivorsDraftSessionPort.Tuning => CurrentTuning;
 
@@ -193,10 +167,6 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsDraftOfferGenerator DraftOffers => _draftOffers ?? (_draftOffers = new SurvivorsDraftOfferGenerator(
             RunBuild, DraftRarity, () => CurrentTuning,
             () => new SurvivorsDraftProgress(CurrentTuning.RunSeed, Level, SelectedUpgradeCount, MinibossKilledCount, BossKilledCount)));
-
-        private RunUpgradeCatalog CreateEligibleDraftCatalog() => DraftOffers.Catalogs.CreateEligibleDraftCatalog(DraftRarity.ResolveNormalDraftRarityProfile(Level));
-
-        private bool DraftContainsEvolution(RunUpgradeDraft draft) => DraftOffers.Catalogs.DraftContainsEvolution(draft);
 
         private SurvivorsDraftRarityPolicy DraftRarity => _draftRarity ?? (_draftRarity = new SurvivorsDraftRarityPolicy(() => CurrentTuning, () => DraftLuckBonus));
 
@@ -295,18 +265,18 @@ namespace Deucarian.TemplateGameSurvivors
         private void TickLevelUpDraftCooldown(float deltaTime)
         {
             _experienceProgression.Tick(deltaTime, CurrentTuning);
-            TryOpenPendingLevelUpDraft();
+            DraftSession.TryOpenPending();
         }
 
         public bool OpenBossRelicDraftForTest()
         {
             EnsureRunStartedForTest();
-            return OpenBossRelicDraft();
+            return DraftSession.OpenRelic();
         }
 
         public bool SelectRelicForTest(int index)
         {
-            return SelectRelic(index);
+            return DraftSession.SelectRelic(index);
         }
 
         public bool SelectDraftHotkeyForTest(int hotkeyNumber)

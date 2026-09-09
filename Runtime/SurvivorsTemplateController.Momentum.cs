@@ -31,16 +31,6 @@ namespace Deucarian.TemplateGameSurvivors
 
         private SurvivorsDraftSelectionRewards SelectionRewards => _selectionRewards ?? (_selectionRewards = new SurvivorsDraftSelectionRewards(RunBuild, this));
 
-        private void TryActivateEndlessSurge(SurvivorsEnemyRole role, Vector3 position, int baseExperienceReward) => EndlessSurges.TryActivateEndlessSurge(role, position, baseExperienceReward);
-
-        private void TickEndlessSurge(float deltaTime) => EndlessSurges.TickEndlessSurge(deltaTime);
-
-        private void TriggerRewardUpgradeSurge(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind kind) => SelectionRewards.TriggerRewardUpgradeSurge(upgrade, kind);
-
-        private void TriggerLevelUpPulse(RunUpgradeDefinition upgrade) => SelectionRewards.TriggerLevelUpPulse(upgrade);
-
-        private void TriggerRewardJackpot(RunUpgradeDefinition upgrade, SurvivorsRewardSelectionKind kind) => SelectionRewards.TriggerRewardJackpot(upgrade, kind);
-
         SurvivorsTemplateTuning ISurvivorsPickupRewardPort.Tuning => CurrentTuning;
 
         Vector3 ISurvivorsPickupRewardPort.PlayerPosition => PlayerPosition;
@@ -66,14 +56,6 @@ namespace Deucarian.TemplateGameSurvivors
         private SurvivorsStreakFeedbackHistory StreakFeedback => _streakFeedback ?? (_streakFeedback = new SurvivorsStreakFeedbackHistory(_streakRewardBanner.Show));
 
         private SurvivorsKillStreakRewards KillStreakRewards => _killStreakRewards ?? (_killStreakRewards = new SurvivorsKillStreakRewards(this));
-
-        private void RegisterKillStreak(Vector3 position) => KillStreakRewards.RegisterKillStreak(position);
-
-        private void TickKillStreak(float deltaTime) => KillStreakRewards.TickKillStreak(deltaTime);
-
-        private void TickStreakSurge(float deltaTime) => KillStreakRewards.TickStreakSurge(deltaTime);
-
-        private void TickGemRush(float deltaTime) => ExperienceRhythm.TickGemRush(deltaTime);
 
         SurvivorsTemplateTuning ISurvivorsStreakRewardPort.Tuning => CurrentTuning;
 
