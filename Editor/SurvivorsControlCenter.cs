@@ -22,12 +22,13 @@ namespace Deucarian.TemplateGameSurvivors.Editor
                 DeucarianControlCenterArea.Authoring,
                 GameContentAuthoringWindow.Open,
                 PackageId,
-                searchTerms: new[] { "survivors", "content", "template" },
-                order: 240, createPage: GameContentAuthoringWindow.CreatePage));
+                iconKey: "swords", searchTerms: new[] { "survivors", "content", "template" },
+                order: 240, createPage: () => GameContentAuthoringWindow.CreatePage(ToolId,
+                    "Survivors content", "Tune your content. See the difference.", SurvivorsContentPackProvider.StableProviderId)));
             DeucarianToolRegistry.Register(new DeucarianToolDescriptor(
                 "deucarian.template.survivors.debugger", "Survivors Runtime Debugger",
                 "Inspect play-mode tuning and stress controls.", DeucarianControlCenterArea.Developer,
-                SurvivorsRuntimeDebugWindow.Open, PackageId, createPage: SurvivorsRuntimeDebugWindow.CreatePage));
+                SurvivorsRuntimeDebugWindow.Open, PackageId, iconKey: "gamepad-2", createPage: SurvivorsRuntimeDebugWindow.CreatePage));
             DeucarianControlCenterRegistry.RegisterCardProvider(new Provider());
         }
 
