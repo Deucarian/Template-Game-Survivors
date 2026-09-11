@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.4] - 2026-09-11
+
+- Use a native runtime inspection workspace with Session and Tuning as primary sections and retained advanced controls. No gameplay changes.
+- Require Editor 1.10.6 for the shared native controls, typography, responsive layouts and accessible interaction states.
+
 ## [0.1.3] - 2026-09-09
 
 ### Changed
